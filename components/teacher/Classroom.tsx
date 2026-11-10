@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { invokeTool, op } from "@/lib/client";
-import { dueAt, fmtSec, isLate } from "@/lib/grading";
+import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { STATUS_LABEL, TYPE_META } from "@/lib/ui";
@@ -264,7 +264,7 @@ export function Classroom({
                         className={`press flex h-8 w-full items-center gap-1.5 rounded-lg px-2 transition-colors duration-500 ${active ? "bg-ink text-white" : late ? "bg-bad/[0.06] hover:bg-bad/[0.1]" : status === "done" ? "bg-ok/[0.07] hover:bg-ok/[0.12]" : status === "doing" ? "bg-warn/[0.07] hover:bg-warn/[0.12]" : "hover:bg-lane"}`}
                       >
                         <StatusIcon status={status} size={13} />
-                        {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{p.score}/{m.questions!.length}</span>}
+                        {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{p.score}/{quizSet(m, s.id, p.attempt ?? 1).length}</span>}
                         <span className="flex-1" />
                         {late && <span className={`font-mono text-[10.5px] font-medium ${active ? "text-white" : "text-bad"}`}>late</span>}
                         {rv && <span title={rv.verdict === "revise" ? "You asked for a revision" : "You reviewed this"} className={active ? "text-white/80" : rv.verdict === "revise" ? "text-warn" : "text-ok"}><Icon name={rv.verdict === "revise" ? "reset" : "message"} size={11} /></span>}
@@ -375,7 +375,7 @@ export function Classroom({
                       <span className="mono w-5">{String(i + 1).padStart(2, "0")}</span>
                       <span className="flex-1">{q.text}</span>
                       {a === undefined ? <span className="text-ink-3">No answer</span> : (
-                        <span className={`flex items-center gap-1 ${ok ? "text-ok" : "text-bad"}`}><Icon name={ok ? "check" : "x"} size={13} strokeWidth={2.2} />{typeof a === "string" ? `“${a}”` : q.options[a]}</span>
+                        <span className={`flex items-center gap-1 ${ok ? "text-ok" : "text-bad"}`}><Icon name={ok ? "check" : "x"} size={13} strokeWidth={2.2} />{answerText(q, a)}</span>
                       )}
                     </li>
                   );

@@ -1,5 +1,5 @@
 import { isoDay } from "./grading";
-import type { Attachment, ClassEvent, Mark, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
+import type { AnswerValue, Attachment, ClassEvent, Mark, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
 
 // The demo course: CaPS, a seven-week presentation skills course (Week 0 onboarding + six skill weeks),
 // built from the CaPS Week 0–6 course plan. Each week has one common theme and six cards; one card per
@@ -96,8 +96,8 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
           "Write the main point of your presentation in one sentence. Then go through your notes and cross out anything that doesn’t support that sentence.\n\nA useful test: could someone in your audience repeat your sentence to a friend afterwards?",
           { minutes: 10, submitTo: "personal", criteria: "One core-message sentence, and a list of what you cut.", skills: ["audience"], tools: [better, ask] }),
         M("w1-q", "quiz", "Quick check: audience and purpose",
-          "Four quick questions on this week’s ideas. You get two tries; your best score counts.",
-          { minutes: 5, skills: ["audience"], attempts: 2, questions: [
+          "Six quick questions on this week’s ideas. You get two tries; your best score counts.",
+          { minutes: 6, skills: ["audience"], attempts: 2, shuffle: true, questions: [
             { id: "w1q1", text: "You’re speaking to neighbors at a town meeting. Which sentence fits them best?",
               options: ["Peak runoff falls 30–50% through sub-base infiltration.", "This pavement soaks up rain like a sponge, so basements stay dry.", "Permeability coefficients vary with the aggregate used."], answer: 1,
               explain: "Non-specialists need a picture and a reason to care, not the technical cause." },
@@ -109,6 +109,12 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
             { id: "w1q4", text: "After listening, your audience should…",
               options: ["Know everything you know", "Take the one action you planned", "Remember every slide", "Have no questions"], answer: 1,
               explain: "Purpose is what you want them to do, not how much they absorb." },
+            { id: "w1q5", kind: "multi", text: "Which of these help a non-specialist audience?",
+              options: ["A picture or comparison from daily life", "Exact figures to three decimal places", "Saying why it matters to them", "Defining any technical term you keep"], answerSet: [0, 2, 3],
+              explain: "Pictures, relevance, and plain definitions help; precision beyond what they need gets in the way." },
+            { id: "w1q6", kind: "order", text: "Put the steps for planning a one-minute talk in order.",
+              options: ["Choose your audience", "Write your core message in one sentence", "Pick one example that matters to them", "Record and listen back"],
+              explain: "Audience first: everything else depends on who is listening." },
           ] }),
         ...paths("w1p",
           M("w1-4g", "practice", "One-minute practice (guided)",
@@ -149,6 +155,16 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
         M("w2-w", "wall", "Hooks that worked",
           "Post one opening line that made you want to keep listening (from a talk, a video, or a classmate) in the column for its kind of hook. Upvote the two you’d steal.",
           { minutes: 10, skills: ["structure"], wall: { posting: "students", comments: true, reactions: "votes", anonymous: false, approval: false, sections: ["A question", "A story", "A surprising fact"] } }),
+        M("w2-q", "quiz", "Timed check: structure",
+          "Five minutes, four questions drawn from a bank of six, so your set differs from your neighbor’s. Two tries.",
+          { minutes: 5, skills: ["structure"], attempts: 2, timeLimit: 5, shuffle: true, pick: 4, questions: [
+            { id: "w2q1", text: "In STAR, what does the R stand for?", options: ["Reason", "Result", "Response", "Review"], answer: 1, explain: "Situation, Task, Action, Result: the story ends with what happened." },
+            { id: "w2q2", text: "Which structure suits a persuasive talk best?", options: ["Chronological", "Problem → solution", "Compare and contrast", "Q&A"], answer: 1, explain: "Persuasion starts from a problem the audience feels." },
+            { id: "w2q3", kind: "order", text: "Put the parts of a talk in order.", options: ["Hook", "Core message", "Main points with examples", "Call to action"], explain: "Hook them, tell them the point, support it, then ask for action." },
+            { id: "w2q4", kind: "multi", text: "Which make a good transition?", options: ["“That’s why…”", "“Um, so, yeah”", "“Now that you’ve seen the problem, here’s the fix”", "“Next slide”"], answerSet: [0, 2], explain: "Good transitions say how the next part connects to the last one." },
+            { id: "w2q5", kind: "short", text: "One word: where should your core message appear first, the opening or the closing?", options: [], accept: ["opening", "the opening", "beginning", "start"], explain: "Say it early so listeners know what the rest supports; repeat it at the end." },
+            { id: "w2q6", text: "A good hook…", options: ["Thanks the audience", "Makes the audience want to keep listening", "Lists your agenda", "Introduces your name"], answer: 1, explain: "A hook earns attention for what comes next." },
+          ] }),
         M("w2-3", "practice", "Build my story bank",
           "Write down one experience that relates to your topic. Describe the situation, what you did, and the result. Then say which point in your presentation the story supports.",
           { minutes: 15, submitTo: "personal", criteria: "One story with situation, action, result, and the point it supports.", skills: ["structure"], tools: [ask] }),
@@ -436,16 +452,17 @@ export function seedProgress(): ProgressMap {
   out.s5["w1-3"].review = { verdict: "revise", text: "Your sentence has two ideas. Pick the one your audience needs most.", at: at(0.5), levels: { audience: 2 } };
   out.s5["w1-3"].status = "doing";
   // The quick check: a few students have taken it.
-  const quiz = (sid: string, a: (number | string)[], ok: boolean[], tries = 1) => {
+  const quiz = (sid: string, a: AnswerValue[], ok: boolean[], tries = 1) => {
     out[sid]["w1-q"] = {
       status: "done", attempt: tries, score: ok.filter(Boolean).length, best: ok.filter(Boolean).length, updatedAt: at(0.8),
       answers: Object.fromEntries(a.map((x, i) => [`w1q${i + 1}`, x])), results: Object.fromEntries(ok.map((x, i) => [`w1q${i + 1}`, x])),
     };
   };
-  quiz("s1", [1, 1, "audience", 1], [true, true, true, true]);
-  quiz("s2", [1, 1, "the audience", 1], [true, true, true, true]);
-  quiz("s8", [1, 0, "purpose", 1], [true, false, false, true], 2);
-  quiz("s11", [0, 1, "audience", 1], [false, true, true, true]);
+  const steps = ["Choose your audience", "Write your core message in one sentence", "Pick one example that matters to them", "Record and listen back"];
+  quiz("s1", [1, 1, "audience", 1, [0, 2, 3], steps], [true, true, true, true, true, true]);
+  quiz("s2", [1, 1, "the audience", 1, [0, 2], steps], [true, true, true, true, false, true]);
+  quiz("s8", [1, 0, "purpose", 1, [0, 1, 2], [steps[1], steps[0], steps[2], steps[3]]], [true, false, false, true, false, false], 2);
+  quiz("s11", [0, 1, "audience", 1, [0, 2, 3], steps], [false, true, true, true, true, true]);
   out.s2["w1-5"] = { status: "doing", updatedAt: at(0.2) };
   out.s3["w1-3"] = { status: "doing", output: "Draft: a bus stop designed for older riders is a better bus stop for everyone.", updatedAt: at(0.5) };
   out.s6["w1-1"] = { status: "doing", updatedAt: at(0.3) };

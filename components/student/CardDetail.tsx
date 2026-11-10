@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { op } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { useShortcuts } from "@/lib/shortcuts";
-import { dueInfo } from "@/lib/grading";
+import { dueInfo, optionOrder, quizSet } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META } from "@/lib/ui";
-import type { Attachment, Course, CourseState, Lesson, Module, Post, Progress, Student } from "@/lib/types";
+import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
 import { ReadAloud } from "../ReadAloud";
@@ -333,110 +333,231 @@ function Questions(p: DetailProps) {
   const { module: m, progress } = p;
   const isQuiz = m.type === "quiz";
   const submitted = isQuiz && progress?.status === "done";
-  const total = m.questions?.length ?? 0;
-  const [pending, setPending] = useState<Record<string, number | string>>({});
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const answers: Record<string, number | string> = { ...(progress?.answers ?? {}), ...pending };
+  const attempt = progress?.attempt ?? 1;
+  const set = quizSet(m, p.studentId, attempt);
+  const total = set.length;
+  const [pending, setPending] = useState<Record<string, AnswerValue>>({});
+  const [drafts, setDrafts] = useState<Record<string, AnswerValue>>({});
+  const answers: Record<string, AnswerValue> = { ...(progress?.answers ?? {}), ...pending };
   const results = progress?.results ?? {};
   const reveal = progress?.reveal ?? {};
   const tries = m.attempts ?? 1;
-  const attempt = progress?.attempt ?? 1;
+  const timed = isQuiz && !!m.timeLimit;
+  const [startedAt, setStartedAt] = useState(progress?.startedAt);
+  const started = !timed || !!startedAt || submitted;
+  const [now, setNow] = useState(() => Date.now());
+  const left = timed && startedAt && !submitted ? Math.max(0, startedAt + m.timeLimit! * 60_000 - now) : null;
+  const autoSent = useRef(false);
 
-  async function answer(qid: string, value: number | string) {
+  useEffect(() => {
+    if (!timed || !startedAt || submitted) return;
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [timed, startedAt, submitted]);
+
+  async function answer(qid: string, value: AnswerValue) {
     if (submitted) return;
+    const q = set.find((x) => x.id === qid)!;
     setPending((x) => ({ ...x, [qid]: value }));
-    await op(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...(typeof value === "string" ? { text: value } : { choice: value }) });
+    const payload = q.kind === "short" ? { text: value } : q.kind === "multi" ? { multi: value } : q.kind === "order" ? { order: value } : { choice: value };
+    const r = await op<{ ok: boolean; error?: string }>(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...payload });
+    if (!r.ok) toast(r.error ?? "Couldn’t save that answer", { icon: "quiz", tone: "plain" });
     await p.onChanged();
     setPending((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== qid)));
   }
 
-  async function submit() {
+  async function submit(auto = false) {
     p.optimistic({ status: "done" });
     const r = await op<{ score?: number }>(p.courseId, { op: "submitQuiz", studentId: p.studentId, moduleId: m.id });
     p.onChanged();
-    toast(`Submitted. Score: ${r.score ?? 0}/${total}`, { icon: "quiz" });
+    toast(`${auto ? "Time’s up. " : ""}Submitted. Score: ${r.score ?? 0}/${total}`, { icon: "quiz" });
+  }
+
+  // When the clock runs out, hand in whatever is answered.
+  useEffect(() => {
+    if (left === 0 && !autoSent.current) {
+      autoSent.current = true;
+      submit(true);
+    }
+  });
+
+  async function start() {
+    const r = await op<{ ok: boolean; startedAt?: number }>(p.courseId, { op: "startQuiz", studentId: p.studentId, moduleId: m.id });
+    if (r.startedAt) {
+      setStartedAt(r.startedAt);
+      setNow(Date.now());
+      p.optimistic({ startedAt: r.startedAt, status: "doing" });
+    }
   }
 
   async function retake() {
     const r = await op<{ ok: boolean; error?: string }>(p.courseId, { op: "retakeQuiz", studentId: p.studentId, moduleId: m.id });
     if (!r.ok) return toast(r.error ?? "Couldn’t start again", { icon: "quiz", tone: "plain" });
     setDrafts({});
-    p.optimistic({ status: "doing", answers: {}, results: {}, score: undefined, reveal: {}, attempt: attempt + 1 });
+    setStartedAt(undefined);
+    autoSent.current = false;
+    p.optimistic({ status: "doing", answers: {}, results: {}, score: undefined, reveal: {}, attempt: attempt + 1, startedAt: undefined });
     p.onChanged();
     toast(`Try ${attempt + 1} of ${tries}. Your best score is kept.`, { icon: "reset" });
   }
 
-  const answeredCount = m.questions?.filter((q) => answers[q.id] !== undefined && String(answers[q.id]).trim() !== "").length ?? 0;
+  const has = (v: AnswerValue | undefined) => v !== undefined && (Array.isArray(v) ? true : String(v).trim() !== "");
+  const answeredCount = set.filter((q) => has(answers[q.id])).length;
+  const optBtn = (on: boolean, extra = "") => `press flex items-center gap-2.5 rounded-[10px] border px-3 text-left ${p.big ? "py-3.5 text-[16px]" : "py-2.5 text-[14px]"} ${extra || (on ? "border-ink bg-white" : "border-line bg-white hover:border-line-strong hover:bg-[#fafaf9]")}`;
+
+  if (!started) {
+    return (
+      <div className="rounded-xl border border-line p-5 text-center">
+        <Icon name="timer" size={22} className="mx-auto text-ink-2" />
+        <p className="mt-2 text-[15px] font-medium">This quiz is timed: {m.timeLimit} minute{m.timeLimit === 1 ? "" : "s"}</p>
+        <p className="mt-1 text-[13px] text-ink-3">{total} question{total === 1 ? "" : "s"}{tries > 1 ? ` · ${tries} tries, best score counts` : ""}. The clock starts when you press Start and doesn’t stop if you close the card.</p>
+        <button onClick={start} className="btn btn-dark press mt-4 h-9 px-5">Start</button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {isQuiz && (tries > 1 || (progress?.best ?? 0) > 0) && (
-        <div className="flex items-center gap-2 text-[12.5px] text-ink-3">
+      {(left !== null || (isQuiz && (tries > 1 || (progress?.best ?? 0) > 0 || m.pick))) && (
+        <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-lg bg-white/90 px-1 py-1.5 text-[12.5px] text-ink-3 backdrop-blur">
           <Icon name="quiz" size={13} />
-          <span>Try {Math.min(attempt, tries)} of {tries}</span>
+          {tries > 1 && <span>Try {Math.min(attempt, tries)} of {tries}</span>}
+          {m.pick && m.questions && m.pick < m.questions.length && <span>· {total} drawn from {m.questions.length}</span>}
           {progress?.best !== undefined && <span>· best score <span className="font-mono text-ink">{progress.best}/{total}</span></span>}
+          <span className="flex-1" />
+          {left !== null && (
+            <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-[13px] ${left < 60_000 ? "bg-bad/10 text-bad" : "bg-lane text-ink"}`} role="timer" aria-label="Time left">
+              <Icon name="timer" size={12} />{Math.floor(left / 60000)}:{String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}
+            </span>
+          )}
         </div>
       )}
-      {m.questions?.map((q, qi) => {
+      {set.map((q, qi) => {
         const picked = answers[q.id];
-        const showResult = (!isQuiz || submitted) && !(q.id in pending);
+        const showResult = (!isQuiz || submitted) && !(q.id in pending) && has(picked);
         const right = results[q.id];
         const rv = reveal[q.id];
-        const short = q.kind === "short";
-        const draft = drafts[q.id] ?? (typeof picked === "string" ? picked : "");
+        const locked = submitted || (!isQuiz && right === true);
+        const order = optionOrder(q, p.studentId, !!m.shuffle);
         return (
           <fieldset key={q.id}>
             <legend className={`font-medium ${p.big ? "text-[18px]" : "text-[15px]"}`}>
               <span className="mono mr-2">{String(qi + 1).padStart(2, "0")}</span>
               {q.text}
+              {q.kind === "multi" && <span className="ml-2 text-[12px] font-normal text-ink-3">Choose all that apply</span>}
+              {q.kind === "order" && <span className="ml-2 text-[12px] font-normal text-ink-3">Put these in order</span>}
             </legend>
-            {short ? (
-              <form className="mt-2.5 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (draft.trim()) answer(q.id, draft.trim()); }}>
-                <input value={draft} disabled={submitted || (!isQuiz && right === true)}
-                  onChange={(e) => setDrafts((d) => ({ ...d, [q.id]: e.target.value }))}
-                  onBlur={() => isQuiz && draft.trim() && draft.trim() !== picked && answer(q.id, draft.trim())}
-                  placeholder="Type your answer" aria-label={`Answer to question ${qi + 1}`}
-                  className={`field ${p.big ? "h-12 text-[16px]" : "h-10"} ${picked !== undefined && showResult ? (right ? "border-ok/50 bg-ok/[0.04]" : "border-bad/45") : ""}`} />
-                {!isQuiz && right !== true && <button className="btn btn-ghost press h-10 flex-none" disabled={!draft.trim()}>Check</button>}
-                {picked !== undefined && showResult && <span className={`pop flex items-center ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={16} strokeWidth={2.2} /></span>}
-              </form>
-            ) : (
+
+            {q.kind === "short" ? (() => {
+              const draft = String(drafts[q.id] ?? (typeof picked === "string" ? picked : ""));
+              return (
+                <form className="mt-2.5 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (draft.trim()) answer(q.id, draft.trim()); }}>
+                  <input value={draft} disabled={locked}
+                    onChange={(e) => setDrafts((d) => ({ ...d, [q.id]: e.target.value }))}
+                    onBlur={() => isQuiz && draft.trim() && draft.trim() !== picked && answer(q.id, draft.trim())}
+                    placeholder="Type your answer" aria-label={`Answer to question ${qi + 1}`}
+                    className={`field ${p.big ? "h-12 text-[16px]" : "h-10"} ${showResult ? (right ? "border-ok/50 bg-ok/[0.04]" : "border-bad/45") : ""}`} />
+                  {!isQuiz && right !== true && <button className="btn btn-ghost press h-10 flex-none" disabled={!draft.trim()}>Check</button>}
+                  {showResult && <span className={`pop flex items-center ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={16} strokeWidth={2.2} /></span>}
+                </form>
+              );
+            })() : q.kind === "multi" ? (() => {
+              const cur = (drafts[q.id] ?? picked ?? []) as number[];
+              const key = (rv?.answerSet ?? []) as number[];
+              const toggle = (oi: number) => {
+                const next = cur.includes(oi) ? cur.filter((x) => x !== oi) : [...cur, oi];
+                setDrafts((d) => ({ ...d, [q.id]: next }));
+                if (isQuiz) answer(q.id, next);
+              };
+              return (
+                <div className="mt-2.5">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {order.map((oi) => {
+                      const on = cur.includes(oi);
+                      const tone = submitted && key.length ? (key.includes(oi) ? (on ? "border-ok/50 bg-ok/[0.06]" : "border-dashed border-ok/60 bg-white") : on ? "border-bad/45 bg-bad/[0.05]" : "") : "";
+                      return (
+                        <button key={oi} onClick={() => !locked && toggle(oi)} disabled={locked} aria-pressed={on} className={optBtn(on, tone)}>
+                          <span className={`flex h-4 w-4 flex-none items-center justify-center rounded border ${on ? "border-ink bg-ink text-white" : "border-line-strong"}`}>{on && <Icon name="check" size={10} strokeWidth={3} />}</span>
+                          <span className="flex-1">{q.options[oi]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!isQuiz && right !== true && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <button onClick={() => answer(q.id, cur)} disabled={!cur.length} className="btn btn-ghost press h-8">Check</button>
+                      {showResult && <span className={`pop flex items-center gap-1 text-[13px] ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={14} strokeWidth={2.2} />{right ? "Right" : ""}</span>}
+                    </div>
+                  )}
+                  {!isQuiz && right === true && <p className="pop mt-1.5 flex items-center gap-1 text-[13px] text-ok"><Icon name="check" size={14} strokeWidth={2.2} /> Right</p>}
+                </div>
+              );
+            })() : q.kind === "order" ? (() => {
+              const cur = ((drafts[q.id] ?? picked) as string[] | undefined) ?? order.map((oi) => q.options[oi]);
+              const move = (i: number, d: number) => {
+                const j = i + d;
+                if (j < 0 || j >= cur.length || locked) return;
+                const next = [...cur];
+                [next[i], next[j]] = [next[j], next[i]];
+                setDrafts((x) => ({ ...x, [q.id]: next }));
+              };
+              const correct = rv?.order;
+              return (
+                <div className="mt-2.5">
+                  <ol className="space-y-1.5">
+                    {cur.map((t, i) => (
+                      <li key={t} className={`flex items-center gap-2 rounded-[10px] border bg-white px-2 py-1.5 transition-transform ${submitted && correct ? (correct[i] === t ? "border-ok/50" : "border-bad/45") : "border-line"} ${p.big ? "text-[16px]" : "text-[14px]"}`}>
+                        <span className="mono w-5 text-center">{i + 1}</span>
+                        <span className="flex-1">{t}</span>
+                        {!locked && (
+                          <span className="flex">
+                            <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move “${t}” up`} className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-lane disabled:opacity-25"><Icon name="chevron" size={14} className="rotate-180" /></button>
+                            <button onClick={() => move(i, 1)} disabled={i === cur.length - 1} aria-label={`Move “${t}” down`} className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-lane disabled:opacity-25"><Icon name="chevron" size={14} /></button>
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                  {!locked && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <button onClick={() => answer(q.id, cur)} className="btn btn-ghost press h-8">{isQuiz ? (has(picked) ? "Update order" : "Lock in this order") : "Check"}</button>
+                      {isQuiz && has(picked) && <span className="text-[12.5px] text-ink-3">Saved</span>}
+                      {showResult && !isQuiz && <span className={`pop flex items-center gap-1 text-[13px] ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={14} strokeWidth={2.2} /></span>}
+                    </div>
+                  )}
+                  {submitted && correct && !right && <p className="rise mt-1.5 text-[12.5px] text-ink-2">Correct order: {correct.join(" → ")}</p>}
+                </div>
+              );
+            })() : (
               <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
-                {q.options.map((opt, oi) => {
+                {order.map((oi) => {
+                  const opt = q.options[oi];
                   const isPicked = picked === oi;
                   const isKey = submitted && rv?.answer === oi && !isPicked;
-                  let tone = "border-line bg-white hover:border-line-strong hover:bg-[#fafaf9]";
+                  let tone = "";
                   if (isPicked && showResult) tone = right ? "border-ok/50 bg-ok/[0.06]" : "border-bad/45 bg-bad/[0.05] shake";
-                  else if (isPicked) tone = "border-ink bg-white";
                   else if (isKey) tone = "border-dashed border-ok/60 bg-white";
                   return (
-                    <button
-                      key={`${oi}-${isPicked && showResult ? (right ? "y" : "n") : ""}`}
-                      onClick={() => answer(q.id, oi)}
-                      disabled={submitted}
-                      aria-pressed={isPicked}
-                      className={`press flex items-center gap-2.5 rounded-[10px] border px-3 text-left ${p.big ? "py-3.5 text-[16px]" : "py-2.5 text-[14px]"} ${tone}`}
-                    >
+                    <button key={`${oi}-${isPicked && showResult ? (right ? "y" : "n") : ""}`} onClick={() => answer(q.id, oi)} disabled={submitted} aria-pressed={isPicked} className={optBtn(isPicked, tone)}>
                       <span className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border ${isPicked ? "border-ink bg-ink" : "border-line-strong"}`}>
                         {isPicked && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </span>
                       <span className="flex-1">{opt}</span>
-                      {isPicked && showResult && (
-                        <span className={`pop ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={15} strokeWidth={2.2} /></span>
-                      )}
+                      {isPicked && showResult && <span className={`pop ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={15} strokeWidth={2.2} /></span>}
                       {isKey && <span className="text-[11.5px] text-ok">Answer</span>}
                     </button>
                   );
                 })}
               </div>
             )}
-            {picked !== undefined && showResult && !right && !isQuiz && (
+
+            {showResult && !right && !isQuiz && (!q.kind || q.kind === "choice" || q.kind === "short") && (
               <p className="rise mt-1.5 text-[12.5px] text-bad">Not quite. Have another go.</p>
             )}
-            {submitted && short && !right && rv?.accept && (
+            {submitted && q.kind === "short" && !right && rv?.accept && (
               <p className="rise mt-1.5 text-[12.5px] text-ink-2">Accepted answer: <span className="font-medium text-ok">{rv.accept}</span></p>
             )}
-            {showResult && rv?.explain && (
+            {(showResult || submitted) && rv?.explain && (
               <p className="rise mt-2 flex gap-2 rounded-lg bg-lane px-3 py-2 text-[13px] leading-relaxed text-ink-2">
                 <Icon name="sparkles" size={13} className="mt-[3px] flex-none text-ink-3" /><span><span className="font-medium text-ink">Why: </span>{rv.explain}</span>
               </p>
@@ -446,7 +567,7 @@ function Questions(p: DetailProps) {
       })}
       {isQuiz && !submitted && (
         <div className="flex items-center gap-3">
-          <button onClick={submit} disabled={answeredCount < total} className="btn btn-dark press h-9 px-4">Submit</button>
+          <button onClick={() => submit()} disabled={answeredCount < total} className="btn btn-dark press h-9 px-4">Submit</button>
           <span className="mono text-[11.5px]">{answeredCount}/{total} answered</span>
         </div>
       )}

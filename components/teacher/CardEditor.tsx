@@ -295,6 +295,27 @@ export function CardEditor({
             </label>
           ) : undefined}>
             {m.type === "read" && !m.questions?.length && <p className="mb-2 text-[12px] text-ink-3">Optional. Add a question or two; students get instant feedback and the card finishes when they’ve answered.</p>}
+            {m.type === "quiz" && (
+              <div className="mb-3 grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-2 rounded-lg bg-lane/60 p-2.5 text-[12.5px]">
+                <span className="text-ink-2">Time limit</span>
+                <Seg value={String(m.timeLimit ?? 0)} options={[["0", "None"], ["5", "5 min"], ["10", "10 min"], ["15", "15 min"], ["30", "30 min"]]} onPick={(v) => set({ timeLimit: Number(v) || undefined })} />
+                <span className="text-ink-2">Order</span>
+                <Seg value={m.shuffle ? "mix" : "same"} options={[["same", "Same for all"], ["mix", "Shuffle per student"]]} onPick={(v) => set({ shuffle: v === "mix" || undefined })} />
+                {(m.questions?.length ?? 0) > 2 && (
+                  <>
+                    <span className="text-ink-2">Questions</span>
+                    <label className="flex items-center gap-2 text-ink-2">
+                      Draw
+                      <select value={m.pick ?? 0} onChange={(e) => set({ pick: Number(e.target.value) || undefined })} aria-label="Questions per student" className="field h-7 w-auto py-0 text-[12.5px]">
+                        <option value={0}>all {m.questions!.length}</option>
+                        {Array.from({ length: m.questions!.length - 2 }, (_, i) => i + 2).map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                      at random for each student and try
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
             <QuestionsEditor questions={m.questions ?? []} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
           </Section>
         )}
@@ -426,9 +447,11 @@ function QuestionsEditor({ questions, onChange }: { questions: Question[]; onCha
   const set = (id: string, patch: Partial<Question>) => onChange(questions.map((q) => (q.id === id ? { ...q, ...patch } : q)));
   return (
     <div className="space-y-2.5">
-      <p className="text-[12px] text-ink-3">Tick the circle next to the right answer. For short answers, list every answer you’ll accept.</p>
+      <p className="text-[12px] text-ink-3">Mark the right answer (or answers). For short answers, list every answer you’ll accept; for order questions, type the steps in order.</p>
       {questions.map((q, qi) => {
         const short = q.kind === "short";
+        const multi = q.kind === "multi";
+        const ordered = q.kind === "order";
         return (
           <div key={q.id} className="rise rounded-xl border border-line p-3">
             <div className="flex items-center gap-2">
@@ -437,8 +460,12 @@ function QuestionsEditor({ questions, onChange }: { questions: Question[]; onCha
               <button onClick={() => onChange(questions.filter((x) => x.id !== q.id))} aria-label="Delete question" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={14} /></button>
             </div>
             <div className="mt-2 pl-7">
-              <Seg value={short ? "short" : "choice"} options={[["choice", "Multiple choice"], ["short", "Short answer"]]}
-                onPick={(v) => set(q.id, v === "short" ? { kind: "short", accept: q.accept?.length ? q.accept : [""] } : { kind: undefined, options: q.options.length ? q.options : ["", ""] })} />
+              <Seg value={q.kind ?? "choice"} options={[["choice", "One answer"], ["multi", "Several"], ["order", "Order"], ["short", "Short answer"]]}
+                onPick={(v) => set(q.id,
+                  v === "short" ? { kind: "short", accept: q.accept?.length ? q.accept : [""] }
+                  : v === "multi" ? { kind: "multi", options: q.options.length ? q.options : ["", ""], answerSet: q.answerSet ?? (q.answer !== undefined ? [q.answer] : []) }
+                  : v === "order" ? { kind: "order", options: q.options.length >= 3 ? q.options : [...q.options, "", "", ""].slice(0, 3) }
+                  : { kind: undefined, options: q.options.length ? q.options : ["", ""], answer: q.answer ?? 0 })} />
             </div>
             {short ? (
               <div className="mt-2 pl-7">
@@ -448,15 +475,24 @@ function QuestionsEditor({ questions, onChange }: { questions: Question[]; onCha
               </div>
             ) : (
               <>
+                {ordered && <p className="mt-2 pl-7 text-[11.5px] text-ink-3">Write the items in the correct order. Students see them mixed up.</p>}
                 <div className="mt-2 space-y-1.5 pl-7">
-                  {q.options.map((opt, oi) => (
-                    <label key={oi} className="flex items-center gap-2">
-                      <input type="radio" name={`ans-${q.id}`} checked={q.answer === oi} onChange={() => set(q.id, { answer: oi })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />
-                      <input value={opt} onChange={(e) => set(q.id, { options: q.options.map((o, k) => (k === oi ? e.target.value : o)) })} placeholder={`Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className={`field h-8 py-0 ${q.answer === oi ? "border-ok/50" : ""}`} />
-                    </label>
-                  ))}
+                  {q.options.map((opt, oi) => {
+                    const correct = multi ? q.answerSet?.includes(oi) : !ordered && q.answer === oi;
+                    return (
+                      <label key={oi} className="flex items-center gap-2">
+                        {ordered ? <span className="mono w-4 text-center">{oi + 1}</span>
+                          : multi ? <input type="checkbox" checked={!!correct} onChange={() => set(q.id, { answerSet: correct ? (q.answerSet ?? []).filter((x) => x !== oi) : [...(q.answerSet ?? []), oi] })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />
+                          : <input type="radio" name={`ans-${q.id}`} checked={q.answer === oi} onChange={() => set(q.id, { answer: oi })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />}
+                        <input value={opt} onChange={(e) => set(q.id, { options: q.options.map((o, k) => (k === oi ? e.target.value : o)) })} placeholder={ordered ? `Step ${oi + 1}` : `Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className={`field h-8 py-0 ${correct ? "border-ok/50" : ""}`} />
+                        {q.options.length > 2 && (
+                          <button onClick={() => set(q.id, { options: q.options.filter((_, k) => k !== oi), answer: q.answer !== undefined && q.answer > oi ? q.answer - 1 : q.answer === oi ? 0 : q.answer, answerSet: q.answerSet?.filter((x) => x !== oi).map((x) => (x > oi ? x - 1 : x)) })} aria-label={`Remove option ${oi + 1}`} className="text-ink-3 hover:text-bad"><Icon name="x" size={12} /></button>
+                        )}
+                      </label>
+                    );
+                  })}
                 </div>
-                {q.options.length < 4 && (
+                {q.options.length < 6 && (
                   <button onClick={() => set(q.id, { options: [...q.options, ""] })} className="btn btn-quiet press ml-6 mt-1 h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>
                 )}
               </>

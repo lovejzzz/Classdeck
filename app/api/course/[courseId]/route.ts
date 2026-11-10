@@ -2,11 +2,12 @@ import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
 import { safeUrl } from "@/lib/uploads";
-import { isCorrect } from "@/lib/grading";
-import type { Attachment, Course, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
+import { isCorrect, quizSet } from "@/lib/grading";
+import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
-const publicQuestion = (q: Question): Question => ({ id: q.id, kind: q.kind, text: q.text, options: q.kind === "short" ? [] : q.options });
+// "order" questions go out alphabetised, so the correct order never reaches the browser.
+const publicQuestion = (q: Question): Question => ({ id: q.id, kind: q.kind, text: q.text, options: q.kind === "short" ? [] : q.kind === "order" ? [...q.options].sort((a, b) => a.localeCompare(b)) : q.options });
 
 type Ctx = { params: Promise<{ courseId: string }> };
 
@@ -82,10 +83,19 @@ export async function GET(request: Request, { params }: Ctx) {
       // Explanations (and, after a quiz, the key) once they've been earned.
       if (mod?.questions?.length) {
         const reveal: NonNullable<Progress["reveal"]> = {};
+        const inSet = new Set(quizSet(mod, as, p.attempt ?? 1).map((q) => q.id));
         for (const q of mod.questions) {
-          const earned = isQuiz ? p.status === "done" : p.results?.[q.id] === true;
+          const earned = isQuiz ? p.status === "done" && inSet.has(q.id) : p.results?.[q.id] === true;
           if (!earned) continue;
-          reveal[q.id] = { explain: q.explain || undefined, ...(isQuiz ? { answer: q.kind === "short" ? undefined : q.answer, accept: q.kind === "short" ? q.accept?.[0] : undefined } : {}) };
+          reveal[q.id] = {
+            explain: q.explain || undefined,
+            ...(isQuiz ? {
+              answer: !q.kind || q.kind === "choice" ? q.answer : undefined,
+              answerSet: q.kind === "multi" ? q.answerSet : undefined,
+              order: q.kind === "order" ? q.options : undefined,
+              accept: q.kind === "short" ? q.accept?.[0] : undefined,
+            } : {}),
+          };
         }
         view.reveal = reveal;
       }
@@ -340,20 +350,31 @@ export async function POST(request: Request, { params }: Ctx) {
       if (!found || !q) break;
       const p = mine(body.studentId, body.moduleId);
       if (p.status === "done" && found.mod.type === "quiz") break;
-      const given: number | string = q.kind === "short" ? String(body.text ?? "").slice(0, 200) : Number(body.choice);
+      const set = quizSet(found.mod, body.studentId, p.attempt ?? 1);
+      if (!set.some((x) => x.id === q.id)) return fail("That question isn’t in your set");
+      if (found.mod.type === "quiz" && found.mod.timeLimit) {
+        if (!p.startedAt) return fail("Start the quiz first");
+        if (Date.now() > p.startedAt + found.mod.timeLimit * 60_000 + 15_000) return fail("Time’s up for this try");
+      }
+      const given: AnswerValue =
+        q.kind === "short" ? String(body.text ?? "").slice(0, 200)
+        : q.kind === "multi" ? [...new Set((Array.isArray(body.multi) ? body.multi : []).map(Number).filter((i: number) => Number.isInteger(i) && i >= 0 && i < q.options.length))] as number[]
+        : q.kind === "order" ? (Array.isArray(body.order) ? body.order : []).map(String).filter((x: string) => q.options.includes(x)).slice(0, q.options.length)
+        : Number(body.choice);
       const right = isCorrect(q, given);
       (p.answers ??= {})[q.id] = given;
       (p.results ??= {})[q.id] = right;
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
-      const total = found.mod.questions!.length;
-      const answered = Object.keys(p.answers).length;
+      const total = set.length;
+      const answered = set.filter((x) => p.answers![x.id] !== undefined).length;
       const instant = found.mod.type !== "quiz";
       if (instant && !right) {
         logEvent(courseId, {
           kind: "wrong", studentId: body.studentId, moduleId: body.moduleId,
           text: q.kind === "short"
             ? `Q${found.mod.questions!.indexOf(q) + 1}: wrote “${given}”; accepted: “${q.accept?.[0] ?? ""}”`
+            : q.kind === "multi" || q.kind === "order" ? `Q${found.mod.questions!.indexOf(q) + 1}: not quite (${q.kind === "multi" ? "choose all that apply" : "order"})`
             : `Q${found.mod.questions!.indexOf(q) + 1}: chose “${q.options[given as number]}”; answer is “${q.options[q.answer ?? 0]}”`,
         });
       }
@@ -361,7 +382,7 @@ export async function POST(request: Request, { params }: Ctx) {
         logEvent(courseId, { kind: "done", studentId: body.studentId, moduleId: body.moduleId, text: `Finished “${found.mod.title}”` });
       }
       if (instant) {
-        p.score = Object.values(p.results).filter(Boolean).length;
+        p.score = set.filter((x) => p.results![x.id]).length;
         if (answered === total) p.status = "done";
         extra = { correct: right, explain: right ? q.explain : undefined };
       }
@@ -369,16 +390,28 @@ export async function POST(request: Request, { params }: Ctx) {
     }
     case "submitQuiz": {
       const p = mine(body.studentId, body.moduleId);
-      p.score = Object.values(p.results ?? {}).filter(Boolean).length;
       const quiz = findModule(course, body.moduleId)?.mod;
+      const set = quiz ? quizSet(quiz, body.studentId, p.attempt ?? 1) : [];
+      p.score = set.filter((x) => p.results?.[x.id]).length;
       if (p.status !== "done") {
-        logEvent(courseId, { kind: "quiz", studentId: body.studentId, moduleId: body.moduleId, text: `Submitted “${quiz?.title ?? ""}”: ${p.score}/${quiz?.questions?.length ?? 0}` });
+        logEvent(courseId, { kind: "quiz", studentId: body.studentId, moduleId: body.moduleId, text: `Submitted “${quiz?.title ?? ""}”: ${p.score}/${set.length}` });
       }
       p.status = "done";
       p.attempt ??= 1;
       p.best = Math.max(p.best ?? 0, p.score);
       p.updatedAt = Date.now();
       extra = { score: p.score };
+      break;
+    }
+    case "startQuiz": {
+      const quiz = findModule(course, body.moduleId)?.mod;
+      if (!quiz || quiz.type !== "quiz") return fail("No such quiz");
+      const p = mine(body.studentId, body.moduleId);
+      if (p.status !== "done" && !p.startedAt) {
+        p.startedAt = Date.now();
+        p.status = "doing";
+      }
+      extra = { startedAt: p.startedAt };
       break;
     }
     case "retakeQuiz": {
@@ -390,6 +423,7 @@ export async function POST(request: Request, { params }: Ctx) {
       p.answers = {};
       p.results = {};
       p.score = undefined;
+      p.startedAt = undefined;
       p.status = "doing";
       p.updatedAt = Date.now();
       break;

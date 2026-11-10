@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { download, toCsv } from "@/lib/download";
-import { isLate } from "@/lib/grading";
+import { isLate, quizSet } from "@/lib/grading";
 import { visibleModules } from "@/lib/profile";
 import type { CourseState, Module } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
@@ -38,7 +38,7 @@ export function Gradebook({ state }: { state: CourseState }) {
     const done = cards.filter(({ m }) => mine[m.id]?.status === "done").length;
     const late = cards.filter(({ m }) => isLate(m, mine[m.id], now)).length;
     const quizzes = cards.filter(({ m }) => m.type === "quiz" && m.questions?.length && mine[m.id]?.status === "done");
-    const quizPct = quizzes.length ? quizzes.reduce((t, { m }) => t + (mine[m.id].best ?? mine[m.id].score ?? 0) / m.questions!.length, 0) / quizzes.length : undefined;
+    const quizPct = quizzes.length ? quizzes.reduce((t, { m }) => t + (mine[m.id].best ?? mine[m.id].score ?? 0) / Math.max(1, quizSet(m, st.id, mine[m.id].attempt ?? 1).length), 0) / quizzes.length : undefined;
     const reviews = cards.filter(({ m }) => mine[m.id]?.review).map(({ m, week }) => ({ m, week, r: mine[m.id].review! })).sort((a, b) => b.r.at - a.r.at);
     const waiting = cards.filter(({ m }) => WORK.has(m.type) && !m.questions?.length && mine[m.id]?.status === "done" && !mine[m.id]?.review).length;
     // Latest teacher level per skill, and the student's latest self-rating.

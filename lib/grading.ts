@@ -1,14 +1,72 @@
-import type { Module, Progress, Question } from "./types";
+import { hash } from "./cards";
+import type { AnswerValue, Module, Progress, Question } from "./types";
 
 /** Compare short answers loosely: case, spacing, and punctuation don't matter. */
 export const norm = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
-export function isCorrect(q: Question, given: number | string): boolean {
+export function isCorrect(q: Question, given: AnswerValue): boolean {
   if (q.kind === "short") {
     const g = norm(String(given));
     return !!g && (q.accept ?? []).some((a) => norm(a) === g);
   }
+  if (q.kind === "multi") {
+    const want = [...(q.answerSet ?? [])].sort().join(",");
+    return Array.isArray(given) && [...(given as number[])].map(Number).sort().join(",") === want;
+  }
+  if (q.kind === "order") {
+    return Array.isArray(given) && given.length === q.options.length && given.every((x, i) => x === q.options[i]);
+  }
   return given === q.answer;
+}
+
+/** A small seeded random generator, so every student gets the same draw on every device. */
+function rng(seedText: string) {
+  let seed = Math.floor(hash(seedText) * 2147483646) + 1;
+  return () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+}
+export function seededShuffle<T>(list: T[], seedText: string): T[] {
+  const out = [...list];
+  const r = rng(seedText);
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
+ * The questions one student gets on one try, in the order they see them.
+ * With `pick`, a random draw from the bank; with `shuffle`, mixed up. Same on client and server.
+ */
+export function quizSet(m: Module, studentId: string, attempt = 1): Question[] {
+  const all = m.questions ?? [];
+  const key = `${studentId}:${m.id}:${attempt}`;
+  let set = all;
+  if (m.pick && m.pick < all.length) {
+    const chosen = new Set(seededShuffle(all.map((q) => q.id), `pick:${key}`).slice(0, m.pick));
+    set = all.filter((q) => chosen.has(q.id));
+  }
+  return m.shuffle ? seededShuffle(set, `order:${key}`) : set;
+}
+
+/** Display order of a question's options for one student. Indexes still refer to the original order. */
+export function optionOrder(q: Question, studentId: string, shuffle: boolean): number[] {
+  const idx = q.options.map((_, i) => i);
+  // "order" questions are always shown mixed up; that's the task.
+  if (q.kind === "order") {
+    const mixed = seededShuffle(idx, `opts:${studentId}:${q.id}`);
+    return mixed.every((v, i) => v === i) && idx.length > 1 ? [...idx.slice(1), idx[0]] : mixed;
+  }
+  return shuffle ? seededShuffle(idx, `opts:${studentId}:${q.id}`) : idx;
+}
+
+/** A readable version of an answer, for the teacher. */
+export function answerText(q: Question, a: AnswerValue | undefined): string {
+  if (a === undefined) return "";
+  if (q.kind === "short") return `“${a}”`;
+  if (q.kind === "order") return (a as string[]).join(" → ");
+  if (q.kind === "multi") return (a as number[]).map((i) => q.options[i]).join(", ") || "(none)";
+  return q.options[a as number] ?? "";
 }
 
 const DAY = 86400000;

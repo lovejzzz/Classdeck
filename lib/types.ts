@@ -72,12 +72,14 @@ export interface Comment {
 
 export interface Question {
   id: string;
-  /** "choice" (default): pick one option. "short": type a short answer. */
-  kind?: "choice" | "short";
+  /** "choice" (default): pick one. "multi": pick all that apply. "order": put the options in order. "short": type an answer. */
+  kind?: "choice" | "multi" | "short" | "order";
   text: string;
   options: string[];
   /** 正确选项的下标。发给学生前会被服务器去掉。 */
   answer?: number;
+  /** "multi": every correct option index. Stripped before sending to students. */
+  answerSet?: number[];
   /** Short answers: accepted answers (case and punctuation ignored). Stripped before sending to students. */
   accept?: string[];
   /** Why the answer is right. Shown once the student has answered correctly, or after a quiz is submitted. */
@@ -103,6 +105,8 @@ export interface Review {
   /** Rubric: skill id → level 1–4 (the course's levels). */
   levels?: Record<string, number>;
 }
+
+export type AnswerValue = number | string | number[] | string[];
 
 export type Audience =
   | { kind: "all" }
@@ -147,6 +151,12 @@ export interface Module {
   freeReview?: boolean;
   /** Quiz: how many tries a student gets (default 1). */
   attempts?: number;
+  /** Quiz: minutes allowed per try. */
+  timeLimit?: number;
+  /** Mix up question and option order for each student. */
+  shuffle?: boolean;
+  /** Draw this many questions at random from the bank, per student and per try. */
+  pick?: number;
 }
 
 export interface SessionPlan {
@@ -219,8 +229,8 @@ export type Status = "todo" | "doing" | "done";
 export interface Progress {
   status: Status;
   output?: string;
-  /** Option index for choice questions, text for short answers. */
-  answers?: Record<string, number | string>;
+  /** Option index (choice), indexes (multi), text (short), or option texts in order (order). */
+  answers?: Record<string, AnswerValue>;
   results?: Record<string, boolean>;
   score?: number;
   /** Recordings, files, and links the student added as their work. */
@@ -237,13 +247,15 @@ export interface Progress {
   responses?: string[];
   /** Timed rehearsals, in seconds, newest last. */
   rehearsals?: number[];
+  /** Quiz with a time limit: when this try started. */
+  startedAt?: number;
   /** Quiz: which try this is (1-based) and the best score so far. */
   attempt?: number;
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
   /** Sent to students only: answer keys and explanations they've earned the right to see. */
-  reveal?: Record<string, { answer?: number; accept?: string; explain?: string }>;
+  reveal?: Record<string, { answer?: number; answerSet?: number[]; order?: string[]; accept?: string; explain?: string }>;
   updatedAt: number;
 }
 
