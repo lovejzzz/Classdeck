@@ -453,8 +453,10 @@ export async function POST(request: Request, { params }: Ctx) {
       const text = String(body.text ?? "").trim().slice(0, 1000);
       const work = (Array.isArray(body.work) ? body.work : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 4);
       if (!text && !work.length) return fail("Write something or attach something first");
+      const sections = w.sections?.filter((x) => x.trim()) ?? [];
+      const section = sections.includes(body.section) ? String(body.section) : sections[0];
       const post: Post = {
-        id: uid("p-"), moduleId: body.moduleId, studentId: teacher ? "teacher" : body.studentId, text, work, createdAt: Date.now(),
+        id: uid("p-"), moduleId: body.moduleId, studentId: teacher ? "teacher" : body.studentId, text, work, createdAt: Date.now(), section,
         anonymous: !teacher && w.anonymous ? true : undefined,
         approved: !teacher && w.approval ? false : undefined,
       };
@@ -506,6 +508,22 @@ export async function POST(request: Request, { params }: Ctx) {
       if (body.remove) d.posts[courseId] = list.filter((p) => p.id !== body.postId);
       if (typeof body.approved === "boolean") post.approved = body.approved ? undefined : false;
       if (typeof body.pinned === "boolean") post.pinned = body.pinned || undefined;
+      if (typeof body.section === "string") post.section = body.section;
+      break;
+    }
+    case "editPost": {
+      const list = d.posts[courseId] ?? [];
+      const post = list.find((p) => p.id === body.postId);
+      if (!post) return fail("That post is gone");
+      if (post.studentId !== body.studentId) return fail("You can only change your own posts");
+      if (body.remove) {
+        d.posts[courseId] = list.filter((p) => p.id !== post.id);
+        break;
+      }
+      const text = String(body.text ?? "").trim().slice(0, 1000);
+      if (!text && !post.work?.length) return fail("A post can’t be empty");
+      post.text = text;
+      post.editedAt = Date.now();
       break;
     }
     case "setAccess": {

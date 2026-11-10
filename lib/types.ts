@@ -58,6 +58,8 @@ export interface WallSettings {
   reactions: "likes" | "votes" | "both" | "none";
   anonymous: boolean;
   approval: boolean;
+  /** Optional columns, e.g. ["What worked", "Questions", "Ideas"]. Empty: one stream. */
+  sections?: string[];
 }
 
 export interface Comment {
@@ -291,6 +293,9 @@ export interface Post {
   mine?: boolean;
   /** Set by the teacher. */
   pinned?: boolean;
+  /** Which column it's in, when the wall has columns. */
+  section?: string;
+  editedAt?: number;
 }
 
 export interface ToolLogEntry {

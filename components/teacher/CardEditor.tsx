@@ -272,6 +272,13 @@ export function CardEditor({
               <Seg value={wall.reactions} options={[["likes", "Likes"], ["votes", "Votes"], ["both", "Both"], ["none", "Off"]]} onPick={(v) => setWall({ reactions: v as WallSettings["reactions"] })} />
               <span className="text-ink-2">Comments</span>
               <Seg value={wall.comments ? "on" : "off"} options={[["on", "On"], ["off", "Off"]]} onPick={(v) => setWall({ comments: v === "on" })} />
+              <span className="self-start pt-1.5 text-ink-2">Columns</span>
+              <div>
+                <input defaultValue={(wall.sections ?? []).join(", ")} key={m.id}
+                  onBlur={(e) => { const sec = e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 6); setWall({ sections: sec.length > 1 ? sec : undefined }); }}
+                  placeholder="e.g. What worked, Questions, Ideas" aria-label="Wall columns" className="field h-8 py-0" />
+                <p className="mt-1 text-[11.5px] text-ink-3">Two or more names, separated by commas. Leave empty for one stream.</p>
+              </div>
               <span className="self-start pt-1 text-ink-2">Moderation</span>
               <div className="space-y-1.5">
                 <label className="flex items-center gap-2 text-ink-2"><input type="checkbox" checked={wall.approval} onChange={(e) => setWall({ approval: e.target.checked })} className="accent-[#1b1b1a]" />Approve posts before others see them</label>

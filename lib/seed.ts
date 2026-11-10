@@ -146,6 +146,9 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
         M("w2-2", "explore", "Observe openings and closings",
           "Listen to two openings on a similar topic. For each one, identify the hook, where the core message appears, and what the audience is asked to do at the end.\n\nWhich opening made you want to keep listening? What exactly did it do?",
           { minutes: 15, submitTo: "personal", criteria: "Hook, core message, and call to action identified for both.", skills: ["structure"], attachments: [A("a-w2-oa", "audio", `${S}/opening-a.m4a`, "Opening A"), A("a-w2-ob", "audio", `${S}/opening-b.m4a`, "Opening B")] }),
+        M("w2-w", "wall", "Hooks that worked",
+          "Post one opening line that made you want to keep listening (from a talk, a video, or a classmate) in the column for its kind of hook. Upvote the two you’d steal.",
+          { minutes: 10, skills: ["structure"], wall: { posting: "students", comments: true, reactions: "votes", anonymous: false, approval: false, sections: ["A question", "A story", "A surprising fact"] } }),
         M("w2-3", "practice", "Build my story bank",
           "Write down one experience that relates to your topic. Describe the situation, what you did, and the result. Then say which point in your presentation the story supports.",
           { minutes: 15, submitTo: "personal", criteria: "One story with situation, action, result, and the point it supports.", skills: ["structure"], tools: [ask] }),
@@ -534,6 +537,10 @@ export function seedPosts(): Post[] {
       [{ id: "c2", from: "s9", text: "Where did it sound unconfident? A timestamp would help.", at: now - 7 * day }]),
     p("pw3", "s1", "The “um” at 0:01 and “so yeah” at 0:17 made the start and end feel unplanned. Try a one-breath pause instead of “um”, and end on “take the stairs”.", ["s3", "s5", "s6", "s11"], 7.0),
     p("pw4", "s5", "I liked the health point, but three reasons came in a list without examples, so I forgot the second one. Try one reason with a story.", ["s2", "s10"], 6.9),
+    { id: "ph1", moduleId: "w2-w", studentId: "s2", section: "A question", text: "“How many of you watered a plant this week that didn’t need it?”", votes: ["s1", "s3", "s9"], createdAt: now - 0.5 * day },
+    { id: "ph2", moduleId: "w2-w", studentId: "s8", section: "A story", text: "“Last spring I killed eleven tomato plants. Here’s what I learned.”", votes: ["s2", "s5"], createdAt: now - 0.4 * day },
+    { id: "ph3", moduleId: "w2-w", studentId: "s11", section: "A surprising fact", text: "“Half the water used on lawns evaporates before it reaches the roots.”", votes: ["s1"], createdAt: now - 0.3 * day },
+    { id: "ph4", moduleId: "w2-w", studentId: "s1", section: "A question", text: "“What if your phone told you when your plants were thirsty?”", votes: [], createdAt: now - 0.2 * day },
     p("pw5", "s11", "Evidence at 0:12: “I think” right before the study made me doubt it. Effect: I stopped trusting the claim. Next: cite it or cut it.", ["s1", "s3", "s8"], 6.8),
   ];
 }

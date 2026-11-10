@@ -34,6 +34,9 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
   const [local, setLocal] = useState<{ likes?: string[]; votes?: string[] }>({});
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const own = !teacher && (post.mine || post.studentId === me);
+  const sections = w.sections?.filter((x) => x.trim()) ?? [];
   const likes = local.likes ?? post.likes ?? [];
   const votes = local.votes ?? post.votes ?? [];
   const name = (id: string) => (id === "teacher" ? "Teacher" : students.find((s) => s.id === id)?.name ?? "Classmate");
@@ -79,7 +82,18 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
           {post.pinned && <span className="chip h-5 bg-[#fbf3dd] text-[10.5px] text-[#8f630b]">Pinned</span>}
           {post.approved === false && <span className="chip h-5 bg-warn/10 text-[10.5px] text-warn">Waiting for approval</span>}
         </div>
-        {post.text && <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed">{post.text}</p>}
+        {editing !== null ? (
+          <form className="mt-2" onSubmit={async (e) => {
+            e.preventDefault();
+            const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "editPost", postId: post.id, studentId: me, text: editing });
+            if (!r.ok) return toast(r.error ?? "Couldn’t save", { icon: "x", tone: "bad" });
+            setEditing(null);
+            onChanged();
+          }}>
+            <textarea autoFocus value={editing} onChange={(e) => setEditing(e.target.value)} rows={3} aria-label="Edit your post" className="field resize-y text-[14px] leading-relaxed" />
+            <div className="mt-1.5 flex gap-1.5"><button className="btn btn-dark press h-7 px-3 text-[12px]">Save</button><button type="button" onClick={() => setEditing(null)} className="btn btn-quiet press h-7 px-2 text-[12px]">Cancel</button></div>
+          </form>
+        ) : post.text && <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed">{post.text}{post.editedAt && <span className="ml-1.5 text-[11px] text-ink-3">(edited)</span>}</p>}
         {post.work?.map((a) => <div key={a.id} className="mt-2.5"><MediaView a={a} /></div>)}
       </div>
       <div className="mt-2 flex items-center gap-1 px-2.5 pb-2">
@@ -101,8 +115,24 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
           </button>
         )}
         <span className="flex-1" />
+        {own && editing === null && (
+          <span className="flex items-center gap-0.5">
+            <button onClick={() => setEditing(post.text)} className="btn btn-quiet press h-7 px-2 text-[12px]">Edit</button>
+            <button onClick={async () => {
+              if (!confirm("Delete your post?")) return;
+              await op(courseId, { op: "editPost", postId: post.id, studentId: me, remove: true });
+              onChanged();
+              toast("Post deleted", { icon: "trash", tone: "plain" });
+            }} aria-label="Delete your post" className="btn btn-quiet press h-7 w-7 justify-center px-0 hover:!text-bad"><Icon name="trash" size={13} /></button>
+          </span>
+        )}
         {teacher && (
           <span className="flex items-center gap-0.5">
+            {sections.length > 1 && (
+              <select value={post.section ?? sections[0]} onChange={(e) => moderate({ section: e.target.value }, `Moved to “${e.target.value}”`)} aria-label="Move to column" className="h-7 max-w-28 rounded-md bg-transparent px-1 text-[12px] text-ink-2 outline-none hover:bg-lane">
+                {sections.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            )}
             {post.approved === false && <button onClick={() => moderate({ approved: true }, "Approved")} className="btn btn-dark press h-7 px-2.5 text-[12px]">Approve</button>}
             <button onClick={() => moderate({ pinned: !post.pinned }, post.pinned ? "Unpinned" : "Pinned to the top")} className="btn btn-quiet press h-7 px-2 text-[12px]">{post.pinned ? "Unpin" : "Pin"}</button>
             <button onClick={() => confirm("Delete this post for everyone?") && moderate({ remove: true }, "Post deleted")} aria-label="Delete post" className="btn btn-quiet press h-7 w-7 justify-center px-0 hover:!text-bad"><Icon name="trash" size={13} /></button>
@@ -140,6 +170,8 @@ export function WallBoard({ courseId, me, teacher = false, module: m, posts, stu
   const [work, setWork] = useState<Omit<Attachment, "id">[]>([]);
   const [busy, setBusy] = useState(false);
   const [sort, setSort] = useState<"new" | "top">(w.reactions === "votes" ? "top" : "new");
+  const sections = w.sections?.filter((x) => x.trim()) ?? [];
+  const [section, setSection] = useState(sections[0] ?? "");
   const canPost = teacher || w.posting === "students";
   const score = (p: Post) => (p.votes?.length ?? 0) * 2 + (p.likes?.length ?? 0);
   const list = posts
@@ -149,7 +181,7 @@ export function WallBoard({ courseId, me, teacher = false, module: m, posts, stu
   async function post() {
     if (!text.trim() && !work.length) return;
     setBusy(true);
-    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "addPost", studentId: me, moduleId: m.id, text, work });
+    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "addPost", studentId: me, moduleId: m.id, text, work, section });
     setBusy(false);
     if (!r.ok) return toast(r.error ?? "Couldn’t post", { icon: "x", tone: "bad" });
     setText("");
@@ -171,6 +203,15 @@ export function WallBoard({ courseId, me, teacher = false, module: m, posts, stu
                 <span key={i} className="pop chip h-7 pr-1"><Icon name={a.kind} size={12} />{a.name ?? a.kind}
                   <button onClick={() => setWork(work.filter((_, k) => k !== i))} aria-label="Remove attachment" className="press ml-0.5 rounded p-0.5 hover:bg-black/5"><Icon name="x" size={11} /></button>
                 </span>
+              ))}
+            </div>
+          )}
+          {sections.length > 1 && (
+            <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-3">
+              Post to
+              {sections.map((x) => (
+                <button key={x} onClick={() => setSection(x)} aria-pressed={section === x}
+                  className={`press h-6 rounded-full border px-2.5 ${section === x ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>{x}</button>
               ))}
             </div>
           )}
@@ -204,6 +245,23 @@ export function WallBoard({ courseId, me, teacher = false, module: m, posts, stu
       </div>
       {list.length === 0 ? (
         <div className="hatch flex h-24 items-center justify-center text-[13px] text-ink-3">The wall is empty. Be the first to post.</div>
+      ) : sections.length > 1 ? (
+        // Columns, like sections on a Padlet shelf. Scrolls sideways when there are many.
+        <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
+          {sections.map((sec) => {
+            const col = list.filter((p) => (p.section ?? sections[0]) === sec);
+            return (
+              <section key={sec} className="w-[17rem] flex-none sm:w-auto sm:min-w-[15rem] sm:flex-1" aria-label={sec}>
+                <div className="mb-2 flex items-center gap-2 rounded-lg bg-lane px-3 py-2">
+                  <span className="flex-1 truncate text-[13px] font-medium">{sec}</span>
+                  <span className="mono text-[11.5px]">{col.length}</span>
+                </div>
+                {col.length === 0 ? <div className="hatch flex h-16 items-center justify-center text-[12px] text-ink-3">Nothing yet</div> :
+                  col.map((p, i) => <PostCard key={p.id} post={p} me={me} teacher={teacher} module={m} students={students} courseId={courseId} onChanged={onChanged} index={i} />)}
+              </section>
+            );
+          })}
+        </div>
       ) : (
         <div className="columns-1 gap-3 sm:columns-2">
           {list.map((p, i) => <PostCard key={p.id} post={p} me={me} teacher={teacher} module={m} students={students} courseId={courseId} onChanged={onChanged} index={i} />)}
