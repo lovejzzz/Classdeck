@@ -8,7 +8,7 @@ import { dueAt, fmtSec, isLate } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { STATUS_LABEL, TYPE_META } from "@/lib/ui";
-import type { CourseState, Lesson, Module, Review } from "@/lib/types";
+import type { CourseState, Lesson, Level, Module, Review, Skill } from "@/lib/types";
 import { download, toCsv } from "@/lib/download";
 import { toast } from "@/lib/toast";
 import { MediaView } from "../cards/Media";
@@ -364,7 +364,8 @@ export function Classroom({
               </ul>
             )}
             {!selModule.questions?.length && selModule.type !== "wall" && (
-              <ReviewBox key={`${sel.sid}-${sel.mid}`} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"} />
+              <ReviewBox key={`${sel.sid}-${sel.mid}`} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"}
+                skills={(course.skills ?? []).filter((sk) => selModule.skills?.includes(sk.id))} levels={course.levels ?? []} />
             )}
             </div>
           </aside>,
@@ -494,12 +495,13 @@ function ExportMenu({ items }: { items: [string, () => void][] }) {
 }
 
 /** The teacher's response to one piece of work: a note, and either "looks good" or "revise". */
-function ReviewBox({ courseId, studentId, moduleId, name, review, done }: { courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean }) {
+function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels }: { courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean; skills: Skill[]; levels: Level[] }) {
   const [text, setText] = useState(review?.text ?? "");
+  const [rubric, setRubric] = useState<Record<string, number>>(review?.levels ?? {});
   const [busy, setBusy] = useState(false);
   async function send(verdict: "good" | "revise" | "clear") {
     setBusy(true);
-    const r = await op<{ ok: boolean; error?: string }>(courseId, verdict === "clear" ? { op: "review", studentId, moduleId, clear: true } : { op: "review", studentId, moduleId, verdict, text });
+    const r = await op<{ ok: boolean; error?: string }>(courseId, verdict === "clear" ? { op: "review", studentId, moduleId, clear: true } : { op: "review", studentId, moduleId, verdict, text, levels: rubric });
     setBusy(false);
     if (r.ok === false) return toast(r.error ?? "Couldn’t save", { icon: "message", tone: "plain" });
     if (verdict === "clear") setText("");
@@ -515,6 +517,26 @@ function ReviewBox({ courseId, studentId, moduleId, name, review, done }: { cour
           </span>
         )}
       </div>
+      {skills.length > 0 && levels.length > 0 && (
+        <div className="mb-3 space-y-2" aria-label="Rubric">
+          {skills.map((sk) => (
+            <div key={sk.id}>
+              <div className="mb-1 text-[12.5px] text-ink-2">{sk.name}</div>
+              <div className="grid grid-cols-4 gap-1">
+                {levels.map((lv) => {
+                  const on = rubric[sk.id] === lv.n;
+                  return (
+                    <button key={lv.n} onClick={() => setRubric((r) => ({ ...r, [sk.id]: on ? 0 : lv.n }))} aria-pressed={on} title={lv.description}
+                      className={`press rounded-md border px-1 py-1.5 text-center text-[11.5px] leading-tight ${on ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>
+                      <span className="block font-mono text-[10.5px] opacity-70">{lv.n}</span>{lv.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder={`What ${name} did well, and one thing to try next`} aria-label="Feedback for the student" className="field resize-y leading-relaxed"
         onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send("good"); } }} />
       <div className="mt-2 flex flex-wrap items-center gap-2">

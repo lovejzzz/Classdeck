@@ -98,6 +98,8 @@ export interface Review {
   verdict: "good" | "revise";
   text: string;
   at: number;
+  /** Rubric: skill id → level 1–4 (the course's levels). */
+  levels?: Record<string, number>;
 }
 
 export type Audience =

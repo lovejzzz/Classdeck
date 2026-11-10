@@ -160,7 +160,7 @@ export function CardDetail(p: DetailProps) {
           </div>
         )}
 
-        {review && !m.choice && <ReviewNote review={review} big={p.big} />}
+        {review && !m.choice && <ReviewNote review={review} big={p.big} skills={p.course.skills} levels={p.course.levels} />}
 
         {m.choice && (
           <section className="pop mt-5" aria-label="Pick your path">

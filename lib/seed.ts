@@ -422,12 +422,14 @@ export function seedProgress(): ProgressMap {
     ...A("wk-s2-w1", "audio", `${S}/leo-week1.m4a`, "Non-specialist version (60 sec)"),
     transcript: "So, um, have you ever come home and found your houseplants dead? Basically that happens because we water on a schedule, not when the soil actually needs it. My project is a small soil sensor. It's, like, calibrated to measure moisture, and it tells you when to water. In my tests it cut water use by about a third. So yeah, next time you water, ask the soil first.",
   }];
+  out.s8["w1-4s"].review = { verdict: "good", text: "Both versions work; the non-specialist one is clearly adapted.", at: at(0.7), levels: { audience: 4 } };
+  out.s11["w1-3"].review = { verdict: "good", text: "Clear and short.", at: at(0.9), levels: { audience: 2 } };
   for (const sid of ["s2", "s8"]) Object.assign(out[sid]["w1-4s"], { checks: [0, 1, 2], rehearsals: sid === "s2" ? [74, 66, 61] : [88, 59] });
   // Teacher feedback already given on some of this week's work.
-  out.s1["w1-3"].review = { verdict: "good", text: "Sharp sentence. Cutting the circuit diagram was the right call.", at: at(0.6) };
-  out.s3["w1-2"].review = { verdict: "good", text: "Good eye: “like a sponge” is exactly the kind of swap to notice.", at: at(0.4) };
+  out.s1["w1-3"].review = { verdict: "good", text: "Sharp sentence. Cutting the circuit diagram was the right call.", at: at(0.6), levels: { audience: 3 } };
+  out.s3["w1-2"].review = { verdict: "good", text: "Good eye: “like a sponge” is exactly the kind of swap to notice.", at: at(0.4), levels: { audience: 3 } };
   out.s3["w1-1"] = { ...out.s3["w1-1"], status: "doing", review: { verdict: "revise", text: "Good start. Make the action more specific: what exactly do you want the panel to ask you about?", at: at(0.25) } };
-  out.s5["w1-3"].review = { verdict: "revise", text: "Your sentence has two ideas. Pick the one your audience needs most.", at: at(0.5) };
+  out.s5["w1-3"].review = { verdict: "revise", text: "Your sentence has two ideas. Pick the one your audience needs most.", at: at(0.5), levels: { audience: 2 } };
   out.s5["w1-3"].status = "doing";
   // The quick check: a few students have taken it.
   const quiz = (sid: string, a: (number | string)[], ok: boolean[], tries = 1) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { MarksContext } from "@/components/Marks";
+import { Gradebook } from "@/components/teacher/Gradebook";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -15,7 +16,7 @@ import { PRESET_LABELS } from "@/lib/profile";
 import { toast } from "@/lib/toast";
 import type { ClassEvent } from "@/lib/types";
 
-const TABS = [["plan", "Deck"], ["class", "Class"], ["settings", "Settings"]] as const;
+const TABS = [["plan", "Deck"], ["class", "Class"], ["grades", "Grades"], ["settings", "Settings"]] as const;
 type Tab = (typeof TABS)[number][0];
 
 const KIND: Record<ClassEvent["kind"], { icon: string; tint: string }> = {
@@ -106,7 +107,8 @@ export default function TeachPage() {
             list={[
               { keys: "1", label: "Deck", run: () => setTab("plan") },
               { keys: "2", label: "Class", run: () => setTab("class") },
-              { keys: "3", label: "Settings", run: () => setTab("settings") },
+              { keys: "3", label: "Grades", run: () => setTab("grades") },
+              { keys: "4", label: "Settings", run: () => setTab("settings") },
             ]}
             extra={tab === "plan" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s Collab Studio" }, { keys: "[", label: "Previous / next week ( [ ] )" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
@@ -197,6 +199,7 @@ export default function TeachPage() {
         <main key={tab} className="rise mt-6">
           {tab === "plan" && <Deck course={course} connectors={connectors} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} />}
           {tab === "class" && lesson && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
+          {tab === "grades" && <Gradebook state={state} />}
           {tab === "settings" && <Settings course={course} connectors={connectors} onChanged={refresh} />}
         </main>
       </div>

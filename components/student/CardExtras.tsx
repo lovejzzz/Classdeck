@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { op } from "@/lib/client";
 import { fmtSec } from "@/lib/grading";
 import { toast } from "@/lib/toast";
-import type { Review } from "@/lib/types";
+import type { Level, Review, Skill } from "@/lib/types";
 import { Icon } from "../Icon";
 
 /** The teacher's note on this work, pinned to the top of the card. */
-export function ReviewNote({ review, big }: { review: Review; big?: boolean }) {
+export function ReviewNote({ review, big, skills = [], levels = [] }: { review: Review; big?: boolean; skills?: Skill[]; levels?: Level[] }) {
   const revise = review.verdict === "revise";
   return (
     <div className={`pop mt-5 rounded-xl border px-4 py-3 ${revise ? "border-warn/40 bg-warn/[0.06]" : "border-ok/35 bg-ok/[0.05]"}`} role="note">
@@ -19,6 +19,15 @@ export function ReviewNote({ review, big }: { review: Review; big?: boolean }) {
         <span className="font-normal text-ink-3">{new Date(review.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
       </div>
       {review.text && <p className={`mt-1.5 whitespace-pre-wrap leading-relaxed text-ink ${big ? "text-[16px]" : "text-[14px]"}`}>{review.text}</p>}
+      {review.levels && Object.keys(review.levels).length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {Object.entries(review.levels).map(([id, n]) => (
+            <span key={id} className="chip bg-white" title={levels.find((l) => l.n === n)?.description}>
+              {skills.find((s) => s.id === id)?.name ?? id} · <span className="font-medium">{levels.find((l) => l.n === n)?.name ?? n}</span><span className="font-mono text-ink-3">{n}/4</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

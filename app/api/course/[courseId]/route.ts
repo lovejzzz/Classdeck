@@ -426,7 +426,12 @@ export async function POST(request: Request, { params }: Ctx) {
         break;
       }
       const verdict = body.verdict === "revise" ? "revise" : "good";
-      p.review = { verdict, text: String(body.text ?? "").slice(0, 2000), at: Date.now() };
+      const levels: Record<string, number> = {};
+      for (const sk of course.skills ?? []) {
+        const v = Number(body.levels?.[sk.id]);
+        if (v >= 1 && v <= 4) levels[sk.id] = v;
+      }
+      p.review = { verdict, text: String(body.text ?? "").slice(0, 2000), at: Date.now(), levels: Object.keys(levels).length ? levels : undefined };
       // Asking for a revision puts the card back in the student's hand.
       if (verdict === "revise" && p.status === "done") p.status = "doing";
       break;
