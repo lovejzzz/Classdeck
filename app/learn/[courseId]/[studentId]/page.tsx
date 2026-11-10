@@ -159,7 +159,9 @@ export default function LearnPage() {
     });
   const inHand = byOrder(current.modules.filter((m) => statusOf(m.id) !== "done"));
   const done = current.modules.filter((m) => statusOf(m.id) === "done").sort((a, b) => (mine[a.id]?.updatedAt ?? 0) - (mine[b.id]?.updatedAt ?? 0));
-  const doneCount = (l: Lesson) => l.modules.filter((m) => statusOf(m.id) === "done").length;
+  // Cards that count toward progress: an unpicked set of paths counts once, as the first version.
+  const countable = (l: Lesson) => l.modules.filter((m, i) => !m.choice || l.modules.findIndex((x) => x.choice?.slot === m.choice!.slot) === i);
+  const doneCount = (l: Lesson) => countable(l).filter((m) => statusOf(m.id) === "done").length;
 
   // The next card to play: something already started, else the first open card today, else the next week's first.
   const currentWeek = course.weeks.find((w) => w.lessons.some((l) => l.id === current.id)) ?? course.weeks[0];
@@ -368,14 +370,14 @@ export default function LearnPage() {
                 </div>
                 <h1 className={`mt-2 font-semibold tracking-tight ${big ? "text-[36px]" : "text-[30px]"}`}>{current.title}</h1>
                 {current.goal && <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-2">{current.goal}</p>}
-                <div className="mt-5 flex max-w-md gap-1" aria-label={`${doneCount(current)} of ${current.modules.length} cards done`}>
-                  {current.modules.map((m) => {
+                <div className="mt-5 flex max-w-md gap-1" aria-label={`${doneCount(current)} of ${countable(current).length} cards done`}>
+                  {countable(current).map((m) => {
                     const st = statusOf(m.id);
                     return <span key={m.id} title={m.title} className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${st === "done" ? "bg-ok" : st === "doing" ? "bg-warn" : "bg-line"}`} />;
                   })}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px] text-ink-3">
-                  <span><span className="font-mono text-ink">{doneCount(current)}</span> of {current.modules.length} cards done</span>
+                  <span><span className="font-mono text-ink">{doneCount(current)}</span> of {countable(current).length} cards done</span>
                   {minutesLeft > 0 && <span className="flex items-center gap-1"><Icon name="clock" size={12} />about {minutesLeft} min left</span>}
                   {current.session && <span className="flex items-center gap-1"><Icon name="studio" size={12} />Collab Studio · {current.session.minutes} min</span>}
                 </div>
@@ -493,7 +495,7 @@ export default function LearnPage() {
                               <div className="flex flex-wrap items-center gap-2 text-[13px]" style={{ maxWidth: Math.max(rowWidth, 280) }}>
                                 <span className="font-medium">{l.title}</span>
                                 {isToday && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
-                                <span className="mono">{doneCount(l)}/{l.modules.length}</span>
+                                <span className="mono">{doneCount(l)}/{countable(l).length}</span>
                                 {l.session && <span className="chip h-5 text-[11px]"><Icon name="studio" size={11} />Collab Studio · {l.session.minutes} min</span>}
                               </div>
                               {l.goal && !isToday && <p className="mt-1 text-[12.5px] text-ink-3" style={{ maxWidth: Math.min(Math.max(rowWidth, 280), 576) }}>{l.goal}</p>}

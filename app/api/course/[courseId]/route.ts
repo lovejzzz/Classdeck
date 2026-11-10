@@ -115,6 +115,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const { courseId } = await params;
   const body = await request.json();
   if (body.op === "reset") {
+    if (courseId !== "demo") return Response.json({ ok: false, error: "Only the demo course can be restored" }, { status: 400 });
     reset();
     return Response.json({ ok: true });
   }
@@ -153,6 +154,55 @@ export async function POST(request: Request, { params }: Ctx) {
     case "setEnabledConnectors":
       course.enabledConnectors = body.ids;
       break;
+    case "addStudents": {
+      // One name per line (or comma-separated). Duplicates of existing names are skipped.
+      const names: string[] = String(body.names ?? "").split(/[\n,]/).map((x: string) => x.trim()).filter(Boolean).slice(0, 200);
+      const have = new Set(course.students.map((x) => x.name.toLowerCase()));
+      const added = names.filter((n) => !have.has(n.toLowerCase()) && (have.add(n.toLowerCase()), true)).map((n) => ({ id: uid("s-"), name: n.slice(0, 60) }));
+      course.students.push(...added);
+      // Put each new student in the smallest group so they can use Collab Studio right away.
+      if (course.groups?.length) {
+        for (const st of added) {
+          const g = [...course.groups].sort((a, b) => a.studentIds.length - b.studentIds.length)[0];
+          g.studentIds.push(st.id);
+        }
+      }
+      extra = { added: added.length };
+      break;
+    }
+    case "renameStudent": {
+      const st = course.students.find((x) => x.id === body.studentId);
+      if (st && String(body.name ?? "").trim()) st.name = String(body.name).trim().slice(0, 60);
+      break;
+    }
+    case "removeStudent": {
+      course.students = course.students.filter((x) => x.id !== body.studentId);
+      course.groups = course.groups?.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x !== body.studentId) }));
+      break;
+    }
+    case "renameWeek": {
+      const w = course.weeks.find((x) => x.id === body.weekId);
+      if (w && String(body.title ?? "").trim()) w.title = String(body.title).trim().slice(0, 80);
+      break;
+    }
+    case "autoGroup": {
+      // Split the class into balanced groups of at most `size` (default 6), keeping existing group ids where possible.
+      const size = Math.max(2, Math.min(10, Number(body.size) || 6));
+      const ids = course.students.map((x) => x.id);
+      const n = Math.max(1, Math.ceil(ids.length / size));
+      const old = course.groups ?? [];
+      course.groups = Array.from({ length: n }, (_, i) => ({
+        id: old[i]?.id ?? uid("g-"),
+        name: old[i]?.name ?? `Studio ${String.fromCharCode(65 + i)}`,
+        studentIds: ids.filter((_, k) => k % n === i),
+      }));
+      break;
+    }
+    case "setCourseInfo": {
+      if (String(body.title ?? "").trim()) course.title = String(body.title).trim().slice(0, 80);
+      if (typeof body.subtitle === "string") course.subtitle = body.subtitle.trim().slice(0, 120) || undefined;
+      break;
+    }
     case "setGroups":
       course.groups = (body.groups ?? []).map((g: { id: string; name: string; studentIds: string[] }) => ({
         id: g.id, name: String(g.name).slice(0, 40), studentIds: g.studentIds.filter((id) => course.students.some((s) => s.id === id)),

@@ -75,7 +75,10 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
         onSubmit={async (e) => {
           e.preventDefault();
           if (!/^https?:\/\//i.test(link.trim())) return toast("Links must start with http:// or https://", { icon: "x", tone: "bad" });
-          await onAdd({ kind: "link", url: link.trim() });
+          // Use the page's own title as the label, so "youtube.com" becomes the video's name.
+          const url = link.trim();
+          const preview = await fetch(`/api/unfurl?url=${encodeURIComponent(url)}`).then((r) => r.json()).catch(() => null);
+          await onAdd({ kind: "link", url, name: preview?.ok && preview.title ? String(preview.title).slice(0, 120) : undefined });
           setLink("");
           setMode(null);
         }}

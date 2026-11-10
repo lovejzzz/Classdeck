@@ -30,7 +30,14 @@ export function Classroom({
   const DAY = 86400000;
   // "Now" is fixed when the view opens; the page polls, so it never drifts far.
   const [now] = useState(() => Date.now());
-  const statusIn = (sid: string) => lesson.modules.filter((m) => visible[sid].has(m.id)).map((m) => progress[sid]?.[m.id]);
+  // A student's cards for this lesson; while they haven't picked a path, the versions count once.
+  const statusIn = (sid: string) => {
+    const mine = visibleModules(lesson, sid, state.choices[sid]);
+    const seen = new Set<string>();
+    return mine
+      .filter((m) => !m.choice || (!seen.has(m.choice.slot) && (seen.add(m.choice.slot), true)))
+      .map((m) => progress[sid]?.[m.id]);
+  };
   const notStarted = course.students.filter((st) => statusIn(st.id).every((p) => !p || p.status === "todo"));
   const stalled = course.students.filter((st) => {
     const ps = statusIn(st.id).filter(Boolean);

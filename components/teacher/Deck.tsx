@@ -86,6 +86,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const latest = useRef<Record<string, Lesson>>({});
   const openRef = useRef(false);
+  const [agendaFor, setAgendaFor] = useState<string | null>(null);
   // Weeks before the current one start folded; the teacher can open any of them.
   const currentWeekIndex = Math.max(0, course.weeks.findIndex((w) => w.lessons.some((l) => l.id === course.currentLessonId)));
   const [unfolded, setUnfolded] = useState<Set<string>>(new Set());
@@ -208,7 +209,20 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
         {course.weeks.map((w, wi) => (
           <section key={w.id} id={`week-${w.id}`} aria-label={w.title} className="scroll-mt-32">
             <div className="flex items-center gap-3">
-              <h2 className={`text-[13px] font-medium ${wi === currentWeekIndex ? "text-ink" : "text-ink-2"}`}>{w.title}</h2>
+              <input
+                key={w.title}
+                defaultValue={w.title}
+                aria-label="Week title"
+                onBlur={async (e) => {
+                  const v = e.target.value.trim();
+                  if (!v || v === w.title) return;
+                  await op(course.id, { op: "renameWeek", weekId: w.id, title: v });
+                  onRefresh();
+                }}
+                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                style={{ width: `${Math.max(10, w.title.length + 2)}ch` }}
+                className={`-ml-1.5 min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[13px] font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none ${wi === currentWeekIndex ? "text-ink" : "text-ink-2"}`}
+              />
               {wi < currentWeekIndex && (
                 <button onClick={() => toggleFold(w.id)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">{isFolded(wi, w.id) ? "Show cards" : "Fold"}</button>
               )}
@@ -268,8 +282,29 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                             <Icon name="timer" size={12} /> Run Collab Studio · {l.session.minutes}m
                           </button>
                         )}
+                        <button
+                          onClick={() => {
+                            if (!l.session) {
+                              const agenda = [{ label: "Warm-up", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }];
+                              change({ ...l, session: { agenda, minutes: 50 } });
+                            }
+                            setAgendaFor(agendaFor === l.id ? null : l.id);
+                          }}
+                          aria-expanded={agendaFor === l.id}
+                          className="btn btn-quiet press h-6 px-2 text-[11.5px]"
+                        >
+                          {l.session ? "Agenda" : <><Icon name="plus" size={11} /> Group session</>}
+                        </button>
                       </div>
-                      {l.goal && <p className="mt-0.5 text-[12.5px] text-ink-3" style={{ maxWidth: Math.min(Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 280), 576) }}>{l.goal}</p>}
+                      <input
+                        value={l.goal ?? ""}
+                        onChange={(e) => change({ ...l, goal: e.target.value || undefined })}
+                        placeholder="Add a one-line goal for this lesson"
+                        aria-label="Lesson goal"
+                        className="-ml-1.5 mt-0.5 block w-full rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[12.5px] text-ink-3 placeholder:text-ink-3/70 hover:border-line focus:border-line-strong focus:bg-white focus:text-ink-2 focus:outline-none"
+                        style={{ maxWidth: Math.min(Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 280), 576) }}
+                      />
+                      {agendaFor === l.id && <AgendaEditor lesson={l} onChange={change} onClose={() => setAgendaFor(null)} />}
                       <CardTable
                         cards={l.modules.map((m, i) => ({
                           id: m.id,
@@ -380,6 +415,41 @@ function NewWeek({ n, onBlank, onTemplate }: { n: number; onBlank: () => void; o
     <div className="flex gap-2">
       <button onClick={() => setOpen(true)} className="btn btn-ghost press"><Icon name="layers" size={13} /> New week from template</button>
       <button onClick={onBlank} className="btn btn-quiet press"><Icon name="plus" size={13} /> Blank week</button>
+    </div>
+  );
+}
+
+/** Edit a lesson's Collab Studio agenda: parts with minutes, which part is round-robin, and the total. */
+function AgendaEditor({ lesson, onChange, onClose }: { lesson: Lesson; onChange: (l: Lesson) => void; onClose: () => void }) {
+  const agenda = lesson.session?.agenda ?? [];
+  const save = (next: typeof agenda | null) => {
+    if (!next) return onChange({ ...lesson, session: undefined });
+    onChange({ ...lesson, session: { agenda: next, minutes: next.reduce((n, a) => n + (a.minutes || 0), 0) } });
+  };
+  return (
+    <div className="pop mt-2 w-[30rem] max-w-[90vw] rounded-xl border border-line bg-white p-3 shadow-[0_16px_40px_-20px_rgba(20,20,18,0.35)]">
+      <div className="mb-2 flex items-center text-[12.5px]">
+        <span className="flex-1 font-medium">Collab Studio agenda</span>
+        <span className="mono mr-2">{agenda.reduce((n, a) => n + (a.minutes || 0), 0)} min</span>
+        <button onClick={onClose} aria-label="Close agenda" className="btn btn-quiet press h-6 w-6 justify-center px-0"><Icon name="x" size={12} /></button>
+      </div>
+      <div className="space-y-1.5">
+        {agenda.map((a, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <input value={a.label} onChange={(e) => save(agenda.map((x, k) => (k === i ? { ...x, label: e.target.value } : x)))} aria-label="Part" className="field h-8 flex-1 py-0" />
+            <input type="number" min={1} max={180} value={a.minutes} onChange={(e) => save(agenda.map((x, k) => (k === i ? { ...x, minutes: Math.max(1, Number(e.target.value) || 1) } : x)))} aria-label="Minutes" className="field h-8 w-16 py-0 font-mono" />
+            <label className="flex items-center gap-1 text-[11.5px] text-ink-2" title="Each student presents in turn during this part">
+              <input type="checkbox" checked={!!a.roundRobin} onChange={(e) => save(agenda.map((x, k) => (k === i ? { ...x, roundRobin: e.target.checked || undefined } : x)))} className="accent-[#1b1b1a]" />Turns
+            </label>
+            <button onClick={() => save(agenda.filter((_, k) => k !== i))} aria-label="Remove part" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={12} /></button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <button onClick={() => save([...agenda, { label: "New part", minutes: 10 }])} className="btn btn-ghost press h-7 px-2.5 text-[12px]"><Icon name="plus" size={12} /> Part</button>
+        <span className="flex-1" />
+        <button onClick={() => { save(null); onClose(); }} className="btn btn-quiet press h-7 px-2.5 text-[12px] hover:!text-bad">Remove group session</button>
+      </div>
     </div>
   );
 }

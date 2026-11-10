@@ -15,6 +15,7 @@ export default function PickName() {
     <main className="mx-auto w-full max-w-xl flex-1 px-4 py-16">
       <p className="rise eyebrow">{course.title}</p>
       <h1 className="rise mt-1 text-[24px] font-semibold tracking-tight">Which one is you?</h1>
+      {course.students.length === 0 && <p className="mt-6 text-[13.5px] text-ink-2">Your teacher hasn’t added the class list yet. Check back soon.</p>}
       <div className="rise card mt-6 divide-y divide-line overflow-hidden">
         {course.students.map((s, i) => (
           <Link

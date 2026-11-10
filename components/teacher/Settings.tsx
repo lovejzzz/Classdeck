@@ -36,6 +36,16 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
     toast(on ? `Turned off ${c.name}` : `Turned on ${c.name}`, { icon: on ? "x" : "check", tone: on ? "plain" : "ok" });
   };
   const first = course.students[0];
+  const info = async (patch: { title?: string; subtitle?: string }) => {
+    await op(course.id, { op: "setCourseInfo", title: patch.title ?? course.title, subtitle: patch.subtitle ?? course.subtitle ?? "" });
+    onChanged();
+    toast("Saved");
+  };
+  const removeStudent = async (studentId: string, name: string) => {
+    await op(course.id, { op: "removeStudent", studentId });
+    onChanged();
+    toast(`Removed ${name}`, { icon: "x", tone: "plain" });
+  };
   const access = { joinOpen: course.access?.joinOpen !== false, passcode: course.access?.passcode, guestToken: course.access?.guestToken };
   const guestUrl = access.guestToken && typeof window !== "undefined" ? `${window.location.origin}/guest/${course.id}?t=${access.guestToken}` : "";
   const setAccess = async (patch: Record<string, unknown>, newCode: boolean, note: string) => {
@@ -210,8 +220,48 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
       </section>
 
       <section className="card p-6">
+        <h3 className="text-[15px] font-medium">Course and students</h3>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-[13px]"><span className="text-ink-2">Course name</span>
+            <input defaultValue={course.title} onBlur={(e) => e.target.value.trim() && e.target.value !== course.title && info({ title: e.target.value })} className="field mt-1" />
+          </label>
+          <label className="block text-[13px]"><span className="text-ink-2">Subtitle</span>
+            <input defaultValue={course.subtitle ?? ""} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field mt-1" />
+          </label>
+        </div>
+        <div className="mt-5">
+          <div className="mb-2 flex items-center gap-2 text-[13px]"><span className="font-medium">Students</span><span className="mono">{course.students.length}</span></div>
+          {course.students.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {course.students.map((st) => (
+                <span key={st.id} className="pop inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-1 text-[12.5px]">
+                  <Avatar name={st.name} size={20} />{st.name}
+                  <button onClick={() => confirm(`Remove ${st.name} from the class? Their work stays saved.`) && removeStudent(st.id, st.name)} aria-label={`Remove ${st.name}`} className="press rounded-full p-1 text-ink-3 hover:bg-lane hover:text-bad"><Icon name="x" size={11} /></button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[13px] text-ink-3">No students yet. Add names below; students pick their name after entering the class code.</p>
+          )}
+          <form className="mt-3 flex flex-wrap items-start gap-2" onSubmit={async (e) => {
+            e.preventDefault();
+            const ta = e.currentTarget.elements.namedItem("names") as HTMLTextAreaElement;
+            if (!ta.value.trim()) return;
+            const r = await op<{ added?: number }>(course.id, { op: "addStudents", names: ta.value });
+            ta.value = "";
+            onChanged();
+            toast(`Added ${r.added ?? 0} student${r.added === 1 ? "" : "s"}`, { icon: "users" });
+          }}>
+            <textarea name="names" rows={2} placeholder={"Paste names, one per line\nMia Chen\nLeo Park"} aria-label="Student names" className="field min-w-0 flex-1 resize-y" />
+            <button type="submit" className="btn btn-dark press">Add students</button>
+          </form>
+        </div>
+      </section>
+
+      <section className="card p-6">
         <div className="flex items-center">
           <h3 className="flex-1 text-[15px] font-medium">Collab Studio groups</h3>
+          <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6 }); onChanged(); toast("Split the class into balanced groups", { icon: "users" }); }} className="btn btn-ghost press mr-2 h-8"><Icon name="users" size={13} /> Auto-group</button>
           <button onClick={() => saveGroups([...groups, { id: uid("g-"), name: `Studio ${String.fromCharCode(65 + groups.length)}`, studentIds: [] }])} className="btn btn-ghost press h-8"><Icon name="plus" size={13} /> Add group</button>
         </div>
         <p className="mt-1 text-[13px] text-ink-3">Groups of 4–6 work best. Tap a student to move them to the next group. Students see and give feedback only within their own group.</p>

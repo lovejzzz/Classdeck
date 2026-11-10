@@ -159,6 +159,7 @@ export interface Course {
   id: string;
   title: string;
   subtitle?: string;
+  createdAt?: number;
   skills?: Skill[];
   levels?: Level[];
   groups?: Group[];

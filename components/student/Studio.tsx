@@ -69,7 +69,8 @@ function PostView({ post, feedback, course, mine, me, onFeedback }: {
           <div className="truncate text-[13.5px] font-medium">{post.title}</div>
           <div className="mono">{ago(post.updatedAt)}{skill ? ` · feedback on ${skill.toLowerCase()}` : ""}</div>
         </div>
-        {given && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><Icon name="check" size={11} /> You replied</span>}
+        {given ? <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><Icon name="check" size={11} /> You replied</span>
+          : !mine && onFeedback && <span className="chip h-5 bg-[#fbf3ee] text-[11px] text-[#c25a35]">Needs your feedback</span>}
       </header>
       <div className="space-y-3 px-4 py-3">
         {(post.audience || post.purpose) && (
@@ -127,7 +128,11 @@ export function Studio({
   const me = course.students.find((s) => s.id === studentId)!;
   const group = course.groups?.find((g) => g.studentIds.includes(studentId));
   const mine = posts.find((p) => p.moduleId === m.id && p.studentId === studentId);
-  const peers = posts.filter((p) => p.moduleId === m.id && p.studentId !== studentId);
+  // Peers you haven't replied to come first, so the next person to help is always at the top.
+  const replied = (postId: string) => feedback.some((f) => f.postId === postId && f.fromId === studentId);
+  const peers = posts
+    .filter((p) => p.moduleId === m.id && p.studentId !== studentId)
+    .sort((a, b) => Number(replied(a.id)) - Number(replied(b.id)) || a.createdAt - b.createdAt);
   const [editing, setEditing] = useState(!mine);
   const weekN = weekTitle.match(/Week (\d+)/)?.[1] ?? "";
   const [form, setForm] = useState({

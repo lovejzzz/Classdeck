@@ -132,7 +132,7 @@ export default function TeachPage() {
               setSel({ sid: ev.studentId, mid: ev.moduleId });
             }}
           />
-          <button
+          {courseId === "demo" && <button
             onClick={async () => {
               if (!confirm("Restore the sample data? All edits and student work will be cleared.")) return;
               await op(courseId, { op: "reset" });
@@ -146,7 +146,7 @@ export default function TeachPage() {
             title="Restore sample data"
           >
             <Icon name="reset" size={15} />
-          </button>
+          </button>}
         </div>
       </header>
 

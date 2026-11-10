@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Cover } from "@/components/Cover";
 import { Icon } from "@/components/Icon";
 
@@ -13,6 +13,26 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
 
   const [needPass, setNeedPass] = useState(false);
+  const [courses, setCourses] = useState<{ id: string; title: string; weeks: number; cards: number; students: number }[] | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [title, setTitle] = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [start, setStart] = useState<"blank" | "template" | "caps">("template");
+  useEffect(() => {
+    fetch("/api/courses").then((r) => r.json()).then((d) => setCourses(d.courses)).catch(() => setCourses([]));
+  }, []);
+
+  async function create(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setBusy(true);
+    const r = await fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, subtitle, start }) }).then((x) => x.json());
+    if (r.ok) router.push(`/teach/${r.id}`);
+    else {
+      setBusy(false);
+      setError(r.error);
+    }
+  }
   const [pass, setPass] = useState("");
 
   async function join() {
@@ -43,16 +63,50 @@ export default function Home() {
       </p>
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2">
-        <Link href="/teach/demo" className="rise card card-hover press group overflow-hidden" style={{ "--i": 3 } as React.CSSProperties}>
+        <div className="rise card overflow-hidden" style={{ "--i": 3 } as React.CSSProperties}>
           <Cover type="read" label="Teacher" height={88} />
           <div className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-[15px] font-medium">Open the sample course</span>
-              <Icon name="arrow" className="text-ink-3 transition-transform duration-300 group-hover:translate-x-0.5" />
+              <span className="text-[15px] font-medium">Your courses</span>
+              {!creating && <button onClick={() => setCreating(true)} className="btn btn-ghost press h-7 px-2.5 text-[12px]"><Icon name="plus" size={12} /> New course</button>}
             </div>
-            <p className="mt-1 text-[13px] text-ink-2">Build the deck, follow the class, and choose which tools students get.</p>
+            {creating ? (
+              <form onSubmit={create} className="rise mt-3 space-y-2.5">
+                <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course name, e.g. Debate Club" aria-label="Course name" className="field" />
+                <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Subtitle (optional), e.g. Spring 2027 · Tuesdays" aria-label="Subtitle" className="field" />
+                <div className="grid gap-1.5">
+                  {([
+                    ["blank", "Start blank", "One empty week. Build every card yourself."],
+                    ["template", "Standard weeks", "Three weeks from the CaPS weekly template, ready to rename."],
+                    ["caps", "Copy the CaPS course", "All seven weeks and cards, with no students or work."],
+                  ] as const).map(([k, label, hint]) => (
+                    <label key={k} className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 text-[13px] transition-colors ${start === k ? "border-ink" : "border-line hover:border-line-strong"}`}>
+                      <input type="radio" name="start" checked={start === k} onChange={() => setStart(k)} className="mt-0.5 accent-[#1b1b1a]" />
+                      <span><span className="font-medium">{label}</span><span className="block text-[12px] text-ink-3">{hint}</span></span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={!title.trim() || busy} className="btn btn-dark press">{busy ? "Creating…" : "Create course"}</button>
+                  <button type="button" onClick={() => setCreating(false)} className="btn btn-quiet press">Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <div className="mt-2 divide-y divide-line">
+                {courses === null && <div className="skeleton my-2 h-10" />}
+                {courses?.map((c) => (
+                  <Link key={c.id} href={`/teach/${c.id}`} className="group -mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-[#fafaf9]">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] font-medium">{c.title}</span>
+                      <span className="mono block">{c.weeks} weeks · {c.cards} cards · {c.students} students</span>
+                    </span>
+                    <Icon name="arrow" size={14} className="text-ink-3 transition-transform duration-300 group-hover:translate-x-0.5" />
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-        </Link>
+        </div>
 
         <div className="rise card overflow-hidden" style={{ "--i": 4 } as React.CSSProperties}>
           <Cover type="quiz" label="Student" height={88} />

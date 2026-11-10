@@ -63,9 +63,28 @@ export function save() {
 }
 
 /** 恢复示例数据，保留已添加的自定义连接器。 */
+/** Restore the demo course's sample data. Other courses are left alone. */
 export function reset() {
-  g.__lmsdb = fresh(g.__lmsdb?.customConnectors ?? []);
+  const d = db();
+  const f = fresh();
+  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio"] as const) {
+    (d[k] as Record<string, unknown>).demo = (f[k] as Record<string, unknown>).demo;
+  }
   save();
+}
+
+/** Every course, newest first, with a little summary for the course list. */
+export function listCourses() {
+  const d = db();
+  return Object.values(d.courses).map((c) => ({
+    id: c.id,
+    title: c.title,
+    subtitle: c.subtitle,
+    students: c.students.length,
+    weeks: c.weeks.length,
+    cards: c.weeks.reduce((n, w) => n + w.lessons.reduce((m, l) => m + l.modules.length, 0), 0),
+    createdAt: c.createdAt ?? 0,
+  })).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /** 记一条课堂动态，最多保留 300 条。 */
