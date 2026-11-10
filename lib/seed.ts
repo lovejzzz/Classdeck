@@ -8,6 +8,10 @@ import type { Attachment, ClassEvent, Course, Feedback, Lesson, Module, Post, Pr
 const S = "/samples/caps";
 const ask = { connector: "ai", action: "ask", label: "Ask the coach" };
 const define = { connector: "dictionary", action: "define", label: "Define a word" };
+const better = { connector: "words", action: "better", label: "Find a better word" };
+const coach = (target: number) => ({ connector: "speech", action: "analyze", label: "Check my script", defaults: { target: String(target) } });
+const grammarCheck = { connector: "grammar", action: "check", label: "Check my writing" };
+const draftFeedback = { connector: "ai", action: "feedback", label: "Get feedback on my draft" };
 const A = (id: string, kind: Attachment["kind"], url: string, name: string, size?: number): Attachment => ({ id, kind, url, name, size });
 
 function M(id: string, type: Module["type"], title: string, body: string, o: Partial<Module> = {}): Module {
@@ -89,7 +93,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
           { minutes: 15, submitTo: "personal", criteria: "Three differences noted, with a reason for each.", skills: ["audience"], tools: [define, ask] }),
         M("w1-3", "practice", "My core message",
           "Write the main point of your presentation in one sentence. Then go through your notes and cross out anything that doesn’t support that sentence.\n\nA useful test: could someone in your audience repeat your sentence to a friend afterwards?",
-          { minutes: 10, submitTo: "personal", criteria: "One core-message sentence, and a list of what you cut.", skills: ["audience"], tools: [ask] }),
+          { minutes: 10, submitTo: "personal", criteria: "One core-message sentence, and a list of what you cut.", skills: ["audience"], tools: [better, ask] }),
         M("w1-q", "quiz", "Quick check: audience and purpose",
           "Four quick questions on this week’s ideas. You get two tries; your best score counts.",
           { minutes: 5, skills: ["audience"], attempts: 2, questions: [
@@ -108,18 +112,18 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
         ...paths("w1p",
           M("w1-4g", "practice", "One-minute practice (guided)",
             "Explain your topic in 60–90 seconds. Use these prompts to plan it:\n\n• Who am I speaking to?\n• Why does this topic matter to them?\n• What do I want to happen when I’m done?\n\nInclude one example that is relevant to your audience. Record it and save it on your personal board.",
-            { minutes: 20, submitTo: "personal", criteria: "A 60–90 second recording with an audience-relevant example.", skills: ["audience"], tools: [ask], timer: 60,
+            { minutes: 20, submitTo: "personal", criteria: "A 60–90 second recording with an audience-relevant example.", skills: ["audience"], tools: [coach(60), ask], timer: 60,
               checklist: ["Plan with the three prompts", "Include one example that matters to your audience", "Record a 60–90 second take", "Listen back once before you save it"] }),
           M("w1-4s", "practice", "One-minute practice (two audiences)",
             "Record two 60–90 second versions of your topic: one for specialists and one for non-specialists. Then explain your choices: what you added, removed, or reworded for each, and why.",
-            { minutes: 25, submitTo: "personal", criteria: "Two recordings and a short explanation of your choices.", skills: ["audience"], tools: [ask], timer: 60,
+            { minutes: 25, submitTo: "personal", criteria: "Two recordings and a short explanation of your choices.", skills: ["audience"], tools: [coach(60), ask], timer: 60,
               checklist: ["Record the specialist version", "Record the non-specialist version", "Explain what you added, removed, or reworded"] })),
         M("w1-5", "studio", "Ask the audience to restate the message",
           `Post your one-minute practice for the group with your audience, purpose, and a feedback question. Ask each peer to restate the core message they heard, in one sentence.`,
           { minutes: 60, submitTo: "studio", criteria: "Peers can restate your main point with reasonable accuracy.", skills: ["audience"] }),
         M("w1-6", "reflect", "Revise using feedback",
           "Compare what you meant with what your peers understood. Revise your opening or your example, and record the single most important change you made.",
-          { minutes: 15, submitTo: "personal", criteria: "One revision made, and the change explained.", skills: ["audience"],
+          { minutes: 15, submitTo: "personal", criteria: "One revision made, and the change explained.", skills: ["audience"], tools: [draftFeedback, grammarCheck],
             prompts: ["What did your peers think your core message was?", "What did you change: your opening or your example?", "Why will that change help your audience?"] }),
       ],
     },
@@ -147,10 +151,10 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
         ...paths("w2p",
           M("w2-4g", "practice", "Three-minute structure practice (outline)",
             "Use the scaffolded outline to plan an opening, two or three points with examples, transitions, and a closing. Then deliver a 2–3 minute presentation from the outline and record it.",
-            { minutes: 25, submitTo: "personal", criteria: "A completed outline and a 2–3 minute recording.", skills: ["structure"], attachments: [A("a-w2-tpl", "file", `${S}/outline-template.txt`, "outline-template.txt", 912)], tools: [ask] }),
+            { minutes: 25, submitTo: "personal", criteria: "A completed outline and a 2–3 minute recording.", skills: ["structure"], attachments: [A("a-w2-tpl", "file", `${S}/outline-template.txt`, "outline-template.txt", 912)], tools: [coach(180), ask] }),
           M("w2-4s", "practice", "Three-minute structure practice (restructure)",
             "Outline and record a 2–3 minute version of your talk. Then reorganize the same content using a different structure and record that too. Which one suits your audience better, and why?",
-            { minutes: 30, submitTo: "personal", criteria: "Two outlines, two recordings, and a comparison.", skills: ["structure"], tools: [ask] })),
+            { minutes: 30, submitTo: "personal", criteria: "Two outlines, two recordings, and a comparison.", skills: ["structure"], tools: [coach(180), ask] })),
         M("w2-5", "studio", "Ask listeners to map the structure",
           `Post your structure practice. Ask peers to write down the sequence they heard and mark one point where it was easy, or hard, to follow.`,
           { minutes: 60, submitTo: "studio", criteria: "Listeners can identify your opening, main points, and closing.", skills: ["structure"] }),
@@ -334,7 +338,7 @@ export function seedCourse(): Course {
       { id: "gB", name: "Studio B", studentIds: ["s7", "s8", "s9", "s10", "s11", "s12"] },
     ],
     currentLessonId: "l1",
-    enabledConnectors: ["dictionary", "ai", "wikipedia"],
+    enabledConnectors: ["ai", "dictionary", "wikipedia", "words", "grammar", "speech", "translate", "openalex", "openverse"],
     weeks: weeks.map((w) => ({
       id: w.id, title: w.title,
       lessons: [{ ...w.lesson, modules: w.lesson.modules.map((m) => (m.id in DUE ? { ...m, due: isoDay(DUE[m.id]) } : m)) }],

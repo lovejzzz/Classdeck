@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CARD_SIZE, formatSize, hostOf } from "@/lib/cards";
-import type { ConnectorInfo } from "@/lib/connectors/types";
+import { CATEGORIES, type ConnectorInfo } from "@/lib/connectors/types";
 import { slotVariants, uid, wallOf } from "@/lib/profile";
 import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { fmtSec, isoDay } from "@/lib/grading";
@@ -101,6 +101,7 @@ export function CardEditor({
 
   const available = connectors
     .filter((c) => enabled.includes(c.id))
+    .sort((x, y) => CATEGORIES.indexOf(x.category) - CATEGORIES.indexOf(y.category))
     .flatMap((c) => c.actions.filter((a) => !a.teacherOnly).map((a) => ({ c, a })));
   const a = m.audience;
   const slots = slotVariants(lesson);
@@ -358,12 +359,14 @@ export function CardEditor({
 
         <Section title="Tools (APIs) on this card">
           <div className="space-y-1.5">
-            {available.map(({ c, a: act }) => {
+            {available.map(({ c, a: act }, k) => {
+              const header = k === 0 || available[k - 1].c.category !== c.category;
               const idx = m.tools.findIndex((t) => t.connector === c.id && t.action === act.id);
               const on = idx >= 0;
               const first = act.inputs[0];
               return (
                 <div key={`${c.id}.${act.id}`} className="space-y-1.5">
+                  {header && <div className={`text-[11.5px] text-ink-3 ${k ? "pt-2" : ""}`}>{c.category}</div>}
                   <button
                     onClick={() => set({ tools: on ? m.tools.filter((_, k) => k !== idx) : [...m.tools, { connector: c.id, action: act.id, label: act.title }] })}
                     aria-pressed={on}
@@ -374,7 +377,7 @@ export function CardEditor({
                     {!c.configured && <span className="text-[11.5px] text-warn">needs key</span>}
                     <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${on ? "border-ink bg-ink text-white" : "border-line-strong"}`}>{on && <Icon name="check" size={10} strokeWidth={3} />}</span>
                   </button>
-                  {on && first && first.type !== "textarea" && (
+                  {on && first && first.type !== "textarea" && first.type !== "select" && !first.optional && (
                     <input
                       value={m.tools[idx].defaults?.[first.name] ?? ""}
                       onChange={(e) => set({ tools: m.tools.map((t, k) => (k === idx ? { ...t, defaults: { ...t.defaults, [first.name]: e.target.value } } : t)) })}

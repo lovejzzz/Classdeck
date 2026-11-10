@@ -55,7 +55,7 @@ export async function POST(request: Request) {
         throw new ConnectorError("forbidden", "This card doesn't have that tool");
       }
       if (rateLimited(`${courseId}:${studentId}`)) throw new ConnectorError("rate_limited", "Slow down a little. Try again in a minute.");
-      ctx = { moduleTitle: mod.title, moduleBody: mod.body };
+      ctx = { moduleTitle: mod.title, moduleBody: mod.body, moduleCriteria: mod.criteria };
     }
 
     const result = await connector.invoke(action, input, ctx);

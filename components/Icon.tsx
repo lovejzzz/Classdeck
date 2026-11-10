@@ -53,15 +53,36 @@ const P: Record<string, React.ReactNode> = {
   insert: <><path d="M20 4v7a4 4 0 0 1-4 4H4" /><path d="m9 10-5 5 5 5" /></>,
   arrow: <><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>,
   settings: <><path d="M20 7h-9" /><path d="M14 17H5" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" /></>,
+  translate: <><path d="m5 8 6 6" /><path d="m4 14 6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" /><path d="m22 22-5-10-5 10" /><path d="M14 18h6" /></>,
+  spellcheck: <><path d="m6 16 6-12 6 12" /><path d="M8 12h8" /><path d="m16 20 2 2 4-4" /></>,
+  chart: <><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></>,
+  activity: <path d="M22 12h-2.5a2 2 0 0 0-1.9 1.5l-2.4 8.3a.3.3 0 0 1-.5 0L9.2 2.2a.3.3 0 0 0-.5 0l-2.3 8.3A2 2 0 0 1 4.5 12H2" />,
+  leaf: <><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z" /><path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12" /></>,
+  flask: <><path d="M10 2v7.3" /><path d="M14 9.3V2" /><path d="M8.5 2h7" /><path d="M14 9.3a6.5 6.5 0 1 1-4 0" /><path d="M5.5 16h13" /></>,
+  coins: <><circle cx="8" cy="8" r="6" /><path d="M18.1 10.4A6 6 0 1 1 10.3 18" /><path d="M7 6h1v4" /><path d="m16.7 13.9.7.7-2.8 2.8" /></>,
+  graduation: <><path d="M21.4 10.9a1 1 0 0 0 0-1.8l-8.6-3.9a2 2 0 0 0-1.7 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.7 0z" /><path d="M22 10v6" /><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" /></>,
   layers: <><path d="m12.8 2.2a2 2 0 0 0-1.6 0L2.6 6.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0l8.6-3.9a1 1 0 0 0 0-1.8z" /><path d="m2 12 9.2 4.2a2 2 0 0 0 1.6 0L22 12" /><path d="m2 17 9.2 4.2a2 2 0 0 0 1.6 0L22 17" /></>,
 };
 
 export const CONNECTOR_ICON: Record<string, string> = {
   wikipedia: "globe",
-  dictionary: "type",
   openlibrary: "library",
   weather: "cloud",
   ai: "sparkles",
+  words: "type",
+  dictionary: "read",
+  grammar: "spellcheck",
+  speech: "mic",
+  translate: "translate",
+  openalex: "graduation",
+  openverse: "image",
+  worldbank: "chart",
+  quakes: "activity",
+  species: "leaf",
+  chemistry: "flask",
+  currency: "coins",
+  nasa: "star",
+  youtube: "video",
 };
 
 export function Icon({ name, size = 15, className = "", strokeWidth = 1.7 }: { name: string; size?: number; className?: string; strokeWidth?: number }) {

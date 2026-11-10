@@ -5,26 +5,31 @@ import { useState } from "react";
 import { CONNECTOR_ICON, Icon } from "@/components/Icon";
 import { ToolRunner } from "@/components/ToolTray";
 import { useConnectors } from "@/lib/client";
+import { CATEGORIES } from "@/lib/connectors/types";
 import { toast } from "@/lib/toast";
 
 const EXAMPLE = `{
-  "id": "synonyms",
-  "name": "Synonyms",
-  "description": "Find synonyms for an English word (from Datamuse).",
-  "baseUrl": "https://api.datamuse.com",
+  "id": "holidays",
+  "name": "Public holidays",
+  "description": "Public holidays in a country for a given year (from Nager.Date).",
+  "baseUrl": "https://date.nager.at",
   "actions": [
     {
-      "id": "find",
-      "title": "Find synonyms",
-      "inputs": [{ "name": "word", "label": "Word", "placeholder": "e.g. happy" }],
-      "path": "/words",
-      "query": { "rel_syn": "{word}", "max": "8" },
+      "id": "list",
+      "title": "List holidays",
+      "inputs": [
+        { "name": "year", "label": "Year", "placeholder": "e.g. 2026" },
+        { "name": "country", "label": "Country code", "placeholder": "e.g. US, FR, JP" }
+      ],
+      "path": "/api/v3/PublicHolidays/{year}/{country}",
       "output": {
         "render": "table",
         "rows": "",
+        "limit": 20,
         "columns": [
-          { "label": "Synonym", "path": "word" },
-          { "label": "Score", "path": "score" }
+          { "label": "Date", "path": "date" },
+          { "label": "Holiday", "path": "name" },
+          { "label": "Local name", "path": "localName" }
         ]
       }
     }
@@ -37,6 +42,7 @@ export default function ConnectorsPage() {
   const [json, setJson] = useState(EXAMPLE);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [shelf, setShelf] = useState<string>("All");
 
   async function add() {
     setError(null);
@@ -76,8 +82,19 @@ export default function ConnectorsPage() {
         A connector turns an outside API into a tool students can use on a card. Requests go out from the server, so keys never reach a student’s browser, and students can only use the tools a teacher put on a card.
       </p>
 
-      <div className="mt-6 grid items-start gap-3 md:grid-cols-2">
-        {connectors.map((c, i) => (
+      <div className="mt-5 flex flex-wrap gap-1.5">
+        {["All", ...CATEGORIES.filter((cat) => connectors.some((c) => c.category === cat))].map((cat) => (
+          <button key={cat} onClick={() => setShelf(cat)} aria-pressed={shelf === cat}
+            className={`press h-8 rounded-full border px-3 text-[12.5px] ${shelf === cat ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>
+            {cat}{cat !== "All" && <span className={`ml-1.5 font-mono text-[11px] ${shelf === cat ? "text-white/60" : "text-ink-3"}`}>{connectors.filter((c) => c.category === cat).length}</span>}
+          </button>
+        ))}
+      </div>
+      {CATEGORIES.filter((cat) => (shelf === "All" || shelf === cat) && connectors.some((c) => c.category === cat)).map((cat) => (
+      <section key={cat} className="mt-7">
+      <h2 className="mb-2.5 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{cat}</h2>
+      <div className="grid items-start gap-3 md:grid-cols-2">
+        {connectors.filter((c) => c.category === cat).map((c, i) => (
           <section key={c.id} id={`c-${c.id}`} className={`rise card overflow-hidden ${testing?.startsWith(c.id) ? "" : "card-hover"}`} style={{ "--i": i } as React.CSSProperties}>
             <div className="flex items-start gap-3 p-4">
               <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-lane text-ink-2">
@@ -132,6 +149,8 @@ export default function ConnectorsPage() {
           </section>
         ))}
       </div>
+      </section>
+      ))}
 
       <section className="card mt-8 overflow-hidden">
         <div className="p-5">

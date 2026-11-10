@@ -62,10 +62,12 @@ export function resultToText(r: ToolResult): string {
     case "card":
       return `${r.title}: ${r.text}`;
     case "list":
-      return r.items.map((i) => `${i.title}: ${i.text}`).join("\n");
+      return r.items.every((i) => !i.text) ? r.items.map((i) => i.title).join(", ") : r.items.map((i) => `${i.title}: ${i.text}`).join("\n");
     case "table":
       return r.rows.map((row) => row.join(": ")).join("\n");
     case "text":
       return r.text;
+    case "gallery":
+      return r.items.map((i) => `${i.title}${i.credit ? ` (${i.credit})` : ""}${i.url ? `: ${i.url}` : ""}`).join("\n");
   }
 }

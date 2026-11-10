@@ -19,7 +19,10 @@ export function ToolRunner({
   onUse?: (text: string) => void;
 }) {
   const action = connector.actions.find((a) => a.id === actionId);
-  const [input, setInput] = useState<Record<string, string>>(defaults ?? {});
+  const [input, setInput] = useState<Record<string, string>>(() => ({
+    ...Object.fromEntries((action?.inputs ?? []).filter((i) => i.type === "select" && i.options?.length).map((i) => [i.name, i.options![0][0]])),
+    ...defaults,
+  }));
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ToolResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +44,16 @@ export function ToolRunner({
 
   return (
     <div className="space-y-2">
+      {action.description && <p className="text-[12px] text-ink-3">{action.description}</p>}
       {action.inputs.map((spec) =>
-        spec.type === "textarea" ? (
+        spec.type === "select" ? (
+          <label key={spec.name} className="flex items-center gap-2 text-[12.5px] text-ink-2">
+            <span className="w-20 flex-none">{spec.label}</span>
+            <select value={input[spec.name] ?? ""} onChange={(e) => setInput({ ...input, [spec.name]: e.target.value })} aria-label={spec.label} className="field h-9 min-w-0 flex-1 py-0">
+              {spec.options?.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+            </select>
+          </label>
+        ) : spec.type === "textarea" ? (
           <textarea
             key={spec.name}
             aria-label={spec.label}

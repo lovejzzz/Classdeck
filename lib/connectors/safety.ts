@@ -43,22 +43,26 @@ export async function assertPublicHttps(raw: string) {
 
 export async function fetchJson(
   url: string,
-  opts: { headers?: Record<string, string>; custom?: boolean } = {},
+  opts: { headers?: Record<string, string>; custom?: boolean; form?: Record<string, string>; timeoutMs?: number } = {},
 ): Promise<unknown> {
   if (opts.custom) await assertPublicHttps(url);
   let res: Response;
   try {
     res = await fetch(url, {
+      // Only built-in connectors may POST (e.g. grammar checking); custom manifests are GET-only.
+      ...(opts.form && !opts.custom ? { method: "POST", body: new URLSearchParams(opts.form) } : {}),
       headers: { Accept: "application/json", "User-Agent": "classdeck-prototype/0.1", ...opts.headers },
       redirect: opts.custom ? "error" : "follow",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS),
       cache: "no-store",
     });
   } catch {
     throw new ConnectorError("upstream", "Can't reach this service. Try again later.");
   }
   if (res.status === 404) throw new ConnectorError("not_found", "No results. Try different words.");
+  if (res.status === 429) throw new ConnectorError("rate_limited", "This service is busy. Try again in a minute.");
   if (res.status === 401 || res.status === 403) throw new ConnectorError("not_configured", "The service refused the request (it may need a key, or it blocks server requests)");
+  if (res.status >= 500) throw new ConnectorError("upstream", "This service is having trouble right now. Try again in a minute.");
   if (!res.ok) throw new ConnectorError("upstream", `The service returned an error (${res.status})`);
   const text = await res.text();
   if (text.length > MAX_BYTES) throw new ConnectorError("upstream", "The response is too large");

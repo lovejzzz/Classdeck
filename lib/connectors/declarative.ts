@@ -42,12 +42,29 @@ function shape(data: unknown, out: OutputSpec): ToolResult {
     }
     case "list": {
       const arr = pick(data, out.items);
-      const items = (Array.isArray(arr) ? arr : []).slice(0, out.limit ?? 8).map((it) => ({
-        title: str(pick(it, out.map.title)),
-        text: str(pick(it, out.map.text)),
-      }));
+      const items = (Array.isArray(arr) ? arr : []).slice(0, out.limit ?? 8).map((it) => {
+        const url = out.map.url ? str(pick(it, out.map.url)) : "";
+        return { title: str(pick(it, out.map.title)), text: str(pick(it, out.map.text)), url: url.startsWith("https://") ? url : undefined };
+      });
       if (items.length === 0) throw new ConnectorError("not_found", "No results. Try different words.");
       return { render: "list", items };
+    }
+    case "gallery": {
+      const arr = pick(data, out.items);
+      const items = (Array.isArray(arr) ? arr : [])
+        .map((it) => {
+          const url = out.map.url ? str(pick(it, out.map.url)) : "";
+          return {
+            title: str(pick(it, out.map.title)),
+            image: str(pick(it, out.map.image)),
+            url: url.startsWith("https://") ? url : undefined,
+            credit: out.map.credit ? str(pick(it, out.map.credit)) || undefined : undefined,
+          };
+        })
+        .filter((it) => it.image.startsWith("https://"))
+        .slice(0, out.limit ?? 12);
+      if (items.length === 0) throw new ConnectorError("not_found", "No images found. Try different words.");
+      return { render: "gallery", items };
     }
     case "table": {
       const arr = pick(data, out.rows);
@@ -68,6 +85,7 @@ export function fromManifest(m: Manifest, kind: "builtin" | "custom"): Connector
     description: m.description,
     icon: m.icon ?? "🔌",
     kind,
+    category: kind === "custom" ? "Custom" : m.category ?? "Research",
     host: new URL(m.baseUrl).hostname,
     requiresEnv: env ? [env] : [],
     actions: m.actions.map(({ id, title, description, inputs, teacherOnly }) => ({ id, title, description, inputs, teacherOnly })),
@@ -75,8 +93,13 @@ export function fromManifest(m: Manifest, kind: "builtin" | "custom"): Connector
     async invoke(actionId, input) {
       const action = m.actions.find((a) => a.id === actionId);
       if (!action) throw new ConnectorError("bad_input", "Unknown action");
+      input = { ...input };
       for (const spec of action.inputs) {
-        if (!(input[spec.name] ?? "").trim()) throw new ConnectorError("bad_input", `Enter “${spec.label}”`);
+        if (spec.type === "select" && spec.options?.length) {
+          // Only the listed values; anything else falls back to the default.
+          if (!spec.options.some(([v]) => v === input[spec.name])) input[spec.name] = spec.options[0][0];
+        }
+        if (!spec.optional && !(input[spec.name] ?? "").trim()) throw new ConnectorError("bad_input", `Enter “${spec.label}”`);
       }
       const url = new URL(m.baseUrl.replace(/\/$/, "") + fill(action.path, input, true));
       for (const [k, v] of Object.entries(action.query ?? {})) url.searchParams.set(k, fill(v, input, false));
@@ -129,7 +152,7 @@ export function validateManifest(x: unknown, takenIds: string[]): Manifest {
     if (!Array.isArray(a.inputs)) bad(`Action “${a.id}” is missing inputs`);
     for (const i of a.inputs) if (!NAME.test(i.name ?? "") || !i.label) bad(`Action “${a.id}” has an invalid input`);
     const r = a.output?.render;
-    if (r !== "card" && r !== "list" && r !== "table" && r !== "text") bad(`Action “${a.id}”: output.render must be card, list, table, or text`);
+    if (r !== "card" && r !== "list" && r !== "table" && r !== "text" && r !== "gallery") bad(`Action “${a.id}”: output.render must be card, list, table, text, or gallery`);
   }
   return {
     id: m.id, name: m.name, description: m.description, icon: m.icon, baseUrl: m.baseUrl,

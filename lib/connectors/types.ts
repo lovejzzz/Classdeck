@@ -6,9 +6,17 @@
 export interface InputSpec {
   name: string;
   label: string;
-  type?: "text" | "textarea";
+  type?: "text" | "textarea" | "select";
   placeholder?: string;
+  /** For "select": [value, label] pairs. The first is the default. */
+  options?: [string, string][];
+  /** Can be left empty. */
+  optional?: boolean;
 }
+
+/** Shelves on the connectors page and in the card editor. */
+export const CATEGORIES = ["AI", "Language & writing", "Research", "Science & data", "Media", "Custom"] as const;
+export type Category = (typeof CATEGORIES)[number];
 
 export interface ActionSpec {
   id: string;
@@ -22,13 +30,15 @@ export interface ActionSpec {
 /** 所有连接器都把结果整理成这四种形状之一，界面只需要会画这四种。 */
 export type ToolResult =
   | { render: "card"; title: string; text: string; image?: string; url?: string }
-  | { render: "list"; items: { title: string; text: string }[] }
+  | { render: "list"; items: { title: string; text: string; url?: string }[] }
   | { render: "table"; columns: string[]; rows: string[][] }
-  | { render: "text"; text: string };
+  | { render: "text"; text: string }
+  | { render: "gallery"; items: { title: string; image: string; url?: string; credit?: string }[] };
 
 export interface InvokeContext {
   moduleTitle?: string;
   moduleBody?: string;
+  moduleCriteria?: string;
 }
 
 export interface Connector {
@@ -37,6 +47,7 @@ export interface Connector {
   description: string;
   icon: string;
   kind: "builtin" | "custom";
+  category: Category;
   /** 需要的服务器环境变量。缺少时显示为“未配置”。 */
   requiresEnv?: string[];
   host?: string;
@@ -47,7 +58,8 @@ export interface Connector {
 
 export type OutputSpec =
   | { render: "card"; map: { title: string; text: string; image?: string; url?: string } }
-  | { render: "list"; items: string; map: { title: string; text: string }; limit?: number }
+  | { render: "list"; items: string; map: { title: string; text: string; url?: string }; limit?: number }
+  | { render: "gallery"; items: string; map: { title: string; image: string; url?: string; credit?: string }; limit?: number }
   | { render: "table"; rows: string; columns: { label: string; path: string }[]; limit?: number }
   | { render: "text"; path: string };
 
@@ -63,6 +75,7 @@ export interface Manifest {
   name: string;
   description: string;
   icon?: string;
+  category?: Category;
   baseUrl: string;
   headers?: Record<string, string>;
   /** 密钥只从服务器环境变量读取，永远不会发到浏览器。 */
@@ -85,6 +98,7 @@ export interface ConnectorInfo {
   description: string;
   icon: string;
   kind: "builtin" | "custom";
+  category: Category;
   host?: string;
   configured: boolean;
   requiresEnv: string[];

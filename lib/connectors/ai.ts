@@ -21,6 +21,30 @@ Use these three parts, one or two sentences each:
 2. Worth noticing: any clear misconceptions, and which post shows it.
 3. Missing: one important angle on this topic that nobody mentioned.`;
 
+const COACH = `You're giving a student feedback on a draft for one card in their course. Be warm, specific, and brief.
+Write three short parts, no headings beyond the labels:
+Works well: one concrete strength, quoting a few words from the draft.
+Try next: the two changes that would help most, each tied to the card's goal or "done when" criteria.
+Check: one question the student should ask themselves before finishing.
+Never rewrite the draft for them and never write whole sentences they could paste in. Under 130 words.`;
+
+const QUIZZER = `You write quick practice questions so a student can check their understanding of one card.
+Write exactly three questions about the card's content (or the student's topic, if given), from easiest to hardest.
+Format each as: the question on one line, then "Answer:" with a one-sentence answer on the next line, then a blank line.
+The last question should ask them to apply the idea to their own situation; its answer should say what a good answer includes.`;
+
+const SIMPLIFIER = `Rewrite the text so a student who finds it hard can understand it. Keep every important idea and keep the meaning exact.
+Use short sentences, everyday words, and one concrete example if it helps. If there's a key term, keep it and explain it in brackets.
+Don't add new information. Plain text only.`;
+
+const QUESTION_WRITER = `You help a teacher write quiz questions for one card. Write four multiple-choice questions and one short-answer question.
+For each multiple-choice question: the question, four options labelled A–D with exactly one correct, the correct letter, and a one-sentence explanation of why.
+For the short-answer question: the question, two or three accepted answers, and an explanation.
+Test understanding, not recall of exact wording. Make wrong options plausible misconceptions. Plain text, numbered.`;
+
+const cardContext = (ctx: { moduleTitle?: string; moduleBody?: string; moduleCriteria?: string }) =>
+  ctx.moduleTitle ? `Card: “${ctx.moduleTitle}”\n${ctx.moduleBody ?? ""}${ctx.moduleCriteria ? `\nDone when: ${ctx.moduleCriteria}` : ""}\n\n` : "";
+
 async function complete(system: string, user: string): Promise<string> {
   let client: Anthropic;
   try {
@@ -56,9 +80,10 @@ async function complete(system: string, user: string): Promise<string> {
 export const ai: Connector = {
   id: "ai",
   name: "AI tutor",
-  description: "Students ask about the current card and get hints, not answers. Teachers can use it to summarize a wall.",
+  description: "Hints instead of answers, feedback on drafts, practice questions, and simpler explanations, all aware of the card a student is on. Teachers can draft quiz questions and summarize walls.",
   icon: "🧑‍🏫",
   kind: "builtin",
+  category: "AI",
   host: "api.anthropic.com",
   requiresEnv: ["ANTHROPIC_API_KEY"],
   actions: [
@@ -66,6 +91,27 @@ export const ai: Connector = {
       id: "ask",
       title: "Ask the tutor",
       inputs: [{ name: "question", label: "Your question", type: "textarea", placeholder: "What's confusing you?" }],
+    },
+    {
+      id: "feedback",
+      title: "Get feedback on my draft",
+      inputs: [{ name: "draft", label: "Your draft", type: "textarea", placeholder: "Paste your draft, outline, or script" }],
+    },
+    {
+      id: "quizme",
+      title: "Quiz me",
+      inputs: [{ name: "topic", label: "Topic (optional)", placeholder: "Leave empty to use this card", optional: true }],
+    },
+    {
+      id: "simplify",
+      title: "Explain it simpler",
+      inputs: [{ name: "text", label: "Text", type: "textarea", placeholder: "Paste the part that’s hard to follow" }],
+    },
+    {
+      id: "draftquiz",
+      title: "Draft quiz questions",
+      teacherOnly: true,
+      inputs: [{ name: "text", label: "Topic or source text", type: "textarea", placeholder: "Paste the card text or describe the topic" }],
     },
     {
       id: "summarize",
@@ -84,6 +130,26 @@ export const ai: Connector = {
       if (!q) throw new ConnectorError("bad_input", "Write your question first");
       const context = ctx.moduleTitle ? `The student is working on the card “${ctx.moduleTitle}”.\nCard content:\n${ctx.moduleBody ?? ""}\n\n` : "";
       return { render: "text", text: await complete(TUTOR, `${context}Student's question: ${q}`) };
+    }
+    if (action === "feedback") {
+      const draft = (input.draft ?? "").trim();
+      if (draft.length < 20) throw new ConnectorError("bad_input", "Paste a little more of your draft first");
+      return { render: "text", text: await complete(COACH, `${cardContext(ctx)}Student's draft:\n${draft}`) };
+    }
+    if (action === "quizme") {
+      const topic = (input.topic ?? "").trim();
+      if (!topic && !ctx.moduleTitle) throw new ConnectorError("bad_input", "Enter a topic");
+      return { render: "text", text: await complete(QUIZZER, `${cardContext(ctx)}${topic ? `Student's topic: ${topic}` : "Use the card's content."}`) };
+    }
+    if (action === "simplify") {
+      const text = (input.text ?? "").trim();
+      if (!text) throw new ConnectorError("bad_input", "Paste the text to simplify");
+      return { render: "text", text: await complete(SIMPLIFIER, text) };
+    }
+    if (action === "draftquiz") {
+      const text = (input.text ?? "").trim();
+      if (!text) throw new ConnectorError("bad_input", "Paste the text or describe the topic");
+      return { render: "text", text: await complete(QUESTION_WRITER, text) };
     }
     if (action === "summarize") {
       const text = (input.text ?? "").trim();

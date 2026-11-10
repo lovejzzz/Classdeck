@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { op } from "@/lib/client";
-import type { ConnectorInfo } from "@/lib/connectors/types";
+import { CATEGORIES, type ConnectorInfo } from "@/lib/connectors/types";
 import { PRESETS, PRESET_LABELS, fromPreset } from "@/lib/profile";
 import { download } from "@/lib/download";
 import { toast } from "@/lib/toast";
@@ -310,8 +310,13 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
           <Link href="/connectors" className="btn btn-quiet press h-7 px-2 text-[12.5px]">Manage connectors <Icon name="arrow" size={12} /></Link>
         </div>
         <p className="mt-1 text-[13px] text-ink-3">Turn a connector on to put its tools on cards. Students can only use tools that are on a card.</p>
-        <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-          {connectors.map((c) => {
+        {CATEGORIES.filter((cat) => connectors.some((c) => c.category === cat)).map((cat) => (
+        <div key={cat} className="mt-5">
+        <div className="mb-2 flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">
+          {cat}<span className="font-mono normal-case tracking-normal">{connectors.filter((c) => c.category === cat && course.enabledConnectors.includes(c.id)).length}/{connectors.filter((c) => c.category === cat).length} on</span>
+        </div>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {connectors.filter((c) => c.category === cat).map((c) => {
             const on = course.enabledConnectors.includes(c.id);
             return (
               <button
@@ -337,6 +342,8 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
             );
           })}
         </div>
+        </div>
+        ))}
       </section>
     </div>
   );
