@@ -11,6 +11,7 @@ import type { Attachment, Course, CourseState, Lesson, Module, Post, Progress, S
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
 import { ReadAloud } from "../ReadAloud";
+import { teacherLevels } from "../SkillRadar";
 import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
 import { SelfCheck } from "./SelfCheck";
@@ -249,7 +250,7 @@ export function CardDetail(p: DetailProps) {
           <div className="mt-7">
             <SelfCheck
               courseId={p.courseId} studentId={p.studentId} moduleId={m.id} skills={p.course.skills} levels={p.course.levels}
-              ratings={p.progress?.ratings ?? {}} earlier={earlier} onChanged={p.onChanged} big={p.big}
+              ratings={p.progress?.ratings ?? {}} earlier={earlier} onChanged={p.onChanged} big={p.big} teacher={teacherLevels(p.mine)}
               onDone={() => save("done")}
             />
           </div>

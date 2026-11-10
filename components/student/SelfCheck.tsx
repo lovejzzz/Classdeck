@@ -4,14 +4,16 @@ import { useState } from "react";
 import { op } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import type { Level, Skill } from "@/lib/types";
+import { SkillRadar } from "../SkillRadar";
 
 /**
  * Rate each skill on the four-level rubric. If there's an earlier self-check,
  * its rating shows as a ring so progress is visible at a glance.
  */
 export function SelfCheck({
-  courseId, studentId, moduleId, skills, levels, ratings, earlier, onChanged, onDone, big,
+  courseId, studentId, moduleId, skills, levels, ratings, earlier, onChanged, onDone, big, teacher,
 }: {
+  teacher?: Record<string, number>;
   courseId: string; studentId: string; moduleId: string; skills: Skill[]; levels: Level[];
   ratings: Record<string, number>; earlier?: { label: string; ratings: Record<string, number> };
   onChanged: () => void; onDone: () => void; big: boolean;
@@ -67,6 +69,15 @@ export function SelfCheck({
           );
         })}
       </div>
+      {(earlier || (teacher && Object.keys(teacher).length > 0)) && (
+        <div className="mt-4 flex justify-center rounded-xl border border-line py-3">
+          <SkillRadar skills={skills} size={250} series={[
+            ...(earlier ? [{ label: earlier.label, values: earlier.ratings, style: "outline" as const, color: "#367195" }] : []),
+            { label: "Now", values: draft, style: "fill", color: "#1b1b1a" },
+            ...(teacher ? [{ label: "Your teacher", values: teacher, style: "dash" as const, color: "#ae502f" }] : []),
+          ]} />
+        </div>
+      )}
       <p className="mt-2 min-h-5 text-[12.5px] text-ink-3">
         {shown ? <><span className="font-medium text-ink-2">{shown.name}:</span> {shown.description}</> : earlier ? <>Dashed rings show your {earlier.label}.</> : "Hover a circle to see what each level means."}
       </p>

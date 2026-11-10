@@ -6,6 +6,7 @@ import { isLate } from "@/lib/grading";
 import { visibleModules } from "@/lib/profile";
 import type { CourseState, Module } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
+import { SkillRadar } from "../SkillRadar";
 
 const WORK = new Set(["explore", "practice", "submit", "reflect"]);
 
@@ -118,6 +119,12 @@ export function Gradebook({ state }: { state: CourseState }) {
                 {open === r.st.id && (
                   <tr>
                     <td colSpan={5 + skills.length} className="border-b border-line bg-[#fafaf9] px-6 py-4">
+                      <div className="grid items-start gap-6 lg:grid-cols-[22rem_1fr]">
+                      <SkillRadar skills={skills} size={240} series={[
+                        { label: "Self", values: r.self, style: "fill", color: "#1b1b1a" },
+                        { label: "You", values: r.teacher, style: "dash", color: "#ae502f" },
+                      ]} />
+                      <div>
                       {r.reviews.length === 0 ? (
                         <p className="text-[13px] text-ink-3">No reviewed work yet. Review work from the Class tab.</p>
                       ) : (
@@ -134,6 +141,8 @@ export function Gradebook({ state }: { state: CourseState }) {
                           ))}
                         </ul>
                       )}
+                      </div>
+                      </div>
                     </td>
                   </tr>
                 )}

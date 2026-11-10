@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { CardFace } from "@/components/cards/CardFace";
 import { MediaView } from "@/components/cards/Media";
+import { SkillRadar, teacherLevels } from "@/components/SkillRadar";
 import { Avatar, Icon, StatusIcon } from "@/components/Icon";
 import { useCourse, useQuery } from "@/lib/client";
 import { ago } from "@/lib/time";
@@ -80,7 +81,13 @@ export default function BoardPage() {
           {!first ? (
             <p className="mt-3 text-[13px] text-ink-3">Your self-check from Week 0 will show up here.</p>
           ) : (
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 grid items-center gap-6 md:grid-cols-[21rem_1fr]">
+            <SkillRadar skills={course.skills ?? []} size={220} series={[
+              { label: first.w.title.split(" · ")[0], values: mine[first.m.id].ratings!, style: "outline", color: "#367195" },
+              ...(last ? [{ label: last.w.title.split(" · ")[0], values: mine[last.m.id].ratings!, style: "fill" as const, color: "#1b1b1a" }] : []),
+              { label: "Teacher", values: teacherLevels(mine), style: "dash", color: "#ae502f" },
+            ]} />
+            <div className="space-y-3">
               {course.skills?.map((s) => {
                 const a = mine[first.m.id].ratings![s.id];
                 const b = last ? mine[last.m.id].ratings![s.id] : undefined;
@@ -103,6 +110,7 @@ export default function BoardPage() {
                 <span />
                 <div className="mx-2 flex justify-between">{levels.map((l) => <span key={l.n}>{l.name}</span>)}</div>
               </div>
+            </div>
             </div>
           )}
         </section>
