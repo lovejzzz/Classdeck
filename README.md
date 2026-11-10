@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Classdeck
 
-## Getting Started
+把一门课做成一副卡牌：老师按周发牌，每个学生拿到自己的一手牌。网站界面是英文的。
 
-First, run the development server:
+示范课程是 CaPS 演讲表达课（第 0 到 6 周），内容来自《CaPS Padlet Week 0–6 Course Plan》。
+
+## 运行
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+打开 http://localhost:3000。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- 老师端：`/teach/demo`
+- 学生端：首页输入班级码 `CAPS26`，或直接打开 `/learn/demo/s2`（Leo）
+- 学生个人练习板：`/learn/demo/s1/board`（Mia）
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+数据存在 `.data/db.json`，老师端右上角的箭头图标可以恢复示范数据。AI 助教需要在 `.env.local` 里设置 `ANTHROPIC_API_KEY`（见 `.env.example`）。
 
-## Learn More
+## 为 CaPS 课程加的功能
 
-To learn more about Next.js, take a look at the following resources:
+- 学生录音、录像、上传文件或贴链接作答，每次尝试单独保存，可以并排比较。
+- Collab Studio：按组发帖（受众、目的、想要反馈的技能、问题），同组按“观察 / 影响 / 下次试试”模板互评，每人至少评两位，评满自动完成。
+- 六项技能的四级自评；之后的自评会显示与第 0 周的差距。
+- 每周一组可选路径（Guided / Stretch），由学生自己选，老师可以推荐。
+- 个人练习板：技能变化、三件代表作、各周作品与收到的反馈，可打印或存为 PDF。
+- 每张卡的用时、提交位置、完成标准和练习的技能。
+- 小组课计时器：分段议程、环形倒计时、轮流展示的发言队列和随手笔记。
+- 课堂页显示每人给出的反馈数，可以导出 CSV；设置里可以分组。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 课堂互动与工具
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- 实时更新：服务器保存数据时通过 server-sent events 通知所有打开的页面（`/api/course/[id]/stream`），轮询保留为后备。
+- 共享墙：点赞或投票、评论、匿名发帖、发帖前审核、置顶；可附带任意素材；按得票或时间排序。
+- 放映：把墙上的帖子或小组本周的作品逐条投屏，新帖会实时加入。
+- 素材：录音、录像、录屏、拍照、手绘、找图（Openverse，自带授权署名）、上传、链接；链接显示网页预览，YouTube / Vimeo 直接嵌入，可以指定观看片段。
+- 访问：接受新学生开关、加入密码、换新班级码、只读访客链接（`/guest/[id]?t=…`）。
+- 模板：8 个卡牌模板、“标准 CaPS 周”模板；一键复制一周或一节课。
+- 导出：整门课 JSON（可导入为新的周）、当前课 / 所有周进度 CSV、全部互评 CSV、共享墙 CSV、练习板打印。
+- 快捷键：按 `?` 查看。学生 `N` 下一张卡、`B` 练习板、`[` `]` 切换周、`⌘↵` 完成；老师 `1` `2` `3` 切换页面、`N` 新卡、`R` 运行小组课、编辑器里 `⌘D` 复制。
 
-## Deploy on Vercel
+## 结构
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `lib/seed.ts`：CaPS 课程数据和示范进度。
+- `lib/types.ts`：数据模型（课程 → 周 → 课 → 卡牌）。
+- `lib/profile.ts`：学段设置，以及“某个学生能看到哪些卡”（含学生自选路径）。
+- `lib/spring.ts`、`components/cards/`：卡牌的弹簧物理、卡面、牌桌布局、展开动画。
+- `components/student/`：卡牌详情、作答区、自评、Collab Studio、牌堆。
+- `components/teacher/`：卡组编辑、卡牌编辑器、录音、小组课计时器、课堂、设置。
+- `lib/connectors/`、`app/api/connectors/invoke/route.ts`：外部 API 连接器和网关。
+- `public/samples/caps/`：示范素材。录音由 macOS 语音合成生成，图是手写的 SVG。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 原型的边界
+
+- 没有登录。学生选名字进入，老师端任何人都能打开。
+- 用轮询代替实时推送；存储是一个 JSON 文件。
+- 第 4 周“Connect movement with meaning”需要一段真实的肢体语言示例视频，目前只有文字说明。

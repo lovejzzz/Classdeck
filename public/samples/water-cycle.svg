@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" font-family="Helvetica Neue, Arial, sans-serif">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe2f3"/><stop offset="1" stop-color="#eef3f6"/></linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b8fc4"/><stop offset="1" stop-color="#3f6f9f"/></linearGradient>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#1b1b1a"/></marker>
+  </defs>
+  <rect width="640" height="400" fill="url(#sky)"/>
+  <circle cx="560" cy="70" r="34" fill="#f5d27a"/>
+  <g stroke="#f5d27a" stroke-width="4" stroke-linecap="round">
+    <path d="M560 18v-10M560 132v-10M508 70h-10M622 70h-10M523 33l-7-7M597 107l7 7M597 33l7-7M523 107l-7 7"/>
+  </g>
+  <g fill="#ffffff">
+    <ellipse cx="230" cy="80" rx="70" ry="28"/><ellipse cx="190" cy="92" rx="48" ry="22"/><ellipse cx="275" cy="94" rx="50" ry="22"/>
+  </g>
+  <path d="M0 260 L120 150 L190 210 L260 130 L360 270 Z" fill="#8aa37f"/>
+  <path d="M260 130 L285 165 L270 162 L250 175 L240 150 Z" fill="#ffffff"/>
+  <path d="M120 150 L140 168 L118 172 L102 166 Z" fill="#ffffff"/>
+  <path d="M0 290 C120 280 200 300 330 288 C420 280 520 292 640 285 L640 400 L0 400 Z" fill="url(#sea)"/>
+  <path d="M150 260 C220 250 270 270 330 288" fill="none" stroke="#5b8fc4" stroke-width="6" stroke-linecap="round"/>
+  <g stroke="#5b8fc4" stroke-width="3" stroke-linecap="round">
+    <path d="M190 128l-8 22M215 130l-8 22M240 128l-8 22M265 130l-8 22"/>
+  </g>
+  <g fill="none" stroke="#1b1b1a" stroke-width="2.2" stroke-dasharray="6 6" marker-end="url(#ar)">
+    <path d="M500 270 C500 200 470 140 330 95"/>
+    <path d="M300 300 C330 320 380 320 420 305"/>
+  </g>
+  <g font-size="20" font-weight="600" fill="#1b1b1a">
+    <text x="452" y="200">Evaporation</text>
+    <text x="290" y="50">Condensation</text>
+    <text x="60" y="135">Precipitation</text>
+    <text x="340" y="345" fill="#ffffff">Runoff</text>
+  </g>
+</svg>

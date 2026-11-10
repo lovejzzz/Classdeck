@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" font-family="Times New Roman, serif">
+  <rect width="640" height="400" fill="#fffef6"/>
+  <rect x="10" y="10" width="620" height="380" fill="none" stroke="#c33" stroke-width="3"/>
+  <text x="24" y="44" font-size="22" font-weight="700" fill="#002299">Pharmacy Access Study: Background, Methods, Results, Limitations and Future Work</text>
+  <g font-size="13" fill="#222">
+    <text x="24" y="74">• Pharmacy deserts are areas where residents must travel more than 1 mile (urban) or 10 miles (rural) to reach a pharmacy</text>
+    <text x="24" y="94">• We surveyed 412 residents across 6 neighborhoods between March and June using a mixed-methods approach with follow-up interviews</text>
+    <text x="24" y="114">• Average walking distance: 1.4 mi (N), 0.6 mi (S), 2.1 mi (E), 0.9 mi (W), 1.7 mi (C), 1.2 mi (NE) — see appendix table 4</text>
+    <text x="24" y="134">• 38% reported skipping a prescription in the past year; 61% of those cited distance; 22% cost; 17% hours; 9% other reasons</text>
+    <text x="24" y="154">• Limitations: self-reported data, seasonal effects, survey language, sampling frame, response rate of 41%</text>
+  </g>
+  <g>
+    <rect x="30" y="180" width="270" height="190" fill="#eee"/>
+    <rect x="45" y="300" width="25" height="60" fill="#e33"/><rect x="80" y="260" width="25" height="100" fill="#3a3"/><rect x="115" y="230" width="25" height="130" fill="#33e"/>
+    <rect x="150" y="280" width="25" height="80" fill="#ea3"/><rect x="185" y="245" width="25" height="115" fill="#a3e"/><rect x="220" y="270" width="25" height="90" fill="#3ae"/>
+    <text x="40" y="200" font-size="11" fill="#555">Fig. 3 distances by area (mi) n=412 p&lt;.05</text>
+  </g>
+  <g font-size="12" fill="#444">
+    <text x="320" y="200">Future work: expand to 3 more cities, add GPS tracking,</text>
+    <text x="320" y="218">partner with clinics, test delivery pilot, policy brief,</text>
+    <text x="320" y="236">cost model, community advisory board, IRB amendment</text>
+    <text x="320" y="270" font-size="10">Sources: County health dept. 2025; Smith et al. 2024; Lee 2023;</text>
+    <text x="320" y="284" font-size="10">Census ACS 2024; internal survey data; pharmacy registry 2025</text>
+  </g>
+</svg>
