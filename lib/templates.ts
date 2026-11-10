@@ -30,7 +30,7 @@ export const CARD_TEMPLATES: CardTemplate[] = [
   },
   {
     id: "studio", name: "Collab Studio post", description: "Post work to your group and give feedback to two peers.",
-    make: () => base({ type: "studio", title: "Collab Studio", body: "Post your work with your audience, purpose, the skill you want feedback on, and one question. Then give feedback to at least two peers: what you observed, its effect on you, and one thing to try next.", minutes: 60, submitTo: "studio", criteria: "Posted, and feedback given to two peers." }),
+    make: () => base({ type: "studio", title: "Collab Studio", body: "Share this week’s work with your group and ask one specific question.", minutes: 60, submitTo: "studio", criteria: "Posted, and feedback given to two peers." }),
   },
   {
     id: "wall", name: "Feedback wall", description: "Everyone posts; classmates vote for the most useful.",
@@ -69,5 +69,5 @@ export function standardWeek(theme: string, n: number): Week {
       t("reflect"),
     ],
   };
-  return { id: "new", title: `Week ${n} · ${theme}`, lessons: [lesson] };
+  return { id: "new", title: `Week ${n}`, lessons: [lesson] };
 }

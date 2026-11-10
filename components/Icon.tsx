@@ -103,7 +103,7 @@ export function StatusIcon({ status, size = 14 }: { status: "todo" | "doing" | "
   }
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" className="flex-none" aria-hidden="true">
-      <circle cx="8" cy="8" r="6.2" fill="none" stroke="#b5b5b0" strokeWidth="1.6" strokeDasharray="2.4 2.2" />
+      <circle cx="8" cy="8" r="6.2" fill="none" stroke="#8f8f8a" strokeWidth="1.6" strokeDasharray="2.4 2.2" />
     </svg>
   );
 }

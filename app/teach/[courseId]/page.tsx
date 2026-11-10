@@ -19,12 +19,12 @@ type Tab = (typeof TABS)[number][0];
 
 const KIND: Record<ClassEvent["kind"], { icon: string; tint: string }> = {
   done: { icon: "check", tint: "var(--color-ok)" },
-  post: { icon: "wall", tint: "#a0569a" },
+  post: { icon: "wall", tint: "#995293" },
   wrong: { icon: "x", tint: "var(--color-bad)" },
   quiz: { icon: "quiz", tint: "#6a5ac0" },
   tool: { icon: "tool", tint: "var(--color-ink-2)" },
-  studio: { icon: "studio", tint: "#c25a35" },
-  feedback: { icon: "message", tint: "#3d7ea6" },
+  studio: { icon: "studio", tint: "#ae502f" },
+  feedback: { icon: "message", tint: "#367195" },
 };
 
 function readSeen(key: string) {

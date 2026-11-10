@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { invokeTool } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
@@ -55,8 +56,8 @@ export function Classroom({
   const attention: { key: string; icon: string; tint: string; title: string; hint: string; who: typeof course.students; cell: (sid: string) => string | undefined }[] = [
     { key: "start", icon: "clock", tint: "var(--color-ink-2)", title: "Haven’t started", hint: "No card opened in this lesson yet.", who: notStarted, cell: firstVisible },
     { key: "stall", icon: "timer", tint: "var(--color-warn)", title: "Stalled", hint: "Started, but nothing new for 2+ days.", who: stalled, cell: (sid) => lesson.modules.find((m) => progress[sid]?.[m.id]?.status === "doing")?.id },
-    { key: "wait", icon: "message", tint: "#c25a35", title: "Waiting for feedback", hint: "Posted to Collab Studio, no replies yet.", who: waiting, cell: () => studioId },
-    { key: "owe", icon: "studio", tint: "#3d7ea6", title: "Owe feedback", hint: "Posted, but replied to fewer than 2 peers.", who: owing, cell: () => studioId },
+    { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted to Collab Studio, no replies yet.", who: waiting, cell: () => studioId },
+    { key: "owe", icon: "studio", tint: "#367195", title: "Owe feedback", hint: "Posted, but replied to fewer than 2 peers.", who: owing, cell: () => studioId },
     ...(unpicked.length ? [{ key: "path", icon: "split", tint: "#4b56a8", title: "Haven’t picked a path", hint: "Working, but no Guided/Stretch choice yet.", who: unpicked, cell: firstVisible }] : []),
   ];
   const totals = course.students.reduce(
@@ -114,6 +115,28 @@ export function Classroom({
   const selModule = sel && lesson.modules.find((m) => m.id === sel.mid);
   const selProgress = sel && progress[sel.sid]?.[sel.mid];
   const selStudent = sel && course.students.find((s) => s.id === sel.sid);
+  // Step through the class on the same card (↑/↓), skipping students who don't have it.
+  function stepStudent(d: number) {
+    if (!sel) return;
+    const list = course.students.filter((st) => visible[st.id].has(sel.mid));
+    const i = list.findIndex((st) => st.id === sel.sid);
+    const next = list[(i + d + list.length) % list.length];
+    if (next) setSel({ sid: next.id, mid: sel.mid });
+  }
+  useEffect(() => {
+    if (!sel) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      if (e.key === "Escape") setSel(null);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        stepStudent(e.key === "ArrowDown" ? 1 : -1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   return (
     <div className="space-y-6">
@@ -159,7 +182,6 @@ export function Classroom({
                       onClick={() => {
                         const mid = a.cell(st.id);
                         if (mid) setSel({ sid: st.id, mid });
-                        requestAnimationFrame(() => document.getElementById("class-detail")?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
                       }}
                       className="press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
                       <Avatar name={st.name} size={20} />{st.name}
@@ -196,7 +218,7 @@ export function Classroom({
               })}
               {studioIds.size > 0 && (
                 <th className="min-w-[6rem] border-b border-line px-2 py-3 text-left font-normal">
-                  <div style={{ color: "#3d7ea6" }}><Icon name="message" size={13} /></div>
+                  <div style={{ color: "#367195" }}><Icon name="message" size={13} /></div>
                   <div className="mt-1.5 text-[12.5px] font-medium text-ink">Feedback given</div>
                   <div className="mono mt-1 text-[11px]">goal 2</div>
                 </th>
@@ -250,13 +272,25 @@ export function Classroom({
 
       <div>
         {sel && selModule && selStudent && (
-          <div key={`${sel.sid}-${sel.mid}`} id="class-detail" className="pop card scroll-mt-24 p-5">
-            <div className="flex items-center gap-2.5">
+          createPortal(
+          <aside key={`${sel.sid}-${sel.mid}`} id="class-detail" aria-label="Student work"
+            className="fixed bottom-0 right-0 top-0 z-40 flex w-full max-w-[28rem] flex-col border-l border-line bg-white shadow-[-24px_0_60px_-30px_rgba(20,20,18,0.35)]"
+            style={{ animation: "panel-in 0.38s var(--ease-out) both" }}>
+            <div className="flex h-14 flex-none items-center gap-2 border-b border-line px-4">
+              <div className="flex items-center rounded-lg bg-lane p-0.5">
+                <button onClick={() => stepStudent(-1)} aria-label="Previous student (↑)" title="Previous student (↑)" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6" /></svg></button>
+                <button onClick={() => stepStudent(1)} aria-label="Next student (↓)" title="Next student (↓)" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button>
+              </div>
               <Avatar name={selStudent.name} size={24} />
-              <h3 className="text-[14px] font-medium">{selStudent.name}<span className="mx-1.5 text-ink-3">·</span>{selModule.title}</h3>
+              <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{selStudent.name}</span>
+              <Link href={`/learn/${courseId}/${selStudent.id}?preview=1`} target="_blank" className="btn btn-quiet press h-7 px-2 text-[12px]">Their view <Icon name="external" size={11} /></Link>
+              <button onClick={() => setSel(null)} aria-label="Close details" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={15} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+            <div className="flex items-center gap-2">
+              <span style={{ color: TYPE_META[selModule.type].tint }}><Icon name={selModule.type} size={14} /></span>
+              <h3 className="flex-1 text-[15px] font-medium">{selModule.title}</h3>
               <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status={selProgress?.status ?? "todo"} size={12} />{STATUS_LABEL[selProgress?.status ?? "todo"]}</span>
-              <span className="flex-1" />
-              <button onClick={() => setSel(null)} aria-label="Close details" className="btn btn-quiet press h-7 w-7 justify-center px-0"><Icon name="x" size={14} /></button>
             </div>
             {selProgress?.ratings && Object.keys(selProgress.ratings).length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">{course.skills?.map((sk) => selProgress.ratings![sk.id] && <span key={sk.id} className="chip">{sk.name} · {selProgress.ratings![sk.id]}</span>)}</div>
@@ -292,7 +326,10 @@ export function Classroom({
                 })}
               </ul>
             )}
-          </div>
+            </div>
+          </aside>,
+          document.body,
+          )
         )}
       </div>
 

@@ -10,10 +10,10 @@
   --color-line-strong: #d9d9d5;
   --color-ink: #1b1b1a;
   --color-ink-2: #5f5f5c;
-  --color-ink-3: #9b9b97;
-  --color-ok: #2f9e5b;
-  --color-warn: #c98a1b;
-  --color-bad: #d2453f;
+  --color-ink-3: #6b6b66;
+  --color-ok: #247b46;
+  --color-warn: #906313;
+  --color-bad: #bf3e39;
 }
 
 html { background: var(--color-canvas); }
@@ -162,3 +162,5 @@ button:disabled { cursor: not-allowed; }
 
 @keyframes slide-in-r { from { opacity: 0; transform: translateX(60px); } to { opacity: 1; transform: none; } }
 @keyframes slide-in-l { from { opacity: 0; transform: translateX(-60px); } to { opacity: 1; transform: none; } }
+
+@keyframes panel-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }

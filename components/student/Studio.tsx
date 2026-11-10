@@ -70,7 +70,7 @@ function PostView({ post, feedback, course, mine, me, onFeedback }: {
           <div className="mono">{ago(post.updatedAt)}{skill ? ` · feedback on ${skill.toLowerCase()}` : ""}</div>
         </div>
         {given ? <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><Icon name="check" size={11} /> You replied</span>
-          : !mine && onFeedback && <span className="chip h-5 bg-[#fbf3ee] text-[11px] text-[#c25a35]">Needs your feedback</span>}
+          : !mine && onFeedback && <span className="chip h-5 bg-[#fbf3ee] text-[11px] text-[#ae502f]">Needs your feedback</span>}
       </header>
       <div className="space-y-3 px-4 py-3">
         {(post.audience || post.purpose) && (
@@ -82,7 +82,7 @@ function PostView({ post, feedback, course, mine, me, onFeedback }: {
         {post.text && <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed">{post.text}</p>}
         {post.work.map((w) => <MediaView key={w.id} a={w} />)}
         {post.question && (
-          <p className="flex gap-2 rounded-lg bg-[#fbf3ee] px-3 py-2 text-[13.5px]"><Icon name="message" size={14} className="mt-0.5 text-[#c25a35]" /><span><span className="font-medium">Question: </span>{post.question}</span></p>
+          <p className="flex gap-2 rounded-lg bg-[#fbf3ee] px-3 py-2 text-[13.5px]"><Icon name="message" size={14} className="mt-0.5 text-[#ae502f]" /><span><span className="font-medium">Question: </span>{post.question}</span></p>
         )}
       </div>
       {(feedback.length > 0 || onFeedback) && (
@@ -181,6 +181,10 @@ export function Studio({
         </span>
         {done && <span className="chip h-6 bg-ok/10 text-ok"><Icon name="check" size={12} /> Done</span>}
       </div>
+
+      <p className="text-[13px] leading-relaxed text-ink-2">
+        <span className="font-medium text-ink">How it works:</span> post your work with its audience, purpose, the skill you want feedback on, and one question. Then reply to at least {goal || 2} peers: what you observed, its effect on you, and one thing to try next.
+      </p>
 
       <section>
         <h3 className="mb-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">Your post</h3>

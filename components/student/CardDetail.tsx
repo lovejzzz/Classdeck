@@ -55,6 +55,8 @@ export function CardDetail(p: DetailProps) {
   })();
   const lessonWork: { from: string; a: Attachment }[] = p.lesson.modules.flatMap((x) => (x.id === m.id ? [] : (p.mine[x.id]?.work ?? []).map((a) => ({ from: x.title, a }))));
   const starred = !!p.progress?.starred;
+  // When this card is one of several paths, the others, side by side.
+  const paths = m.choice ? p.lesson.modules.filter((x) => x.choice?.slot === m.choice!.slot) : [];
   useShortcuts([{ keys: "mod+enter", label: "Mark done", run: () => save("done"), enabled: hasOutput && !m.choice }]);
 
   async function star() {
@@ -77,7 +79,19 @@ export function CardDetail(p: DetailProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.id]);
 
+  // Cards that ask for work can't be marked done empty. Reading cards (optional thoughts) can.
+  const needsAnswer = ["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length;
+  const [nudge, setNudge] = useState(0);
+
   function save(status?: "done") {
+    if (status === "done" && needsAnswer && !output.trim() && !(p.progress?.work?.length)) {
+      setNudge((n) => n + 1);
+      toast("Write your answer or add a take before marking this done", { icon: "practice", tone: "plain" });
+      const el = document.getElementById("output");
+      el?.focus();
+      el?.animate([{ transform: "translateX(0)" }, { transform: "translateX(-6px)" }, { transform: "translateX(5px)" }, { transform: "translateX(-3px)" }, { transform: "translateX(0)" }], { duration: 380, easing: "ease-out" });
+      return;
+    }
     p.optimistic(status ? { output, status } : { output });
     op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, output, status }).then(p.onChanged);
     if (status) {
@@ -87,7 +101,7 @@ export function CardDetail(p: DetailProps) {
   }
 
   return (
-    <div className={`grid ${m.tools.length ? "md:grid-cols-[1fr_20rem]" : ""}`}>
+    <div className={`grid ${m.tools.length && !m.choice ? "md:grid-cols-[1fr_20rem]" : ""}`}>
       <div className="min-w-0 p-6 sm:p-8">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
@@ -117,32 +131,47 @@ export function CardDetail(p: DetailProps) {
         )}
 
         {m.choice && (
-          <div className="pop mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-ink/80 bg-[#fafaf9] px-4 py-3">
-            <Icon name="split" size={16} />
-            <div className="min-w-0 flex-1 text-[13.5px]">
-              <div className="font-medium">Pick your path</div>
-              <div className="text-ink-2">This activity comes in {m.choice.count} versions. Read this one, then choose it or close and look at the other.{m.choice.recommended ? " Your teacher recommends this one for you." : ""}</div>
+          <section className="pop mt-5" aria-label="Pick your path">
+            <div className="mb-3 flex items-center gap-2 text-[13.5px]">
+              <Icon name="split" size={15} />
+              <span className="font-medium">Pick your path</span>
+              <span className="text-ink-3">· same goal, different support. You can do only one.</span>
             </div>
-            <button
-              onClick={async () => {
-                await op(p.courseId, { op: "chooseBranch", studentId: p.studentId, lessonId: p.lessonId, slot: m.choice!.slot, variant: m.choice!.variant });
-                p.onChanged();
-                toast(`You chose “${m.title}”`, { icon: "split" });
-              }}
-              className="btn btn-dark press h-9 px-4"
-            >
-              Choose this path
-            </button>
-          </div>
+            <div className={`grid gap-3 ${paths.length > 1 ? "sm:grid-cols-2" : ""}`}>
+              {paths.map((x) => (
+                <div key={x.id} className={`flex flex-col rounded-xl border p-4 ${x.id === m.id ? "border-ink" : "border-line"}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="chip h-6 bg-[#eef0fb] font-medium text-[#4b56a8]">{x.choice?.variant}</span>
+                    {x.choice?.recommended && <span className="chip h-6 bg-ok/10 text-ok"><Icon name="check" size={11} />Your teacher recommends this</span>}
+                    <span className="flex-1" />
+                    {x.minutes && <span className="mono">{x.minutes} min</span>}
+                  </div>
+                  <div className="mt-2.5 text-[15px] font-medium">{x.title}</div>
+                  <p className="mt-1.5 line-clamp-[8] flex-1 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-2">{x.body}</p>
+                  <button
+                    onClick={async () => {
+                      await op(p.courseId, { op: "chooseBranch", studentId: p.studentId, lessonId: p.lessonId, slot: x.choice!.slot, variant: x.choice!.variant });
+                      toast(`You chose the ${x.choice!.variant} path`, { icon: "split" });
+                      if (x.id !== m.id) p.onClose();
+                      p.onChanged();
+                    }}
+                    className={`btn press mt-4 h-9 justify-center ${x.id === m.id ? "btn-dark" : "btn-ghost"}`}
+                  >
+                    Choose {x.choice?.variant}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
-        {(m.attachments ?? []).filter((a) => a.kind === "image" || a.kind === "video").map((a) => (
+        {!m.choice && (m.attachments ?? []).filter((a) => a.kind === "image" || a.kind === "video").map((a) => (
           <div key={a.id} className="mt-5"><MediaView a={a} /></div>
         ))}
 
-        {m.body && <div className={`mt-5 whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}>{m.body}</div>}
+        {m.body && !m.choice && <div className={`mt-5 whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}>{m.body}</div>}
 
-        {(m.attachments ?? []).some((a) => a.kind === "audio" || a.kind === "file" || a.kind === "link") && (
+        {!m.choice && (m.attachments ?? []).some((a) => a.kind === "audio" || a.kind === "file" || a.kind === "link") && (
           <div className="mt-5 space-y-2">
             {(m.attachments ?? []).filter((a) => a.kind === "audio" || a.kind === "file" || a.kind === "link").map((a) => (
               <MediaView key={a.id} a={a} />
@@ -150,7 +179,7 @@ export function CardDetail(p: DetailProps) {
           </div>
         )}
 
-        {m.criteria && (
+        {m.criteria && !m.choice && (
           <p className="mt-5 flex gap-2 text-[13px] text-ink-2"><Icon name="check" size={14} className="mt-0.5 flex-none text-ok" /><span><span className="font-medium text-ink">Done when: </span>{m.criteria}</span></p>
         )}
 
@@ -190,7 +219,7 @@ export function CardDetail(p: DetailProps) {
               onBlur={() => save()}
               rows={p.big ? 4 : 5}
               placeholder="Write here. It saves as you go."
-              className={`field resize-y leading-relaxed ${p.big ? "text-[16px]" : ""}`}
+              className={`field resize-y leading-relaxed ${nudge && !output.trim() ? "border-warn/60" : ""} ${p.big ? "text-[16px]" : ""}`}
             />
           </div>
         )}
@@ -213,14 +242,14 @@ export function CardDetail(p: DetailProps) {
             </button>
             {p.progress?.status === "done" ? (
               <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> Done. You can still edit.</span>
-            ) : m.criteria ? (
-              <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-3">Done when: {m.criteria}</span>
-            ) : null}
+            ) : (
+              <span className="text-[12.5px] text-ink-3">Saves as you type · {typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "⌘" : "Ctrl"}↵ to finish</span>
+            )}
           </div>
         )}
       </div>
 
-      {m.tools.length > 0 && (
+      {m.tools.length > 0 && !m.choice && (
         <aside className="min-w-0 border-t border-line bg-[#fafaf9] p-5 md:border-l md:border-t-0">
           <ToolTray
             tools={m.tools}

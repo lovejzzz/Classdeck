@@ -8,6 +8,7 @@ export interface Toast {
   icon: string;
   tone: "ok" | "bad" | "plain";
   leaving?: boolean;
+  action?: { label: string; run: () => void };
 }
 
 let items: Toast[] = [];
@@ -15,8 +16,8 @@ let seq = 0;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-export function toast(text: string, opts: { icon?: string; tone?: Toast["tone"] } = {}) {
-  const t: Toast = { id: ++seq, text, icon: opts.icon ?? "check", tone: opts.tone ?? "ok" };
+export function toast(text: string, opts: { icon?: string; tone?: Toast["tone"]; action?: Toast["action"] } = {}) {
+  const t: Toast = { id: ++seq, text, icon: opts.icon ?? "check", tone: opts.tone ?? "ok", action: opts.action };
   items = [t, ...items].slice(0, 6);
   emit();
   return t.id;

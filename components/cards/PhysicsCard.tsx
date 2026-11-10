@@ -75,10 +75,20 @@ export function PhysicsCard(props: PhysicsCardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The frame loop runs only while something is moving. When every spring has settled and the card
+  // isn't swaying, it unsubscribes; hover, drag, taps, and new slot positions wake it again.
+  const wake = useRef<() => void>(() => {});
+  const slotKey = `${props.slot.x}|${props.slot.y}|${props.slot.rot}|${props.slot.scale}|${props.slot.z}|${props.idle}|${props.faceDown}`;
+  useEffect(() => {
+    wake.current();
+  }, [slotKey]);
+
   useEffect(() => {
     const reduce = reducedMotion();
     const s = st.current;
-    return onFrame((dt, t) => {
+    let off: (() => void) | null = null;
+    let calm = 0;
+    const tick = (dt: number, t: number) => {
       const p = P.current;
       const d = s.drag;
       let tx = p.slot.x;
@@ -129,7 +139,22 @@ export function PhysicsCard(props: PhysicsCardProps) {
       const lift = -s.lift.x;
       sh.style.transform = `translate3d(${-s.ty.x * 0.5}px, ${5 + lift * 0.6}px, 0) scale(${0.96 - lift * 0.002})`;
       sh.style.opacity = String(0.22 + lift * 0.009);
-    });
+
+      const settled =
+        !d.active && !s.hover && t >= s.dealUntil && s.sway.target === 0 && Math.abs(s.sway.x) < 0.01 &&
+        [s.x, s.y, s.rot, s.scale, s.lift, s.tx, s.ty].every((sp) => sp.resting);
+      calm = settled ? calm + 1 : 0;
+      if (calm > 6 && off) {
+        off();
+        off = null;
+      }
+    };
+    wake.current = () => {
+      calm = 0;
+      if (!off) off = onFrame(tick);
+    };
+    wake.current();
+    return () => off?.();
   }, []);
 
   function local(e: { clientX: number; clientY: number }) {
@@ -139,6 +164,7 @@ export function PhysicsCard(props: PhysicsCardProps) {
 
   function onPointerDown(e: React.PointerEvent) {
     if (e.button !== 0) return;
+    wake.current();
     const s = st.current;
     const p = local(e);
     s.drag = { ...s.drag, down: true, active: false, sx: e.clientX, sy: e.clientY, ox: p.x - s.x.x, oy: p.y - s.y.x, px: p.x, py: p.y, lastX: e.clientX, vx: 0 };
@@ -146,6 +172,7 @@ export function PhysicsCard(props: PhysicsCardProps) {
 
   function onPointerMove(e: React.PointerEvent) {
     const s = st.current;
+    if (s.hover || s.drag.down) wake.current();
     const r = outer.current?.getBoundingClientRect();
     if (r && !s.drag.active) {
       s.mx = clamp((e.clientX - r.left) / r.width, 0, 1);
@@ -189,6 +216,7 @@ export function PhysicsCard(props: PhysicsCardProps) {
 
   function activate() {
     const s = st.current;
+    wake.current();
     if (P.current.locked) {
       // A quick shake says "not yet" without a dialog.
       s.rot.v += 520;
@@ -204,6 +232,7 @@ export function PhysicsCard(props: PhysicsCardProps) {
     const s = st.current;
     if (s.hover === on) return;
     s.hover = on;
+    wake.current();
     P.current.onHover?.(on);
   }
 

@@ -129,10 +129,28 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
     }, 600));
   }
 
+  const cardEls = useRef(new Map<string, HTMLElement>());
+  /** Scroll so the card being edited sits in view, to the left of the editor panel. */
+  function reveal(id: string) {
+    setTimeout(() => {
+      const el = cardEls.current.get(id);
+      if (!el) return;
+      const scroller = el.closest(".overflow-x-auto") as HTMLElement | null;
+      const r = el.getBoundingClientRect();
+      const panel = window.innerWidth >= 720 ? Math.min(480, window.innerWidth) : 0;
+      const roomRight = window.innerWidth - panel;
+      if (scroller && panel && (r.right > roomRight - 16 || r.left < 16)) {
+        scroller.scrollBy({ left: r.left - Math.max(24, (roomRight - r.width) / 2), behavior: "smooth" });
+      }
+      if (r.top < 130 || r.bottom > window.innerHeight - 16) window.scrollBy({ top: r.top - 170, behavior: "smooth" });
+    }, 60);
+  }
+
   function edit(lessonId: string, moduleId: string) {
     openRef.current = true;
     setEditing({ lessonId, moduleId });
     requestAnimationFrame(() => setEditorOpen(true));
+    reveal(moduleId);
   }
   function closeEditor() {
     openRef.current = false;
@@ -183,6 +201,16 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
     { keys: "]", label: "Next week", run: () => weekStep(1), enabled: !editorOpen && !running },
   ]);
 
+  // Every card in course order, for stepping through them in the editor.
+  const order = course.weeks.flatMap((w) => w.lessons.flatMap((ls) => lessonOf(ls.id).modules.map((m) => ({ lessonId: ls.id, id: m.id }))));
+  const at = editing ? order.findIndex((x) => x.id === editing.moduleId) : -1;
+  const step = (d: number) => {
+    const next = order[at + d];
+    if (!next) return;
+    setUnfolded((u) => new Set(u).add(course.weeks.find((w) => w.lessons.some((l) => l.id === next.lessonId))!.id));
+    edit(next.lessonId, next.id);
+  };
+
   const cur = editing && lessonOf(editing.lessonId);
   const curModule = cur?.modules.find((m) => m.id === editing?.moduleId);
 
@@ -226,7 +254,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
               {wi < currentWeekIndex && (
                 <button onClick={() => toggleFold(w.id)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">{isFolded(wi, w.id) ? "Show cards" : "Fold"}</button>
               )}
-              <button onClick={() => duplicate("duplicateWeek", w.id, `“${w.title}”`)} className="btn btn-quiet press h-6 px-2 text-[11.5px]"><Icon name="layers" size={11} /> Duplicate week</button>
+              <More label={`${w.title} actions`} items={[["Duplicate week", () => duplicate("duplicateWeek", w.id, `“${w.title}”`)]]} />
             </div>
             {isFolded(wi, w.id) ? (
               <button onClick={() => toggleFold(w.id)} className="press mt-2 flex w-full items-center gap-4 rounded-xl border border-line bg-white/60 px-4 py-3 text-left hover:bg-white">
@@ -276,32 +304,31 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                           </button>
                         )}
                         <span className="mono">{l.modules.length} cards</span>
-                        <button onClick={() => duplicate("duplicateLesson", l.id, `“${l.title}”`)} className="btn btn-quiet press h-6 px-2 text-[11.5px]" title="Duplicate this lesson"><Icon name="layers" size={11} /> Duplicate</button>
                         {l.session && (
-                          <button onClick={() => setRunning({ lessonId: l.id, weekTitle: w.title })} className="btn btn-quiet press h-6 px-2 text-[11.5px] text-[#c25a35]">
+                          <button onClick={() => setRunning({ lessonId: l.id, weekTitle: w.title })} className="btn btn-quiet press h-6 px-2 text-[11.5px] text-[#ae502f]">
                             <Icon name="timer" size={12} /> Run Collab Studio · {l.session.minutes}m
                           </button>
                         )}
-                        <button
-                          onClick={() => {
-                            if (!l.session) {
-                              const agenda = [{ label: "Warm-up", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }];
-                              change({ ...l, session: { agenda, minutes: 50 } });
-                            }
-                            setAgendaFor(agendaFor === l.id ? null : l.id);
-                          }}
-                          aria-expanded={agendaFor === l.id}
-                          className="btn btn-quiet press h-6 px-2 text-[11.5px]"
-                        >
-                          {l.session ? "Agenda" : <><Icon name="plus" size={11} /> Group session</>}
-                        </button>
+                        <More
+                          label={`${l.title} actions`}
+                          items={[
+                            [l.session ? "Edit Collab Studio agenda" : "Add a Collab Studio session", () => {
+                              if (!l.session) {
+                                const agenda = [{ label: "Warm-up", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }];
+                                change({ ...l, session: { agenda, minutes: 50 } });
+                              }
+                              setAgendaFor(l.id);
+                            }],
+                            ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
+                          ]}
+                        />
                       </div>
                       <input
                         value={l.goal ?? ""}
                         onChange={(e) => change({ ...l, goal: e.target.value || undefined })}
                         placeholder="Add a one-line goal for this lesson"
                         aria-label="Lesson goal"
-                        className="-ml-1.5 mt-0.5 block w-full rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[12.5px] text-ink-3 placeholder:text-ink-3/70 hover:border-line focus:border-line-strong focus:bg-white focus:text-ink-2 focus:outline-none"
+                        className="-ml-1.5 mt-0.5 block w-full rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[12.5px] text-ink-3 placeholder:text-ink-3 hover:border-line focus:border-line-strong focus:bg-white focus:text-ink-2 focus:outline-none"
                         style={{ maxWidth: Math.min(Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 280), 576) }}
                       />
                       {agendaFor === l.id && <AgendaEditor lesson={l} onChange={change} onClose={() => setAgendaFor(null)} />}
@@ -317,6 +344,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                         idle={false}
                         deal={false}
                         onActivate={(id) => edit(l.id, id)}
+                        register={(id, el) => (el ? cardEls.current.set(id, el) : cardEls.current.delete(id))}
                         onReorder={(ids) => change({ ...l, modules: ids.map((id) => l.modules.find((m) => m.id === id)!) })}
                         after={<AddCard onPick={(t) => addCard(l, t)} onTemplate={(t) => addFromTemplate(l, t)} />}
                         ariaLabel={l.title}
@@ -368,6 +396,9 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
           open={editorOpen}
           onChange={change}
           onClose={closeEditor}
+          position={{ index: cur.modules.findIndex((x) => x.id === curModule.id), total: cur.modules.length, lesson: cur.title }}
+          onPrev={at > 0 ? () => step(-1) : undefined}
+          onNext={at >= 0 && at < order.length - 1 ? () => step(1) : undefined}
           onDuplicate={() => {
             const copy: Module = { ...structuredClone(curModule), id: uid("m-"), title: `${curModule.title} (copy)` };
             const i = cur.modules.findIndex((x) => x.id === curModule.id);
@@ -378,20 +409,36 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
             toast("Duplicated. You’re now editing the copy.", { icon: "layers" });
           }}
           onDelete={() => {
-            change({ ...cur, modules: cur.modules.filter((x) => x.id !== curModule.id) });
+            const removed = curModule;
+            const at = cur.modules.findIndex((x) => x.id === removed.id);
+            change({ ...cur, modules: cur.modules.filter((x) => x.id !== removed.id) });
             closeEditor();
-            toast(`Deleted “${curModule.title}”`, { icon: "trash", tone: "plain" });
+            toast(`Deleted “${removed.title}”`, {
+              icon: "trash",
+              tone: "plain",
+              action: {
+                label: "Undo",
+                run: () => {
+                  // Put it back where it was, in the latest version of that lesson.
+                  const now = latest.current[cur.id] ?? lessonOf(cur.id);
+                  const modules = [...now.modules];
+                  modules.splice(Math.min(at, modules.length), 0, removed);
+                  change({ ...now, modules });
+                  toast(`Restored “${removed.title}”`);
+                },
+              },
+            });
           }}
           onBranchOut={() => {
             const slot = uid("slot-");
-            const a: Module = { ...curModule, audience: { kind: "branch", slot, variant: "Core" } };
-            const b: Module = { ...curModule, id: uid("m-"), title: `${curModule.title} (extension)`, audience: { kind: "branch", slot, variant: "Extension" } };
+            const a: Module = { ...curModule, title: `${curModule.title} (guided)`, audience: { kind: "branch", slot, variant: "Guided" } };
+            const b: Module = { ...curModule, id: uid("m-"), title: `${curModule.title} (stretch)`, audience: { kind: "branch", slot, variant: "Stretch" } };
             const i = cur.modules.findIndex((x) => x.id === curModule.id);
             const next = [...cur.modules];
             next.splice(i, 1, a, b);
-            change({ ...cur, modules: next });
+            change({ ...cur, modules: next, choiceSlots: [...(cur.choiceSlots ?? []), slot] });
             setEditing({ lessonId: cur.id, moduleId: b.id });
-            toast("Made an extension version. Assign students below.");
+            toast("Added a Stretch path. Students choose between Guided and Stretch.", { icon: "split" });
           }}
         />
       )}
@@ -450,6 +497,37 @@ function AgendaEditor({ lesson, onChange, onClose }: { lesson: Lesson; onChange:
         <span className="flex-1" />
         <button onClick={() => { save(null); onClose(); }} className="btn btn-quiet press h-7 px-2.5 text-[12px] hover:!text-bad">Remove group session</button>
       </div>
+    </div>
+  );
+}
+
+/** A small "⋯" menu for the actions that don't need to be on screen all the time. */
+function More({ items, label }: { items: [string, () => void][]; label: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const off = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("pointerdown", off);
+    window.addEventListener("keydown", esc);
+    return () => {
+      window.removeEventListener("pointerdown", off);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen((o) => !o)} aria-label={label} aria-expanded={open} aria-haspopup="menu" className={`btn press h-6 w-7 justify-center px-0 ${open ? "bg-black/[0.06]" : "btn-quiet"}`}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
+      </button>
+      {open && (
+        <div role="menu" className="pop absolute left-0 top-7 z-30 w-52 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]">
+          {items.map(([text, fn]) => (
+            <button key={text} role="menuitem" onClick={() => { setOpen(false); fn(); }} className="press block w-full rounded-lg px-3 py-2 text-left text-[13px] hover:bg-lane">{text}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

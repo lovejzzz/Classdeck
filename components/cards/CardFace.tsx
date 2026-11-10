@@ -88,7 +88,7 @@ export function CardFace({
 }: {
   m: Module; status?: Status; index?: number; total?: number; personal?: boolean; badge?: string; big?: boolean; footer?: React.ReactNode;
 }) {
-  const tag = badge ?? (m.choice ? (m.choice.recommended ? "Recommended · pick one" : "Pick one") : m.picked ? "Your path" : personal ? "For you" : undefined);
+  const tag = badge ?? (m.choice ? (m.choice.recommended ? "Recommended path" : "Pick a path") : m.picked ? "Your path" : personal ? "For you" : undefined);
   const meta = TYPE_META[m.type];
   const kinds = [...new Set((m.attachments ?? []).map((a) => a.kind))];
   return (

@@ -58,7 +58,7 @@ export function SelfCheck({
                       className={`press relative flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${on ? "border-ink bg-ink text-white" : "border-line-strong hover:border-ink-3"}`}
                     >
                       {on && <span className="pop h-2 w-2 rounded-full bg-white" />}
-                      {ghost && !on && <span className="absolute -inset-1 rounded-full border-2 border-dashed border-[#3d7ea6]/50" title={`${earlier?.label}`} />}
+                      {ghost && !on && <span className="absolute -inset-1 rounded-full border-2 border-dashed border-[#367195]/50" title={`${earlier?.label}`} />}
                     </button>
                   </span>
                 );

@@ -76,7 +76,7 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
           {teacher && post.anonymous && <span className="chip h-5 text-[10.5px]">anonymous to class</span>}
           <span className="mono">{ago(post.createdAt)}</span>
           <span className="flex-1" />
-          {post.pinned && <span className="chip h-5 bg-[#fbf3dd] text-[10.5px] text-[#9a6b0c]">Pinned</span>}
+          {post.pinned && <span className="chip h-5 bg-[#fbf3dd] text-[10.5px] text-[#8f630b]">Pinned</span>}
           {post.approved === false && <span className="chip h-5 bg-warn/10 text-[10.5px] text-warn">Waiting for approval</span>}
         </div>
         {post.text && <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed">{post.text}</p>}
@@ -91,7 +91,7 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
         )}
         {showLikes && (
           <button onClick={() => react("like")} aria-pressed={likes.includes(me)} aria-label="Like"
-            className={`press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] ${likes.includes(me) ? "text-[#d0453f]" : "text-ink-2 hover:bg-lane"}`}>
+            className={`press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] ${likes.includes(me) ? "text-[#bf3f39]" : "text-ink-2 hover:bg-lane"}`}>
             <span key={likes.length} className="pop"><Heart on={likes.includes(me)} /></span><span className="font-mono">{likes.length}</span>
           </button>
         )}

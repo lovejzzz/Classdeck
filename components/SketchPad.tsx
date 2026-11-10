@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 
-const COLORS = ["#1b1b1a", "#c25a35", "#2f9e5b", "#3d7ea6", "#6a5ac0", "#d39b1f"];
+const COLORS = ["#1b1b1a", "#ae502f", "#247b46", "#367195", "#6a5ac0", "#d39b1f"];
 const SIZES = [2, 5, 12];
 
 /** A small drawing board: pens, an eraser, undo, and clear. Saves as a PNG. */

@@ -106,7 +106,7 @@ export function Present({ title, subtitle, code, slides, onClose }: { title: str
                   <Avatar name={s.author} size={34} />
                   <span>{s.author}</span>
                   {!!s.votes && <span className="chip h-7 bg-[#eef0fb] text-[13px] text-[#4b56a8]">▲ {s.votes}</span>}
-                  {!!s.likes && <span className="chip h-7 text-[13px] text-[#d0453f]">♥ {s.likes}</span>}
+                  {!!s.likes && <span className="chip h-7 text-[13px] text-[#bf3f39]">♥ {s.likes}</span>}
                 </div>
                 {s.note && <p className="mt-4 text-[15px] text-ink-3">{s.note}</p>}
               </div>

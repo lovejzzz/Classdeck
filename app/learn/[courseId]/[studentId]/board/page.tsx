@@ -72,7 +72,7 @@ export default function BoardPage() {
             <h2 className="flex-1 text-[15px] font-medium">Six skill areas</h2>
             {first && (
               <span className="flex items-center gap-3 text-[12px] text-ink-3">
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border-2 border-[#3d7ea6]" />{first.w.title.split(" · ")[0]}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border-2 border-[#367195]" />{first.w.title.split(" · ")[0]}</span>
                 {last && <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-ink" />{last.w.title.split(" · ")[0]}</span>}
               </span>
             )}
@@ -92,7 +92,7 @@ export default function BoardPage() {
                       <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-lane" />
                       {[1, 2, 3, 4].map((n) => <span key={n} className="absolute top-1/2 h-2 w-px -translate-y-1/2 bg-line-strong" style={{ left: pos(n) }} />)}
                       {a && b && b !== a && <div className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-ok/60" style={{ left: pos(Math.min(a, b)), width: `${(Math.abs(b - a) / 3) * 100}%` }} />}
-                      {a && <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#3d7ea6] bg-white" style={{ left: pos(a) }} title={`${first.w.title}: ${levels[a - 1]?.name}`} />}
+                      {a && <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#367195] bg-white" style={{ left: pos(a) }} title={`${first.w.title}: ${levels[a - 1]?.name}`} />}
                       {b && <span className="pop absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink" style={{ left: pos(b) }} title={`${last!.w.title}: ${levels[b - 1]?.name}`} />}
                     </div>
                     <span className="text-right font-mono text-[12px] text-ink-2">{b ? `${a}→${b}` : a}</span>

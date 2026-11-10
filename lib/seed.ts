@@ -26,11 +26,6 @@ const session = (minutes: number, ...agenda: [string, number, boolean?][]): Sess
   agenda: agenda.map(([label, m, rr]) => ({ label, minutes: m, roundRobin: rr || undefined })),
 });
 
-const POST_HOWTO =
-  "Title your post “Name · Week N · Title”. Include your audience, your purpose, the activities you chose, the skill you want feedback on, your work (recording, file, or link), and one specific question for your group.";
-const FEEDBACK_HOWTO =
-  "For each peer: describe one specific thing you observed (a sentence, a moment, a timestamp), explain its effect on your understanding, and suggest one thing they could try next. Respond to at least two peers.";
-
 const students = [
   ["s1", "Mia"], ["s2", "Leo"], ["s3", "Ava"], ["s4", "Noah"], ["s5", "Zoe"], ["s6", "Ethan"],
   ["s7", "Lily"], ["s8", "Owen"], ["s9", "Priya"], ["s10", "Mateo"], ["s11", "Hana"], ["s12", "Sam"],
@@ -39,7 +34,7 @@ const students = [
 const weeks: { id: string; title: string; lesson: Lesson }[] = [
   {
     id: "w0",
-    title: "Week 0 · Onboarding",
+    title: "Week 0",
     lesson: {
       id: "l0",
       title: "Onboarding and peer feedback",
@@ -66,7 +61,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
           { minutes: 15, submitTo: "studio", criteria: "One post with a specific observation and a suggestion, and two votes.", skills: [], attachments: [A("a-w0-fb", "audio", `${S}/feedback-example.m4a`, "Teacher example: take the stairs (20 sec)")], tools: [ask],
             wall: { posting: "students", comments: true, reactions: "votes", anonymous: false, approval: false } }),
         M("w0-5", "studio", "First Collab Studio session",
-          `Share your initial presentation and one goal with your group. In the session you’ll practice taking turns, keeping time, and restating another person’s message before you respond.\n\n${POST_HOWTO}\n\n${FEEDBACK_HOWTO}`,
+          `Share your initial presentation and one goal with your group. In the session you’ll practice taking turns, keeping time, and restating another person’s message before you respond.`,
           { minutes: 60, submitTo: "studio", criteria: "You posted your initial presentation and gave one peer a suggestion backed by a specific observation.", skills: [] }),
         M("w0-6", "reflect", "My practice commitment",
           "Write down your goal for the course, how much time you plan to practice each week, and any support you need. If speaking in front of people makes you anxious, you can say so here; it’s only visible to you and your teacher.",
@@ -76,7 +71,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
   },
   {
     id: "w1",
-    title: "Week 1 · Audience & purpose",
+    title: "Week 1",
     lesson: {
       id: "l1",
       title: "Audience and purpose",
@@ -102,7 +97,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
             "Record two 60–90 second versions of your topic: one for specialists and one for non-specialists. Then explain your choices: what you added, removed, or reworded for each, and why.",
             { minutes: 25, submitTo: "personal", criteria: "Two recordings and a short explanation of your choices.", skills: ["audience"], tools: [ask] })),
         M("w1-5", "studio", "Ask the audience to restate the message",
-          `Post your one-minute practice for the group with your audience, purpose, and a feedback question. Ask each peer to restate the core message they heard, in one sentence.\n\n${POST_HOWTO}\n\n${FEEDBACK_HOWTO}`,
+          `Post your one-minute practice for the group with your audience, purpose, and a feedback question. Ask each peer to restate the core message they heard, in one sentence.`,
           { minutes: 60, submitTo: "studio", criteria: "Peers can restate your main point with reasonable accuracy.", skills: ["audience"] }),
         M("w1-6", "reflect", "Revise using feedback",
           "Compare what you meant with what your peers understood. Revise your opening or your example, and record the single most important change you made.",
@@ -112,7 +107,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
   },
   {
     id: "w2",
-    title: "Week 2 · Structure & storytelling",
+    title: "Week 2",
     lesson: {
       id: "l2",
       title: "Structure and storytelling",
@@ -138,7 +133,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
             "Outline and record a 2–3 minute version of your talk. Then reorganize the same content using a different structure and record that too. Which one suits your audience better, and why?",
             { minutes: 30, submitTo: "personal", criteria: "Two outlines, two recordings, and a comparison.", skills: ["structure"], tools: [ask] })),
         M("w2-5", "studio", "Ask listeners to map the structure",
-          `Post your structure practice. Ask peers to write down the sequence they heard and mark one point where it was easy, or hard, to follow.\n\n${POST_HOWTO}\n\n${FEEDBACK_HOWTO}`,
+          `Post your structure practice. Ask peers to write down the sequence they heard and mark one point where it was easy, or hard, to follow.`,
           { minutes: 60, submitTo: "studio", criteria: "Listeners can identify your opening, main points, and closing.", skills: ["structure"] }),
         M("w2-6", "reflect", "Revise the structure",
           "Change one part of the sequence or one transition. Keep both the original and the revised outline, and explain the change.",
@@ -148,7 +143,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
   },
   {
     id: "w3",
-    title: "Week 3 · Vocal delivery",
+    title: "Week 3",
     lesson: {
       id: "l3",
       title: "Vocal delivery",
@@ -174,7 +169,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
             "Record your usual delivery and a marked version. Then try a third take in a different tone or for a different context (a noisy room, a formal panel). Note timestamps for each change you made.",
             { minutes: 25, submitTo: "personal", criteria: "At least two comparable recordings with timestamped changes.", skills: ["vocal"], tools: [ask] })),
         M("w3-5", "studio", "Listener feedback",
-          `Post both versions. Peers explain which one is easier to understand and point to specific evidence. If you use an AI tool for suggestions, check whether they actually fit your goal.\n\n${POST_HOWTO}\n\n${FEEDBACK_HOWTO}`,
+          `Post both versions. Peers explain which one is easier to understand and point to specific evidence. If you use an AI tool for suggestions, check whether they actually fit your goal.`,
           { minutes: 60, submitTo: "studio", criteria: "Two comparable versions posted and feedback given to two peers.", skills: ["vocal"] }),
         M("w3-6", "reflect", "Record an effective strategy",
           "What did you change? How did listeners respond? What will you keep doing in your next practice?",
@@ -184,7 +179,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
   },
   {
     id: "w4",
-    title: "Week 4 · Body language & presence",
+    title: "Week 4",
     lesson: {
       id: "l4",
       title: "Body language and presence",
@@ -210,7 +205,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
             "Record a 2–3 minute presentation in a different arrangement: a larger room, a circle of chairs, or standing beside a screen. Note how you adapted your movement to the space.",
             { minutes: 25, submitTo: "personal", criteria: "A video recording and notes on how you adapted.", skills: ["body"] })),
         M("w4-5", "studio", "Group observation and feedback",
-          `Post your recording. Peers identify specific movements using timestamps or sentences, and explain their effect on understanding and connection.\n\n${POST_HOWTO}\n\n${FEEDBACK_HOWTO}`,
+          `Post your recording. Peers identify specific movements using timestamps or sentences, and explain their effect on understanding and connection.`,
           { minutes: 60, submitTo: "studio", criteria: "Practice and observation notes posted; two peers given timestamped feedback.", skills: ["body"] }),
         M("w4-6", "reflect", "Make a deliberate adjustment",
           "Pick one piece of feedback and practice a passage again. Record what improved and what still feels difficult.",
@@ -220,7 +215,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
   },
   {
     id: "w5",
-    title: "Week 5 · Rehearsal & recall",
+    title: "Week 5",
     lesson: {
       id: "l5",
       title: "Rehearsal and recall",
@@ -246,7 +241,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
             "Cut your prompts down further. Ask someone to interrupt you with an unexpected question, answer it, then return to your point. Also practice deciding what to drop when you’re told you have one minute less.",
             { minutes: 25, submitTo: "personal", criteria: "A recorded recovery after a question and a shortened version.", skills: ["rehearsal"] })),
         M("w5-5", "studio", "Group rehearsal",
-          `Deliver a 3–4 minute presentation to your group. Ask peers to watch for clarity, how you use your notes, and how you recover after an interruption.\n\n${POST_HOWTO}\n\n${FEEDBACK_HOWTO}`,
+          `Deliver a 3–4 minute presentation to your group. Ask peers to watch for clarity, how you use your notes, and how you recover after an interruption.`,
           { minutes: 60, submitTo: "studio", criteria: "One complete presentation delivered; feedback given to two peers.", skills: ["rehearsal"] }),
         M("w5-6", "submit", "Prepare the final work",
           "Write your next revision priority. Then hand in your Week 6 topic, audience, and the visual support you plan to use.",
@@ -256,7 +251,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
   },
   {
     id: "w6",
-    title: "Week 6 · Visual support & final",
+    title: "Week 6",
     lesson: {
       id: "l6",
       title: "Visual support and final presentation",
@@ -279,7 +274,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
             "Prepare 4–6 slides, including one that explains complex data to a non-specialist audience. Check type size, contrast, hierarchy, data labels, and sources.",
             { minutes: 35, submitTo: "personal", criteria: "4–6 slides including one non-specialist data slide.", skills: ["visual"] })),
         M("w6-4", "studio", "Final presentation",
-          `Post your 4–5 minute presentation or a link to it, your slides, your audience, your purpose, and your feedback focus.\n\n${POST_HOWTO}\n\n${FEEDBACK_HOWTO}`,
+          `Post your 4–5 minute presentation or a link to it, your slides, your audience, your purpose, and your feedback focus.`,
           { minutes: 75, submitTo: "studio", criteria: "Final presentation and slides posted; feedback given to two peers.", skills: ["audience", "structure", "vocal", "body", "rehearsal", "visual"] }),
         M("w6-5", "selfcheck", "Feedback and comparison",
           "Rate yourself again on the same six skill areas, then compare with your Week 0 starting point. Where can you point to observable progress? What needs more practice?",

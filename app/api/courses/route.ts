@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     start === "caps"
       ? caps.weeks.map((w) => cloneWeek(w, w.title))
       : start === "template"
-        ? Array.from({ length: Math.max(1, Math.min(12, Number(body.weeks) || 3)) }, (_, i) => cloneWeek(standardWeek(`Topic ${i + 1}`, i + 1), `Week ${i + 1} · Topic ${i + 1}`))
+        ? Array.from({ length: Math.max(1, Math.min(12, Number(body.weeks) || 3)) }, (_, i) => cloneWeek(standardWeek(`Topic ${i + 1}`, i + 1), `Week ${i + 1}`))
         : [{ id: uid("w-"), title: "Week 1", lessons: [{ id: uid("l-"), title: "Lesson 1", modules: [], branches: {} }] }];
 
   const course: Course = {

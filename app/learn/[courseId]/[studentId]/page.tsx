@@ -387,11 +387,11 @@ export default function LearnPage() {
                       const el = els.current.get(studioNudge.id);
                       if (el) open(current.id, studioNudge.id, el);
                     }}
-                    className="pop press mt-4 flex max-w-md items-center gap-3 rounded-xl border border-[#c25a35]/25 bg-[#fbf3ee] px-3.5 py-2.5 text-left hover:border-[#c25a35]/50"
+                    className="pop press mt-4 flex max-w-md items-center gap-3 rounded-xl border border-[#ae502f]/25 bg-[#fbf3ee] px-3.5 py-2.5 text-left hover:border-[#ae502f]/50"
                   >
                     <span className="flex -space-x-1.5">{studioNudge.peers.slice(0, 3).map((n) => <span key={n} className="rounded-full ring-2 ring-[#fbf3ee]"><Avatar name={n} size={22} /></span>)}</span>
                     <span className="min-w-0 flex-1 text-[13px]">{studioNudge.text}</span>
-                    <Icon name="arrow" size={14} className="text-[#c25a35]" />
+                    <Icon name="arrow" size={14} className="text-[#ae502f]" />
                   </button>
                 )}
               </div>
@@ -429,6 +429,8 @@ export default function LearnPage() {
               </div>
             </div>
           </section>
+
+          <TipBar />
 
           {/* —— Week navigator —— */}
           {weeksShown.length > 1 && (
@@ -505,6 +507,7 @@ export default function LearnPage() {
                                   layout="row"
                                   size={size}
                                   gap={14}
+                                  idle={false}
                                   draggable={false}
                                   hiddenId={lift?.id}
                                   register={(id, el) => (el ? els.current.set(id, el) : els.current.delete(id))}
@@ -545,7 +548,7 @@ export default function LearnPage() {
               if (handMode) setBump((b) => b + 1);
               const target = handMode ? pileRef.current : els.current.get(lift.id);
               const r = target?.getBoundingClientRect();
-              if (r) setBurst({ x: r.left + r.width / 2, y: r.top + r.height / 2, colors: [TYPE_META[openModule.type].tint, "#2f9e5b", "#f2c94c", "#1b1b1a"], key: Date.now() });
+              if (r) setBurst({ x: r.left + r.width / 2, y: r.top + r.height / 2, colors: [TYPE_META[openModule.type].tint, "#247b46", "#f2c94c", "#1b1b1a"], key: Date.now() });
             }
             setLift(null);
           }}
@@ -577,4 +580,34 @@ export default function LearnPage() {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return <p className="flex flex-1 items-center justify-center p-10 text-ink-2">{children}</p>;
+}
+
+/** A one-time, dismissible tip about the less obvious ways to move around. */
+function TipBar() {
+  const key = "tip:cards:v1";
+  const [show, setShow] = useState(() => {
+    try {
+      return typeof window !== "undefined" && !localStorage.getItem(key);
+    } catch {
+      return false;
+    }
+  });
+  if (!show) return null;
+  const close = () => {
+    try {
+      localStorage.setItem(key, "1");
+    } catch {}
+    setShow(false);
+  };
+  const k = (t: string) => <kbd className="mx-0.5 rounded border border-line bg-white px-1.5 py-[1px] font-mono text-[11px] text-ink">{t}</kbd>;
+  return (
+    <div className="mx-auto max-w-6xl px-4">
+      <div className="pop mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-white px-4 py-2.5 text-[12.5px] text-ink-2">
+        <Icon name="sparkles" size={14} className="text-ink-3" />
+        <span>Tips: {k("←")}{k("→")} move between cards · {k("N")} opens your next card · {k("[")}{k("]")} jump between weeks · {k("?")} shows every shortcut</span>
+        <span className="flex-1" />
+        <button onClick={close} className="btn btn-quiet press h-7 px-2 text-[12px]">Got it</button>
+      </div>
+    </div>
+  );
 }

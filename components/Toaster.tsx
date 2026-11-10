@@ -25,7 +25,7 @@ export function Toaster() {
       map.set(t.id, setTimeout(() => {
         map.delete(t.id);
         dismiss(t.id);
-      }, 3200));
+      }, t.action ? 6500 : 3200));
     }
   }, [toasts, hover]);
 
@@ -60,6 +60,9 @@ export function Toaster() {
                   <Icon name={t.icon} size={15} strokeWidth={2} />
                 </span>
                 <span className={`flex-1 truncate transition-opacity duration-300 ${depth === 0 || hover ? "opacity-100" : "opacity-0"}`}>{t.text}</span>
+                {t.action && (depth === 0 || hover) && (
+                  <button onClick={() => { t.action!.run(); dismiss(t.id); }} className="press rounded-md px-2 py-1 text-[12.5px] font-medium text-ink hover:bg-lane">{t.action.label}</button>
+                )}
                 <button onClick={() => dismiss(t.id)} aria-label="Dismiss" className="press -mr-1 rounded p-1 text-ink-3 hover:text-ink">
                   <Icon name="x" size={13} />
                 </button>

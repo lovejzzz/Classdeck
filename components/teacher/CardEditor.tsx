@@ -61,9 +61,12 @@ function Section({ title, children, aside }: { title: string; children: React.Re
 }
 
 export function CardEditor({
-  lesson, module: m, students, connectors, enabled, open, onChange, onClose, onDelete, onBranchOut, onDuplicate, skills = [],
+  lesson, module: m, students, connectors, enabled, open, onChange, onClose, onDelete, onBranchOut, onDuplicate, onPrev, onNext, position, skills = [],
 }: {
   onDuplicate: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  position?: { index: number; total: number; lesson: string };
   skills?: Skill[];
   lesson: Lesson;
   module: Module;
@@ -83,7 +86,11 @@ export function CardEditor({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  useShortcuts([{ keys: "mod+d", label: "Duplicate card", run: onDuplicate, enabled: open }]);
+  useShortcuts([
+    { keys: "mod+d", label: "Duplicate card", run: onDuplicate, enabled: open },
+    { keys: "[", label: "Previous card", run: () => onPrev?.(), enabled: open && !!onPrev },
+    { keys: "]", label: "Next card", run: () => onNext?.(), enabled: open && !!onNext },
+  ]);
   const set = (patch: Partial<Module>) => onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? { ...x, ...patch } : x)) });
   const attachments = m.attachments ?? [];
   const addAttachment = (a: Omit<Attachment, "id">) => set({ attachments: [...attachments, { ...a, id: uid("a-") }] });
@@ -106,7 +113,14 @@ export function CardEditor({
       aria-hidden={!open}
     >
       <div className="flex h-14 flex-none items-center gap-2 border-b border-line px-5">
-        <span className="flex-1 text-[14px] font-medium">Edit card</span>
+        <div className="flex items-center rounded-lg bg-lane p-0.5">
+          <button onClick={onPrev} disabled={!onPrev} aria-label="Previous card ([)" title="Previous card ([)" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white disabled:opacity-30"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
+          <button onClick={onNext} disabled={!onNext} aria-label="Next card (])" title="Next card (])" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white disabled:opacity-30"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
+        </div>
+        <span className="min-w-0 flex-1 truncate text-[13px]">
+          <span className="font-medium">Card {position ? position.index + 1 : ""}</span>
+          {position && <span className="text-ink-3"> of {position.total} · {position.lesson}</span>}
+        </span>
         <button onClick={onDuplicate} className="btn btn-quiet press h-8"><Icon name="layers" size={13} /> Duplicate</button>
         <button onClick={onDelete} className="btn btn-quiet press h-8 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
         <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
@@ -234,11 +248,11 @@ export function CardEditor({
 
         <Section title="Who gets this card">
           <div className="inline-flex rounded-lg bg-lane p-0.5">
-            {([["all", "Whole class", "users"], ["branch", "Versions", "split"], ["student", "One student", "user"]] as const).map(([k, label, icon]) => (
+            {([["all", "Whole class", "users"], ["branch", "Paths", "split"], ["student", "One student", "user"]] as const).map(([k, label, icon]) => (
               <button
                 key={k}
                 onClick={() => {
-                  const next: Audience = k === "all" ? { kind: "all" } : k === "branch" ? { kind: "branch", slot: uid("slot-"), variant: "Core" } : { kind: "student", studentId: students[0]?.id ?? "" };
+                  const next: Audience = k === "all" ? { kind: "all" } : k === "branch" ? { kind: "branch", slot: uid("slot-"), variant: "Guided" } : { kind: "student", studentId: students[0]?.id ?? "" };
                   if (a.kind !== k) set({ audience: next });
                 }}
                 className={`press inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] ${a.kind === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}
@@ -248,7 +262,7 @@ export function CardEditor({
             ))}
           </div>
           {a.kind === "all" && (
-            <button onClick={onBranchOut} className="btn btn-quiet press mt-2 h-7 px-2 text-[12.5px]"><Icon name="plus" size={12} /> Make an extension version of this card</button>
+            <button onClick={onBranchOut} className="btn btn-quiet press mt-2 h-7 px-2 text-[12.5px]"><Icon name="plus" size={12} /> Add a Stretch path for this card</button>
           )}
           {a.kind === "student" && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -263,15 +277,15 @@ export function CardEditor({
           {a.kind === "branch" && (
             <div className="mt-3 space-y-2">
               <label className="flex items-center gap-2 text-[12.5px] text-ink-2">
-                This version is called
-                <input value={a.variant} onChange={(e) => set({ audience: { ...a, variant: e.target.value } })} aria-label="Version name" className="field h-7 w-32 py-0" />
+                This path is called
+                <input value={a.variant} onChange={(e) => set({ audience: { ...a, variant: e.target.value } })} aria-label="Path name" className="field h-7 w-32 py-0" />
               </label>
               <label className="flex items-start gap-2 rounded-lg border border-line px-3 py-2.5 text-[13px]">
                 <input type="checkbox" className="mt-0.5 accent-[#1b1b1a]" checked={!!lesson.choiceSlots?.includes(a.slot)}
                   onChange={(e) => onChange({ ...lesson, choiceSlots: e.target.checked ? [...(lesson.choiceSlots ?? []), a.slot] : (lesson.choiceSlots ?? []).filter((x) => x !== a.slot) })} />
-                <span><span className="font-medium">Students choose their own version.</span> <span className="text-ink-3">They see every version and pick one. Who you place below is shown to them as your recommendation.</span></span>
+                <span><span className="font-medium">Students choose their own path.</span> <span className="text-ink-3">They see every path and pick one. Where you place a student below is shown to them as your recommendation.</span></span>
               </label>
-              <p className="text-[12px] text-ink-3">{lesson.choiceSlots?.includes(a.slot) ? "Tap a student to change your recommendation." : "Tap a student to move them to the other version. Students can’t see which version they have."}</p>
+              <p className="text-[12px] text-ink-3">{lesson.choiceSlots?.includes(a.slot) ? "Tap a student to change your recommendation." : "Tap a student to move them to the other path. Students can’t see which path they’re on."}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {variants.map((v) => {
                   const who = students.filter((s) => (lesson.branches[a.slot]?.[s.id] ?? variants[0]) === v);
@@ -359,7 +373,7 @@ function QuestionsEditor({ questions, onChange }: { questions: Question[]; onCha
           <div className="mt-2 space-y-1.5 pl-7">
             {q.options.map((opt, oi) => (
               <label key={oi} className="flex items-center gap-2">
-                <input type="radio" name={`ans-${q.id}`} checked={q.answer === oi} onChange={() => set(q.id, { answer: oi })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#2f9e5b]" />
+                <input type="radio" name={`ans-${q.id}`} checked={q.answer === oi} onChange={() => set(q.id, { answer: oi })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />
                 <input value={opt} onChange={(e) => set(q.id, { options: q.options.map((o, k) => (k === oi ? e.target.value : o)) })} placeholder={`Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className={`field h-8 py-0 ${q.answer === oi ? "border-ok/50" : ""}`} />
               </label>
             ))}

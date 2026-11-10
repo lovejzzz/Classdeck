@@ -123,7 +123,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
   return createPortal(
     <div className="fade fixed inset-0 z-50 flex flex-col bg-canvas" role="dialog" aria-modal="true" aria-label="Run Collab Studio session">
       <header className="flex h-14 flex-none items-center gap-3 border-b border-line px-5">
-        <Icon name="studio" size={16} className="text-[#c25a35]" />
+        <Icon name="studio" size={16} className="text-[#ae502f]" />
         <div className="min-w-0">
           <div className="truncate text-[14px] font-medium">Collab Studio · {lesson.title}</div>
           <div className="mono">{weekTitle} · {plan.minutes} min</div>

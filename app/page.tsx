@@ -59,7 +59,7 @@ export default function Home() {
         Every lesson is a deck. Every student gets their own hand.
       </h1>
       <p className="rise mt-3 max-w-lg text-[15px] leading-relaxed text-ink-2" style={{ "--i": 2 } as React.CSSProperties}>
-        Teachers lay out cards week by week, with versions for different students. Students open today’s hand: cards with text, images, video, audio, files, links, and tools that look things up, pull live data, or ask a tutor.
+        Teachers lay out cards week by week, with paths for different students. Students open today’s hand: cards with text, images, video, audio, files, links, and tools that look things up, pull live data, or ask a tutor.
       </p>
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2">
