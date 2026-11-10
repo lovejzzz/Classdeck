@@ -609,6 +609,14 @@ export async function POST(request: Request, { params }: Ctx) {
       studioStatus(body.studentId, post.moduleId);
       break;
     }
+    case "feedbackHelpful": {
+      const fb = studio.feedback.find((f) => f.id === body.id);
+      const post = fb && studio.posts.find((p) => p.id === fb.postId);
+      if (!fb || !post) return fail("That feedback is gone");
+      if (post.studentId !== body.studentId) return fail("Only the person who got this feedback can mark it");
+      fb.helpful = !fb.helpful || undefined;
+      break;
+    }
     default:
       return fail("Unknown operation");
   }

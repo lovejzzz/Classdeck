@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import type { Attachment, Course, Feedback, Module, Progress, StudioPost } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { MarkedMedia } from "../Marks";
+import { reviewRing } from "@/lib/pairing";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { WorkComposer } from "./WorkComposer";
 
@@ -54,8 +55,8 @@ function FeedbackForm({ onSend, skillName, levels }: { onSend: (f: { observed: s
   );
 }
 
-function PostView({ post, feedback, course, mine, me, onFeedback }: {
-  post: StudioPost; feedback: Feedback[]; course: Course; mine: boolean; me: string;
+function PostView({ post, feedback, course, mine, me, onFeedback, assigned, onHelpful }: {
+  post: StudioPost; feedback: Feedback[]; course: Course; mine: boolean; me: string; assigned?: boolean; onHelpful?: (f: Feedback) => void;
   onFeedback?: (f: { observed: string; effect: string; next: string; level?: number }) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
@@ -71,7 +72,7 @@ function PostView({ post, feedback, course, mine, me, onFeedback }: {
           <div className="mono">{ago(post.updatedAt)}{skill ? ` · feedback on ${skill.toLowerCase()}` : ""}</div>
         </div>
         {given ? <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><Icon name="check" size={11} /> You replied</span>
-          : !mine && onFeedback && <span className="chip h-5 bg-[#fbf3ee] text-[11px] text-[#ae502f]">Needs your feedback</span>}
+          : !mine && onFeedback && <span className="chip h-5 bg-[#fbf3ee] text-[11px] text-[#ae502f]">{assigned ? "Assigned to you" : "Needs your feedback"}</span>}
       </header>
       <div className="space-y-3 px-4 py-3">
         {(post.audience || post.purpose) && (
@@ -98,6 +99,12 @@ function PostView({ post, feedback, course, mine, me, onFeedback }: {
                   <p><span className="text-ink-3">Observed:</span> {f.observed}</p>
                   {f.effect && <p><span className="text-ink-3">Effect:</span> {f.effect}</p>}
                   <p><span className="text-ink-3">Try next:</span> {f.next}</p>
+                  {mine && onHelpful ? (
+                    <button onClick={() => onHelpful(f)} aria-pressed={!!f.helpful}
+                      className={`press mt-1 inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11.5px] ${f.helpful ? "border-ok/40 bg-ok/10 text-ok" : "border-line text-ink-3 hover:text-ink"}`}>
+                      <Icon name="check" size={11} /> {f.helpful ? "Helpful" : "Mark as helpful"}
+                    </button>
+                  ) : f.helpful && <span className="mt-1 inline-flex items-center gap-1 text-[11.5px] text-ok"><Icon name="check" size={11} /> {name(post.studentId)} found this helpful</span>}
                 </div>
               </div>
             ))}
@@ -131,9 +138,13 @@ export function Studio({
   const mine = posts.find((p) => p.moduleId === m.id && p.studentId === studentId);
   // Peers you haven't replied to come first, so the next person to help is always at the top.
   const replied = (postId: string) => feedback.some((f) => f.postId === postId && f.fromId === studentId);
+  // Unless the teacher turned it off, each student is assigned two peers to review this week.
+  const assignedIds = !m.freeReview && group ? reviewRing(group.studentIds, m.id, GOAL)[studentId] ?? [] : [];
+  const isAssigned = (sid: string) => assignedIds.includes(sid);
   const peers = posts
     .filter((p) => p.moduleId === m.id && p.studentId !== studentId)
-    .sort((a, b) => Number(replied(a.id)) - Number(replied(b.id)) || a.createdAt - b.createdAt);
+    .sort((a, b) => Number(replied(a.id)) - Number(replied(b.id)) || Number(isAssigned(b.studentId)) - Number(isAssigned(a.studentId)) || a.createdAt - b.createdAt);
+  const nameOf = (id: string) => course.students.find((s) => s.id === id)?.name ?? "a peer";
   const [editing, setEditing] = useState(!mine);
   const weekN = weekTitle.match(/Week (\d+)/)?.[1] ?? "";
   const [form, setForm] = useState({
@@ -182,6 +193,22 @@ export function Studio({
         </span>
         {done && <span className="chip h-6 bg-ok/10 text-ok"><Icon name="check" size={12} /> Done</span>}
       </div>
+
+      {assignedIds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#fbf3ee] px-4 py-2.5 text-[13px]">
+          <Icon name="message" size={14} className="text-[#ae502f]" />
+          <span className="font-medium">Your reviews this week:</span>
+          {assignedIds.map((id) => {
+            const p = posts.find((x) => x.moduleId === m.id && x.studentId === id);
+            const ok = p && replied(p.id);
+            return (
+              <span key={id} className={`chip h-6 bg-white ${ok ? "text-ok" : ""}`} title={!p ? "Hasn’t posted yet" : ok ? "Done" : "Waiting for your feedback"}>
+                <Avatar name={nameOf(id)} size={16} />{nameOf(id)}{ok ? <Icon name="check" size={11} /> : !p ? <span className="text-ink-3">· not posted yet</span> : null}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       <p className="text-[13px] leading-relaxed text-ink-2">
         <span className="font-medium text-ink">How it works:</span> post your work with its audience, purpose, the skill you want feedback on, and one question. Then reply to at least {goal || 2} peers: what you observed, its effect on you, and one thing to try next.
@@ -238,7 +265,12 @@ export function Studio({
         ) : (
           mine && (
             <div>
-              <PostView post={mine} feedback={feedback.filter((f) => f.postId === mine.id)} course={course} mine me={studentId} />
+              <PostView post={mine} feedback={feedback.filter((f) => f.postId === mine.id)} course={course} mine me={studentId}
+                onHelpful={async (f) => {
+                  await op(courseId, { op: "feedbackHelpful", studentId, id: f.id });
+                  onChanged();
+                  if (!f.helpful) toast(`Thanks sent to ${nameOf(f.fromId)}`, { icon: "check" });
+                }} />
               <button onClick={() => setEditing(true)} className="btn btn-quiet press mt-2"><Icon name="practice" size={13} /> Edit post</button>
             </div>
           )
@@ -252,7 +284,7 @@ export function Studio({
         ) : (
           <div className="space-y-3">
             {peers.map((p) => (
-              <PostView key={p.id} post={p} feedback={feedback.filter((f) => f.postId === p.id)} course={course} mine={false} me={studentId}
+              <PostView key={p.id} post={p} feedback={feedback.filter((f) => f.postId === p.id)} course={course} mine={false} me={studentId} assigned={isAssigned(p.studentId)}
                 onFeedback={async (f) => {
                   const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "feedback", studentId, postId: p.id, ...f });
                   if (!r.ok) {

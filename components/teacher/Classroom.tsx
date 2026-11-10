@@ -28,6 +28,7 @@ export function Classroom({
   const studioIds = new Set(lesson.modules.filter((m) => m.type === "studio").map((m) => m.id));
   const lessonPosts = state.studio.posts.filter((p) => studioIds.has(p.moduleId));
   const feedbackGiven = (sid: string) => state.studio.feedback.filter((f) => f.fromId === sid && lessonPosts.some((p) => p.id === f.postId && p.studentId !== sid)).length;
+  const helpfulGiven = (sid: string) => state.studio.feedback.filter((f) => f.fromId === sid && f.helpful && lessonPosts.some((p) => p.id === f.postId)).length;
   const groupName = (sid: string) => course.groups?.find((g) => g.studentIds.includes(sid))?.name ?? "";
 
   // —— who needs attention in this lesson ——
@@ -274,8 +275,9 @@ export function Classroom({
                 })}
                 {studioIds.size > 0 && (
                   <td className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0">
-                    <span className={`flex h-8 items-center gap-1.5 rounded-lg px-2 font-mono text-[12px] ${feedbackGiven(s.id) >= 2 ? "bg-ok/[0.07] text-ok" : "text-ink-2"}`}>
+                    <span className={`flex h-8 items-center gap-1.5 rounded-lg px-2 font-mono text-[12px] ${feedbackGiven(s.id) >= 2 ? "bg-ok/[0.07] text-ok" : "text-ink-2"}`} title="Given · marked helpful by the receiver">
                       {feedbackGiven(s.id)}/2
+                      {helpfulGiven(s.id) > 0 && <span className="text-[11px] text-ink-3">· {helpfulGiven(s.id)} helpful</span>}
                     </span>
                   </td>
                 )}
@@ -317,6 +319,13 @@ export function Classroom({
                 {p.question && <div className="text-ink-2">Asked: {p.question}</div>}
                 {p.work.map((a) => <div key={a.id} className="mt-2"><MarkedMedia a={a} /></div>)}
                 <div className="mt-2 text-[12px] text-ink-3">{state.studio.feedback.filter((f) => f.postId === p.id).length} feedback received</div>
+                {state.studio.feedback.filter((f) => f.postId === p.id).map((f) => (
+                  <div key={f.id} className="mt-2 rounded-md bg-white px-2.5 py-2 text-[12.5px] leading-snug">
+                    <div className="flex items-center gap-1.5 text-ink-3">{course.students.find((x) => x.id === f.fromId)?.name}{f.helpful && <span className="flex items-center gap-0.5 text-ok"><Icon name="check" size={11} />helpful</span>}</div>
+                    <div><span className="text-ink-3">Observed:</span> {f.observed}</div>
+                    <div><span className="text-ink-3">Try next:</span> {f.next}</div>
+                  </div>
+                ))}
               </div>
             ))}
             {selModule.due && (

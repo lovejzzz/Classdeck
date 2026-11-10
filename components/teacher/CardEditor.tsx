@@ -401,6 +401,15 @@ export function CardEditor({
           </div>
         </Section>
 
+        {m.type === "studio" && (
+          <Section title="Peer review">
+            <label className="flex items-start gap-2 text-[13px] text-ink-2">
+              <input type="checkbox" checked={!m.freeReview} onChange={(e) => set({ freeReview: e.target.checked ? undefined : true })} className="mt-0.5 accent-[#1b1b1a]" />
+              <span>Assign each student two peers to review <span className="block text-[12px] text-ink-3">Pairs rotate every week and everyone gets exactly two reviewers. Turn off to let students choose.</span></span>
+            </label>
+          </Section>
+        )}
+
         <Section title="Rules">
           <label className="flex items-center gap-2 text-[13px] text-ink-2">
             <input type="checkbox" checked={!!m.gate} onChange={(e) => set({ gate: e.target.checked })} className="accent-[#1b1b1a]" />

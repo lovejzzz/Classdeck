@@ -143,6 +143,8 @@ export interface Module {
   prompts?: string[];
   /** Rehearsal timer target, in seconds (practice cards). */
   timer?: number;
+  /** Studio: let students review anyone instead of assigning each two peers. */
+  freeReview?: boolean;
   /** Quiz: how many tries a student gets (default 1). */
   attempts?: number;
 }
@@ -272,6 +274,8 @@ export interface Feedback {
   effect: string;
   next: string;
   level?: number;
+  /** Marked helpful by the person who received it. */
+  helpful?: boolean;
   createdAt: number;
 }
 
