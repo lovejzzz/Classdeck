@@ -1,5 +1,5 @@
 import { isoDay } from "./grading";
-import type { Attachment, ClassEvent, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
+import type { Attachment, ClassEvent, Mark, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
 
 // The demo course: CaPS, a seven-week presentation skills course (Week 0 onboarding + six skill weeks),
 // built from the CaPS Week 0–6 course plan. Each week has one common theme and six cards; one card per
@@ -418,7 +418,10 @@ export function seedProgress(): ProgressMap {
     "w1-4s": "Specialist version kept the calibration numbers; the non-specialist version opens with dead houseplants.",
   };
   for (const [sid, ids] of Object.entries(w1)) for (const mid of ids) out[sid][mid] = { status: "done", output: notes[mid], updatedAt: at(1) };
-  out.s2["w1-4s"].work = [A("wk-s2-w1", "audio", `${S}/leo-week1.m4a`, "Non-specialist version (60 sec)")];
+  out.s2["w1-4s"].work = [{
+    ...A("wk-s2-w1", "audio", `${S}/leo-week1.m4a`, "Non-specialist version (60 sec)"),
+    transcript: "So, um, have you ever come home and found your houseplants dead? Basically that happens because we water on a schedule, not when the soil actually needs it. My project is a small soil sensor. It's, like, calibrated to measure moisture, and it tells you when to water. In my tests it cut water use by about a third. So yeah, next time you water, ask the soil first.",
+  }];
   for (const sid of ["s2", "s8"]) Object.assign(out[sid]["w1-4s"], { checks: [0, 1, 2], rehearsals: sid === "s2" ? [74, 66, 61] : [88, 59] });
   // Teacher feedback already given on some of this week's work.
   out.s1["w1-3"].review = { verdict: "good", text: "Sharp sentence. Cutting the circuit diagram was the right call.", at: at(0.6) };
@@ -545,5 +548,15 @@ export function seedEvents(): ClassEvent[] {
     e(60, "done", "s5", "w1-3", "Finished “My core message”"),
     e(25, "done", "s11", "w1-3", "Finished “My core message”"),
     e(8, "tool", "s3", "w1-2", "Used “Define a word”: infiltration"),
+  ];
+}
+
+/** A few timestamped notes on Leo’s Week 1 recording, from the teacher and a peer. */
+export function seedMarks(): Mark[] {
+  const now = Date.now();
+  return [
+    { id: "mk1", attachmentId: "wk-s2-w1", from: "teacher", sec: 2, text: "Strong hook: the dead houseplants picture lands right away.", at: now - 3600_000 },
+    { id: "mk2", attachmentId: "wk-s2-w1", from: "s1", sec: 9, text: "I lost you here: what does “calibrated” mean?", at: now - 1800_000 },
+    { id: "mk3", attachmentId: "wk-s2-w1", from: "teacher", sec: 16, text: "Slow down for the call to action and pause after it.", at: now - 3500_000 },
   ];
 }

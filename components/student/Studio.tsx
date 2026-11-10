@@ -6,6 +6,7 @@ import { ago } from "@/lib/time";
 import { toast } from "@/lib/toast";
 import type { Attachment, Course, Feedback, Module, Progress, StudioPost } from "@/lib/types";
 import { MediaView } from "../cards/Media";
+import { MarkedMedia } from "../Marks";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { WorkComposer } from "./WorkComposer";
 
@@ -80,7 +81,7 @@ function PostView({ post, feedback, course, mine, me, onFeedback }: {
           </dl>
         )}
         {post.text && <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed">{post.text}</p>}
-        {post.work.map((w) => <MediaView key={w.id} a={w} />)}
+        {post.work.map((w) => <MarkedMedia key={w.id} a={w} />)}
         {post.question && (
           <p className="flex gap-2 rounded-lg bg-[#fbf3ee] px-3 py-2 text-[13.5px]"><Icon name="message" size={14} className="mt-0.5 text-[#ae502f]" /><span><span className="font-medium">Question: </span>{post.question}</span></p>
         )}

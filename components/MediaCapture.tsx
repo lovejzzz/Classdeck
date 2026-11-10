@@ -3,6 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 
+/** The browser's built-in speech recognition (Chrome, Edge, Safari). Not in TypeScript's DOM types. */
+interface Recognizer {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((e: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+function makeRecognizer(): Recognizer | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { SpeechRecognition?: new () => Recognizer; webkitSpeechRecognition?: new () => Recognizer };
+  const C = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+  return C ? new C() : null;
+}
+
 function pickType(video: boolean) {
   const options = video ? ["video/webm;codecs=vp9,opus", "video/webm", "video/mp4"] : ["audio/webm", "audio/mp4"];
   return options.find((t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) ?? "";
@@ -12,7 +30,7 @@ function pickType(video: boolean) {
  * Record audio or video in the browser. Video shows a live, mirrored preview while recording.
  * After stopping you can play it back, then keep it, redo it, or throw it away.
  */
-export function MediaCapture({ video, screen = false, onKeep, onCancel, label }: { video: boolean; screen?: boolean; onKeep: (file: File) => void; onCancel: () => void; label?: string }) {
+export function MediaCapture({ video, screen = false, onKeep, onCancel, label }: { video: boolean; screen?: boolean; onKeep: (file: File, transcript?: string) => void; onCancel: () => void; label?: string }) {
   const [phase, setPhase] = useState<"ready" | "recording" | "review">("ready");
   const [error, setError] = useState<string | null>(() =>
     typeof navigator !== "undefined" && !navigator.mediaDevices ? "This browser can’t record. Try uploading a file instead." : null,
@@ -25,6 +43,12 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
   const stream = useRef<MediaStream | null>(null);
   const rec = useRef<MediaRecorder | null>(null);
   const raf = useRef(0);
+  // Live captions: final phrases plus the one still being heard.
+  const [said, setSaid] = useState("");
+  const [hearing, setHearing] = useState("");
+  const recog = useRef<Recognizer | null>(null);
+  const listening = useRef(false);
+  const [captions] = useState(() => !!makeRecognizer() && !screen);
 
   // Open the camera/microphone right away so the preview is live before you press record.
   useEffect(() => {
@@ -46,6 +70,8 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
       .catch(() => setError(screen ? "Screen sharing was cancelled or blocked." : video ? "Couldn’t use the camera. Check this site’s camera and microphone permission." : "Couldn’t use the microphone. Check this site’s microphone permission."));
     return () => {
       cancelled = true;
+      listening.current = false;
+      recog.current?.stop();
       cancelAnimationFrame(raf.current);
       stream.current?.getTracks().forEach((t) => t.stop());
     };
@@ -62,7 +88,39 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
     const r = new MediaRecorder(s, type ? { mimeType: type } : undefined);
     const chunks: Blob[] = [];
     r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    if (captions) {
+      setSaid("");
+      setHearing("");
+      const sr = makeRecognizer();
+      if (sr) {
+        sr.continuous = true;
+        sr.interimResults = true;
+        sr.lang = navigator.language || "en-US";
+        sr.onresult = (e) => {
+          let fin = "";
+          let live = "";
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const res = e.results[i];
+            if (res.isFinal) fin += res[0].transcript;
+            else live += res[0].transcript;
+          }
+          if (fin) setSaid((x) => `${x} ${fin}`.trim());
+          setHearing(live);
+        };
+        // Recognition stops by itself after silences; keep it going while recording.
+        sr.onend = () => {
+          if (listening.current) try { sr.start(); } catch {}
+        };
+        sr.onerror = () => {};
+        listening.current = true;
+        try { sr.start(); } catch {}
+        recog.current = sr;
+      }
+    }
     r.onstop = () => {
+      listening.current = false;
+      recog.current?.stop();
+      setHearing("");
       const b = new Blob(chunks, { type: r.mimeType || (video ? "video/webm" : "audio/webm") });
       setBlob(b);
       setUrl(URL.createObjectURL(b));
@@ -93,7 +151,7 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
     if (!blob) return;
     const ext = blob.type.includes("mp4") ? (video ? "mp4" : "m4a") : video ? "webm" : "weba";
     const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).replace(":", "");
-    onKeep(new File([blob], `${screen ? "screen" : video ? "video" : "recording"}-${stamp}.${ext}`, { type: blob.type }));
+    onKeep(new File([blob], `${screen ? "screen" : video ? "video" : "recording"}-${stamp}.${ext}`, { type: blob.type }), said.trim() || undefined);
   }
 
   const mmss = `${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, "0")}`;
@@ -131,8 +189,15 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
             <span className="mono w-10 text-right text-bad">{mmss}</span>
           </div>
         )}
+        {captions && (phase === "recording" || (phase === "review" && said)) && (
+          <p className="mt-2.5 max-h-24 overflow-y-auto rounded-lg bg-white px-3 py-2 text-[13px] leading-relaxed text-ink-2" aria-live="polite">
+            <span className="mr-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{phase === "recording" ? "Live transcript" : "Transcript"}</span>
+            {said} <span className="text-ink-3">{hearing}</span>
+            {phase === "recording" && !said && !hearing && <span className="text-ink-3">Start speaking…</span>}
+          </p>
+        )}
         {phase === "review" && url && (
-          <div className="space-y-2">
+          <div className="mt-2 space-y-2">
             {!video && <audio src={url} controls className="h-9 w-full" />}
             <div className="flex flex-wrap gap-2">
               <button onClick={keep} className="btn btn-dark press"><Icon name="check" size={13} /> Keep this take</button>

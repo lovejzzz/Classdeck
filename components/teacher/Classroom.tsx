@@ -12,6 +12,7 @@ import type { CourseState, Lesson, Module, Review } from "@/lib/types";
 import { download, toCsv } from "@/lib/download";
 import { toast } from "@/lib/toast";
 import { MediaView } from "../cards/Media";
+import { MarkedMedia } from "../Marks";
 import { Present } from "../Present";
 import { WallBoard } from "../WallBoard";
 import { Avatar, Icon, StatusIcon } from "../Icon";
@@ -309,12 +310,12 @@ export function Classroom({
             {selProgress?.ratings && Object.keys(selProgress.ratings).length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">{course.skills?.map((sk) => selProgress.ratings![sk.id] && <span key={sk.id} className="chip">{sk.name} · {selProgress.ratings![sk.id]}</span>)}</div>
             )}
-            {selProgress?.work?.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{selProgress.work.map((a) => <div key={a.id}><div className="mb-1 text-[12px] text-ink-3">{a.name}</div><MediaView a={a} /></div>)}</div> : null}
+            {selProgress?.work?.length ? <div className="mt-3 space-y-4">{selProgress.work.map((a) => <div key={a.id}><div className="mb-1 text-[12px] text-ink-3">{a.name}</div><MarkedMedia a={a} /></div>)}</div> : null}
             {state.studio.posts.filter((p) => p.moduleId === selModule.id && p.studentId === selStudent.id).map((p) => (
               <div key={p.id} className="mt-3 rounded-lg bg-[#fbf3ee] p-3 text-[13px]">
                 <div className="font-medium">{p.title}</div>
                 {p.question && <div className="text-ink-2">Asked: {p.question}</div>}
-                {p.work.map((a) => <div key={a.id} className="mt-2"><MediaView a={a} /></div>)}
+                {p.work.map((a) => <div key={a.id} className="mt-2"><MarkedMedia a={a} /></div>)}
                 <div className="mt-2 text-[12px] text-ink-3">{state.studio.feedback.filter((f) => f.postId === p.id).length} feedback received</div>
               </div>
             ))}

@@ -9,8 +9,11 @@ import { Icon } from "../Icon";
 const fmt = (s: number) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}` : "0:00");
 
 /** An audio player whose waveform fills in as it plays and bounces while playing. */
-export function AudioPlayer({ a }: { a: Attachment }) {
+export function AudioPlayer({ a, onMedia, pins = [] }: { a: Attachment; onMedia?: (el: HTMLMediaElement | null) => void; pins?: { sec: number; color: string; label: string }[] }) {
   const ref = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    onMedia?.(ref.current);
+  }, [onMedia]);
   const [playing, setPlaying] = useState(false);
   const [t, setT] = useState(0);
   const [dur, setDur] = useState(0);
@@ -60,7 +63,7 @@ export function AudioPlayer({ a }: { a: Attachment }) {
         </svg>
       </button>
       <div
-        className="flex h-9 flex-1 cursor-pointer items-center gap-[2px]"
+        className="relative flex h-9 flex-1 cursor-pointer items-center gap-[2px]"
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
           if (ref.current && dur) ref.current.currentTime = ((e.clientX - r.left) / r.width) * dur;
@@ -83,8 +86,12 @@ export function AudioPlayer({ a }: { a: Attachment }) {
             />
           );
         })}
+        {dur > 0 && pins.map((p, i) => (
+          <span key={i} title={p.label} className="pop pointer-events-none absolute -top-1.5 h-2.5 w-2.5 -translate-x-1/2 rounded-full border-2 border-[#fafaf9]"
+            style={{ left: `${Math.min(100, (p.sec / dur) * 100)}%`, background: p.color }} />
+        ))}
       </div>
-      <span className="mono w-16 flex-none text-right">{fmt(t)} / {fmt(dur)}</span>
+      <span className="mono flex-none whitespace-nowrap text-right">{fmt(t)} / {fmt(dur)}</span>
     </div>
   );
 }

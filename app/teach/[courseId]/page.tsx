@@ -1,5 +1,6 @@
 "use client";
 
+import { MarksContext } from "@/components/Marks";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -80,6 +81,7 @@ export default function TeachPage() {
     }));
 
   return (
+    <MarksContext.Provider value={{ courseId, me: "teacher", marks: state.marks ?? [], names: Object.fromEntries(state.course.students.map((s) => [s.id, s.name])), refresh }}>
     <div className="flex-1 overflow-x-clip">
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
@@ -199,5 +201,6 @@ export default function TeachPage() {
         </main>
       </div>
     </div>
+    </MarksContext.Provider>
   );
 }

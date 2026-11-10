@@ -10,6 +10,7 @@ import { TYPE_META } from "@/lib/ui";
 import type { Attachment, Course, CourseState, Lesson, Module, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
+import { ReadAloud } from "../ReadAloud";
 import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
 import { SelfCheck } from "./SelfCheck";
@@ -200,7 +201,12 @@ export function CardDetail(p: DetailProps) {
           <div key={a.id} className="mt-5"><MediaView a={a} /></div>
         ))}
 
-        {m.body && !m.choice && <div className={`mt-5 whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}>{m.body}</div>}
+        {m.body && !m.choice && (
+          <>
+            <div className="mt-5"><ReadAloud text={`${m.title}. ${m.body}`} big={p.big} /></div>
+            <div className={`mt-3 whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}>{m.body}</div>
+          </>
+        )}
 
         {!m.choice && (m.attachments ?? []).some((a) => a.kind === "audio" || a.kind === "file" || a.kind === "link") && (
           <div className="mt-5 space-y-2">

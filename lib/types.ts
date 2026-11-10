@@ -47,6 +47,8 @@ export interface Attachment {
   end?: number;
   /** Credit line for images found through search. */
   credit?: string;
+  /** What was said in a recording, captured by the browser while recording. */
+  transcript?: string;
 }
 
 /** How a wall card behaves: who posts, how people respond, and moderation. */
@@ -78,6 +80,17 @@ export interface Question {
   accept?: string[];
   /** Why the answer is right. Shown once the student has answered correctly, or after a quiz is submitted. */
   explain?: string;
+}
+
+/** A comment pinned to a moment in a recording: “0:12 — you paused here”. */
+export interface Mark {
+  id: string;
+  attachmentId: string;
+  /** A student id, or "teacher". */
+  from: string;
+  sec: number;
+  text: string;
+  at: number;
 }
 
 /** The teacher's response to a student's work on one card. */
@@ -305,4 +318,6 @@ export interface CourseState {
   /** Paths students picked: student → slot → variant. */
   choices: Record<string, Record<string, string>>;
   studio: { posts: StudioPost[]; feedback: Feedback[] };
+  /** Timestamped notes on recordings this viewer can see. */
+  marks: Mark[];
 }

@@ -3,7 +3,7 @@
 import { op } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import type { Attachment } from "@/lib/types";
-import { MediaView } from "../cards/Media";
+import { MarkedMedia } from "../Marks";
 import { Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
 
@@ -47,7 +47,7 @@ export function WorkComposer({
                   <Icon name="trash" size={13} />
                 </button>
               </div>
-              <MediaView a={w} />
+              <MarkedMedia a={w} />
             </div>
           ))}
         </div>

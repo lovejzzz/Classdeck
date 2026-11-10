@@ -58,7 +58,7 @@ export async function GET(request: Request, { params }: Ctx) {
         ...course, students: [], groups: [], joinCode: "", access: undefined,
         weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.map((m) => ({ ...m, questions: m.questions?.map(publicQuestion) })) })) })),
       },
-      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] },
+      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [],
     };
     return Response.json(view);
   }
@@ -112,8 +112,19 @@ export async function GET(request: Request, { params }: Ctx) {
     events: as ? [] : (d.events[courseId] ?? []).slice(-80),
     choices: as ? { [as]: choices[as] ?? {} } : choices,
     studio: studioView,
+    marks: as ? (d.marks[courseId] ?? []).filter((mk) => visibleWork(course, as).has(mk.attachmentId)) : (d.marks[courseId] ?? []),
   };
   return Response.json(state);
+}
+
+/** Recordings a student may see and comment on: their own work, and posts in their studio group. */
+function visibleWork(course: Course, studentId: string): Set<string> {
+  const d = db();
+  const ids = new Set<string>();
+  for (const p of Object.values(d.progress[course.id]?.[studentId] ?? {})) for (const w of p.work ?? []) ids.add(w.id);
+  const group = groupOf(course, studentId);
+  for (const p of d.studio[course.id]?.posts ?? []) if (p.studentId === studentId || (group && p.groupId === group.id)) for (const w of p.work) ids.add(w.id);
+  return ids;
 }
 
 function cleanAttachment(a: Attachment): Attachment | null {
@@ -124,6 +135,7 @@ function cleanAttachment(a: Attachment): Attachment | null {
   return {
     id: a.id || uid("w-"), kind: a.kind, url: a.url, name: String(a.name ?? "").slice(0, 120) || undefined, size: Number(a.size) || undefined,
     start: sec(a.start), end: sec(a.end), credit: a.credit ? String(a.credit).slice(0, 200) : undefined,
+    transcript: a.transcript && (a.kind === "audio" || a.kind === "video") ? String(a.transcript).slice(0, 20000) : undefined,
   };
 }
 
@@ -381,6 +393,27 @@ export async function POST(request: Request, { params }: Ctx) {
       p.rehearsals = [...(p.rehearsals ?? []), sec].slice(-20);
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
+      break;
+    }
+    case "addMark": {
+      const from = body.studentId ? String(body.studentId) : "teacher";
+      const marks = (d.marks[courseId] ??= []);
+      if (body.studentId && !visibleWork(course, from).has(body.attachmentId)) return fail("You can’t comment on that recording");
+      const sec = Number(body.sec);
+      const text = String(body.text ?? "").trim().slice(0, 500);
+      if (!(sec >= 0 && sec < 36000) || !text) return fail("Write a note first");
+      const mark = { id: uid("mk-"), attachmentId: String(body.attachmentId), from, sec: Math.round(sec * 10) / 10, text, at: Date.now() };
+      marks.push(mark);
+      if (marks.length > 5000) marks.splice(0, marks.length - 5000);
+      extra = { mark };
+      break;
+    }
+    case "removeMark": {
+      const from = body.studentId ? String(body.studentId) : "teacher";
+      const marks = d.marks[courseId] ?? [];
+      const i = marks.findIndex((mk) => mk.id === body.id && (mk.from === from || from === "teacher"));
+      if (i < 0) return fail("That note is already gone");
+      marks.splice(i, 1);
       break;
     }
     case "review": {

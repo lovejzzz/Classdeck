@@ -17,6 +17,7 @@ import { scrollToWeek, WeekNav } from "@/components/WeekNav";
 import { CardDetail } from "@/components/student/CardDetail";
 import { Pile } from "@/components/student/Pile";
 import { useInbox } from "@/components/student/useInbox";
+import { MarksContext } from "@/components/Marks";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
 import { useConnectors, useCourse, useQuery } from "@/lib/client";
@@ -231,6 +232,7 @@ export default function LearnPage() {
   const openWeek = openLesson && course.weeks.find((w) => w.lessons.includes(openLesson));
 
   return (
+    <MarksContext.Provider value={{ courseId, me: studentId, marks: state.marks ?? [], names: Object.fromEntries(course.students.map((s) => [s.id, s.name])), refresh: synced }}>
     <div className="flex-1 overflow-x-hidden">
       {isPreview && (
         <div className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-line bg-white/85 px-4 py-2 text-[13px] backdrop-blur">
@@ -580,6 +582,7 @@ export default function LearnPage() {
         </Lift>
       )}
     </div>
+    </MarksContext.Provider>
   );
 }
 
