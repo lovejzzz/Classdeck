@@ -3,7 +3,7 @@ import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
 import { safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet } from "@/lib/grading";
-import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
+import type { AnswerValue, Attachment, Course, Live, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
 // "order" questions go out alphabetised, so the correct order never reaches the browser.
@@ -59,7 +59,7 @@ export async function GET(request: Request, { params }: Ctx) {
         ...course, students: [], groups: [], joinCode: "", access: undefined,
         weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.map((m) => ({ ...m, questions: m.questions?.map(publicQuestion) })) })) })),
       },
-      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [],
+      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} },
     };
     return Response.json(view);
   }
@@ -123,8 +123,22 @@ export async function GET(request: Request, { params }: Ctx) {
     choices: as ? { [as]: choices[as] ?? {} } : choices,
     studio: studioView,
     marks: as ? (d.marks[courseId] ?? []).filter((mk) => visibleWork(course, as).has(mk.attachmentId)) : (d.marks[courseId] ?? []),
+    live: liveView(d.live[courseId] ?? { hands: {} }, as),
   };
   return Response.json(state);
+}
+
+/** Students see poll counts (not who voted what) once they've voted or the poll is closed, and only their own hand. */
+function liveView(live: Live, as: string | null): CourseState["live"] {
+  if (!as) return live;
+  const poll = live.poll;
+  const myVote = poll?.votes[as];
+  const counts = poll && (myVote !== undefined || !poll.open) ? poll.options.map((_, i) => Object.values(poll.votes).filter((v) => v === i).length) : undefined;
+  return {
+    poll: poll ? { ...poll, votes: {} } : undefined,
+    hands: live.hands[as] ? { [as]: live.hands[as] } : {},
+    myVote, counts,
+  };
 }
 
 /** Recordings a student may see and comment on: their own work, and posts in their studio group. */
@@ -435,6 +449,48 @@ export async function POST(request: Request, { params }: Ctx) {
       p.rehearsals = [...(p.rehearsals ?? []), sec].slice(-20);
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
+      break;
+    }
+    // —— live class ——
+    case "startPoll": {
+      const options = (Array.isArray(body.options) ? body.options : []).map((x: unknown) => String(x).trim().slice(0, 80)).filter(Boolean).slice(0, 6);
+      const question = String(body.question ?? "").trim().slice(0, 200);
+      if (!question || options.length < 2) return fail("Write a question and at least two options");
+      (d.live[courseId] ??= { hands: {} }).poll = { id: uid("poll-"), question, options, votes: {}, open: true, at: Date.now() };
+      break;
+    }
+    case "closePoll": {
+      const poll = d.live[courseId]?.poll;
+      if (poll) {
+        if (body.clear) d.live[courseId].poll = undefined;
+        else poll.open = false;
+      }
+      break;
+    }
+    case "vote": {
+      const poll = d.live[courseId]?.poll;
+      if (!poll || poll.id !== body.pollId) return fail("That poll has ended");
+      if (!poll.open) return fail("Voting is closed");
+      const c = Number(body.choice);
+      if (!(c >= 0 && c < poll.options.length)) return fail("Pick an option");
+      poll.votes[body.studentId] = c;
+      break;
+    }
+    case "hand": {
+      const live = (d.live[courseId] ??= { hands: {} });
+      if (body.down) delete live.hands[body.studentId];
+      else {
+        live.hands[body.studentId] = { kind: body.kind === "stuck" ? "stuck" : "question", note: body.note ? String(body.note).slice(0, 200) : undefined, at: Date.now() };
+        logEvent(courseId, { kind: "post", studentId: body.studentId, moduleId: "", text: body.kind === "stuck" ? `Is stuck${body.note ? `: ${String(body.note).slice(0, 80)}` : ""}` : `Raised a hand${body.note ? `: ${String(body.note).slice(0, 80)}` : ""}` });
+      }
+      break;
+    }
+    case "clearHand": {
+      const live = d.live[courseId];
+      if (live) {
+        if (body.all) live.hands = {};
+        else delete live.hands[body.studentId];
+      }
       break;
     }
     case "addMark": {

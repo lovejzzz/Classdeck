@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { publish } from "./bus";
 import { seedChoices, seedCourse, seedEvents, seedMarks, seedPosts, seedProgress, seedStudio } from "./seed";
-import type { ClassEvent, Course, Feedback, Mark, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
+import type { ClassEvent, Course, Feedback, Live, Mark, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
 import type { Manifest } from "./connectors/types";
 
 // 原型用的存储：一个 JSON 文件。换成真数据库时只需要替换这个文件。
@@ -16,6 +16,7 @@ export interface DB {
   choices: Record<string, Record<string, Record<string, string>>>;
   studio: Record<string, { posts: StudioPost[]; feedback: Feedback[] }>;
   marks: Record<string, Mark[]>;
+  live: Record<string, Live>;
   customConnectors: Manifest[];
 }
 
@@ -33,6 +34,7 @@ function fresh(custom: Manifest[] = []): DB {
     choices: { [course.id]: seedChoices() },
     studio: { [course.id]: seedStudio() },
     marks: { [course.id]: seedMarks() },
+    live: { [course.id]: { hands: {} } },
     customConnectors: custom,
   };
 }
@@ -54,6 +56,7 @@ export function db(): DB {
   d.toolLog ??= {};
   d.posts ??= {};
   d.marks ??= {};
+  d.live ??= {};
   d.customConnectors ??= [];
   return d;
 }
@@ -70,7 +73,7 @@ export function save() {
 export function reset() {
   const d = db();
   const f = fresh();
-  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks"] as const) {
+  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live"] as const) {
     (d[k] as Record<string, unknown>).demo = (f[k] as Record<string, unknown>).demo;
   }
   save();

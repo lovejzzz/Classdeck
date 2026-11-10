@@ -332,6 +332,12 @@ export interface ClassEvent {
   text: string;
 }
 
+/** What's happening live in class right now: a quick poll and raised hands. */
+export interface Live {
+  poll?: { id: string; question: string; options: string[]; votes: Record<string, number>; open: boolean; at: number };
+  hands: Record<string, { kind: "question" | "stuck"; note?: string; at: number }>;
+}
+
 export type ProgressMap = Record<string, Record<string, Progress>>; // 学生 → 模块 → 进度
 
 export interface CourseState {
@@ -345,4 +351,6 @@ export interface CourseState {
   studio: { posts: StudioPost[]; feedback: Feedback[] };
   /** Timestamped notes on recordings this viewer can see. */
   marks: Mark[];
+  /** For students, votes are counts only (plus their own) and hands are their own. */
+  live: Live & { myVote?: number; counts?: number[] };
 }

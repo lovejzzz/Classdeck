@@ -1,6 +1,7 @@
 "use client";
 
 import { MarksContext } from "@/components/Marks";
+import { TeacherLive } from "@/components/LiveClass";
 import { Gradebook } from "@/components/teacher/Gradebook";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -112,6 +113,7 @@ export default function TeachPage() {
             ]}
             extra={tab === "plan" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s Collab Studio" }, { keys: "[", label: "Previous / next week ( [ ] )" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
+          <TeacherLive courseId={courseId} state={state} onChanged={refresh} />
           <NotificationCenter
             title="Class activity"
             notes={notes}

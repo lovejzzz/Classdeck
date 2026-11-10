@@ -18,6 +18,7 @@ import { CardDetail } from "@/components/student/CardDetail";
 import { Pile } from "@/components/student/Pile";
 import { useInbox } from "@/components/student/useInbox";
 import { MarksContext } from "@/components/Marks";
+import { StudentLive } from "@/components/LiveClass";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
 import { useConnectors, useCourse, useQuery } from "@/lib/client";
@@ -234,6 +235,7 @@ export default function LearnPage() {
   return (
     <MarksContext.Provider value={{ courseId, me: studentId, marks: state.marks ?? [], names: Object.fromEntries(course.students.map((s) => [s.id, s.name])), refresh: synced }}>
     <div className="flex-1 overflow-x-hidden">
+      {!isPreview && <StudentLive courseId={courseId} studentId={studentId} state={state} onChanged={synced} />}
       {isPreview && (
         <div className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-line bg-white/85 px-4 py-2 text-[13px] backdrop-blur">
           <Icon name="eye" size={14} className="text-ink-3" />
