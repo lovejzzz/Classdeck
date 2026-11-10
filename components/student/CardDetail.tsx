@@ -14,7 +14,7 @@ import { ReadAloud } from "../ReadAloud";
 import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
 import { SelfCheck } from "./SelfCheck";
-import { Checklist, Prompts, promptsToText, Rehearsal, ReviewNote } from "./CardExtras";
+import { Checklist, HighlightableText, Prompts, promptsToText, Rehearsal, ReviewNote } from "./CardExtras";
 import { Studio } from "./Studio";
 import { WorkComposer } from "./WorkComposer";
 
@@ -49,6 +49,7 @@ export function CardDetail(p: DetailProps) {
   const [responses, setResponses] = useState<string[]>(p.progress?.responses ?? []);
   const checklist = m.checklist?.filter((x) => x.trim()) ?? [];
   const [checks, setChecks] = useState<number[]>(p.progress?.checks ?? []);
+  const [highlights, setHighlights] = useState(p.progress?.highlights ?? []);
   const [now] = useState(() => Date.now());
   const due = p.progress?.status === "done" ? undefined : dueInfo(m.due, now);
   const review = p.progress?.review;
@@ -204,7 +205,14 @@ export function CardDetail(p: DetailProps) {
         {m.body && !m.choice && (
           <>
             <div className="mt-5"><ReadAloud text={`${m.title}. ${m.body}`} big={p.big} /></div>
-            <div className={`mt-3 whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}>{m.body}</div>
+            <div className="mt-3">
+              <HighlightableText text={m.body} highlights={highlights} className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}
+                onChange={(h) => {
+                  setHighlights(h);
+                  p.optimistic({ highlights: h });
+                  op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, highlights: h }).then(p.onChanged);
+                }} />
+            </div>
           </>
         )}
 

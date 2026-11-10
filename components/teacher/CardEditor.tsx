@@ -281,13 +281,14 @@ export function CardEditor({
           </Section>
         )}
 
-        {(m.type === "practice" || m.type === "quiz") && (
-          <Section title="Questions" aside={m.type === "quiz" ? (
+        {(m.type === "practice" || m.type === "quiz" || m.type === "read") && (
+          <Section title={m.type === "read" ? "Check for understanding" : "Questions"} aside={m.type === "quiz" ? (
             <label className="flex items-center gap-2 text-[12px] text-ink-2">Tries
               <Seg value={String(m.attempts ?? 1)} options={[["1", "1"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ attempts: Number(v) > 1 ? Number(v) : undefined })} />
             </label>
           ) : undefined}>
-            <QuestionsEditor questions={m.questions ?? []} onChange={(questions) => set({ questions })} />
+            {m.type === "read" && !m.questions?.length && <p className="mb-2 text-[12px] text-ink-3">Optional. Add a question or two; students get instant feedback and the card finishes when they’ve answered.</p>}
+            <QuestionsEditor questions={m.questions ?? []} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
           </Section>
         )}
 

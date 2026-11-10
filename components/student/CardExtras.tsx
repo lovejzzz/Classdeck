@@ -169,3 +169,99 @@ export function Rehearsal({ target, takes, courseId, studentId, moduleId, onSave
     </section>
   );
 }
+
+type Highlight = { start: number; end: number; note?: string };
+
+/**
+ * Card text you can highlight: select a passage, press "Highlight", optionally add a note.
+ * Highlights are stored as character offsets into the text, so they survive re-renders.
+ */
+export function HighlightableText({ text, highlights, onChange, className }: { text: string; highlights: Highlight[]; onChange: (h: Highlight[]) => void; className: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [pending, setPending] = useState<{ start: number; end: number; x: number; y: number } | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
+  const sorted = [...highlights].sort((a, b) => a.start - b.start);
+
+  function onSelect() {
+    const sel = window.getSelection();
+    const el = box.current;
+    if (!sel || sel.isCollapsed || !el || !sel.rangeCount) return setPending(null);
+    const r = sel.getRangeAt(0);
+    if (!el.contains(r.commonAncestorContainer)) return setPending(null);
+    const pre = document.createRange();
+    pre.selectNodeContents(el);
+    pre.setEnd(r.startContainer, r.startOffset);
+    const start = pre.toString().length;
+    const end = start + r.toString().length;
+    if (end - start < 2) return setPending(null);
+    const rect = r.getBoundingClientRect();
+    const host = el.getBoundingClientRect();
+    setPending({ start, end, x: rect.left - host.left + rect.width / 2, y: rect.top - host.top });
+  }
+
+  function add() {
+    if (!pending) return;
+    // Merge with anything it overlaps.
+    let { start, end } = pending;
+    const keep = sorted.filter((h) => {
+      if (h.end < start || h.start > end) return true;
+      start = Math.min(start, h.start);
+      end = Math.max(end, h.end);
+      return false;
+    });
+    onChange([...keep, { start, end }]);
+    setPending(null);
+    window.getSelection()?.removeAllRanges();
+  }
+
+  // Split the text into plain and highlighted runs.
+  const parts: { t: string; i?: number }[] = [];
+  let at = 0;
+  sorted.forEach((h, i) => {
+    if (h.start > at) parts.push({ t: text.slice(at, h.start) });
+    parts.push({ t: text.slice(Math.max(h.start, at), h.end), i });
+    at = Math.max(at, h.end);
+  });
+  if (at < text.length) parts.push({ t: text.slice(at) });
+
+  return (
+    <div>
+      <div className="relative">
+        <div ref={box} onMouseUp={onSelect} onKeyUp={onSelect} className={className}>
+          {parts.map((p, k) => (p.i === undefined ? p.t : (
+            <mark key={k} onClick={() => setEditing(p.i!)} className={`cursor-pointer rounded-[3px] px-[1px] text-inherit transition-colors ${editing === p.i ? "bg-[#f5d77a]" : "bg-[#fbe9a6] hover:bg-[#f5d77a]"}`}>{p.t}</mark>
+          )))}
+        </div>
+        {pending && (
+          <button onMouseDown={(e) => e.preventDefault()} onClick={add}
+            className="pop absolute z-10 flex h-8 -translate-x-1/2 -translate-y-[calc(100%+6px)] items-center gap-1.5 rounded-full bg-ink px-3 text-[12.5px] text-white shadow-lg"
+            style={{ left: pending.x, top: pending.y }}>
+            <span className="h-2.5 w-2.5 rounded-sm bg-[#fbe9a6]" /> Highlight
+          </button>
+        )}
+      </div>
+      {sorted.length > 0 && (
+        <div className="mt-4 rounded-xl border border-line p-3">
+          <div className="eyebrow mb-2">Your highlights</div>
+          <ul className="space-y-2">
+            {sorted.map((h, i) => (
+              <li key={`${h.start}-${h.end}`} className="rise text-[13px]">
+                <div className="flex items-start gap-2">
+                  <span className="mt-[3px] h-3 w-1 flex-none rounded-full bg-[#f0cf62]" />
+                  <button onClick={() => setEditing(editing === i ? null : i)} className="min-w-0 flex-1 text-left leading-snug text-ink-2 hover:text-ink">“{text.slice(h.start, h.end).trim().slice(0, 140)}{h.end - h.start > 140 ? "…" : ""}”</button>
+                  <button onClick={() => { onChange(sorted.filter((_, k) => k !== i)); setEditing(null); }} aria-label="Remove highlight" className="flex-none text-ink-3 hover:text-bad"><Icon name="x" size={13} /></button>
+                </div>
+                {(editing === i || h.note) && (
+                  <input defaultValue={h.note ?? ""} autoFocus={editing === i} placeholder="Add a note to this highlight"
+                    onBlur={(e) => { if ((e.target.value || undefined) !== h.note) onChange(sorted.map((x, k) => (k === i ? { ...x, note: e.target.value || undefined } : x))); }}
+                    onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                    className="field ml-3 mt-1 h-8 w-[calc(100%-0.75rem)] py-0 text-[12.5px]" />
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}

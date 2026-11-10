@@ -225,6 +225,8 @@ export interface Progress {
   ratings?: Record<string, number>;
   /** Kept as one of the student's selected works. */
   starred?: boolean;
+  /** Passages the student highlighted in the card text (character offsets), with an optional note. */
+  highlights?: { start: number; end: number; note?: string }[];
   /** Checklist items ticked, by index. */
   checks?: number[];
   /** Answers to the card's guided prompts, by index. */

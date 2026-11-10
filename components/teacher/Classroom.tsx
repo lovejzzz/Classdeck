@@ -338,6 +338,16 @@ export function Classroom({
                 {selProgress.rehearsals.map((x, i) => <span key={i} className={`rounded-full px-1.5 font-mono text-[11px] ${selModule.timer && Math.abs(x - selModule.timer) <= selModule.timer * 0.1 ? "bg-ok/10 text-ok" : "bg-lane text-ink-2"}`}>{fmtSec(x)}</span>)}
               </div>
             ) : null}
+            {selProgress?.highlights?.length ? (
+              <div className="mt-3 space-y-1.5">
+                <div className="text-[12px] text-ink-3">Highlighted</div>
+                {selProgress.highlights.map((h, i) => (
+                  <p key={i} className="border-l-2 border-[#f0cf62] pl-2.5 text-[13px] leading-snug">
+                    “{selModule.body.slice(h.start, h.end).trim()}”{h.note && <span className="block text-[12.5px] text-ink-3">{h.note}</span>}
+                  </p>
+                ))}
+              </div>
+            ) : null}
             {selProgress?.output ? (
               <p className="mt-3 whitespace-pre-wrap rounded-lg bg-lane px-3.5 py-3 text-[13.5px] leading-relaxed">{selProgress.output}</p>
             ) : (

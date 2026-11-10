@@ -270,6 +270,13 @@ export async function POST(request: Request, { params }: Ctx) {
         const n = steps.length;
         p.checks = [...new Set(body.checks.map(Number).filter((i: number) => Number.isInteger(i) && i >= 0 && i < n))] as number[];
       }
+      if (Array.isArray(body.highlights)) {
+        const len = mod?.body.length ?? 0;
+        p.highlights = body.highlights
+          .map((h: { start: unknown; end: unknown; note?: unknown }) => ({ start: Math.round(Number(h.start)), end: Math.round(Number(h.end)), note: h.note ? String(h.note).slice(0, 500) : undefined }))
+          .filter((h: { start: number; end: number }) => h.start >= 0 && h.end > h.start && h.end <= len)
+          .slice(0, 50);
+      }
       if (Array.isArray(body.responses)) p.responses = body.responses.slice(0, 12).map((x: unknown) => String(x ?? "").slice(0, 4000));
       if (body.status === "done" && steps.length && (p.checks?.length ?? 0) < steps.length) return fail("Tick every step on the checklist first");
       if (body.status) p.status = body.status;
@@ -341,7 +348,8 @@ export async function POST(request: Request, { params }: Ctx) {
       p.updatedAt = Date.now();
       const total = found.mod.questions!.length;
       const answered = Object.keys(p.answers).length;
-      if (found.mod.type === "practice" && !right) {
+      const instant = found.mod.type !== "quiz";
+      if (instant && !right) {
         logEvent(courseId, {
           kind: "wrong", studentId: body.studentId, moduleId: body.moduleId,
           text: q.kind === "short"
@@ -349,10 +357,10 @@ export async function POST(request: Request, { params }: Ctx) {
             : `Q${found.mod.questions!.indexOf(q) + 1}: chose “${q.options[given as number]}”; answer is “${q.options[q.answer ?? 0]}”`,
         });
       }
-      if (found.mod.type === "practice" && answered === total && p.status !== "done") {
+      if (instant && answered === total && p.status !== "done") {
         logEvent(courseId, { kind: "done", studentId: body.studentId, moduleId: body.moduleId, text: `Finished “${found.mod.title}”` });
       }
-      if (found.mod.type === "practice") {
+      if (instant) {
         p.score = Object.values(p.results).filter(Boolean).length;
         if (answered === total) p.status = "done";
         extra = { correct: right, explain: right ? q.explain : undefined };
