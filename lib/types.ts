@@ -68,10 +68,23 @@ export interface Comment {
 
 export interface Question {
   id: string;
+  /** "choice" (default): pick one option. "short": type a short answer. */
+  kind?: "choice" | "short";
   text: string;
   options: string[];
   /** 正确选项的下标。发给学生前会被服务器去掉。 */
   answer?: number;
+  /** Short answers: accepted answers (case and punctuation ignored). Stripped before sending to students. */
+  accept?: string[];
+  /** Why the answer is right. Shown once the student has answered correctly, or after a quiz is submitted. */
+  explain?: string;
+}
+
+/** The teacher's response to a student's work on one card. */
+export interface Review {
+  verdict: "good" | "revise";
+  text: string;
+  at: number;
 }
 
 export type Audience =
@@ -105,6 +118,16 @@ export interface Module {
   choice?: { slot: string; variant: string; recommended: boolean; count: number };
   /** Set only for students: the version they picked in a choice slot. */
   picked?: boolean;
+  /** Due date, YYYY-MM-DD. */
+  due?: string;
+  /** Steps students tick off; all must be ticked before the card is done. */
+  checklist?: string[];
+  /** Guided prompts: each gets its own answer box. */
+  prompts?: string[];
+  /** Rehearsal timer target, in seconds (practice cards). */
+  timer?: number;
+  /** Quiz: how many tries a student gets (default 1). */
+  attempts?: number;
 }
 
 export interface SessionPlan {
@@ -177,7 +200,8 @@ export type Status = "todo" | "doing" | "done";
 export interface Progress {
   status: Status;
   output?: string;
-  answers?: Record<string, number>;
+  /** Option index for choice questions, text for short answers. */
+  answers?: Record<string, number | string>;
   results?: Record<string, boolean>;
   score?: number;
   /** Recordings, files, and links the student added as their work. */
@@ -186,6 +210,19 @@ export interface Progress {
   ratings?: Record<string, number>;
   /** Kept as one of the student's selected works. */
   starred?: boolean;
+  /** Checklist items ticked, by index. */
+  checks?: number[];
+  /** Answers to the card's guided prompts, by index. */
+  responses?: string[];
+  /** Timed rehearsals, in seconds, newest last. */
+  rehearsals?: number[];
+  /** Quiz: which try this is (1-based) and the best score so far. */
+  attempt?: number;
+  best?: number;
+  /** The teacher's feedback on this work. */
+  review?: Review;
+  /** Sent to students only: answer keys and explanations they've earned the right to see. */
+  reveal?: Record<string, { answer?: number; accept?: string; explain?: string }>;
   updatedAt: number;
 }
 

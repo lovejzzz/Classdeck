@@ -17,6 +17,7 @@ import { scrollToWeek, WeekNav } from "@/components/WeekNav";
 import { CardDetail } from "@/components/student/CardDetail";
 import { Pile } from "@/components/student/Pile";
 import { useInbox } from "@/components/student/useInbox";
+import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
 import { useConnectors, useCourse, useQuery } from "@/lib/client";
 import { PRESET_LABELS, fromPreset } from "@/lib/profile";
@@ -60,7 +61,7 @@ export default function LearnPage() {
   const query = useQuery();
   const narrow = useNarrow();
   const router = useRouter();
-  const inbox = useInbox(state?.course, studentId);
+  const inbox = useInbox(state?.course, studentId, state?.progress[studentId]);
   const [view, setView] = useState<"hand" | "done">("hand");
   const [lift, setLift] = useState<LiftState | null>(null);
   const [local, setLocal] = useState<Record<string, Partial<Progress>>>({});
@@ -72,6 +73,7 @@ export default function LearnPage() {
   const heroRef = useRef<HTMLDivElement>(null);
   const [openWeeks, setOpenWeeks] = useState<Set<string>>(new Set());
   const [burst, setBurst] = useState<{ x: number; y: number; colors: string[]; key: number } | null>(null);
+  const [now] = useState(() => Date.now());
 
   const course = state?.course;
   const previewPreset = query?.get("preset") as PresetId | null;
@@ -111,6 +113,8 @@ export default function LearnPage() {
   const mine: Record<string, Progress> = { ...server };
   for (const [id, patch] of Object.entries(local)) mine[id] = { ...(server[id] ?? { status: "todo", updatedAt: 0 }), ...patch };
   const statusOf = (id: string): Status => mine[id]?.status ?? "todo";
+  // The teacher asked for another go and the student hasn't finished it again yet.
+  const revising = (id: string) => mine[id]?.review?.verdict === "revise" && statusOf(id) !== "done";
   const lockedIn = (l: Lesson, m: Module) => {
     const i = l.modules.indexOf(m);
     return (profile.autonomy === "sequential" || !!m.gate) && l.modules.slice(0, i).some((x) => statusOf(x.id) !== "done");
@@ -138,7 +142,7 @@ export default function LearnPage() {
     return {
       id: m.id,
       label: `${m.title}, ${status === "done" ? "done" : locked ? "locked" : status === "doing" ? "in progress" : "not started"}`,
-      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal} big={big && !narrow} />,
+      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal} big={big && !narrow} due={dueInfo(m.due, now)} badge={revising(m.id) ? "Revise" : undefined} />,
       back: <CardBack locked={locked} />,
       faceDown: locked,
       locked,
@@ -169,7 +173,8 @@ export default function LearnPage() {
   const playable = (l: Lesson) => l.modules.filter((m) => statusOf(m.id) !== "done" && !lockedIn(l, m));
   const upNext = (() => {
     const today = playable(current);
-    const m = today.find((x) => statusOf(x.id) === "doing") ?? today[0];
+    // Revisions first, then what's late, then what's already started.
+    const m = today.find((x) => revising(x.id)) ?? today.find((x) => x.due && dueInfo(x.due, now)?.tone === "late") ?? today.find((x) => statusOf(x.id) === "doing") ?? today[0];
     if (m) return { lesson: current, m };
     const later = lessons.slice(lessons.indexOf(current) + 1);
     for (const l of later) {
@@ -400,7 +405,7 @@ export default function LearnPage() {
                 {upNext ? (
                   <>
                     <div className="order-2 min-w-0 text-left sm:order-1 sm:text-right">
-                      <div className="text-[12px] font-medium uppercase tracking-[0.1em] text-ink-3">{statusOf(upNext.m.id) === "doing" ? "Pick up where you left off" : upNext.lesson.id === current.id ? "Up next" : "Get ahead"}</div>
+                      <div className="text-[12px] font-medium uppercase tracking-[0.1em] text-ink-3">{revising(upNext.m.id) ? "Your teacher asked for a revision" : dueInfo(upNext.m.due, now)?.tone === "late" ? "Overdue" : statusOf(upNext.m.id) === "doing" ? "Pick up where you left off" : upNext.lesson.id === current.id ? "Up next" : "Get ahead"}</div>
                       <div className="mt-1 max-w-[12rem] text-[15px] font-medium leading-snug">{upNext.m.title}</div>
                       <button onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)} className="btn btn-dark press mt-3 h-9 px-4">
                         {statusOf(upNext.m.id) === "doing" ? "Continue" : "Play this card"} <Icon name="arrow" size={13} />
@@ -415,7 +420,7 @@ export default function LearnPage() {
                       hidden={lift?.id === upNext.m.id}
                       onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)}
                     >
-                      <CardFace m={upNext.m} status={statusOf(upNext.m.id)} index={upNext.lesson.modules.indexOf(upNext.m)} total={upNext.lesson.modules.length} personal={upNext.m.personal} />
+                      <CardFace m={upNext.m} status={statusOf(upNext.m.id)} index={upNext.lesson.modules.indexOf(upNext.m)} total={upNext.lesson.modules.length} personal={upNext.m.personal} due={dueInfo(upNext.m.due, now)} badge={revising(upNext.m.id) ? "Revise" : undefined} />
                     </TiltCard>
                     </div>
                   </>

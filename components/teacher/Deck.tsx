@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { dueAt } from "@/lib/grading";
 import { op } from "@/lib/client";
 import { CARD_SIZE } from "@/lib/cards";
 import type { ConnectorInfo } from "@/lib/connectors/types";
@@ -336,7 +337,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                         cards={l.modules.map((m, i) => ({
                           id: m.id,
                           label: `Edit ${m.title}`,
-                          front: <CardFace m={m} index={i} total={l.modules.length} badge={studentsOf(m)} />,
+                          front: <CardFace m={m} index={i} total={l.modules.length} badge={studentsOf(m)} due={m.due ? { label: `Due ${new Date(dueAt(m.due)).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, tone: "later" } : undefined} />,
                         }))}
                         layout="row"
                         size={SIZE}

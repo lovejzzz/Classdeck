@@ -2,7 +2,11 @@ import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
 import { safeUrl } from "@/lib/uploads";
-import type { Attachment, Course, CourseState, Lesson, Module, Post, Progress, ProgressMap, Week } from "@/lib/types";
+import { isCorrect } from "@/lib/grading";
+import type { Attachment, Course, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
+
+/** A question as students receive it: no answer key, no accepted answers, no explanation. */
+const publicQuestion = (q: Question): Question => ({ id: q.id, kind: q.kind, text: q.text, options: q.kind === "short" ? [] : q.options });
 
 type Ctx = { params: Promise<{ courseId: string }> };
 
@@ -31,7 +35,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
           ...m,
           audience: { kind: "all" as const },
           personal: m.audience.kind !== "all" && !m.choice && !m.picked,
-          questions: m.questions?.map((q) => ({ id: q.id, text: q.text, options: q.options })),
+          questions: m.questions?.map(publicQuestion),
         })),
       })),
     })),
@@ -52,7 +56,7 @@ export async function GET(request: Request, { params }: Ctx) {
     const view: CourseState = {
       course: {
         ...course, students: [], groups: [], joinCode: "", access: undefined,
-        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.map((m) => ({ ...m, questions: m.questions?.map((q) => ({ id: q.id, text: q.text, options: q.options })) })) })) })),
+        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.map((m) => ({ ...m, questions: m.questions?.map(publicQuestion) })) })) })),
       },
       progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] },
     };
@@ -72,8 +76,20 @@ export async function GET(request: Request, { params }: Ctx) {
   if (as) {
     const own: Record<string, Progress> = {};
     for (const [mid, p] of Object.entries(all[as] ?? {})) {
-      const isQuiz = findModule(course, mid)?.mod.type === "quiz";
-      own[mid] = isQuiz && p.status !== "done" ? { ...p, results: undefined, score: undefined } : p;
+      const mod = findModule(course, mid)?.mod;
+      const isQuiz = mod?.type === "quiz";
+      const view: Progress = isQuiz && p.status !== "done" ? { ...p, results: undefined, score: undefined } : { ...p };
+      // Explanations (and, after a quiz, the key) once they've been earned.
+      if (mod?.questions?.length) {
+        const reveal: NonNullable<Progress["reveal"]> = {};
+        for (const q of mod.questions) {
+          const earned = isQuiz ? p.status === "done" : p.results?.[q.id] === true;
+          if (!earned) continue;
+          reveal[q.id] = { explain: q.explain || undefined, ...(isQuiz ? { answer: q.kind === "short" ? undefined : q.answer, accept: q.kind === "short" ? q.accept?.[0] : undefined } : {}) };
+        }
+        view.reveal = reveal;
+      }
+      own[mid] = view;
     }
     progress = { [as]: own };
     const group = groupOf(course, as);
@@ -236,6 +252,14 @@ export async function POST(request: Request, { params }: Ctx) {
       if (body.status === "done" && p.status !== "done") {
         logEvent(courseId, { kind: "done", studentId: body.studentId, moduleId: body.moduleId, text: `Finished “${findModule(course, body.moduleId)?.mod.title ?? ""}”` });
       }
+      const mod = findModule(course, body.moduleId)?.mod;
+      const steps = mod?.checklist?.filter((x) => x.trim()) ?? [];
+      if (Array.isArray(body.checks)) {
+        const n = steps.length;
+        p.checks = [...new Set(body.checks.map(Number).filter((i: number) => Number.isInteger(i) && i >= 0 && i < n))] as number[];
+      }
+      if (Array.isArray(body.responses)) p.responses = body.responses.slice(0, 12).map((x: unknown) => String(x ?? "").slice(0, 4000));
+      if (body.status === "done" && steps.length && (p.checks?.length ?? 0) < steps.length) return fail("Tick every step on the checklist first");
       if (body.status) p.status = body.status;
       if (typeof body.output === "string") p.output = body.output.slice(0, 8000);
       if (p.status === "todo") p.status = "doing";
@@ -297,16 +321,20 @@ export async function POST(request: Request, { params }: Ctx) {
       if (!found || !q) break;
       const p = mine(body.studentId, body.moduleId);
       if (p.status === "done" && found.mod.type === "quiz") break;
-      (p.answers ??= {})[q.id] = body.choice;
-      (p.results ??= {})[q.id] = body.choice === q.answer;
+      const given: number | string = q.kind === "short" ? String(body.text ?? "").slice(0, 200) : Number(body.choice);
+      const right = isCorrect(q, given);
+      (p.answers ??= {})[q.id] = given;
+      (p.results ??= {})[q.id] = right;
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
       const total = found.mod.questions!.length;
       const answered = Object.keys(p.answers).length;
-      if (found.mod.type === "practice" && body.choice !== q.answer) {
+      if (found.mod.type === "practice" && !right) {
         logEvent(courseId, {
           kind: "wrong", studentId: body.studentId, moduleId: body.moduleId,
-          text: `Q${found.mod.questions!.indexOf(q) + 1}: chose “${q.options[body.choice]}”; answer is “${q.options[q.answer ?? 0]}”`,
+          text: q.kind === "short"
+            ? `Q${found.mod.questions!.indexOf(q) + 1}: wrote “${given}”; accepted: “${q.accept?.[0] ?? ""}”`
+            : `Q${found.mod.questions!.indexOf(q) + 1}: chose “${q.options[given as number]}”; answer is “${q.options[q.answer ?? 0]}”`,
         });
       }
       if (found.mod.type === "practice" && answered === total && p.status !== "done") {
@@ -315,7 +343,7 @@ export async function POST(request: Request, { params }: Ctx) {
       if (found.mod.type === "practice") {
         p.score = Object.values(p.results).filter(Boolean).length;
         if (answered === total) p.status = "done";
-        extra = { correct: body.choice === q.answer, answer: q.answer };
+        extra = { correct: right, explain: right ? q.explain : undefined };
       }
       break;
     }
@@ -327,8 +355,47 @@ export async function POST(request: Request, { params }: Ctx) {
         logEvent(courseId, { kind: "quiz", studentId: body.studentId, moduleId: body.moduleId, text: `Submitted “${quiz?.title ?? ""}”: ${p.score}/${quiz?.questions?.length ?? 0}` });
       }
       p.status = "done";
+      p.attempt ??= 1;
+      p.best = Math.max(p.best ?? 0, p.score);
       p.updatedAt = Date.now();
       extra = { score: p.score };
+      break;
+    }
+    case "retakeQuiz": {
+      const quiz = findModule(course, body.moduleId)?.mod;
+      const p = mine(body.studentId, body.moduleId);
+      if (!quiz || quiz.type !== "quiz" || p.status !== "done") return fail("Nothing to retake");
+      if ((p.attempt ?? 1) >= (quiz.attempts ?? 1)) return fail("You’ve used all your tries on this quiz");
+      p.attempt = (p.attempt ?? 1) + 1;
+      p.answers = {};
+      p.results = {};
+      p.score = undefined;
+      p.status = "doing";
+      p.updatedAt = Date.now();
+      break;
+    }
+    case "rehearse": {
+      const sec = Math.round(Number(body.seconds));
+      if (!(sec >= 1 && sec <= 3600)) return fail("That rehearsal time doesn’t look right");
+      const p = mine(body.studentId, body.moduleId);
+      p.rehearsals = [...(p.rehearsals ?? []), sec].slice(-20);
+      if (p.status === "todo") p.status = "doing";
+      p.updatedAt = Date.now();
+      break;
+    }
+    case "review": {
+      // —— teacher ——
+      if (!findModule(course, body.moduleId)) return fail("No such card");
+      if (!course.students.some((st) => st.id === body.studentId)) return fail("No such student");
+      const p = mine(body.studentId, body.moduleId);
+      if (body.clear) {
+        p.review = undefined;
+        break;
+      }
+      const verdict = body.verdict === "revise" ? "revise" : "good";
+      p.review = { verdict, text: String(body.text ?? "").slice(0, 2000), at: Date.now() };
+      // Asking for a revision puts the card back in the student's hand.
+      if (verdict === "revise" && p.status === "done") p.status = "doing";
       break;
     }
     case "addPost": {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Note } from "../NotificationCenter";
-import type { Course } from "@/lib/types";
+import type { Course, Progress } from "@/lib/types";
 
 // 学生端的通知：老师给你加了新卡片、换了今天的课。
 // 在浏览器里记住上次看到的模块，和这次对比。这只是给这台设备的便利，丢了也不影响学习。
@@ -14,7 +14,7 @@ interface Saved {
   seenAt: number;
 }
 
-export function useInbox(course: Course | undefined, studentId: string) {
+export function useInbox(course: Course | undefined, studentId: string, progress?: Record<string, Progress>) {
   const key = course ? `inbox:v2:${course.id}:${studentId}` : "";
   const [saved, setSaved] = useState<Saved | null>(null);
 
@@ -65,7 +65,19 @@ export function useInbox(course: Course | undefined, studentId: string) {
     } catch {}
   }, [key]);
 
-  const unread = (saved?.notes ?? []).filter((n) => n.at > (saved?.seenAt ?? 0));
+  // Teacher feedback comes straight from the server, so it shows on every device.
+  const reviews: Note[] = [];
+  if (course && progress) {
+    for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) {
+      const r = progress[m.id]?.review;
+      if (!r) continue;
+      reviews.push({
+        id: `r:${m.id}:${r.at}`, at: r.at, group: l.id, groupLabel: l.title, source: l.title, icon: r.verdict === "revise" ? "reset" : "check",
+        title: r.verdict === "revise" ? "Your teacher asked for a revision" : "Your teacher reviewed your work", text: r.text ? `${m.title}: ${r.text}` : m.title,
+      });
+    }
+  }
+  const unread = [...(saved?.notes ?? []), ...reviews].filter((n) => n.at > (saved?.seenAt ?? 0)).sort((a, b) => b.at - a.at);
   function clear() {
     if (!saved) return;
     const next = { ...saved, seenAt: Date.now() };

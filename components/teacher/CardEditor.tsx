@@ -6,6 +6,7 @@ import { CARD_SIZE, formatSize, hostOf } from "@/lib/cards";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { slotVariants, uid, wallOf } from "@/lib/profile";
 import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
+import { fmtSec, isoDay } from "@/lib/grading";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
 import { TYPE_META, TYPE_ORDER } from "@/lib/ui";
@@ -164,6 +165,14 @@ export function CardEditor({
                   className={`press h-7 rounded-md px-2.5 text-[12.5px] ${m.submitTo === v ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>{label}</button>
               ))}
             </div>
+            <span className="text-ink-2">Due</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="field h-8 w-40 py-0" />
+              {([["Today", 0], ["+3 days", 3], ["+1 week", 7]] as const).map(([label, n]) => (
+                <button key={label} onClick={() => set({ due: isoDay(n) })} className="btn btn-quiet press h-7 px-2 text-[12px]">{label}</button>
+              ))}
+              {m.due && <button onClick={() => set({ due: undefined })} aria-label="Clear due date" className="btn btn-quiet press h-7 w-7 justify-center px-0"><Icon name="x" size={12} /></button>}
+            </div>
             <span className="self-start pt-1.5 text-ink-2">Done when</span>
             <textarea value={m.criteria ?? ""} onChange={(e) => set({ criteria: e.target.value || undefined })} rows={2} placeholder="What counts as finished" aria-label="Completion criteria" className="field resize-none" />
             {skills.length > 0 && (
@@ -182,6 +191,37 @@ export function CardEditor({
             )}
           </div>
         </Section>
+
+        {m.type !== "wall" && m.type !== "studio" && m.type !== "quiz" && (
+          <Section title="How students work">
+            <div className="space-y-4 text-[13px]">
+              <div>
+                <div className="mb-1 flex items-center gap-2"><Icon name="check" size={13} className="text-ok" /><span className="font-medium">Checklist</span><span className="text-ink-3">· one step per line; all must be ticked to finish</span></div>
+                <textarea value={(m.checklist ?? []).join("\n")} rows={Math.max(2, (m.checklist?.length ?? 0) + 1)}
+                  onChange={(e) => set({ checklist: e.target.value ? e.target.value.split("\n") : undefined })}
+                  onBlur={() => { const c = (m.checklist ?? []).map((x) => x.trim()).filter(Boolean); set({ checklist: c.length ? c : undefined }); }}
+                  placeholder={"Record a 60–90 second take\nInclude one example for your audience\nListen back once"} aria-label="Checklist steps" className="field resize-y leading-relaxed" />
+              </div>
+              {["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && (
+                <div>
+                  <div className="mb-1 flex items-center gap-2"><Icon name="text" size={13} /><span className="font-medium">Guided prompts</span><span className="text-ink-3">· each gets its own answer box</span></div>
+                  <textarea value={(m.prompts ?? []).join("\n")} rows={Math.max(2, (m.prompts?.length ?? 0) + 1)}
+                    onChange={(e) => set({ prompts: e.target.value ? e.target.value.split("\n") : undefined })}
+                    onBlur={() => { const c = (m.prompts ?? []).map((x) => x.trim()).filter(Boolean); set({ prompts: c.length ? c : undefined }); }}
+                    placeholder={"What did you change?\nWhy did you change it?\nWhat will you try next time?"} aria-label="Guided prompts" className="field resize-y leading-relaxed" />
+                </div>
+              )}
+              {(m.type === "practice" || m.type === "explore") && (
+                <div>
+                  <div className="mb-1.5 flex items-center gap-2"><Icon name="timer" size={13} /><span className="font-medium">Timed rehearsal</span><span className="text-ink-3">· a stopwatch with a target</span></div>
+                  <Seg value={String(m.timer ?? 0)} options={[["0", "Off"], ["30", "0:30"], ["60", "1:00"], ["90", "1:30"], ["120", "2:00"], ["180", "3:00"], ["300", "5:00"]]}
+                    onPick={(v) => set({ timer: Number(v) || undefined })} />
+                  {m.timer ? <p className="mt-1.5 text-[12px] text-ink-3">Students see a {fmtSec(m.timer)} target and every run they time.</p> : null}
+                </div>
+              )}
+            </div>
+          </Section>
+        )}
 
         <Section title="Media">
           <div className="space-y-1.5">
@@ -241,7 +281,11 @@ export function CardEditor({
         )}
 
         {(m.type === "practice" || m.type === "quiz") && (
-          <Section title="Questions">
+          <Section title="Questions" aside={m.type === "quiz" ? (
+            <label className="flex items-center gap-2 text-[12px] text-ink-2">Tries
+              <Seg value={String(m.attempts ?? 1)} options={[["1", "1"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ attempts: Number(v) > 1 ? Number(v) : undefined })} />
+            </label>
+          ) : undefined}>
             <QuestionsEditor questions={m.questions ?? []} onChange={(questions) => set({ questions })} />
           </Section>
         )}
@@ -362,27 +406,48 @@ function QuestionsEditor({ questions, onChange }: { questions: Question[]; onCha
   const set = (id: string, patch: Partial<Question>) => onChange(questions.map((q) => (q.id === id ? { ...q, ...patch } : q)));
   return (
     <div className="space-y-2.5">
-      <p className="text-[12px] text-ink-3">Tick the circle next to the right answer.</p>
-      {questions.map((q, qi) => (
-        <div key={q.id} className="rise rounded-xl border border-line p-3">
-          <div className="flex items-center gap-2">
-            <span className="mono w-5">{String(qi + 1).padStart(2, "0")}</span>
-            <input value={q.text} onChange={(e) => set(q.id, { text: e.target.value })} placeholder="Question" aria-label={`Question ${qi + 1}`} className="field" />
-            <button onClick={() => onChange(questions.filter((x) => x.id !== q.id))} aria-label="Delete question" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={14} /></button>
+      <p className="text-[12px] text-ink-3">Tick the circle next to the right answer. For short answers, list every answer you’ll accept.</p>
+      {questions.map((q, qi) => {
+        const short = q.kind === "short";
+        return (
+          <div key={q.id} className="rise rounded-xl border border-line p-3">
+            <div className="flex items-center gap-2">
+              <span className="mono w-5">{String(qi + 1).padStart(2, "0")}</span>
+              <input value={q.text} onChange={(e) => set(q.id, { text: e.target.value })} placeholder="Question" aria-label={`Question ${qi + 1}`} className="field" />
+              <button onClick={() => onChange(questions.filter((x) => x.id !== q.id))} aria-label="Delete question" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={14} /></button>
+            </div>
+            <div className="mt-2 pl-7">
+              <Seg value={short ? "short" : "choice"} options={[["choice", "Multiple choice"], ["short", "Short answer"]]}
+                onPick={(v) => set(q.id, v === "short" ? { kind: "short", accept: q.accept?.length ? q.accept : [""] } : { kind: undefined, options: q.options.length ? q.options : ["", ""] })} />
+            </div>
+            {short ? (
+              <div className="mt-2 pl-7">
+                <input value={(q.accept ?? []).join(", ")} onChange={(e) => set(q.id, { accept: e.target.value.split(",").map((x) => x.trimStart()) })}
+                  placeholder="Accepted answers, separated by commas" aria-label={`Accepted answers for question ${qi + 1}`} className="field h-8 border-ok/40 py-0" />
+                <p className="mt-1 text-[11.5px] text-ink-3">Capitals, spaces, and punctuation are ignored when checking.</p>
+              </div>
+            ) : (
+              <>
+                <div className="mt-2 space-y-1.5 pl-7">
+                  {q.options.map((opt, oi) => (
+                    <label key={oi} className="flex items-center gap-2">
+                      <input type="radio" name={`ans-${q.id}`} checked={q.answer === oi} onChange={() => set(q.id, { answer: oi })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />
+                      <input value={opt} onChange={(e) => set(q.id, { options: q.options.map((o, k) => (k === oi ? e.target.value : o)) })} placeholder={`Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className={`field h-8 py-0 ${q.answer === oi ? "border-ok/50" : ""}`} />
+                    </label>
+                  ))}
+                </div>
+                {q.options.length < 4 && (
+                  <button onClick={() => set(q.id, { options: [...q.options, ""] })} className="btn btn-quiet press ml-6 mt-1 h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>
+                )}
+              </>
+            )}
+            <div className="mt-2 pl-7">
+              <input value={q.explain ?? ""} onChange={(e) => set(q.id, { explain: e.target.value || undefined })}
+                placeholder="Why this is the answer (shown after answering, optional)" aria-label={`Explanation for question ${qi + 1}`} className="field h-8 py-0 text-[12.5px]" />
+            </div>
           </div>
-          <div className="mt-2 space-y-1.5 pl-7">
-            {q.options.map((opt, oi) => (
-              <label key={oi} className="flex items-center gap-2">
-                <input type="radio" name={`ans-${q.id}`} checked={q.answer === oi} onChange={() => set(q.id, { answer: oi })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />
-                <input value={opt} onChange={(e) => set(q.id, { options: q.options.map((o, k) => (k === oi ? e.target.value : o)) })} placeholder={`Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className={`field h-8 py-0 ${q.answer === oi ? "border-ok/50" : ""}`} />
-              </label>
-            ))}
-          </div>
-          {q.options.length < 4 && (
-            <button onClick={() => set(q.id, { options: [...q.options, ""] })} className="btn btn-quiet press ml-6 mt-1 h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>
-          )}
-        </div>
-      ))}
+        );
+      })}
       <button onClick={() => onChange([...questions, { id: uid("q-"), text: "", options: ["", ""], answer: 0 }])} className="btn btn-ghost press"><Icon name="plus" size={13} /> Add a question</button>
     </div>
   );

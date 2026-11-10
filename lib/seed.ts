@@ -1,3 +1,4 @@
+import { isoDay } from "./grading";
 import type { Attachment, ClassEvent, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
 
 // The demo course: CaPS, a seven-week presentation skills course (Week 0 onboarding + six skill weeks),
@@ -89,19 +90,37 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
         M("w1-3", "practice", "My core message",
           "Write the main point of your presentation in one sentence. Then go through your notes and cross out anything that doesn’t support that sentence.\n\nA useful test: could someone in your audience repeat your sentence to a friend afterwards?",
           { minutes: 10, submitTo: "personal", criteria: "One core-message sentence, and a list of what you cut.", skills: ["audience"], tools: [ask] }),
+        M("w1-q", "quiz", "Quick check: audience and purpose",
+          "Four quick questions on this week’s ideas. You get two tries; your best score counts.",
+          { minutes: 5, skills: ["audience"], attempts: 2, questions: [
+            { id: "w1q1", text: "You’re speaking to neighbors at a town meeting. Which sentence fits them best?",
+              options: ["Peak runoff falls 30–50% through sub-base infiltration.", "This pavement soaks up rain like a sponge, so basements stay dry.", "Permeability coefficients vary with the aggregate used."], answer: 1,
+              explain: "Non-specialists need a picture and a reason to care, not the technical cause." },
+            { id: "w1q2", text: "What’s the best test of a core message?",
+              options: ["It uses technical terms correctly", "Someone could repeat it to a friend afterwards", "It’s longer than 30 words", "It includes a statistic"], answer: 1,
+              explain: "If listeners can restate it in one sentence, it landed." },
+            { id: "w1q3", kind: "short", text: "In one word: before you write anything, what should you choose first?", options: [], accept: ["audience", "your audience", "the audience", "an audience"],
+              explain: "Every other choice (vocabulary, examples, level of detail) depends on who is listening." },
+            { id: "w1q4", text: "After listening, your audience should…",
+              options: ["Know everything you know", "Take the one action you planned", "Remember every slide", "Have no questions"], answer: 1,
+              explain: "Purpose is what you want them to do, not how much they absorb." },
+          ] }),
         ...paths("w1p",
           M("w1-4g", "practice", "One-minute practice (guided)",
             "Explain your topic in 60–90 seconds. Use these prompts to plan it:\n\n• Who am I speaking to?\n• Why does this topic matter to them?\n• What do I want to happen when I’m done?\n\nInclude one example that is relevant to your audience. Record it and save it on your personal board.",
-            { minutes: 20, submitTo: "personal", criteria: "A 60–90 second recording with an audience-relevant example.", skills: ["audience"], tools: [ask] }),
+            { minutes: 20, submitTo: "personal", criteria: "A 60–90 second recording with an audience-relevant example.", skills: ["audience"], tools: [ask], timer: 60,
+              checklist: ["Plan with the three prompts", "Include one example that matters to your audience", "Record a 60–90 second take", "Listen back once before you save it"] }),
           M("w1-4s", "practice", "One-minute practice (two audiences)",
             "Record two 60–90 second versions of your topic: one for specialists and one for non-specialists. Then explain your choices: what you added, removed, or reworded for each, and why.",
-            { minutes: 25, submitTo: "personal", criteria: "Two recordings and a short explanation of your choices.", skills: ["audience"], tools: [ask] })),
+            { minutes: 25, submitTo: "personal", criteria: "Two recordings and a short explanation of your choices.", skills: ["audience"], tools: [ask], timer: 60,
+              checklist: ["Record the specialist version", "Record the non-specialist version", "Explain what you added, removed, or reworded"] })),
         M("w1-5", "studio", "Ask the audience to restate the message",
           `Post your one-minute practice for the group with your audience, purpose, and a feedback question. Ask each peer to restate the core message they heard, in one sentence.`,
           { minutes: 60, submitTo: "studio", criteria: "Peers can restate your main point with reasonable accuracy.", skills: ["audience"] }),
         M("w1-6", "reflect", "Revise using feedback",
           "Compare what you meant with what your peers understood. Revise your opening or your example, and record the single most important change you made.",
-          { minutes: 15, submitTo: "personal", criteria: "One revision made, and the change explained.", skills: ["audience"] }),
+          { minutes: 15, submitTo: "personal", criteria: "One revision made, and the change explained.", skills: ["audience"],
+            prompts: ["What did your peers think your core message was?", "What did you change: your opening or your example?", "Why will that change help your audience?"] }),
       ],
     },
   },
@@ -137,7 +156,8 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
           { minutes: 60, submitTo: "studio", criteria: "Listeners can identify your opening, main points, and closing.", skills: ["structure"] }),
         M("w2-6", "reflect", "Revise the structure",
           "Change one part of the sequence or one transition. Keep both the original and the revised outline, and explain the change.",
-          { minutes: 15, submitTo: "personal", criteria: "Original and revised outlines kept, change explained.", skills: ["structure"] }),
+          { minutes: 15, submitTo: "personal", criteria: "Original and revised outlines kept, change explained.", skills: ["structure"],
+            prompts: ["Which part of the sequence or which transition did you change?", "Where did listeners get lost before?", "How does the new version fix that?"] }),
       ],
     },
   },
@@ -315,9 +335,15 @@ export function seedCourse(): Course {
     ],
     currentLessonId: "l1",
     enabledConnectors: ["dictionary", "ai", "wikipedia"],
-    weeks: weeks.map((w) => ({ id: w.id, title: w.title, lessons: [w.lesson] })),
+    weeks: weeks.map((w) => ({
+      id: w.id, title: w.title,
+      lessons: [{ ...w.lesson, modules: w.lesson.modules.map((m) => (m.id in DUE ? { ...m, due: isoDay(DUE[m.id]) } : m)) }],
+    })),
   };
 }
+
+/** Due dates, in days from today, so the demo always looks like "this week". */
+const DUE: Record<string, number> = { "w1-1": -2, "w1-3": -1, "w1-q": 1, "w1-4g": 2, "w1-4s": 2, "w1-5": 3, "w1-6": 5, "w2-4g": 9, "w2-4s": 9, "w2-6": 12 };
 
 // —— a believable class, one week in ——
 
@@ -389,6 +415,24 @@ export function seedProgress(): ProgressMap {
   };
   for (const [sid, ids] of Object.entries(w1)) for (const mid of ids) out[sid][mid] = { status: "done", output: notes[mid], updatedAt: at(1) };
   out.s2["w1-4s"].work = [A("wk-s2-w1", "audio", `${S}/leo-week1.m4a`, "Non-specialist version (60 sec)")];
+  for (const sid of ["s2", "s8"]) Object.assign(out[sid]["w1-4s"], { checks: [0, 1, 2], rehearsals: sid === "s2" ? [74, 66, 61] : [88, 59] });
+  // Teacher feedback already given on some of this week's work.
+  out.s1["w1-3"].review = { verdict: "good", text: "Sharp sentence. Cutting the circuit diagram was the right call.", at: at(0.6) };
+  out.s3["w1-2"].review = { verdict: "good", text: "Good eye: “like a sponge” is exactly the kind of swap to notice.", at: at(0.4) };
+  out.s3["w1-1"] = { ...out.s3["w1-1"], status: "doing", review: { verdict: "revise", text: "Good start. Make the action more specific: what exactly do you want the panel to ask you about?", at: at(0.25) } };
+  out.s5["w1-3"].review = { verdict: "revise", text: "Your sentence has two ideas. Pick the one your audience needs most.", at: at(0.5) };
+  out.s5["w1-3"].status = "doing";
+  // The quick check: a few students have taken it.
+  const quiz = (sid: string, a: (number | string)[], ok: boolean[], tries = 1) => {
+    out[sid]["w1-q"] = {
+      status: "done", attempt: tries, score: ok.filter(Boolean).length, best: ok.filter(Boolean).length, updatedAt: at(0.8),
+      answers: Object.fromEntries(a.map((x, i) => [`w1q${i + 1}`, x])), results: Object.fromEntries(ok.map((x, i) => [`w1q${i + 1}`, x])),
+    };
+  };
+  quiz("s1", [1, 1, "audience", 1], [true, true, true, true]);
+  quiz("s2", [1, 1, "the audience", 1], [true, true, true, true]);
+  quiz("s8", [1, 0, "purpose", 1], [true, false, false, true], 2);
+  quiz("s11", [0, 1, "audience", 1], [false, true, true, true]);
   out.s2["w1-5"] = { status: "doing", updatedAt: at(0.2) };
   out.s3["w1-3"] = { status: "doing", output: "Draft: a bus stop designed for older riders is a better bus stop for everyone.", updatedAt: at(0.5) };
   out.s6["w1-1"] = { status: "doing", updatedAt: at(0.3) };

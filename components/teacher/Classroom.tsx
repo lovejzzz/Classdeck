@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { invokeTool } from "@/lib/client";
+import { invokeTool, op } from "@/lib/client";
+import { dueAt, fmtSec, isLate } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { STATUS_LABEL, TYPE_META } from "@/lib/ui";
-import type { CourseState, Lesson, Module } from "@/lib/types";
+import type { CourseState, Lesson, Module, Review } from "@/lib/types";
 import { download, toCsv } from "@/lib/download";
+import { toast } from "@/lib/toast";
 import { MediaView } from "../cards/Media";
 import { Present } from "../Present";
 import { WallBoard } from "../WallBoard";
@@ -52,8 +54,16 @@ export function Classroom({
   const waiting = lessonPosts.filter((p) => !state.studio.feedback.some((f) => f.postId === p.id)).map((p) => course.students.find((st) => st.id === p.studentId)!).filter(Boolean);
   const owing = course.students.filter((st) => lessonPosts.some((p) => p.studentId === st.id) && feedbackGiven(st.id) < 2);
   const studioId = lesson.modules.find((m) => m.type === "studio")?.id;
+  const lateCard = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && isLate(m, progress[sid]?.[m.id], now))?.id;
+  const overdue = course.students.filter((st) => !!lateCard(st.id));
+  // Finished written work the teacher hasn't responded to yet.
+  const reviewable = (m: Module) => ["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && !m.choice;
+  const toReviewCell = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && reviewable(m) && progress[sid]?.[m.id]?.status === "done" && !progress[sid]?.[m.id]?.review)?.id;
+  const toReview = course.students.filter((st) => !!toReviewCell(st.id));
   const firstVisible = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id))?.id;
   const attention: { key: string; icon: string; tint: string; title: string; hint: string; who: typeof course.students; cell: (sid: string) => string | undefined }[] = [
+    { key: "late", icon: "clock", tint: "var(--color-bad)", title: "Overdue", hint: "A card past its due date isn’t done.", who: overdue, cell: lateCard },
+    { key: "review", icon: "message", tint: "#287670", title: "Ready for your feedback", hint: "Finished work you haven’t reviewed yet.", who: toReview, cell: toReviewCell },
     { key: "start", icon: "clock", tint: "var(--color-ink-2)", title: "Haven’t started", hint: "No card opened in this lesson yet.", who: notStarted, cell: firstVisible },
     { key: "stall", icon: "timer", tint: "var(--color-warn)", title: "Stalled", hint: "Started, but nothing new for 2+ days.", who: stalled, cell: (sid) => lesson.modules.find((m) => progress[sid]?.[m.id]?.status === "doing")?.id },
     { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted to Collab Studio, no replies yet.", who: waiting, cell: () => studioId },
@@ -242,16 +252,20 @@ export function Classroom({
                   const tools = toolUse[s.id]?.[m.id];
                   const active = sel?.sid === s.id && sel.mid === m.id;
                   const scored = m.questions && p?.score !== undefined && status === "done";
+                  const late = isLate(m, p, now);
+                  const rv = p?.review;
                   return (
                     <td key={m.id} className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0">
                       <button
                         onClick={() => setSel(active ? null : { sid: s.id, mid: m.id })}
                         aria-label={`${s.name}, ${m.title}, ${STATUS_LABEL[status]}`}
-                        className={`press flex h-8 w-full items-center gap-1.5 rounded-lg px-2 transition-colors duration-500 ${active ? "bg-ink text-white" : status === "done" ? "bg-ok/[0.07] hover:bg-ok/[0.12]" : status === "doing" ? "bg-warn/[0.07] hover:bg-warn/[0.12]" : "hover:bg-lane"}`}
+                        className={`press flex h-8 w-full items-center gap-1.5 rounded-lg px-2 transition-colors duration-500 ${active ? "bg-ink text-white" : late ? "bg-bad/[0.06] hover:bg-bad/[0.1]" : status === "done" ? "bg-ok/[0.07] hover:bg-ok/[0.12]" : status === "doing" ? "bg-warn/[0.07] hover:bg-warn/[0.12]" : "hover:bg-lane"}`}
                       >
                         <StatusIcon status={status} size={13} />
                         {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{p.score}/{m.questions!.length}</span>}
                         <span className="flex-1" />
+                        {late && <span className={`font-mono text-[10.5px] font-medium ${active ? "text-white" : "text-bad"}`}>late</span>}
+                        {rv && <span title={rv.verdict === "revise" ? "You asked for a revision" : "You reviewed this"} className={active ? "text-white/80" : rv.verdict === "revise" ? "text-warn" : "text-ok"}><Icon name={rv.verdict === "revise" ? "reset" : "message"} size={11} /></span>}
                         {tools ? <span className={`flex items-center gap-0.5 font-mono text-[11px] ${active ? "text-white/70" : "text-ink-3"}`}><Icon name="tool" size={10} />{tools}</span> : null}
                       </button>
                     </td>
@@ -304,11 +318,33 @@ export function Classroom({
                 <div className="mt-2 text-[12px] text-ink-3">{state.studio.feedback.filter((f) => f.postId === p.id).length} feedback received</div>
               </div>
             ))}
+            {selModule.due && (
+              <p className={`mt-2 text-[12.5px] ${isLate(selModule, selProgress ?? undefined, now) ? "text-bad" : "text-ink-3"}`}>
+                Due {new Date(dueAt(selModule.due)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}{isLate(selModule, selProgress ?? undefined, now) ? " · late" : ""}
+              </p>
+            )}
+            {selModule.checklist?.length ? (
+              <ul className="mt-3 space-y-1 text-[13px]">
+                {selModule.checklist.filter((x) => x.trim()).map((t, i) => {
+                  const on = selProgress?.checks?.includes(i);
+                  return <li key={i} className={`flex items-start gap-2 ${on ? "" : "text-ink-3"}`}><span className={`mt-[3px] flex h-3.5 w-3.5 flex-none items-center justify-center rounded border ${on ? "border-ok bg-ok text-white" : "border-line-strong"}`}>{on && <Icon name="check" size={9} strokeWidth={3} />}</span>{t}</li>;
+                })}
+              </ul>
+            ) : null}
+            {selProgress?.rehearsals?.length ? (
+              <div className="mt-3 flex flex-wrap items-center gap-1 text-[12px] text-ink-3">
+                <Icon name="timer" size={12} /> Timed runs{selModule.timer ? ` (target ${fmtSec(selModule.timer)})` : ""}:
+                {selProgress.rehearsals.map((x, i) => <span key={i} className={`rounded-full px-1.5 font-mono text-[11px] ${selModule.timer && Math.abs(x - selModule.timer) <= selModule.timer * 0.1 ? "bg-ok/10 text-ok" : "bg-lane text-ink-2"}`}>{fmtSec(x)}</span>)}
+              </div>
+            ) : null}
             {selProgress?.output ? (
               <p className="mt-3 whitespace-pre-wrap rounded-lg bg-lane px-3.5 py-3 text-[13.5px] leading-relaxed">{selProgress.output}</p>
             ) : (
               !selModule.questions && <p className="mt-3 text-[13px] text-ink-3">Nothing written yet.</p>
             )}
+            {selModule.questions && selProgress?.attempt && selProgress.attempt > 1 ? (
+              <p className="mt-3 text-[12.5px] text-ink-3">Try {selProgress.attempt} of {selModule.attempts ?? 1} · best score {selProgress.best ?? 0}/{selModule.questions.length}</p>
+            ) : null}
             {selModule.questions && (
               <ul className="mt-3 space-y-1.5 text-[13px]">
                 {selModule.questions.map((q, i) => {
@@ -319,12 +355,15 @@ export function Classroom({
                       <span className="mono w-5">{String(i + 1).padStart(2, "0")}</span>
                       <span className="flex-1">{q.text}</span>
                       {a === undefined ? <span className="text-ink-3">No answer</span> : (
-                        <span className={`flex items-center gap-1 ${ok ? "text-ok" : "text-bad"}`}><Icon name={ok ? "check" : "x"} size={13} strokeWidth={2.2} />{q.options[a]}</span>
+                        <span className={`flex items-center gap-1 ${ok ? "text-ok" : "text-bad"}`}><Icon name={ok ? "check" : "x"} size={13} strokeWidth={2.2} />{typeof a === "string" ? `“${a}”` : q.options[a]}</span>
                       )}
                     </li>
                   );
                 })}
               </ul>
+            )}
+            {!selModule.questions?.length && selModule.type !== "wall" && (
+              <ReviewBox key={`${sel.sid}-${sel.mid}`} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"} />
             )}
             </div>
           </aside>,
@@ -450,5 +489,40 @@ function ExportMenu({ items }: { items: [string, () => void][] }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** The teacher's response to one piece of work: a note, and either "looks good" or "revise". */
+function ReviewBox({ courseId, studentId, moduleId, name, review, done }: { courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean }) {
+  const [text, setText] = useState(review?.text ?? "");
+  const [busy, setBusy] = useState(false);
+  async function send(verdict: "good" | "revise" | "clear") {
+    setBusy(true);
+    const r = await op<{ ok: boolean; error?: string }>(courseId, verdict === "clear" ? { op: "review", studentId, moduleId, clear: true } : { op: "review", studentId, moduleId, verdict, text });
+    setBusy(false);
+    if (r.ok === false) return toast(r.error ?? "Couldn’t save", { icon: "message", tone: "plain" });
+    if (verdict === "clear") setText("");
+    toast(verdict === "revise" ? `Sent back to ${name} for a revision` : verdict === "good" ? `Sent to ${name}` : "Feedback removed", { icon: verdict === "revise" ? "reset" : "message" });
+  }
+  return (
+    <section aria-label="Your feedback" className="mt-6 border-t border-line pt-5">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex-1 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">Your feedback</span>
+        {review && (
+          <span className={`flex items-center gap-1 text-[12px] ${review.verdict === "revise" ? "text-warn" : "text-ok"}`}>
+            <Icon name={review.verdict === "revise" ? "reset" : "check"} size={12} />{review.verdict === "revise" ? "Revision asked" : "Looks good"} · {new Date(review.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          </span>
+        )}
+      </div>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder={`What ${name} did well, and one thing to try next`} aria-label="Feedback for the student" className="field resize-y leading-relaxed"
+        onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send("good"); } }} />
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button onClick={() => send("good")} disabled={busy} className="btn btn-dark press h-8"><Icon name="check" size={13} /> Looks good</button>
+        <button onClick={() => send("revise")} disabled={busy || !text.trim()} title={text.trim() ? undefined : "Say what to revise first"} className="btn btn-ghost press h-8"><Icon name="reset" size={13} /> Ask to revise</button>
+        <span className="flex-1" />
+        {review && <button onClick={() => send("clear")} disabled={busy} className="btn btn-quiet press h-8 text-[12px]">Remove</button>}
+      </div>
+      <p className="mt-2 text-[12px] text-ink-3">{done ? "“Ask to revise” puts the card back in their hand." : "They haven’t finished this card yet; you can still leave a note."}</p>
+    </section>
   );
 }

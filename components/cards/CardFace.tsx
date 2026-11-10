@@ -84,9 +84,11 @@ const KIND_ICON = { image: "image", video: "video", audio: "audio", file: "file"
  * corner index top-left, artwork window, title, content pips, mirrored corner bottom-right.
  */
 export function CardFace({
-  m, status, index, total, personal, badge, big = false, footer,
+  m, status, index, total, personal, badge, big = false, footer, due,
 }: {
   m: Module; status?: Status; index?: number; total?: number; personal?: boolean; badge?: string; big?: boolean; footer?: React.ReactNode;
+  /** Shown in the corner instead of the time when the card is due soon or late. */
+  due?: { label: string; tone: "late" | "soon" | "later" };
 }) {
   const tag = badge ?? (m.choice ? (m.choice.recommended ? "Recommended path" : "Pick a path") : m.picked ? "Your path" : personal ? "For you" : undefined);
   const meta = TYPE_META[m.type];
@@ -99,7 +101,11 @@ export function CardFace({
         <Icon name={m.type} size={big ? 14 : 12} strokeWidth={2} />
         <span className={`font-medium uppercase tracking-[0.08em] ${big ? "text-[11px]" : "text-[9.5px]"}`}>{meta.name}</span>
         <span className="flex-1" />
-        {status === "done" ? <StatusIcon status="done" size={big ? 15 : 13} /> : m.minutes ? (
+        {status === "done" ? <StatusIcon status="done" size={big ? 15 : 13} /> : due && due.tone !== "later" ? (
+          <span title={due.label} className={`whitespace-nowrap rounded-full px-1.5 py-[1px] font-mono text-[10px] font-medium ${due.tone === "late" ? "bg-bad/10 text-bad" : "bg-warn/10 text-warn"}`}>
+            {due.label.replace("Due ", "").replace(/ days? late/, "d late")}
+          </span>
+        ) : m.minutes ? (
           <span className="flex items-center gap-0.5 rounded-full bg-[#f3f3f1] px-1.5 py-[1px] font-mono text-[10px] text-ink-2" title={`About ${m.minutes} minutes`}>
             <Icon name="clock" size={10} strokeWidth={2} />{m.minutes}m
           </span>
@@ -124,6 +130,9 @@ export function CardFace({
             {m.tools.length > 0 && <span className="flex items-center gap-0.5 font-mono text-[10px]"><Icon name="tool" size={10} />{m.tools.length}</span>}
             {m.questions?.length ? <span className="font-mono text-[10px]">{m.questions.length}Q</span> : null}
             {m.submitTo && <Icon name={m.submitTo === "studio" ? "studio" : "board"} size={11} />}
+            {m.checklist?.length ? <span className="flex items-center gap-0.5 font-mono text-[10px]"><Icon name="check" size={10} />{m.checklist.length}</span> : null}
+            {m.timer ? <Icon name="timer" size={11} /> : null}
+            {due?.tone === "later" && status !== "done" && <span className="font-mono text-[10px]">{due.label.replace("Due ", "")}</span>}
           </>
         )}
         <span className="flex-1" />
