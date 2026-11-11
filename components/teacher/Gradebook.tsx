@@ -7,6 +7,7 @@ import { visibleModules } from "@/lib/profile";
 import type { CourseState, Module } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { SkillRadar } from "../SkillRadar";
+import { FeedbackInbox, Journal } from "../student/Progress";
 
 const WORK = new Set(["explore", "practice", "submit", "reflect"]);
 
@@ -141,6 +142,14 @@ export function Gradebook({ state }: { state: CourseState }) {
                           ))}
                         </ul>
                       )}
+                      <details className="group mt-4">
+                        <summary className="cursor-pointer text-[13px] font-medium text-ink-2 hover:text-ink">Reflections</summary>
+                        <div className="mt-3"><Journal state={state} studentId={r.st.id} /></div>
+                      </details>
+                      <details className="group mt-3">
+                        <summary className="cursor-pointer text-[13px] font-medium text-ink-2 hover:text-ink">Feedback received, and what they tried</summary>
+                        <div className="mt-3"><FeedbackInbox state={state} studentId={r.st.id} readOnly /></div>
+                      </details>
                       </div>
                       </div>
                     </td>

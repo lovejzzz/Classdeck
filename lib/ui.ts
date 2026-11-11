@@ -1,7 +1,7 @@
 import type { ModuleType, Status } from "./types";
 import type { ToolResult } from "./connectors/types";
 
-export const TYPE_ORDER: ModuleType[] = ["read", "explore", "practice", "submit", "selfcheck", "studio", "wall", "quiz", "reflect"];
+export const TYPE_ORDER: ModuleType[] = ["read", "explore", "practice", "builder", "submit", "selfcheck", "studio", "wall", "quiz", "reflect"];
 
 /** 每种模块：一个单色图标，一个用于封面的柔和渐变。颜色只出现在这两处。 */
 export const TYPE_META: Record<
@@ -46,6 +46,11 @@ export const TYPE_META: Record<
   studio: {
     label: "Studio", name: "Collab Studio", tint: "#ae502f",
     cover: "radial-gradient(55% 90% at 25% 30%, #f3c3ad 0%, transparent 70%), radial-gradient(50% 80% at 80% 80%, #ead2e6 0%, transparent 70%), #efe6e2",
+    doneLabel: "Done",
+  },
+  builder: {
+    label: "Builder", name: "Speech builder", tint: "#3f6aa8",
+    cover: "radial-gradient(55% 90% at 25% 30%, #bccdf0 0%, transparent 70%), radial-gradient(50% 80% at 80% 80%, #f0dcc0 0%, transparent 70%), #e6e9f0",
     doneLabel: "Done",
   },
   reflect: {

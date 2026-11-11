@@ -23,7 +23,8 @@ export type ModuleType =
   | "quiz"
   | "reflect"
   | "selfcheck"
-  | "studio";
+  | "studio"
+  | "builder";
 
 /** 挂在模块上的一个工具：指向某个连接器的某个动作。 */
 export interface ToolRef {
@@ -49,6 +50,8 @@ export interface Attachment {
   credit?: string;
   /** What was said in a recording, captured by the browser while recording. */
   transcript?: string;
+  /** Length of a recording in seconds, when known. */
+  duration?: number;
 }
 
 /** How a wall card behaves: who posts, how people respond, and moderation. */
@@ -104,6 +107,25 @@ export interface Review {
   at: number;
   /** Rubric: skill id → level 1–4 (the course's levels). */
   levels?: Record<string, number>;
+}
+
+/** The parts of a talk, as the speech builder lays them out. */
+export interface SpeechFields {
+  audience: string;
+  purpose: string;
+  hook: string;
+  core: string;
+  points: { point: string; example: string }[];
+  close: string;
+}
+
+/** A reminder the teacher sent to a student. */
+export interface Nudge {
+  id: string;
+  studentId: string;
+  text: string;
+  moduleId?: string;
+  at: number;
 }
 
 export type AnswerValue = number | string | number[] | string[];
@@ -256,6 +278,8 @@ export interface Progress {
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
+  /** Speech builder: the current draft and saved versions. */
+  speech?: { fields: SpeechFields; versions: { at: number; label?: string; fields: SpeechFields }[] };
   /** Sent to students only: answer keys and explanations they've earned the right to see. */
   reveal?: Record<string, { answer?: number; answerSet?: number[]; order?: string[]; accept?: string; explain?: string }>;
   updatedAt: number;
@@ -353,6 +377,10 @@ export interface CourseState {
   studio: { posts: StudioPost[]; feedback: Feedback[] };
   /** Timestamped notes on recordings this viewer can see. */
   marks: Mark[];
+  /** Feedback a student marked as tried: student → feedback key → when. */
+  uptake: Record<string, Record<string, number>>;
+  /** Reminders from the teacher (students get their own). */
+  nudges: Nudge[];
   /** For students, votes are counts only (plus their own) and hands are their own. */
   live: Live & { myVote?: number; counts?: number[] };
 }

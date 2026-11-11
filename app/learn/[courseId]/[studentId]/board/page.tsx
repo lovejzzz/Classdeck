@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { CardFace } from "@/components/cards/CardFace";
 import { MediaView } from "@/components/cards/Media";
 import { SignInNeeded } from "@/components/SignInNeeded";
+import { FeedbackInbox, Journal, PracticeLog } from "@/components/student/Progress";
 import { SkillRadar, teacherLevels } from "@/components/SkillRadar";
 import { Avatar, Icon, StatusIcon } from "@/components/Icon";
 import { useCourse, useQuery } from "@/lib/client";
@@ -15,7 +17,11 @@ import type { Module, Progress } from "@/lib/types";
 /** A student's personal practice board: their growth, their best work, and every week's practice. */
 export default function BoardPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
-  const { state, error, needAuth } = useCourse(courseId, studentId, 8000);
+  const { state, error, needAuth, refresh } = useCourse(courseId, studentId, 8000);
+  const [tab, setTab] = useState<"overview" | "practice" | "feedback" | "journal" | "work">(() => {
+    const h = typeof window === "undefined" ? "" : window.location.hash.slice(1);
+    return (["overview", "practice", "feedback", "journal", "work"] as const).find((t) => t === h) ?? "overview";
+  });
   const query = useQuery();
   if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}/board`} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
@@ -70,6 +76,18 @@ export default function BoardPage() {
           ))}
         </div>
 
+        <div className="no-print mt-6 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Board sections">
+          {([["overview", "Overview"], ["practice", "Practice log"], ["feedback", "Feedback"], ["journal", "Reflections"], ["work", "All work"]] as const).map(([k, label]) => (
+            <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); history.replaceState(null, "", `#${k}`); }}
+              className={`press -mb-px h-10 flex-none border-b-2 px-3 text-[13.5px] ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
+          ))}
+        </div>
+
+        {tab === "practice" && <section className="rise mt-6"><PracticeLog state={state} studentId={studentId} /></section>}
+        {tab === "feedback" && <section className="rise mt-6"><FeedbackInbox state={state} studentId={studentId} onChanged={refresh} /></section>}
+        {tab === "journal" && <section className="rise mt-6"><Journal state={state} studentId={studentId} /></section>}
+
+        {tab === "overview" && <>
         <section className="rise card mt-6 p-5" style={{ "--i": 2 } as React.CSSProperties}>
           <div className="flex items-center gap-3">
             <h2 className="flex-1 text-[15px] font-medium">Six skill areas</h2>
@@ -133,7 +151,9 @@ export default function BoardPage() {
           )}
         </section>
 
-        <section className="mt-8 space-y-6">
+        </>}
+
+        {tab === "work" && <section className="mt-6 space-y-6">
           {course.weeks.map((w) => {
             const items = w.lessons.flatMap((l) => l.modules).filter(hasContent);
             if (!items.length) return null;
@@ -179,7 +199,7 @@ export default function BoardPage() {
               </div>
             );
           })}
-        </section>
+        </section>}
       </main>
     </div>
   );

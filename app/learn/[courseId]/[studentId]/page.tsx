@@ -20,6 +20,7 @@ import { useInbox } from "@/components/student/useInbox";
 import { MarksContext } from "@/components/Marks";
 import { SignInNeeded } from "@/components/SignInNeeded";
 import { StudentLive } from "@/components/LiveClass";
+import { ForYou } from "@/components/student/ForYou";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
 import { useConnectors, useCourse, useQuery } from "@/lib/client";
@@ -64,7 +65,7 @@ export default function LearnPage() {
   const query = useQuery();
   const narrow = useNarrow();
   const router = useRouter();
-  const inbox = useInbox(state?.course, studentId, state?.progress[studentId]);
+  const inbox = useInbox(state?.course, studentId, state?.progress[studentId], state?.nudges);
   const [view, setView] = useState<"hand" | "done">("hand");
   const [lift, setLift] = useState<LiftState | null>(null);
   const [local, setLocal] = useState<Record<string, Partial<Progress>>>({});
@@ -447,6 +448,13 @@ export default function LearnPage() {
             </div>
           </section>
 
+          {(
+            <ForYou state={state} studentId={studentId} onBoard={() => router.push(`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`)}
+              onOpen={(lessonId, mid) => {
+                const el = els.current.get(mid) ?? heroRef.current;
+                if (el) open(lessonId, mid, el);
+              }} />
+          )}
           <TipBar />
 
           {/* —— Week navigator —— */}

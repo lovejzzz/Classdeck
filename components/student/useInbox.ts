@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Note } from "../NotificationCenter";
-import type { Course, Progress } from "@/lib/types";
+import type { Course, Nudge, Progress } from "@/lib/types";
 
 // 学生端的通知：老师给你加了新卡片、换了今天的课。
 // 在浏览器里记住上次看到的模块，和这次对比。这只是给这台设备的便利，丢了也不影响学习。
@@ -14,7 +14,7 @@ interface Saved {
   seenAt: number;
 }
 
-export function useInbox(course: Course | undefined, studentId: string, progress?: Record<string, Progress>) {
+export function useInbox(course: Course | undefined, studentId: string, progress?: Record<string, Progress>, nudges: Nudge[] = []) {
   const key = course ? `inbox:v2:${course.id}:${studentId}` : "";
   const [saved, setSaved] = useState<Saved | null>(null);
 
@@ -77,6 +77,7 @@ export function useInbox(course: Course | undefined, studentId: string, progress
       });
     }
   }
+  for (const n of nudges) reviews.push({ id: `n:${n.id}`, at: n.at, group: "teacher", groupLabel: "Your teacher", source: "Reminder", icon: "user", title: "Reminder from your teacher", text: n.text });
   const unread = [...(saved?.notes ?? []), ...reviews].filter((n) => n.at > (saved?.seenAt ?? 0)).sort((a, b) => b.at - a.at);
   function clear() {
     if (!saved) return;

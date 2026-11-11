@@ -30,7 +30,7 @@ function pickType(video: boolean) {
  * Record audio or video in the browser. Video shows a live, mirrored preview while recording.
  * After stopping you can play it back, then keep it, redo it, or throw it away.
  */
-export function MediaCapture({ video, screen = false, onKeep, onCancel, label }: { video: boolean; screen?: boolean; onKeep: (file: File, transcript?: string) => void; onCancel: () => void; label?: string }) {
+export function MediaCapture({ video, screen = false, onKeep, onCancel, label }: { video: boolean; screen?: boolean; onKeep: (file: File, transcript?: string, duration?: number) => void; onCancel: () => void; label?: string }) {
   const [phase, setPhase] = useState<"ready" | "recording" | "review">("ready");
   const [error, setError] = useState<string | null>(() =>
     typeof navigator !== "undefined" && !navigator.mediaDevices ? "This browser can’t record. Try uploading a file instead." : null,
@@ -151,7 +151,7 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
     if (!blob) return;
     const ext = blob.type.includes("mp4") ? (video ? "mp4" : "m4a") : video ? "webm" : "weba";
     const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).replace(":", "");
-    onKeep(new File([blob], `${screen ? "screen" : video ? "video" : "recording"}-${stamp}.${ext}`, { type: blob.type }), said.trim() || undefined);
+    onKeep(new File([blob], `${screen ? "screen" : video ? "video" : "recording"}-${stamp}.${ext}`, { type: blob.type }), said.trim() || undefined, Math.round(secs));
   }
 
   const mmss = `${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, "0")}`;

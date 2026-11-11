@@ -36,12 +36,12 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
     return () => window.removeEventListener("pointerdown", off);
   }, [more]);
 
-  async function upload(f: File, name?: string, transcript?: string) {
+  async function upload(f: File, name?: string, transcript?: string, duration?: number) {
     setBusy(true);
     const r = await uploadFile(f);
     setBusy(false);
     if (!r.ok) return toast(r.error, { icon: "x", tone: "bad" });
-    await onAdd({ kind: r.kind, url: r.url, name: name ?? r.name, size: r.size, transcript });
+    await onAdd({ kind: r.kind, url: r.url, name: name ?? r.name, size: r.size, transcript, duration });
     setMode(null);
   }
 
@@ -58,7 +58,7 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
     return (
       <div>
         <MediaCapture video={mode !== "audio"} screen={mode === "screen"} label={label}
-          onKeep={(f, transcript) => upload(f, `${mode === "screen" ? "Screen recording" : mode === "video" ? "Video" : "Recording"} · ${stamp()}`, transcript)} onCancel={() => setMode(null)} />
+          onKeep={(f, transcript, duration) => upload(f, `${mode === "screen" ? "Screen recording" : mode === "video" ? "Video" : "Recording"} · ${stamp()}`, transcript, duration)} onCancel={() => setMode(null)} />
         {busy && <p className="mt-2 text-[12.5px] text-ink-3">Saving…</p>}
       </div>
     );

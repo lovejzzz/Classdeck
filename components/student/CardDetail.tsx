@@ -16,6 +16,7 @@ import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
 import { SelfCheck } from "./SelfCheck";
 import { Checklist, HighlightableText, Prompts, promptsToText, Rehearsal, ReviewNote } from "./CardExtras";
+import { SpeechBuilder } from "./SpeechBuilder";
 import { Studio } from "./Studio";
 import { WorkComposer } from "./WorkComposer";
 
@@ -229,7 +230,7 @@ export function CardDetail(p: DetailProps) {
           <p className="mt-5 flex gap-2 text-[13px] text-ink-2"><Icon name="check" size={14} className="mt-0.5 flex-none text-ok" /><span><span className="font-medium text-ink">Done when: </span>{m.criteria}</span></p>
         )}
 
-        {m.timer && !m.choice ? (
+        {m.timer && !m.choice && m.type !== "builder" ? (
           <div className="mt-6">
             <Rehearsal target={m.timer} takes={p.progress?.rehearsals ?? []} courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onSaved={p.onChanged} big={p.big} />
           </div>
@@ -253,6 +254,18 @@ export function CardDetail(p: DetailProps) {
               ratings={p.progress?.ratings ?? {}} earlier={earlier} onChanged={p.onChanged} big={p.big} teacher={teacherLevels(p.mine)}
               onDone={() => save("done")}
             />
+          </div>
+        )}
+
+        {m.type === "builder" && !m.choice && (
+          <div className="mt-7">
+            <SpeechBuilder courseId={p.courseId} studentId={p.studentId} module={m} progress={p.progress} onChanged={p.onChanged} big={p.big}
+              onFinish={(text) => {
+                p.optimistic({ status: "done", output: text });
+                op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, status: "done", output: text }).then(p.onChanged);
+                p.onClose(true);
+                toast(`Finished “${m.title}”`);
+              }} />
           </div>
         )}
 

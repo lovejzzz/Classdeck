@@ -13,6 +13,7 @@ import { download, toCsv } from "@/lib/download";
 import { toast } from "@/lib/toast";
 import { MediaView } from "../cards/Media";
 import { MarkedMedia } from "../Marks";
+import { draftOf } from "../student/SpeechBuilder";
 import { Present } from "../Present";
 import { WallBoard } from "../WallBoard";
 import { Avatar, Icon, StatusIcon } from "../Icon";
@@ -188,6 +189,10 @@ export function Classroom({
                   <span className="font-mono text-[18px]">{a.who.length}</span>
                 </div>
                 <p className="mt-1.5 text-[12.5px] text-ink-3">{a.hint}</p>
+                {(a.key === "late" || a.key === "start" || a.key === "stall") && (
+                  <RemindButton courseId={courseId} ids={a.who.map((st) => st.id)} names={a.who.length === 1 ? a.who[0].name : `${a.who.length} students`}
+                    text={a.key === "late" ? "You have a card past its due date. Can you finish it today?" : a.key === "start" ? `Time to start “${lesson.title}”. Open your first card when you can.` : "Pick up where you left off when you have a moment."} />
+                )}
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {a.who.map((st) => (
                     <button key={st.id}
@@ -328,6 +333,7 @@ export function Classroom({
                 ))}
               </div>
             ))}
+            {selProgress?.status !== "done" && <RemindButton courseId={courseId} ids={[selStudent.id]} names={selStudent.name} moduleId={selModule.id} text={`Reminder: “${selModule.title}”${selModule.due ? " is due soon" : ""}. Open it when you can.`} />}
             {selModule.due && (
               <p className={`mt-2 text-[12.5px] ${isLate(selModule, selProgress ?? undefined, now) ? "text-bad" : "text-ink-3"}`}>
                 Due {new Date(dueAt(selModule.due)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}{isLate(selModule, selProgress ?? undefined, now) ? " · late" : ""}
@@ -347,6 +353,12 @@ export function Classroom({
                 {selProgress.rehearsals.map((x, i) => <span key={i} className={`rounded-full px-1.5 font-mono text-[11px] ${selModule.timer && Math.abs(x - selModule.timer) <= selModule.timer * 0.1 ? "bg-ok/10 text-ok" : "bg-lane text-ink-2"}`}>{fmtSec(x)}</span>)}
               </div>
             ) : null}
+            {selProgress?.speech && (
+              <div className="mt-3 rounded-lg bg-lane px-3.5 py-3 text-[13px] leading-relaxed">
+                <div className="mb-1 text-[12px] text-ink-3">Speech draft · {selProgress.speech.versions.length} saved version{selProgress.speech.versions.length === 1 ? "" : "s"}</div>
+                <p className="whitespace-pre-wrap">{draftOf(selProgress.speech.fields, true)}</p>
+              </div>
+            )}
             {selProgress?.highlights?.length ? (
               <div className="mt-3 space-y-1.5">
                 <div className="text-[12px] text-ink-3">Highlighted</div>
@@ -566,5 +578,26 @@ function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, 
       </div>
       <p className="mt-2 text-[12px] text-ink-3">{done ? "“Ask to revise” puts the card back in their hand." : "They haven’t finished this card yet; you can still leave a note."}</p>
     </section>
+  );
+}
+
+/** Send an in-app reminder to one or more students (they see it on their page and as a notification). */
+function RemindButton({ courseId, ids, names, moduleId, text }: { courseId: string; ids: string[]; names: string; moduleId?: string; text: string }) {
+  const [open, setOpen] = useState(false);
+  const [msg, setMsg] = useState(text);
+  if (!ids.length) return null;
+  return open ? (
+    <form className="rise mt-3 flex gap-1.5" onSubmit={async (e) => {
+      e.preventDefault();
+      const r = await op<{ ok: boolean; error?: string; sent?: number }>(courseId, { op: "nudge", studentIds: ids, text: msg, moduleId });
+      if (r.ok === false) return toast(r.error ?? "Couldn’t send", { icon: "x", tone: "bad" });
+      setOpen(false);
+      toast(`Reminder sent to ${names}`, { icon: "clock" });
+    }}>
+      <input autoFocus value={msg} onChange={(e) => setMsg(e.target.value)} aria-label="Reminder message" className="field h-8 py-0 text-[12.5px]" />
+      <button className="btn btn-dark press h-8 flex-none">Send</button>
+    </form>
+  ) : (
+    <button onClick={() => setOpen(true)} className="btn btn-quiet press mt-2 h-7 px-2 text-[12px]"><Icon name="clock" size={12} /> Remind {ids.length > 1 ? `all ${ids.length}` : names}</button>
   );
 }

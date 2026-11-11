@@ -14,7 +14,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 
 /** Operations a student performs on their own behalf (body.studentId). */
 const STUDENT_OPS = new Set([
-  "setProgress", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
+  "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
   "retakeQuiz", "rehearse", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
 ]);
 
@@ -66,7 +66,7 @@ export async function GET(request: Request, { params }: Ctx) {
         ...course, students: [], groups: [], joinCode: "", access: undefined,
         weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.map((m) => ({ ...m, questions: m.questions?.map(publicQuestion) })) })) })),
       },
-      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} },
+      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} }, uptake: {}, nudges: [],
     };
     return Response.json(view);
   }
@@ -133,6 +133,8 @@ export async function GET(request: Request, { params }: Ctx) {
     studio: studioView,
     marks: as ? (d.marks[courseId] ?? []).filter((mk) => visibleWork(course, as).has(mk.attachmentId)) : (d.marks[courseId] ?? []),
     live: liveView(d.live[courseId] ?? { hands: {} }, as),
+    uptake: as ? { [as]: d.uptake[courseId]?.[as] ?? {} } : (d.uptake[courseId] ?? {}),
+    nudges: (d.nudges[courseId] ?? []).filter((n) => !as || n.studentId === as),
   };
   // Visitors to the open demo get a light session so they can upload recordings there.
   const headers: Record<string, string> = !session && course.id === DEMO ? { "Set-Cookie": startSession({ kind: "demo" }, 7) } : {};
@@ -171,6 +173,7 @@ function cleanAttachment(a: Attachment): Attachment | null {
     id: a.id || uid("w-"), kind: a.kind, url: a.url, name: String(a.name ?? "").slice(0, 120) || undefined, size: Number(a.size) || undefined,
     start: sec(a.start), end: sec(a.end), credit: a.credit ? String(a.credit).slice(0, 200) : undefined,
     transcript: a.transcript && (a.kind === "audio" || a.kind === "video") ? String(a.transcript).slice(0, 20000) : undefined,
+    duration: Number(a.duration) > 0 && Number(a.duration) < 36000 ? Math.round(Number(a.duration)) : undefined,
   };
 }
 
@@ -471,6 +474,43 @@ export async function POST(request: Request, { params }: Ctx) {
       p.rehearsals = [...(p.rehearsals ?? []), sec].slice(-20);
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
+      break;
+    }
+    case "uptake": {
+      const key = String(body.key ?? "").slice(0, 80);
+      if (!key) return fail("Which feedback?");
+      const mineUp = ((d.uptake[courseId] ??= {})[body.studentId] ??= {});
+      if (body.on) mineUp[key] = Date.now();
+      else delete mineUp[key];
+      break;
+    }
+    case "saveSpeech": {
+      const mod = findModule(course, body.moduleId)?.mod;
+      if (mod?.type !== "builder") return fail("That isn’t a speech builder card");
+      const s = (v: unknown, n = 600) => String(v ?? "").slice(0, n);
+      const f = body.fields ?? {};
+      const fields = {
+        audience: s(f.audience, 200), purpose: s(f.purpose, 300), hook: s(f.hook), core: s(f.core, 300),
+        points: (Array.isArray(f.points) ? f.points : []).slice(0, 5).map((x: { point?: unknown; example?: unknown }) => ({ point: s(x?.point, 300), example: s(x?.example) })),
+        close: s(f.close),
+      };
+      const p = mine(body.studentId, body.moduleId);
+      const prev = p.speech ?? { fields, versions: [] };
+      p.speech = { fields, versions: prev.versions };
+      if (body.version) p.speech.versions = [...prev.versions, { at: Date.now(), label: body.label ? s(body.label, 60) : undefined, fields }].slice(-20);
+      if (p.status === "todo") p.status = "doing";
+      p.updatedAt = Date.now();
+      break;
+    }
+    case "nudge": {
+      // —— teacher ——
+      const ids: string[] = (Array.isArray(body.studentIds) ? body.studentIds : [body.studentId]).filter((x: unknown) => course.students.some((st) => st.id === x));
+      const text = String(body.text ?? "").trim().slice(0, 300);
+      if (!ids.length || !text) return fail("Choose who to remind and write a message");
+      const list = (d.nudges[courseId] ??= []);
+      for (const sid of ids) list.push({ id: uid("n-"), studentId: sid, text, moduleId: body.moduleId ? String(body.moduleId) : undefined, at: Date.now() });
+      if (list.length > 1000) list.splice(0, list.length - 1000);
+      extra = { sent: ids.length };
       break;
     }
     case "resetPin": {

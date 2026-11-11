@@ -49,3 +49,12 @@ export function analyzeScript(text: string, target: number): ToolResult {
   return { render: "table", columns: ["Check", "Result"], rows };
 }
 
+
+/** Filler words in a text, total and by word. */
+export function fillerCount(text: string) {
+  const lower = ` ${text.toLowerCase().replace(/[^a-z’'? ]+/g, " ").replace(/\s+/g, " ")} `;
+  const each = FILLERS.map((f) => [f, lower.split(` ${f} `).length - 1] as const).filter(([, c]) => c > 0);
+  return { total: each.reduce((n, [, c]) => n + c, 0), each };
+}
+
+export const wordCount = (text: string) => (text.match(/[A-Za-z’']+/g) ?? []).length;

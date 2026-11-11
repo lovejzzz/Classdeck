@@ -1,5 +1,5 @@
 import { isoDay } from "./grading";
-import type { AnswerValue, Attachment, ClassEvent, Mark, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
+import type { AnswerValue, Attachment, ClassEvent, Mark, Nudge, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
 
 // The demo course: CaPS, a seven-week presentation skills course (Week 0 onboarding + six skill weeks),
 // built from the CaPS Week 0–6 course plan. Each week has one common theme and six cards; one card per
@@ -168,6 +168,9 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
         M("w2-3", "practice", "Build my story bank",
           "Write down one experience that relates to your topic. Describe the situation, what you did, and the result. Then say which point in your presentation the story supports.",
           { minutes: 15, submitTo: "personal", criteria: "One story with situation, action, result, and the point it supports.", skills: ["structure"], tools: [ask] }),
+        M("w2-b", "builder", "Build my talk",
+          "Lay out your 4–5 minute talk part by part: who it’s for, a hook, your core message, two or three points with an example each, and a close. Check the timing, save a version, and save another each time you change your plan.",
+          { minutes: 25, submitTo: "personal", criteria: "A complete outline that fits your time, saved as at least one version.", skills: ["structure"], timer: 180 }),
         ...paths("w2p",
           M("w2-4g", "practice", "Three-minute structure practice (outline)",
             "Use the scaffolded outline to plan an opening, two or three points with examples, transitions, and a closing. Then deliver a 2–3 minute presentation from the outline and record it.",
@@ -377,6 +380,12 @@ const RATINGS: Record<string, number[]> = {
   s9: [2, 2, 3, 2, 2, 2], s10: [2, 1, 1, 2, 2, 1], s11: [3, 2, 2, 3, 2, 3],
 };
 const SKILL_IDS = ["audience", "structure", "vocal", "body", "rehearsal", "visual"];
+/** What a few students said in their first recording, as captured by live captions. */
+const INTRO_TEXT: Record<string, { transcript: string; duration: number }> = {
+  s2: { duration: 16, transcript: "Um, hi, I'm Leo. So, basically, I'm, like, working on a soil sensor project, and, um, it's kind of about water, you know, like saving water. So yeah, I want to, um, get better at explaining it, I guess, to people who aren't engineers. So yeah." },
+  s3: { duration: 14, transcript: "Hi, I'm Ava. I study urban planning. My project is about bus stops for older riders, and I want to explain it clearly to people who make decisions about the city." },
+};
+
 const INTROS: Record<string, [string, string]> = {
   s1: ["mia-intro.m4a", "My starting point (90 sec)"], s2: ["leo-intro.m4a", "My starting point (90 sec)"],
   s3: ["ava-intro.m4a", "My starting point (90 sec)"], s4: ["noah-intro.m4a", "My starting point (90 sec)"],
@@ -410,7 +419,7 @@ export function seedProgress(): ProgressMap {
       status: "done",
       ratings: Object.fromEntries(SKILL_IDS.map((k, i) => [k, r[i]])),
       output: "",
-      work: INTROS[s.id] ? [A(`wk-${s.id}-intro`, "audio", `${S}/${INTROS[s.id][0]}`, INTROS[s.id][1])] : [],
+      work: INTROS[s.id] ? [{ ...A(`wk-${s.id}-intro`, "audio", `${S}/${INTROS[s.id][0]}`, INTROS[s.id][1]), ...(INTRO_TEXT[s.id] ?? {}) }] : [],
       starred: s.id === "s1" || s.id === "s2",
       updatedAt: at(8),
     };
@@ -440,11 +449,30 @@ export function seedProgress(): ProgressMap {
   for (const [sid, ids] of Object.entries(w1)) for (const mid of ids) out[sid][mid] = { status: "done", output: notes[mid], updatedAt: at(1) };
   out.s2["w1-4s"].work = [{
     ...A("wk-s2-w1", "audio", `${S}/leo-week1.m4a`, "Non-specialist version (60 sec)"),
-    transcript: "So, um, have you ever come home and found your houseplants dead? Basically that happens because we water on a schedule, not when the soil actually needs it. My project is a small soil sensor. It's, like, calibrated to measure moisture, and it tells you when to water. In my tests it cut water use by about a third. So yeah, next time you water, ask the soil first.",
+    duration: 20,
+    transcript: "Have you ever found your houseplants dead? It happens because we water on a schedule, not when the soil needs it. My small soil sensor measures moisture and, um, tells you when to water. In my tests it cut water use by a third. Next time you water, ask the soil first.",
   }];
   out.s8["w1-4s"].review = { verdict: "good", text: "Both versions work; the non-specialist one is clearly adapted.", at: at(0.7), levels: { audience: 4 } };
   out.s11["w1-3"].review = { verdict: "good", text: "Clear and short.", at: at(0.9), levels: { audience: 2 } };
   for (const sid of ["s2", "s8"]) Object.assign(out[sid]["w1-4s"], { checks: [0, 1, 2], rehearsals: sid === "s2" ? [74, 66, 61] : [88, 59] });
+  // Leo has started building his talk and saved two versions.
+  const v1 = {
+    audience: "Gardeners at a community garden meeting", purpose: "Try a soil sensor in one bed this season",
+    hook: "Have you ever found your houseplants dead?", core: "Watering only when the soil asks for it saves water and effort.",
+    points: [
+      { point: "Schedules waste water", example: "Most of us water on Sundays, even after a rainy Saturday." },
+      { point: "A sensor knows what the soil needs", example: "Mine reads moisture every hour and sends a message when it’s dry." },
+      { point: "", example: "" },
+    ],
+    close: "Try one sensor in one bed this season.",
+  };
+  const v2 = {
+    ...v1,
+    hook: "Last spring I killed eleven tomato plants.",
+    points: [...v1.points.slice(0, 2), { point: "It pays for itself", example: "In my tests it cut water use by a third in six weeks." }],
+    close: "Water when the soil asks, not when the calendar does. Try one sensor in one bed this season.",
+  };
+  out.s2["w2-b"] = { status: "doing", updatedAt: at(0.3), speech: { fields: v2, versions: [{ at: at(1.2), label: "first plan", fields: v1 }, { at: at(0.3), label: "after studio feedback", fields: v2 }] } };
   // Teacher feedback already given on some of this week's work.
   out.s1["w1-3"].review = { verdict: "good", text: "Sharp sentence. Cutting the circuit diagram was the right call.", at: at(0.6), levels: { audience: 3 } };
   out.s3["w1-2"].review = { verdict: "good", text: "Good eye: “like a sponge” is exactly the kind of swap to notice.", at: at(0.4), levels: { audience: 3 } };
@@ -579,6 +607,16 @@ export function seedEvents(): ClassEvent[] {
 }
 
 /** A few timestamped notes on Leo’s Week 1 recording, from the teacher and a peer. */
+/** Feedback Leo has already acted on. */
+export function seedUptake(): Record<string, Record<string, number>> {
+  return { s2: { "m:mk1": Date.now() - 3000_000 } };
+}
+
+/** A reminder the teacher sent this morning. */
+export function seedNudges(): Nudge[] {
+  return [{ id: "n-ava", studentId: "s3", text: "“This week’s goal” is past its due date. Can you finish it today?", moduleId: "w1-1", at: Date.now() - 2 * 3600_000 }];
+}
+
 export function seedMarks(): Mark[] {
   const now = Date.now();
   return [
