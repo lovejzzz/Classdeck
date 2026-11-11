@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/a11y";
 import { createPortal } from "react-dom";
 import { op } from "@/lib/client";
 import { toast } from "@/lib/toast";
@@ -20,6 +21,14 @@ export function DocImport({ courseId, onDone, label = "Import from a document…
   const [skip, setSkip] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [name, setName] = useState("");
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box, open);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, busy]);
 
   async function read(file: File) {
     setBusy(true);
@@ -55,11 +64,11 @@ export function DocImport({ courseId, onDone, label = "Import from a document…
       <button onClick={() => setOpen(true)} className="btn btn-ghost press"><Icon name="file" size={13} /> {label}</button>
       {open && createPortal(
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/25 px-4 py-10 backdrop-blur-[2px]" onClick={(e) => e.target === e.currentTarget && !busy && setOpen(false)}>
-          <div className="pop w-full max-w-2xl rounded-2xl border border-line bg-white shadow-[0_30px_80px_-30px_rgba(20,20,18,0.5)]" role="dialog" aria-label="Import from a document">
+          <div ref={box} className="pop w-full max-w-2xl rounded-2xl border border-line bg-white shadow-[0_30px_80px_-30px_rgba(20,20,18,0.5)]" role="dialog" aria-modal="true" aria-label="Import from a document">
             <div className="flex items-center gap-2 border-b border-line px-5 py-3.5">
               <Icon name="file" size={15} />
               <h2 className="flex-1 text-[14.5px] font-medium">Import weeks from a course plan</h2>
-              <button onClick={() => setOpen(false)} aria-label="Close" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={15} /></button>
+              <button onClick={() => setOpen(false)} aria-label="Close" className="btn btn-quiet press h-8 w-8 justify-center px-0" autoFocus><Icon name="x" size={15} /></button>
             </div>
             <div className="p-5">
               <label className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-dashed px-4 py-6 text-center text-[13px] transition-colors ${busy ? "border-line" : "border-line-strong hover:border-ink"}`}>

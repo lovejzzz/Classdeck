@@ -236,7 +236,7 @@ export default function LearnPage() {
 
   return (
     <MarksContext.Provider value={{ courseId, me: studentId, marks: state.marks ?? [], names: Object.fromEntries(course.students.map((s) => [s.id, s.name])), refresh: synced }}>
-    <div className="flex-1 overflow-x-hidden">
+    <main className="flex-1 overflow-x-hidden">
       {!isPreview && <StudentLive courseId={courseId} studentId={studentId} state={state} onChanged={synced} />}
       {isPreview && (
         <div className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-line bg-white/85 px-4 py-2 text-[13px] backdrop-blur">
@@ -591,7 +591,7 @@ export default function LearnPage() {
           />
         </Lift>
       )}
-    </div>
+    </main>
     </MarksContext.Provider>
   );
 }

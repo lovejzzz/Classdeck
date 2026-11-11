@@ -1,6 +1,6 @@
 import path from "path";
 
-export const UPLOAD_DIR = path.join(process.cwd(), ".data", "uploads");
+export const UPLOAD_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), ".data", "uploads");
 export const MAX_UPLOAD = 25 * 1024 * 1024;
 
 export const TYPES: Record<string, string> = {

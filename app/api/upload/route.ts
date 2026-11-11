@@ -22,6 +22,6 @@ export async function POST(request: Request) {
   if (!TYPES[ext]) return Response.json({ ok: false, error: `.${ext || "?"} files aren't supported` }, { status: 415 });
   const name = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.${ext}`;
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
-  await fs.writeFile(path.join(UPLOAD_DIR, name), Buffer.from(await file.arrayBuffer()));
+  await fs.writeFile(path.join(/*turbopackIgnore: true*/ UPLOAD_DIR, name), Buffer.from(await file.arrayBuffer()));
   return Response.json({ ok: true, url: `/api/upload/${name}`, name: file.name, size: file.size, kind: kindOf(ext) });
 }

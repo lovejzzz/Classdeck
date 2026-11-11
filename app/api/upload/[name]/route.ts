@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: Ctx) {
   const ext = name.split(".").pop()!;
   let buf: Buffer;
   try {
-    buf = await fs.readFile(path.join(UPLOAD_DIR, name));
+    buf = await fs.readFile(path.join(/*turbopackIgnore: true*/ UPLOAD_DIR, name));
   } catch {
     return new Response("not found", { status: 404 });
   }

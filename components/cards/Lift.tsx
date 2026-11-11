@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { useFocusTrap } from "@/lib/a11y";
 import { clamp, lerp, onFrame, reducedMotion, Spring } from "@/lib/spring";
 
 /**
@@ -25,6 +26,7 @@ export function Lift({
   const spring = useRef(new Spring(0, 170, 19));
   const target = useRef(from);
   const gone = useRef(false);
+  useFocusTrap(panel, open);
 
   useLayoutEffect(() => {
     document.body.style.overflow = "hidden";

@@ -113,6 +113,7 @@ export function CardEditor({
       className={`fixed bottom-0 right-0 top-0 z-40 flex w-full max-w-[30rem] flex-col border-l border-line bg-white shadow-[-24px_0_60px_-30px_rgba(20,20,18,0.35)] transition-transform duration-500 ease-[var(--ease-out)] ${open ? "translate-x-0" : "translate-x-[105%]"}`}
       aria-label="Edit card"
       aria-hidden={!open}
+      inert={!open}
     >
       <div className="flex h-14 flex-none items-center gap-2 border-b border-line px-5">
         <div className="flex items-center rounded-lg bg-lane p-0.5">

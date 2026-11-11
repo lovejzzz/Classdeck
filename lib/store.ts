@@ -45,7 +45,7 @@ export interface DB {
 
 // Storage: SQLite (built into Node), one row per course per collection, written only when it changes.
 // The whole database stays in memory for reads; saves are incremental and atomic.
-const DIR = path.join(process.cwd(), ".data");
+const DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), ".data");
 const FILE = path.join(DIR, "classdeck.db");
 const LEGACY = path.join(DIR, "db.json");
 const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins"] as const;

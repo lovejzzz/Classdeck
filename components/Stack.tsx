@@ -52,6 +52,7 @@ export function Stack<T extends { id: string }>({
               transitionDelay: expanded ? `${Math.min(i, 8) * 18}ms` : "0ms",
             }}
             aria-hidden={!front}
+            inert={!front}
           >
             {render(it, i, front, !collapsible)}
           </div>

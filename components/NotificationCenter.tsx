@@ -142,6 +142,7 @@ export function NotificationCenter({
         role="dialog"
         aria-label={title}
         aria-hidden={!open}
+        inert={!open}
       >
         <div className="flex items-center gap-2 px-1 pb-3">
           <span className="flex-1 text-[14px] font-medium">{title}</span>

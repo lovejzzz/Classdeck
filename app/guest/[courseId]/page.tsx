@@ -43,7 +43,7 @@ function Guest({ courseId, token }: { courseId: string; token: string }) {
           <span className="chip"><Icon name="eye" size={12} />Guest view · read-only</span>
         </div>
       </header>
-      <div className="space-y-6 py-8">
+      <main className="space-y-6 py-8">
         {course.weeks.map((w) => (
           <section key={w.id}>
             <h2 className="mx-auto max-w-6xl px-4 text-[13px] font-medium text-ink-2">{w.title}</h2>
@@ -65,7 +65,7 @@ function Guest({ courseId, token }: { courseId: string; token: string }) {
             </HScroll>
           </section>
         ))}
-      </div>
+      </main>
       {lift && m && (
         <Lift from={lift.from} open={lift.open} label={m.title}
           onBackdrop={() => setLift((x) => (x ? { ...x, open: false } : x))}
