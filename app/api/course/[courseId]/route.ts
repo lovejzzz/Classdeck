@@ -5,6 +5,7 @@ import { db, logEvent, reset, save } from "@/lib/store";
 import { safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet } from "@/lib/grading";
 import { prcaScore } from "@/lib/onboarding";
+import { applyMany, newHookKey } from "@/lib/hooks";
 import type { AnswerValue, Attachment, Course, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
@@ -37,6 +38,9 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
   const taken = (lessonId: string) => Object.entries(all).filter(([sid, c]) => sid !== studentId && c[`elective:${lessonId}`]).length;
   return {
     ...course,
+    // Students never receive the class passcode, the tools key, or classmates' emails.
+    access: undefined,
+    students: course.students.map(({ id, name }) => ({ id, name })),
     weeks: course.weeks.map((w) => ({
       ...w,
       lessons: w.lessons.map((l) => ({
@@ -231,6 +235,23 @@ export async function POST(request: Request, { params }: Ctx) {
     case "setProfile":
       course.profile = body.profile;
       break;
+    case "hookKey": {
+      // A key for outside tools. Creating one replaces any earlier key.
+      if (body.revoke) {
+        if (course.access) course.access.hook = undefined;
+        break;
+      }
+      const { token, hook } = newHookKey();
+      course.access = { joinOpen: course.access?.joinOpen ?? true, ...course.access, hook };
+      extra = { key: token };
+      break;
+    }
+    case "importRows": {
+      // Rows from a CSV of form responses, applied the same way as the webhook.
+      if (!Array.isArray(body.rows)) return fail("No rows");
+      extra = { results: applyMany(courseId, course, body.rows.map((row: unknown) => ({ row, source: body.source || undefined, card: body.card || undefined }))) };
+      break;
+    }
     case "setCurrentLesson":
       if (findLesson(course, body.lessonId)) course.currentLessonId = body.lessonId;
       break;
@@ -805,6 +826,7 @@ export async function POST(request: Request, { params }: Ctx) {
         joinOpen: a.joinOpen !== false,
         passcode: a.passcode ? String(a.passcode).slice(0, 40) : undefined,
         guestToken: a.guestToken === true ? Math.random().toString(36).slice(2, 12) : a.guestToken === null ? undefined : course.access?.guestToken,
+        hook: course.access?.hook,
       };
       if (body.newCode) course.joinCode = Math.random().toString(36).slice(2, 8).toUpperCase();
       break;

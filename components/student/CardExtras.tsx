@@ -5,7 +5,7 @@ import { op } from "@/lib/client";
 import { fmtSec } from "@/lib/grading";
 import { FEEL } from "@/lib/onboarding";
 import { toast } from "@/lib/toast";
-import type { Level, Review, Skill } from "@/lib/types";
+import type { ExternalUpdate, Level, Review, Skill } from "@/lib/types";
 import { Icon } from "../Icon";
 
 /** The teacher's note on this work, pinned to the top of the card. */
@@ -348,6 +348,35 @@ export function Playlist({ items, watched, onChange, big }: { items: PlayItem[];
           {showMore && <ul className="rise mt-1.5">{list(extra, false)}</ul>}
         </div>
       )}
+    </section>
+  );
+}
+
+/** Feedback, scores, and links sent to this card from a form or another tool. */
+export function UpdatesNote({ updates, skills = [], levels = [], big }: { updates: ExternalUpdate[]; skills?: Skill[]; levels?: Level[]; big?: boolean }) {
+  return (
+    <section aria-label="Updates on this card" className="mt-5 space-y-2">
+      {[...updates].reverse().slice(0, 5).map((u) => (
+        <div key={u.id} className={`rounded-xl border border-line bg-[#f7f9fb] px-4 py-3 ${big ? "text-[14.5px]" : "text-[13.5px]"}`}>
+          <div className="flex items-start gap-2 text-[12px] text-ink-3">
+            <Icon name="message" size={12} className="mt-0.5 flex-none" />
+            <span className="min-w-0 flex-1"><span className="font-medium text-ink-2">{u.source}</span> <span className="whitespace-nowrap">· {new Date(u.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span></span>
+            {u.score && <span className="flex-none whitespace-nowrap rounded-full bg-white px-2 py-[1px] font-mono text-[12px] text-ink ring-1 ring-line">{u.score.value}{u.score.max ? ` / ${u.score.max}` : ""}</span>}
+          </div>
+          {u.text && <p className="mt-1 whitespace-pre-wrap leading-relaxed">{u.text}</p>}
+          {u.next && <p className="mt-1 leading-relaxed"><span className="text-ink-3">Try next:</span> {u.next}</p>}
+          {u.levels && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {Object.entries(u.levels).map(([k, v]) => <span key={k} className="chip h-auto min-h-5 whitespace-normal bg-white py-0.5 text-[11px]">{skills.find((s) => s.id === k)?.name ?? k} · {v} {levels.find((l) => l.n === v)?.name ?? ""}</span>)}
+            </div>
+          )}
+          {u.links && (
+            <ul className="mt-1.5 space-y-0.5">
+              {u.links.map((l) => <li key={l.url}><a href={l.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12.5px] underline decoration-line-strong underline-offset-2 hover:decoration-ink"><Icon name="link" size={11} />{l.title || new URL(l.url).hostname}</a></li>)}
+            </ul>
+          )}
+        </div>
+      ))}
     </section>
   );
 }

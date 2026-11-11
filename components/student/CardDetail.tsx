@@ -16,7 +16,7 @@ import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
 import { Onboarding } from "./Onboarding";
 import { SelfCheck } from "./SelfCheck";
-import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, Rehearsal, ReviewNote } from "./CardExtras";
+import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, Rehearsal, ReviewNote, UpdatesNote } from "./CardExtras";
 import { SpeechBuilder } from "./SpeechBuilder";
 import { SpeechFlow } from "./SpeechFlow";
 import { Studio } from "./Studio";
@@ -176,6 +176,7 @@ export function CardDetail(p: DetailProps) {
         )}
 
         {review && !m.choice && <ReviewNote review={review} big={p.big} skills={p.course.skills} levels={p.course.levels} />}
+        {p.progress?.updates?.length ? <UpdatesNote updates={p.progress.updates} big={p.big} skills={p.course.skills} levels={p.course.levels} /> : null}
 
         {m.choice && (
           <section className="pop mt-5" aria-label="Pick your path">

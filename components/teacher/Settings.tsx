@@ -7,6 +7,7 @@ import { PRESETS, PRESET_LABELS, fromPreset } from "@/lib/profile";
 import { download } from "@/lib/download";
 import { toast } from "@/lib/toast";
 import { DocImport } from "./DocImport";
+import { FormsIntegration } from "./FormsIntegration";
 import type { Course, PresetId, Profile } from "@/lib/types";
 import { Cover } from "../Cover";
 import { Avatar, CONNECTOR_ICON, Icon } from "../Icon";
@@ -223,6 +224,8 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
           </div>
         </div>
       </section>
+
+      <FormsIntegration course={course} onChanged={onChanged} />
 
       <section className="card p-6">
         <h3 className="text-[15px] font-medium">Course and students</h3>

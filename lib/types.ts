@@ -246,6 +246,8 @@ export interface Week {
 export interface Student {
   id: string;
   name: string;
+  /** Used only to match responses from outside tools (e.g. a Google Form) to this student. */
+  email?: string;
 }
 
 export interface Skill {
@@ -277,7 +279,9 @@ export interface Course {
   levels?: Level[];
   groups?: Group[];
   joinCode: string;
-  access?: { joinOpen: boolean; passcode?: string; guestToken?: string };
+  access?: { joinOpen: boolean; passcode?: string; guestToken?: string;
+    /** Key for outside tools (Google Forms via Apps Script) to send updates. Only its SHA-256 is stored. */
+    hook?: { hash: string; hint: string; createdAt: number; lastUsed?: number; uses?: number } };
   profile: Profile;
   students: Student[];
   weeks: Week[];
@@ -321,6 +325,8 @@ export interface Progress {
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
+  /** Updates sent in from outside tools, such as a workshop Google Form. */
+  updates?: ExternalUpdate[];
   /** Guided first-speech flow: chosen path, answers per step, and the arranged tiles. */
   flow?: { path?: "idea" | "story"; step?: number; answers: Record<string, string>; tiles?: { id: string; kind: string; text: string }[] };
   /** Speech builder: the current draft and saved versions. */
@@ -434,4 +440,18 @@ export interface CourseState {
   plans: Record<string, Plan>;
   /** For students, votes are counts only (plus their own) and hands are their own. */
   live: Live & { myVote?: number; counts?: number[] };
+}
+
+/** Feedback, scores, and links sent to a student's card from an outside tool. */
+export interface ExternalUpdate {
+  id: string;
+  /** Where it came from, e.g. "Workshop 2 form". */
+  source: string;
+  text?: string;
+  next?: string;
+  /** skill id → level 1–4. Counts as evidence in the student's skill picture. */
+  levels?: Record<string, number>;
+  score?: { value: number; max?: number };
+  links?: { title?: string; url: string }[];
+  at: number;
 }

@@ -57,7 +57,8 @@ const GLOBAL = ["users", "sessions", "customConnectors"] as const;
 const g = globalThis as unknown as { __lmsdb?: DB; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string> };
 
 function fresh(custom: Manifest[] = []): DB {
-  const course = seedCourse();
+  // A deep copy, so edits to the demo course never change the seed data a later reset restores.
+  const course = structuredClone(seedCourse());
   return {
     courses: { [course.id]: course },
     progress: { [course.id]: seedProgress() },

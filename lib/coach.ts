@@ -34,10 +34,15 @@ export function skillPicture(mine: Record<string, Progress>) {
   const teacher: Record<string, number> = {};
   const evidence: Record<string, string> = {};
   for (const [, p] of Object.entries(mine).sort((a, b) => a[1].updatedAt - b[1].updatedAt)) if (p.ratings) Object.assign(self, p.ratings);
-  for (const [id, p] of Object.entries(mine).filter(([, p]) => p.review?.levels).sort((a, b) => a[1].review!.at - b[1].review!.at)) {
-    for (const [k, v] of Object.entries(p.review!.levels!)) {
+  // The teacher's reviews and levels sent in from forms: the latest for each skill wins.
+  const judged = Object.entries(mine).flatMap(([id, p]) => [
+    ...(p.review?.levels ? [{ id, at: p.review.at, levels: p.review.levels }] : []),
+    ...(p.updates ?? []).filter((u) => u.levels).map((u) => ({ id, at: u.at, levels: u.levels! })),
+  ]).sort((a, b) => a.at - b.at);
+  for (const j of judged) {
+    for (const [k, v] of Object.entries(j.levels)) {
       teacher[k] = v;
-      evidence[k] = id;
+      evidence[k] = j.id;
     }
   }
   return { self, teacher, evidence };
@@ -77,6 +82,13 @@ export function feedbackFor(state: CourseState, studentId: string): FeedbackItem
   const items: FeedbackItem[] = [];
   for (const [mid, p] of Object.entries(mine)) {
     if (p.review) items.push({ key: `r:${mid}:${p.review.at}`, from: "Teacher", kind: "teacher", text: p.review.text || (p.review.verdict === "good" ? "Looks good." : "Please revise."), where: title(mid), moduleId: mid, at: p.review.at });
+    // Feedback sent in from a form or another tool counts as the teacher's.
+    for (const u of p.updates ?? []) {
+      const score = u.score ? `Score: ${u.score.value}${u.score.max ? ` / ${u.score.max}` : ""}.` : "";
+      const lv = u.levels ? Object.entries(u.levels).map(([k, v]) => `${course.skills?.find((s) => s.id === k)?.name ?? k}: ${course.levels?.find((l) => l.n === v)?.name ?? v}`).join(", ") : "";
+      const text = [u.text, score, lv].filter(Boolean).join(" ");
+      if (text || u.next) items.push({ key: `u:${mid}:${u.id}`, from: u.source, kind: "teacher", text: text || "New links on this card.", next: u.next, where: title(mid), moduleId: mid, at: u.at });
+    }
   }
   const myPosts = state.studio.posts.filter((p) => p.studentId === studentId);
   for (const f of state.studio.feedback) {
