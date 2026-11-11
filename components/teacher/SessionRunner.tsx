@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Course, Lesson, StudioPost } from "@/lib/types";
+import { rolesFor, sessionIndex } from "@/lib/roles";
 import { Avatar, Icon } from "../Icon";
 import { Present } from "../Present";
 
@@ -60,6 +61,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
 
   const group = groups.find((g) => g.id === groupId);
   const members = group?.studentIds.map((id) => course.students.find((s) => s.id === id)!).filter(Boolean) ?? [];
+  const roles = plan.roles && group ? rolesFor(group.studentIds, sessionIndex(course, lesson.id)) : {};
   const part = plan.agenda[seg];
   const perSpeaker = part?.roundRobin && members.length ? (part.minutes * 60) / members.length : 0;
   const total = part ? (part.roundRobin ? perSpeaker : part.minutes * 60) : 0;
@@ -193,6 +195,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
                     className={`press flex w-28 flex-col items-center gap-2 rounded-2xl border bg-white px-3 py-4 transition-all duration-300 ${i === speaker ? "-translate-y-2 border-ink shadow-[0_16px_30px_-16px_rgba(20,20,18,0.45)]" : i < speaker ? "border-line opacity-50" : "border-line"}`}>
                     <Avatar name={s.name} size={34} />
                     <span className="text-[13px] font-medium">{s.name}</span>
+                    {roles[s.id] && <span className="chip h-5 bg-[#fbf3ee] text-[10.5px] text-[#ae502f]" title={roles[s.id].job}>{roles[s.id].name}</span>}
                     <span className="mono">{i < speaker ? "done" : i === speaker ? "now" : `#${i + 1}`}</span>
                   </button>
                 ))}

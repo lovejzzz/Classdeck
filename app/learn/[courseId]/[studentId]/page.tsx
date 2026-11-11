@@ -21,6 +21,7 @@ import { MarksContext } from "@/components/Marks";
 import { SignInNeeded } from "@/components/SignInNeeded";
 import { StudentLive } from "@/components/LiveClass";
 import { ForYou } from "@/components/student/ForYou";
+import { Electives } from "@/components/student/Electives";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
 import { useConnectors, useCourse, useQuery } from "@/lib/client";
@@ -79,7 +80,11 @@ export default function LearnPage() {
   const [burst, setBurst] = useState<{ x: number; y: number; colors: string[]; key: number } | null>(null);
   const [now] = useState(() => Date.now());
 
-  const course = state?.course;
+  // Electives the student hasn't chosen live on the electives shelf, not in their weeks.
+  const course = state && {
+    ...state.course,
+    weeks: state.course.weeks.map((w) => ({ ...w, lessons: w.lessons.filter((l) => !l.elective || l.chosen) })).filter((w) => w.lessons.length),
+  };
   const previewPreset = query?.get("preset") as PresetId | null;
   const isPreview = query?.get("preview") === "1";
   const profile = useMemo(
@@ -455,6 +460,7 @@ export default function LearnPage() {
                 if (el) open(lessonId, mid, el);
               }} />
           )}
+          <Electives state={state} studentId={studentId} onChanged={synced} />
           <TipBar />
 
           {/* —— Week navigator —— */}

@@ -269,6 +269,19 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
         <div className="flex items-center">
           <h3 className="flex-1 text-[15px] font-medium">Collab Studio groups</h3>
           <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6 }); onChanged(); toast("Split the class into balanced groups", { icon: "users" }); }} className="btn btn-ghost press mr-2 h-8"><Icon name="users" size={13} /> Auto-group</button>
+          {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
+            <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6, by: "elective" }); onChanged(); toast("Grouped students who share an elective", { icon: "users" }); }}
+              title="Students who chose the same elective share a group, so early feedback uses the same rubric" className="btn btn-ghost press mr-2 h-8"><Icon name="layers" size={13} /> Group by elective</button>
+          )}
+          {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
+            <label className="mr-2 inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
+              Each student takes at least
+              <input type="number" min={0} max={10} defaultValue={course.electiveMin ?? 2} aria-label="Minimum electives"
+                onBlur={async (e) => { await op(course.id, { op: "setElectiveMin", min: Number(e.target.value) }); onChanged(); }}
+                className="field h-8 w-14 py-0 text-center" />
+              electives
+            </label>
+          )}
           <button onClick={() => saveGroups([...groups, { id: uid("g-"), name: `Studio ${String.fromCharCode(65 + groups.length)}`, studentIds: [] }])} className="btn btn-ghost press h-8"><Icon name="plus" size={13} /> Add group</button>
         </div>
         <p className="mt-1 text-[13px] text-ink-3">Groups of 4–6 work best. Tap a student to move them to the next group. Students see and give feedback only within their own group.</p>

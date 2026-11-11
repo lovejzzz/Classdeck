@@ -11,6 +11,8 @@ export interface Rec {
   text: string;
   moduleId?: string;
   lessonId?: string;
+  /** Scroll to this element instead of opening a card. */
+  anchor?: string;
 }
 
 export interface Todo { m: Module; lesson: Lesson; week: string; due?: ReturnType<typeof dueInfo>; revise: boolean; status: Progress["status"] }
@@ -48,7 +50,8 @@ export function todoList(course: Course, mine: Record<string, Progress>, now: nu
   const lessons = course.weeks.flatMap((w) => w.lessons.map((l) => ({ w, l })));
   const cur = Math.max(0, lessons.findIndex((x) => x.l.id === course.currentLessonId));
   const out: Todo[] = [];
-  lessons.slice(0, cur + 2).forEach(({ w, l }) => {
+  // Up to one lesson past today's, plus any electives the student chose (they set their own pace).
+  lessons.filter(({ l }, i) => i < cur + 2 || (l.elective && l.chosen)).forEach(({ w, l }) => {
     const seen = new Set<string>();
     for (const m of l.modules) {
       if (m.choice) {
@@ -159,6 +162,19 @@ export function recommend(state: CourseState, studentId: string, now: number): R
   if (weakest && weakest.n! <= 2) {
     const card = todos.find((t) => t.m.skills?.includes(weakest.s.id) && !t.m.choice);
     if (card) recs.push({ id: `focus:${weakest.s.id}`, kind: "focus", title: `Focus on ${weakest.s.name.toLowerCase()}`, text: `It’s your lowest skill right now (“${lv(weakest.n)}”). “${card.m.title}” practices it.`, moduleId: card.m.id, lessonId: card.lesson.id });
+  }
+
+  const electives = course.weeks.flatMap((w) => w.lessons).filter((l) => l.elective);
+  const picked = electives.filter((l) => l.chosen).length;
+  const need = (course.electiveMin ?? 2) - picked;
+  if (electives.length && need > 0) {
+    const weak = scored[0]?.s.id;
+    const fit = electives.find((l) => !l.chosen && weak && l.catalog?.skills.includes(weak));
+    recs.push({
+      id: "electives", kind: "path", anchor: "electives",
+      title: `Choose ${need} more elective${need === 1 ? "" : "s"}`,
+      text: fit ? `“${fit.title}” works on ${sk(weak!).toLowerCase()}, your lowest skill right now.` : "Pick the ones that match what you want to get better at.",
+    });
   }
 
   const untried = feedbackFor(state, studentId).filter((f) => !state.uptake?.[studentId]?.[f.key] && (f.kind !== "teacher" || f.text));

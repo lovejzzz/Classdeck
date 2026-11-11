@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CARD_SIZE, formatSize, hostOf } from "@/lib/cards";
 import { CATEGORIES, type ConnectorInfo } from "@/lib/connectors/types";
@@ -204,6 +204,7 @@ export function CardEditor({
                   onBlur={() => { const c = (m.checklist ?? []).map((x) => x.trim()).filter(Boolean); set({ checklist: c.length ? c : undefined }); }}
                   placeholder={"Record a 60–90 second take\nInclude one example for your audience\nListen back once"} aria-label="Checklist steps" className="field resize-y leading-relaxed" />
               </div>
+              <PlaylistEditor key={m.id} items={m.playlist ?? []} onChange={(playlist) => set({ playlist: playlist.length ? playlist : undefined })} />
               {["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && (
                 <div>
                   <div className="mb-1 flex items-center gap-2"><Icon name="text" size={13} /><span className="font-medium">Guided prompts</span><span className="text-ink-3">· each gets its own answer box</span></div>
@@ -506,6 +507,46 @@ function QuestionsEditor({ questions, onChange }: { questions: Question[]; onCha
         );
       })}
       <button onClick={() => onChange([...questions, { id: uid("q-"), text: "", options: ["", ""], answer: 0 }])} className="btn btn-ghost press"><Icon name="plus" size={13} /> Add a question</button>
+    </div>
+  );
+}
+
+type PlayItem = NonNullable<Module["playlist"]>[number];
+
+/**
+ * A playlist written as plain lines, so teachers can paste a "patchwork" quickly:
+ *   ## Section name
+ *   Title | https://…        (required, in order)
+ *   + Title | https://…      (optional extra)
+ */
+function PlaylistEditor({ items, onChange }: { items: PlayItem[]; onChange: (items: PlayItem[]) => void }) {
+  const toText = (xs: PlayItem[]) => {
+    let section: string | undefined;
+    return xs.map((x) => `${x.section && x.section !== section ? `## ${(section = x.section)}\n` : ""}${x.optional ? "+ " : ""}${x.title} | ${x.url}`).join("\n");
+  };
+  const [text, setText] = useState(() => toText(items));
+  function parse(t: string): PlayItem[] {
+    let section: string | undefined;
+    const out: PlayItem[] = [];
+    for (const raw of t.split("\n")) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line.startsWith("#")) { section = line.replace(/^#+\s*/, "") || undefined; continue; }
+      const optional = line.startsWith("+");
+      const [title, url] = line.replace(/^\+\s*/, "").split("|").map((x) => x.trim());
+      if (!url || !/^https:\/\//.test(url)) continue;
+      const prev = items.find((x) => x.url === url);
+      out.push({ id: prev?.id ?? uid("v-"), title: title || url, url, section, optional: optional || undefined });
+    }
+    return out;
+  }
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-2"><Icon name="video" size={13} /><span className="font-medium">Video playlist</span><span className="text-ink-3">· a “patchwork” of clips, in order</span></div>
+      <textarea value={text} rows={Math.max(3, text.split("\n").length + 1)} onChange={(e) => setText(e.target.value)} onBlur={() => onChange(parse(text))}
+        placeholder={"## Opening strong\nHooks that work | https://www.linkedin.com/learning/…\nYour first 30 seconds | https://…\n+ More on openings (optional) | https://…"}
+        aria-label="Video playlist" className="field resize-y font-mono text-[12px] leading-relaxed" />
+      <p className="mt-1 text-[11.5px] text-ink-3">One video per line as “Title | link”. “## ” starts a section, “+ ” marks an optional extra. Students must watch the rest before finishing.{items.length ? ` ${items.filter((x) => !x.optional).length} required, ${items.filter((x) => x.optional).length} optional.` : ""}</p>
     </div>
   );
 }

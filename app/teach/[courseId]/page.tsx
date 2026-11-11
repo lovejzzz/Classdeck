@@ -201,7 +201,7 @@ export default function TeachPage() {
         </div>
 
         <main key={tab} className="rise mt-6">
-          {tab === "plan" && <Deck course={course} connectors={connectors} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} />}
+          {tab === "plan" && <Deck course={course} connectors={connectors} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} />}
           {tab === "class" && lesson && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
           {tab === "grades" && <Gradebook state={state} />}
           {tab === "settings" && <Settings course={course} connectors={connectors} onChanged={refresh} />}

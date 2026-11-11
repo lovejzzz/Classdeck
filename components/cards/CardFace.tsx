@@ -132,6 +132,7 @@ export function CardFace({
             {m.submitTo && <Icon name={m.submitTo === "studio" ? "studio" : "board"} size={11} />}
             {m.checklist?.length ? <span className="flex items-center gap-0.5 font-mono text-[10px]"><Icon name="check" size={10} />{m.checklist.length}</span> : null}
             {m.timer ? <Icon name="timer" size={11} /> : null}
+            {m.playlist?.length ? <span className="flex items-center gap-0.5 font-mono text-[10px]"><Icon name="video" size={10} />{m.playlist.filter((x) => !x.optional).length}</span> : null}
             {due?.tone === "later" && status !== "done" && <span className="font-mono text-[10px]">{due.label.replace("Due ", "")}</span>}
           </>
         )}

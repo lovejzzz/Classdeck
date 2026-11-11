@@ -29,7 +29,72 @@ function paths(slot: string, guided: Module, stretch: Module): Module[] {
 const session = (minutes: number, ...agenda: [string, number, boolean?][]): SessionPlan => ({
   minutes,
   agenda: agenda.map(([label, m, rr]) => ({ label, minutes: m, roundRobin: rr || undefined })),
+  roles: true,
 });
+
+/** A LinkedIn Learning search link for a course, until the teacher pastes exact clip links. */
+const LIL = (q: string) => `https://www.linkedin.com/learning/search?keywords=${encodeURIComponent(q)}`;
+
+/** Electives: students pick at least two; each is a short, self-paced module. */
+const ELECTIVES: Lesson[] = [
+  {
+    id: "lE1", title: "Speaking with less anxiety", elective: true, branches: {},
+    goal: "Use breathing, preparation, and small exposures to keep nerves from taking over your talk.",
+    modules: [
+      M("e1-1", "explore", "Watch: nerves are normal", "Watch the clips in order. Note one technique you’ll try this week.", {
+        minutes: 15, skills: ["body", "rehearsal"],
+        playlist: [
+          { id: "e1v1", section: "Why nerves happen", title: "Communicating with Confidence (Vinh Giang)", url: LIL("Communicating with Confidence Vinh Giang") },
+          { id: "e1v2", section: "Calming your body", title: "Public Speaking Foundations: managing nervousness", url: LIL("Public Speaking Foundations managing nervousness") },
+          { id: "e1v3", title: "Body Language for Leaders: confident posture", url: LIL("Body Language for Leaders and Managers") },
+          { id: "e1v4", optional: true, title: "Establishing Credibility as a Speaker", url: LIL("Establishing Credibility as a Speaker") },
+        ],
+      }),
+      M("e1-2", "practice", "Small exposures", "Give your one-minute talk three times this week to a slightly bigger audience each time: a mirror, a friend, a small group. Time each run.", {
+        minutes: 20, skills: ["rehearsal"], submitTo: "personal", timer: 60,
+        checklist: ["Run 1: to yourself", "Run 2: to one person", "Run 3: to three or more people"] }),
+      M("e1-3", "reflect", "What helped", "Look back on the three runs.", {
+        minutes: 10, prompts: ["Which run felt hardest, and why?", "Which technique helped most?", "What will you do right before your next talk?"] }),
+    ],
+  },
+  {
+    id: "lE2", title: "Interview answers with STAR", elective: true, branches: {},
+    goal: "Turn your experience into clear, specific interview stories using Situation, Task, Action, Result.",
+    modules: [
+      M("e2-1", "builder", "Build two STAR stories", "Build two stories from your own experience. Keep each under 90 seconds and end with a result you can measure.", {
+        minutes: 25, skills: ["structure", "audience"], submitTo: "personal", structure: "star", timer: 90 }),
+      M("e2-2", "practice", "Answer out loud", "Record one story as if answering “Tell me about a time you solved a hard problem.” Check your timing and filler words.", {
+        minutes: 15, skills: ["vocal", "structure"], submitTo: "personal", timer: 90 }),
+    ],
+  },
+  {
+    id: "lE3", title: "Impromptu speaking (table topics)", elective: true, branches: {},
+    goal: "Answer an unexpected question with a clear point in under a minute.",
+    modules: [
+      M("e3-1", "explore", "Watch: thinking on your feet", "Two short clips, then the optional rest of the course.", {
+        minutes: 12, skills: ["structure", "rehearsal"],
+        playlist: [
+          { id: "e3v1", title: "Impromptu Speaking (Todd Dewett): a simple structure", url: LIL("Impromptu Speaking Todd Dewett") },
+          { id: "e3v2", title: "Impromptu Speaking: buying time gracefully", url: LIL("Impromptu Speaking buying time") },
+          { id: "e3v3", optional: true, title: "Writing and Delivering Speeches (Daisy Lovelace)", url: LIL("Writing and Delivering Speeches Daisy Lovelace") },
+        ],
+      }),
+      M("e3-2", "practice", "Three table topics", "Answer each question in 60 seconds using PREP: point, reason, example, point.\n\n1. What’s a skill you wish everyone learned?\n2. Describe a place that changed your mind.\n3. What would you fix first in your city?", {
+        minutes: 15, skills: ["structure"], submitTo: "personal", timer: 60 }),
+    ],
+  },
+  {
+    id: "lE4", title: "Presenting data clearly", elective: true, branches: {},
+    goal: "Show one number or chart so a non-specialist gets the point in five seconds.",
+    modules: [
+      M("e4-1", "explore", "Watch: technical information as a story", "Watch, then note how the presenters lead with the takeaway.", {
+        minutes: 15, skills: ["visual", "audience"],
+        playlist: [{ id: "e4v1", title: "Presenting Technical Information with Stories", url: LIL("Presenting Technical Information with Stories") }] }),
+      M("e4-2", "practice", "One chart, one sentence", "Pick one chart from your talk. Write the sentence you’ll say while it’s on screen, then redesign the chart so it shows only that.", {
+        minutes: 20, skills: ["visual"], submitTo: "personal" }),
+    ],
+  },
+];
 
 const students = [
   ["s1", "Mia"], ["s2", "Leo"], ["s3", "Ava"], ["s4", "Noah"], ["s5", "Zoe"], ["s6", "Ethan"],
@@ -362,10 +427,14 @@ export function seedCourse(): Course {
     ],
     currentLessonId: "l1",
     enabledConnectors: ["ai", "dictionary", "wikipedia", "words", "grammar", "speech", "translate", "openalex", "openverse"],
-    weeks: weeks.map((w) => ({
-      id: w.id, title: w.title,
-      lessons: [{ ...w.lesson, modules: w.lesson.modules.map((m) => (m.id in DUE ? { ...m, due: isoDay(DUE[m.id]) } : m)) }],
-    })),
+    electiveMin: 2,
+    weeks: [
+      ...weeks.map((w) => ({
+        id: w.id, title: w.title,
+        lessons: [{ ...w.lesson, modules: w.lesson.modules.map((m) => (m.id in DUE ? { ...m, due: isoDay(DUE[m.id]) } : m)) }],
+      })),
+      { id: "wE", title: "Electives", lessons: ELECTIVES },
+    ],
   };
 }
 
@@ -503,6 +572,9 @@ export function seedChoices(): Record<string, Record<string, string>> {
   for (const id of ["s2", "s3", "s8"]) c[id] = { w0p: "Stretch" };
   c.s2.w1p = "Stretch";
   c.s8.w1p = "Stretch";
+  // Electives chosen so far (Ava hasn't picked any yet).
+  const picks: Record<string, string[]> = { s1: ["lE1", "lE2"], s2: ["lE3", "lE4"], s5: ["lE1"], s8: ["lE2", "lE3"], s9: ["lE2"], s11: ["lE4", "lE2"] };
+  for (const [sid, ls] of Object.entries(picks)) for (const l of ls) c[sid][`elective:${l}`] = "yes";
   return c;
 }
 

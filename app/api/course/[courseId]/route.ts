@@ -14,7 +14,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 
 /** Operations a student performs on their own behalf (body.studentId). */
 const STUDENT_OPS = new Set([
-  "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
+  "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
   "retakeQuiz", "rehearse", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
 ]);
 
@@ -32,14 +32,18 @@ const groupOf = (course: Course, studentId: string) => course.groups?.find((g) =
 
 /** What a student receives: only their cards, no answer keys, no version labels, only their group's studio. */
 function forStudent(course: Course, studentId: string, chosen: Record<string, string>): Course {
+  const all = db().choices[course.id] ?? {};
+  const taken = (lessonId: string) => Object.entries(all).filter(([sid, c]) => sid !== studentId && c[`elective:${lessonId}`]).length;
   return {
     ...course,
     weeks: course.weeks.map((w) => ({
       ...w,
       lessons: w.lessons.map((l) => ({
         ...l,
+        // An elective a student hasn't chosen arrives as a catalog entry: its cards stay hidden until they pick it.
+        ...(l.elective ? { chosen: !!chosen[`elective:${l.id}`], takenBy: taken(l.id), catalog: { cards: l.modules.filter((m) => m.audience.kind === "all").length, skills: [...new Set(l.modules.flatMap((m) => m.skills ?? []))] } } : {}),
         branches: {},
-        modules: visibleModules(l, studentId, chosen).map((m) => ({
+        modules: (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen)).map((m) => ({
           ...m,
           audience: { kind: "all" as const },
           personal: m.audience.kind !== "all" && !m.choice && !m.picked,
@@ -265,6 +269,21 @@ export async function POST(request: Request, { params }: Ctx) {
     case "autoGroup": {
       // Split the class into balanced groups of at most `size` (default 6), keeping existing group ids where possible.
       const size = Math.max(2, Math.min(10, Number(body.size) || 6));
+      if (body.by === "elective") {
+        // Group students who share an elective, so early peer feedback comes from people using the same rubric.
+        const electives = course.weeks.flatMap((w) => w.lessons).filter((l) => l.elective);
+        const pick = (sid: string) => electives.find((l) => d.choices[courseId]?.[sid]?.[`elective:${l.id}`])?.id ?? "none";
+        const buckets = new Map<string, string[]>();
+        for (const st of course.students) buckets.set(pick(st.id), [...(buckets.get(pick(st.id)) ?? []), st.id]);
+        const groups: { id: string; name: string; studentIds: string[] }[] = [];
+        for (const [lid, ids] of buckets) {
+          const parts = Math.max(1, Math.ceil(ids.length / size));
+          const title = electives.find((l) => l.id === lid)?.title ?? "Open";
+          for (let i = 0; i < parts; i++) groups.push({ id: uid("g-"), name: parts > 1 ? `${title} ${i + 1}` : title, studentIds: ids.filter((_, k) => k % parts === i) });
+        }
+        course.groups = groups;
+        break;
+      }
       const ids = course.students.map((x) => x.id);
       const n = Math.max(1, Math.ceil(ids.length / size));
       const old = course.groups ?? [];
@@ -288,6 +307,7 @@ export async function POST(request: Request, { params }: Ctx) {
     case "saveLesson": {
       const next = body.lesson as Lesson;
       for (const m of next.modules) {
+        if (m.playlist) m.playlist = m.playlist.filter((x) => typeof x.url === "string" && /^https:\/\//.test(x.url)).slice(0, 60);
         m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
       }
       for (const w of course.weeks) {
@@ -326,12 +346,38 @@ export async function POST(request: Request, { params }: Ctx) {
           .filter((h: { start: number; end: number }) => h.start >= 0 && h.end > h.start && h.end <= len)
           .slice(0, 50);
       }
+      if (Array.isArray(body.watched)) {
+        const ids = new Set((mod?.playlist ?? []).map((x) => x.id));
+        p.watched = [...new Set(body.watched.map(String).filter((x: string) => ids.has(x)))] as string[];
+      }
+      const mustWatch = (mod?.playlist ?? []).filter((x) => !x.optional);
+      if (body.status === "done" && mustWatch.some((x) => !(p.watched ?? []).includes(x.id))) return fail("Watch the required videos first");
       if (Array.isArray(body.responses)) p.responses = body.responses.slice(0, 12).map((x: unknown) => String(x ?? "").slice(0, 4000));
       if (body.status === "done" && steps.length && (p.checks?.length ?? 0) < steps.length) return fail("Tick every step on the checklist first");
       if (body.status) p.status = body.status;
       if (typeof body.output === "string") p.output = body.output.slice(0, 8000);
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
+      break;
+    }
+    case "chooseElective": {
+      const lesson = findLesson(course, body.lessonId);
+      if (!lesson?.elective) return fail("That isn’t an elective");
+      const mineC = ((d.choices[courseId] ??= {})[body.studentId] ??= {});
+      if (body.on) mineC[`elective:${lesson.id}`] = "yes";
+      else delete mineC[`elective:${lesson.id}`];
+      break;
+    }
+    case "setElectiveMin": {
+      course.electiveMin = Math.max(0, Math.min(10, Math.round(Number(body.min) || 0)));
+      break;
+    }
+    case "setElective": {
+      // —— teacher ——
+      const lesson = findLesson(course, body.lessonId);
+      if (!lesson) return fail("No such lesson");
+      lesson.elective = !!body.on || undefined;
+      if (typeof body.min === "number") course.electiveMin = Math.max(0, Math.min(10, Math.round(body.min)));
       break;
     }
     case "chooseBranch": {
@@ -493,6 +539,9 @@ export async function POST(request: Request, { params }: Ctx) {
         audience: s(f.audience, 200), purpose: s(f.purpose, 300), hook: s(f.hook), core: s(f.core, 300),
         points: (Array.isArray(f.points) ? f.points : []).slice(0, 5).map((x: { point?: unknown; example?: unknown }) => ({ point: s(x?.point, 300), example: s(x?.example) })),
         close: s(f.close),
+        structure: f.structure ? s(f.structure, 20) : undefined,
+        hookType: f.hookType ? s(f.hookType, 20) : undefined,
+        closeType: f.closeType ? s(f.closeType, 20) : undefined,
       };
       const p = mine(body.studentId, body.moduleId);
       const prev = p.speech ?? { fields, versions: [] };

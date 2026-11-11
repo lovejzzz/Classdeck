@@ -117,6 +117,10 @@ export interface SpeechFields {
   core: string;
   points: { point: string; example: string }[];
   close: string;
+  /** Structure template id (lib/structures.ts). */
+  structure?: string;
+  hookType?: string;
+  closeType?: string;
 }
 
 /** A reminder the teacher sent to a student. */
@@ -163,10 +167,14 @@ export interface Module {
   picked?: boolean;
   /** Due date, YYYY-MM-DD. */
   due?: string;
+  /** A curated sequence of videos (e.g. LinkedIn Learning clips), with optional extras. */
+  playlist?: { id: string; title: string; url: string; section?: string; optional?: boolean }[];
   /** Steps students tick off; all must be ticked before the card is done. */
   checklist?: string[];
   /** Guided prompts: each gets its own answer box. */
   prompts?: string[];
+  /** Speech builder: the structure template to start from (lib/structures.ts). */
+  structure?: string;
   /** Rehearsal timer target, in seconds (practice cards). */
   timer?: number;
   /** Studio: let students review anyone instead of assigning each two peers. */
@@ -184,6 +192,8 @@ export interface Module {
 export interface SessionPlan {
   minutes: number;
   agenda: { label: string; minutes: number; roundRobin?: boolean }[];
+  /** Rotate Toastmasters-style roles (host, timer, ah-counter, evaluator) through each group. */
+  roles?: boolean;
 }
 
 export interface Lesson {
@@ -196,6 +206,13 @@ export interface Lesson {
   choiceSlots?: string[];
   /** Agenda for this week's group session (Collab Studio). */
   session?: SessionPlan;
+  /** An elective: students choose whether to take it. */
+  elective?: boolean;
+  /** Sent to students only: whether they've chosen this elective, and how many classmates have. */
+  chosen?: boolean;
+  takenBy?: number;
+  /** For an elective the student hasn't chosen: what it contains. */
+  catalog?: { cards: number; skills: string[] };
   /** 分支分配：slot → 学生 → 版本。没有记录的学生拿该 slot 的第一个版本。 */
   branches: Record<string, Record<string, string>>;
 }
@@ -246,6 +263,8 @@ export interface Course {
   weeks: Week[];
   currentLessonId: string;
   enabledConnectors: string[];
+  /** How many electives each student should take. */
+  electiveMin?: number;
 }
 
 export type Status = "todo" | "doing" | "done";
@@ -265,6 +284,8 @@ export interface Progress {
   starred?: boolean;
   /** Passages the student highlighted in the card text (character offsets), with an optional note. */
   highlights?: { start: number; end: number; note?: string }[];
+  /** Playlist items watched, by id. */
+  watched?: string[];
   /** Checklist items ticked, by index. */
   checks?: number[];
   /** Answers to the card's guided prompts, by index. */

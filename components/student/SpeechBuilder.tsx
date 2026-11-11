@@ -8,12 +8,15 @@ import type { Module, Progress, SpeechFields } from "@/lib/types";
 import { Icon } from "../Icon";
 import { ToolResultView } from "../ToolResultView";
 import { Rehearsal } from "./CardExtras";
+import { CLOSES, HOOKS, STRUCTURES, structureOf } from "@/lib/structures";
 
 const EMPTY: SpeechFields = { audience: "", purpose: "", hook: "", core: "", points: [{ point: "", example: "" }, { point: "", example: "" }, { point: "", example: "" }], close: "" };
 const SIGNPOSTS = ["First,", "Second,", "Third,", "Fourth,", "Finally,"];
 
 /** The talk as one draft, in the student's own words, optionally with signposts between points. */
 export function draftOf(f: SpeechFields, signposts: boolean) {
+  // Templates other than plain points read naturally without "First, … Second, …".
+  if (f.structure && f.structure !== "points") signposts = false;
   const pts = f.points.filter((p) => p.point.trim() || p.example.trim());
   return [
     f.hook,
@@ -36,7 +39,11 @@ const keywords = (s: string, n = 7) => s.trim().split(/\s+/).slice(0, n).join(" 
 export function SpeechBuilder({ courseId, studentId, module: m, progress, onChanged, onFinish, big }: {
   courseId: string; studentId: string; module: Module; progress?: Progress; onChanged: () => void; onFinish: (text: string) => void; big?: boolean;
 }) {
-  const [f, setF] = useState<SpeechFields>(progress?.speech?.fields ?? EMPTY);
+  const [f, setF] = useState<SpeechFields>(() => {
+    if (progress?.speech?.fields) return progress.speech.fields;
+    const st = structureOf(m.structure);
+    return m.structure ? { ...EMPTY, structure: st.id, points: st.parts.map(() => ({ point: "", example: "" })) } : EMPTY;
+  });
   const versions = progress?.speech?.versions ?? [];
   const [view, setView] = useState<"draft" | "notes">("draft");
   const [signposts, setSignposts] = useState(true);
@@ -61,6 +68,16 @@ export function SpeechBuilder({ courseId, studentId, module: m, progress, onChan
     }
   }
   const set = (patch: Partial<SpeechFields>) => setF((x) => ({ ...x, ...patch }));
+  const structure = structureOf(f.structure);
+  // Switching structure keeps what's written and resizes the parts to the template.
+  function pickStructure(id: string) {
+    const st = structureOf(id);
+    setF((x) => ({ ...x, structure: id, points: st.parts.map((_, i) => x.points[i] ?? { point: "", example: "" }) }));
+  }
+  const starter = (k: "hook" | "close", type: string, text: string) => {
+    set(k === "hook" ? { hookType: type } : { closeType: type });
+    if (text && !f[k].trim()) set({ [k]: text, ...(k === "hook" ? { hookType: type } : { closeType: type }) });
+  };
   const setPoint = (i: number, patch: Partial<SpeechFields["points"][number]>) => setF((x) => ({ ...x, points: x.points.map((p, k) => (k === i ? { ...p, ...patch } : p)) }));
   const field = (k: "audience" | "purpose" | "hook" | "core" | "close", label: string, hint: string, rows = 2) => (
     <label className="block">
@@ -79,23 +96,49 @@ export function SpeechBuilder({ courseId, studentId, module: m, progress, onChan
             {field("audience", "Audience", "Who will be listening?", 1)}
             {field("purpose", "Purpose", "What should they do or think afterwards?", 1)}
           </div>
-          {field("hook", "Hook", "Your first sentence: a question, a picture, a surprising fact.")}
+          <div>
+            <span className={`font-medium ${big ? "text-[15px]" : "text-[13px]"}`}>Structure</span>
+            <span className="block text-[12px] text-ink-3">Pick the shape of your talk. The parts below follow it.</span>
+            <select value={structure.id} onChange={(e) => pickStructure(e.target.value)} aria-label="Structure" className="field mt-1">
+              {[...new Set(STRUCTURES.map((x) => x.family))].map((fam) => (
+                <optgroup key={fam} label={fam}>{STRUCTURES.filter((x) => x.family === fam).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</optgroup>
+              ))}
+            </select>
+          </div>
+          <div>
+            <div className="mb-1 flex flex-wrap gap-1">
+              {HOOKS.map(([id, label, text]) => (
+                <button key={id} type="button" onClick={() => starter("hook", id, text)} aria-pressed={f.hookType === id}
+                  className={`press h-6 rounded-full border px-2 text-[11.5px] ${f.hookType === id ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>{label}</button>
+              ))}
+            </div>
+            {field("hook", "Hook", "Your first sentence. Pick a kind of hook above for a starter.")}
+          </div>
           {field("core", "Core message", "Your main point in one sentence someone could repeat.")}
           <div className="space-y-3">
             {f.points.map((p, i) => (
               <div key={i} className="rounded-xl border border-line p-3">
                 <div className="mb-1.5 flex items-center gap-2 text-[13px] font-medium">
-                  <span className="mono">{String(i + 1).padStart(2, "0")}</span> Point {i + 1}
+                  <span className="mono">{String(i + 1).padStart(2, "0")}</span> {structure.parts[i]?.label ?? `Point ${i + 1}`}
+                  {structure.parts[i]?.hint && <span className="font-normal text-ink-3">· {structure.parts[i].hint}</span>}
                   <span className="flex-1" />
-                  {f.points.length > 2 && <button onClick={() => { setF((x) => ({ ...x, points: x.points.filter((_, k) => k !== i) })); }} aria-label={`Remove point ${i + 1}`} className="text-ink-3 hover:text-bad"><Icon name="x" size={13} /></button>}
+                  {f.points.length > 2 && structure.id === "points" && <button onClick={() => { setF((x) => ({ ...x, points: x.points.filter((_, k) => k !== i) })); }} aria-label={`Remove point ${i + 1}`} className="text-ink-3 hover:text-bad"><Icon name="x" size={13} /></button>}
                 </div>
-                <input value={p.point} onChange={(e) => setPoint(i, { point: e.target.value })} onBlur={() => persist()} placeholder="The point" aria-label={`Point ${i + 1}`} className="field" />
+                <input value={p.point} onChange={(e) => setPoint(i, { point: e.target.value })} onBlur={() => persist()} placeholder={structure.parts[i]?.label ?? "The point"} aria-label={structure.parts[i]?.label ?? `Point ${i + 1}`} className="field" />
                 <textarea value={p.example} onChange={(e) => setPoint(i, { example: e.target.value })} onBlur={() => persist()} rows={2} placeholder="An example, story, or number that supports it" aria-label={`Example for point ${i + 1}`} className="field mt-1.5 resize-y" />
               </div>
             ))}
-            {f.points.length < 5 && <button onClick={() => setF((x) => ({ ...x, points: [...x.points, { point: "", example: "" }] }))} className="btn btn-quiet press h-8"><Icon name="plus" size={13} /> Add a point</button>}
+            {f.points.length < 5 && structure.id === "points" && <button onClick={() => setF((x) => ({ ...x, points: [...x.points, { point: "", example: "" }] }))} className="btn btn-quiet press h-8"><Icon name="plus" size={13} /> Add a point</button>}
           </div>
-          {field("close", "Close and call to action", "Repeat the core message and ask for one action.")}
+          <div>
+            <div className="mb-1 flex flex-wrap gap-1">
+              {CLOSES.map(([id, label, text]) => (
+                <button key={id} type="button" onClick={() => starter("close", id, text)} aria-pressed={f.closeType === id}
+                  className={`press h-6 rounded-full border px-2 text-[11.5px] ${f.closeType === id ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>{label}</button>
+              ))}
+            </div>
+            {field("close", "Close and call to action", "Make the ask specific, doable, and matched to this audience.")}
+          </div>
         </div>
 
         <div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
@@ -106,7 +149,7 @@ export function SpeechBuilder({ courseId, studentId, module: m, progress, onChan
               ))}
             </div>
             <span className="flex-1" />
-            {view === "draft" && <label className="flex items-center gap-1.5 text-[12px] text-ink-2"><input type="checkbox" checked={signposts} onChange={(e) => setSignposts(e.target.checked)} className="accent-[#1b1b1a]" />Signposts</label>}
+            {view === "draft" && structure.id === "points" && <label className="flex items-center gap-1.5 text-[12px] text-ink-2"><input type="checkbox" checked={signposts} onChange={(e) => setSignposts(e.target.checked)} className="accent-[#1b1b1a]" />Signposts</label>}
           </div>
           <div className="max-h-[26rem] overflow-y-auto rounded-xl border border-line bg-[#fafaf9] p-4">
             {!draft ? <p className="text-[13px] text-ink-3">Your talk appears here as you fill in the parts.</p> : view === "draft" ? (
@@ -115,7 +158,7 @@ export function SpeechBuilder({ courseId, studentId, module: m, progress, onChan
               <ol className="space-y-2 text-[14px]">
                 {f.hook && <li><span className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">Hook</span><br />{keywords(f.hook)}</li>}
                 {f.core && <li><span className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">Core</span><br /><strong>{f.core}</strong></li>}
-                {f.points.filter((p) => p.point).map((p, i) => <li key={i}><span className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{i + 1}</span><br />{keywords(p.point)}{p.example && <span className="block text-ink-2">e.g. {keywords(p.example, 6)}</span>}</li>)}
+                {f.points.filter((p) => p.point).map((p, i) => <li key={i}><span className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{structure.parts[i]?.label ?? i + 1}</span><br />{keywords(p.point)}{p.example && <span className="block text-ink-2">e.g. {keywords(p.example, 6)}</span>}</li>)}
                 {f.close && <li><span className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">Close</span><br />{keywords(f.close)}</li>}
               </ol>
             )}

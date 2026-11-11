@@ -8,6 +8,7 @@ import type { Attachment, Course, Feedback, Module, Progress, StudioPost } from 
 import { MediaView } from "../cards/Media";
 import { MarkedMedia } from "../Marks";
 import { reviewRing } from "@/lib/pairing";
+import { rolesFor, sessionIndex } from "@/lib/roles";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { WorkComposer } from "./WorkComposer";
 
@@ -144,6 +145,8 @@ export function Studio({
   const peers = posts
     .filter((p) => p.moduleId === m.id && p.studentId !== studentId)
     .sort((a, b) => Number(replied(a.id)) - Number(replied(b.id)) || Number(isAssigned(b.studentId)) - Number(isAssigned(a.studentId)) || a.createdAt - b.createdAt);
+  const lesson = course.weeks.flatMap((w) => w.lessons).find((l) => l.modules.some((x) => x.id === m.id));
+  const myRole = lesson?.session?.roles && group ? rolesFor(group.studentIds, sessionIndex(course, lesson.id))[studentId] : undefined;
   const nameOf = (id: string) => course.students.find((s) => s.id === id)?.name ?? "a peer";
   const [editing, setEditing] = useState(!mine);
   const weekN = weekTitle.match(/Week (\d+)/)?.[1] ?? "";
@@ -194,6 +197,12 @@ export function Studio({
         {done && <span className="chip h-6 bg-ok/10 text-ok"><Icon name="check" size={12} /> Done</span>}
       </div>
 
+      {myRole && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-line px-4 py-2.5 text-[13px]">
+          <span className="chip h-6 flex-none bg-[#fbf3ee] text-[#ae502f]">{myRole.name}</span>
+          <span className="text-ink-2"><span className="font-medium text-ink">Your role in this week’s session.</span> {myRole.job}</span>
+        </div>
+      )}
       {assignedIds.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#fbf3ee] px-4 py-2.5 text-[13px]">
           <Icon name="message" size={14} className="text-[#ae502f]" />

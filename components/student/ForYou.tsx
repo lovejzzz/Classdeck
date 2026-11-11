@@ -77,14 +77,14 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
           <ul className="divide-y divide-line">
             {recs.map((r, i) => (
               <li key={r.id} className="rise" style={{ "--i": i } as React.CSSProperties}>
-                <button disabled={!r.moduleId || !r.lessonId} onClick={() => r.moduleId && r.lessonId ? onOpen(r.lessonId, r.moduleId) : onBoard()}
+                <button disabled={!r.anchor && (!r.moduleId || !r.lessonId)} onClick={() => r.anchor ? document.getElementById(r.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" }) : r.moduleId && r.lessonId ? onOpen(r.lessonId, r.moduleId) : onBoard()}
                   className="press flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-[#fafaf9] disabled:cursor-default disabled:hover:bg-transparent">
                   <span className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-lane" style={{ color: KIND[r.kind].tint }}><Icon name={KIND[r.kind].icon} size={14} /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-medium">{r.title}</span>
                     <span className="block text-[12.5px] leading-snug text-ink-2">{r.text}</span>
                   </span>
-                  {r.moduleId && <Icon name="arrow" size={13} className="mt-1.5 flex-none text-ink-3" />}
+                  {(r.moduleId || r.anchor) && <Icon name="arrow" size={13} className="mt-1.5 flex-none text-ink-3" />}
                 </button>
               </li>
             ))}

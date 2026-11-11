@@ -15,7 +15,7 @@ import { teacherLevels } from "../SkillRadar";
 import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
 import { SelfCheck } from "./SelfCheck";
-import { Checklist, HighlightableText, Prompts, promptsToText, Rehearsal, ReviewNote } from "./CardExtras";
+import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, Rehearsal, ReviewNote } from "./CardExtras";
 import { SpeechBuilder } from "./SpeechBuilder";
 import { Studio } from "./Studio";
 import { WorkComposer } from "./WorkComposer";
@@ -52,6 +52,8 @@ export function CardDetail(p: DetailProps) {
   const checklist = m.checklist?.filter((x) => x.trim()) ?? [];
   const [checks, setChecks] = useState<number[]>(p.progress?.checks ?? []);
   const [highlights, setHighlights] = useState(p.progress?.highlights ?? []);
+  const [watched, setWatched] = useState<string[]>(p.progress?.watched ?? []);
+  const mustWatch = (m.playlist ?? []).filter((x) => !x.optional);
   const [now] = useState(() => Date.now());
   const due = p.progress?.status === "done" ? undefined : dueInfo(m.due, now);
   const review = p.progress?.review;
@@ -107,6 +109,13 @@ export function CardDetail(p: DetailProps) {
   }
 
   function save(status?: "done") {
+    if (status === "done" && mustWatch.some((x) => !watched.includes(x.id))) {
+      toast(`Watch the ${mustWatch.filter((x) => !watched.includes(x.id)).length} remaining video${mustWatch.filter((x) => !watched.includes(x.id)).length === 1 ? "" : "s"} first`, { icon: "video", tone: "plain" });
+      const el = document.getElementById("playlist");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      shake(el);
+      return;
+    }
     if (status === "done" && checklist.length && checks.length < checklist.length) {
       toast(`Tick the last ${checklist.length - checks.length === 1 ? "step" : `${checklist.length - checks.length} steps`} on the checklist first`, { icon: "check", tone: "plain" });
       const el = document.getElementById("checklist");
@@ -233,6 +242,16 @@ export function CardDetail(p: DetailProps) {
         {m.timer && !m.choice && m.type !== "builder" ? (
           <div className="mt-6">
             <Rehearsal target={m.timer} takes={p.progress?.rehearsals ?? []} courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onSaved={p.onChanged} big={p.big} />
+          </div>
+        ) : null}
+
+        {m.playlist?.length && !m.choice ? (
+          <div className="mt-6">
+            <Playlist items={m.playlist} watched={watched} big={p.big} onChange={(ids) => {
+              setWatched(ids);
+              p.optimistic({ watched: ids });
+              op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, watched: ids }).then(p.onChanged);
+            }} />
           </div>
         ) : null}
 

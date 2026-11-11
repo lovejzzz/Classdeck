@@ -265,3 +265,67 @@ export function HighlightableText({ text, highlights, onChange, className }: { t
     </div>
   );
 }
+
+type PlayItem = { id: string; title: string; url: string; section?: string; optional?: boolean };
+
+/**
+ * A teacher's "patchwork" of videos: the chosen clips in order, grouped into sections, and
+ * the rest of each course available as optional extras. Opening a video marks it watched.
+ */
+export function Playlist({ items, watched, onChange, big }: { items: PlayItem[]; watched: string[]; onChange: (ids: string[]) => void; big?: boolean }) {
+  const [showMore, setShowMore] = useState(false);
+  const req = items.filter((x) => !x.optional);
+  const extra = items.filter((x) => x.optional);
+  const done = req.filter((x) => watched.includes(x.id)).length;
+  const toggle = (id: string, on = !watched.includes(id)) => onChange(on ? [...new Set([...watched, id])] : watched.filter((x) => x !== id));
+  const host = (u: string) => {
+    try {
+      return new URL(u).hostname.replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  };
+  const list = (xs: PlayItem[], numbered: boolean) => {
+    let section: string | undefined;
+    return xs.map((x, i) => {
+      const head = x.section && x.section !== section ? (section = x.section) : null;
+      const on = watched.includes(x.id);
+      return (
+        <li key={x.id}>
+          {head && <div className="mb-1 mt-3 text-[11.5px] font-medium uppercase tracking-[0.08em] text-ink-3 first:mt-0">{head}</div>}
+          <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-lane">
+            <button onClick={() => toggle(x.id)} aria-pressed={on} aria-label={on ? `Mark “${x.title}” as not watched` : `Mark “${x.title}” as watched`}
+              className={`flex h-4 w-4 flex-none items-center justify-center rounded border transition-colors ${on ? "border-ok bg-ok text-white" : "border-line-strong bg-white"}`}>
+              {on && <Icon name="check" size={11} strokeWidth={3} />}
+            </button>
+            {numbered && <span className="mono w-5">{String(i + 1).padStart(2, "0")}</span>}
+            <a href={x.url} target="_blank" rel="noreferrer" onClick={() => toggle(x.id, true)}
+              className={`min-w-0 flex-1 truncate hover:underline ${big ? "text-[16px]" : "text-[14px]"} ${on ? "text-ink-3" : ""}`}>{x.title}</a>
+            <span className="mono hidden flex-none sm:inline">{host(x.url)}</span>
+            <Icon name="external" size={12} className="flex-none text-ink-3" />
+          </div>
+        </li>
+      );
+    });
+  };
+  return (
+    <section id="playlist" aria-label="Videos" className="rounded-xl border border-line p-3.5">
+      <div className="mb-2 flex items-center gap-2">
+        <Icon name="video" size={14} className="text-ink-2" />
+        <span className="eyebrow flex-1">Watch in this order</span>
+        <span className="mono text-[11.5px]">{done}/{req.length}</span>
+        <span className="h-1 w-16 overflow-hidden rounded-full bg-lane"><span className="block h-full rounded-full bg-ok transition-[width] duration-500" style={{ width: `${req.length ? (done / req.length) * 100 : 0}%` }} /></span>
+      </div>
+      <ul>{list(req, true)}</ul>
+      {extra.length > 0 && (
+        <div className="mt-3 border-t border-line pt-2.5">
+          <button onClick={() => setShowMore((s) => !s)} aria-expanded={showMore} className="press flex items-center gap-1.5 text-[12.5px] text-ink-2 hover:text-ink">
+            <Icon name="chevron" size={12} className={`transition-transform ${showMore ? "rotate-180" : ""}`} />
+            More from these courses ({extra.length}, optional)
+          </button>
+          {showMore && <ul className="rise mt-1.5">{list(extra, false)}</ul>}
+        </div>
+      )}
+    </section>
+  );
+}

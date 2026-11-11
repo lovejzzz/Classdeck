@@ -80,7 +80,7 @@ function AddCard({ onPick, onTemplate }: { onPick: (t: ModuleType) => void; onTe
 }
 
 /** The teacher's whole course as a deck: one row per week, lessons laid out left to right. */
-export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts = [] }: { course: Course; connectors: ConnectorInfo[]; onRefresh: () => void; progress?: ProgressMap; studioPosts?: StudioPost[] }) {
+export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts = [], choices = {} }: { course: Course; connectors: ConnectorInfo[]; onRefresh: () => void; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>> }) {
   const [drafts, setDrafts] = useState<Record<string, Lesson>>({});
   const [editing, setEditing] = useState<{ lessonId: string; moduleId: string } | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -306,6 +306,11 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                           </button>
                         )}
                         <span className="mono">{l.modules.length} cards</span>
+                        {l.elective && (
+                          <span className="chip h-5 bg-[#eef0fb] text-[11px] text-[#4b56a8]" title="Students choose whether to take this lesson">
+                            Elective · {Object.values(choices).filter((c) => c[`elective:${l.id}`]).length} chose it
+                          </span>
+                        )}
                         {l.session && (
                           <button onClick={() => setRunning({ lessonId: l.id, weekTitle: w.title })} className="btn btn-quiet press h-6 px-2 text-[11.5px] text-[#ae502f]">
                             <Icon name="timer" size={12} /> Run Collab Studio · {l.session.minutes}m
@@ -322,6 +327,10 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                               setAgendaFor(l.id);
                             }],
                             ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
+                            [l.elective ? "Make required for everyone" : "Make elective (students choose)", () => {
+                              change({ ...l, elective: !l.elective || undefined });
+                              toast(l.elective ? `“${l.title}” is required again` : `“${l.title}” is now an elective`, { icon: "layers" });
+                            }],
                           ]}
                         />
                       </div>
@@ -474,7 +483,7 @@ function AgendaEditor({ lesson, onChange, onClose }: { lesson: Lesson; onChange:
   const agenda = lesson.session?.agenda ?? [];
   const save = (next: typeof agenda | null) => {
     if (!next) return onChange({ ...lesson, session: undefined });
-    onChange({ ...lesson, session: { agenda: next, minutes: next.reduce((n, a) => n + (a.minutes || 0), 0) } });
+    onChange({ ...lesson, session: { ...lesson.session, agenda: next, minutes: next.reduce((n, a) => n + (a.minutes || 0), 0) } });
   };
   return (
     <div className="pop mt-2 w-[30rem] max-w-[90vw] rounded-xl border border-line bg-white p-3 shadow-[0_16px_40px_-20px_rgba(20,20,18,0.35)]">
@@ -497,6 +506,10 @@ function AgendaEditor({ lesson, onChange, onClose }: { lesson: Lesson; onChange:
       </div>
       <div className="mt-2 flex items-center gap-2">
         <button onClick={() => save([...agenda, { label: "New part", minutes: 10 }])} className="btn btn-ghost press h-7 px-2.5 text-[12px]"><Icon name="plus" size={12} /> Part</button>
+        <label className="flex items-center gap-1.5 text-[12px] text-ink-2" title="Host, Timer, Ah-counter, and Evaluator rotate through each group every session">
+          <input type="checkbox" checked={!!lesson.session?.roles} onChange={(e) => lesson.session && onChange({ ...lesson, session: { ...lesson.session, roles: e.target.checked || undefined } })} className="accent-[#1b1b1a]" />
+          Rotate roles
+        </label>
         <span className="flex-1" />
         <button onClick={() => { save(null); onClose(); }} className="btn btn-quiet press h-7 px-2.5 text-[12px] hover:!text-bad">Remove group session</button>
       </div>
