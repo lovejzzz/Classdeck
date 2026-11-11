@@ -1,7 +1,12 @@
+import { canView, getSession } from "@/lib/auth";
 import { currentVersion, subscribe } from "@/lib/bus";
+import { db } from "@/lib/store";
 
 /** Server-sent events: pushes a "change" message whenever course data is saved. */
-export async function GET(request: Request) {
+export async function GET(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
+  const { courseId } = await params;
+  const course = db().courses[courseId];
+  if (!course || !canView(getSession(request), course)) return new Response("Sign in first", { status: 401 });
   const enc = new TextEncoder();
   let cleanup = () => {};
   const stream = new ReadableStream({

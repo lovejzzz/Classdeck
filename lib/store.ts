@@ -1,11 +1,29 @@
 import fs from "fs";
+import { DatabaseSync } from "node:sqlite";
 import path from "path";
 import { publish } from "./bus";
 import { seedChoices, seedCourse, seedEvents, seedMarks, seedPosts, seedProgress, seedStudio } from "./seed";
 import type { ClassEvent, Course, Feedback, Live, Mark, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
 import type { Manifest } from "./connectors/types";
 
-// 原型用的存储：一个 JSON 文件。换成真数据库时只需要替换这个文件。
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  /** scrypt hash and salt, hex. */
+  hash: string;
+  salt: string;
+  createdAt: number;
+}
+
+export interface Session {
+  kind: "teacher" | "student" | "demo";
+  userId?: string;
+  courseId?: string;
+  studentId?: string;
+  exp: number;
+}
 
 export interface DB {
   courses: Record<string, Course>;
@@ -17,11 +35,23 @@ export interface DB {
   studio: Record<string, { posts: StudioPost[]; feedback: Feedback[] }>;
   marks: Record<string, Mark[]>;
   live: Record<string, Live>;
+  /** Student PIN hashes: course → student → "salt:hash". Never sent to a browser. */
+  pins: Record<string, Record<string, string>>;
+  users: Record<string, User>;
+  /** Keyed by the SHA-256 of the session token, so a leaked database can't be used to log in. */
+  sessions: Record<string, Session>;
   customConnectors: Manifest[];
 }
 
-const FILE = path.join(process.cwd(), ".data", "db.json");
-const g = globalThis as unknown as { __lmsdb?: DB };
+// Storage: SQLite (built into Node), one row per course per collection, written only when it changes.
+// The whole database stays in memory for reads; saves are incremental and atomic.
+const DIR = path.join(process.cwd(), ".data");
+const FILE = path.join(DIR, "classdeck.db");
+const LEGACY = path.join(DIR, "db.json");
+const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins"] as const;
+const GLOBAL = ["users", "sessions", "customConnectors"] as const;
+
+const g = globalThis as unknown as { __lmsdb?: DB; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string> };
 
 function fresh(custom: Manifest[] = []): DB {
   const course = seedCourse();
@@ -35,36 +65,86 @@ function fresh(custom: Manifest[] = []): DB {
     studio: { [course.id]: seedStudio() },
     marks: { [course.id]: seedMarks() },
     live: { [course.id]: { hands: {} } },
+    pins: {},
+    users: {},
+    sessions: {},
     customConnectors: custom,
   };
 }
 
+function sql(): DatabaseSync {
+  if (!g.__lmssql) {
+    fs.mkdirSync(DIR, { recursive: true });
+    const conn = new DatabaseSync(FILE);
+    conn.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
+    g.__lmssql = conn;
+  }
+  return g.__lmssql;
+}
+
+function load(): DB | null {
+  const rows = sql().prepare("SELECT k, v FROM kv").all() as { k: string; v: string }[];
+  if (!rows.length) return null;
+  const d = {} as Record<string, unknown>;
+  const written = (g.__lmswritten = new Map());
+  for (const { k, v } of rows) {
+    written.set(k, v);
+    const i = k.indexOf(":");
+    if (i < 0) d[k] = JSON.parse(v);
+    else ((d[k.slice(0, i)] ??= {}) as Record<string, unknown>)[k.slice(i + 1)] = JSON.parse(v);
+  }
+  return d as unknown as DB;
+}
+
 export function db(): DB {
   if (!g.__lmsdb) {
-    try {
-      g.__lmsdb = JSON.parse(fs.readFileSync(FILE, "utf8")) as DB;
-    } catch {
-      g.__lmsdb = fresh();
+    let d = load();
+    if (!d) {
+      // First run on SQLite: bring over the old JSON file if there is one.
+      try {
+        d = JSON.parse(fs.readFileSync(LEGACY, "utf8")) as DB;
+        fs.renameSync(LEGACY, `${LEGACY}.migrated`);
+      } catch {
+        d = fresh();
+      }
+      g.__lmsdb = d;
+      fill(d);
       save();
     }
+    g.__lmsdb = d;
   }
-  // Older saved data may predate newer fields; fill them in so reads never crash.
-  const d = g.__lmsdb;
-  d.events ??= {};
-  d.choices ??= {};
-  d.studio ??= {};
-  d.toolLog ??= {};
-  d.posts ??= {};
-  d.marks ??= {};
-  d.live ??= {};
+  return fill(g.__lmsdb);
+}
+
+/** Older saved data may predate newer fields; fill them in so reads never crash. */
+function fill(d: DB): DB {
+  for (const k of [...PER_COURSE, "users", "sessions"] as const) (d as unknown as Record<string, unknown>)[k] ??= {};
   d.customConnectors ??= [];
   return d;
 }
 
 export function save() {
-  if (!g.__lmsdb) return;
-  fs.mkdirSync(path.dirname(FILE), { recursive: true });
-  fs.writeFileSync(FILE, JSON.stringify(g.__lmsdb, null, 2));
+  const d = g.__lmsdb;
+  if (!d) return;
+  const next = new Map<string, string>();
+  for (const k of PER_COURSE) for (const [id, v] of Object.entries(d[k] ?? {})) if (v !== undefined) next.set(`${k}:${id}`, JSON.stringify(v));
+  for (const k of GLOBAL) next.set(k, JSON.stringify(d[k]));
+  const written = (g.__lmswritten ??= new Map());
+  const conn = sql();
+  const put = conn.prepare("INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v");
+  const del = conn.prepare("DELETE FROM kv WHERE k = ?");
+  conn.exec("BEGIN");
+  try {
+    for (const [k, v] of next) if (written.get(k) !== v) put.run(k, v);
+    for (const k of written.keys()) if (!next.has(k)) del.run(k);
+    conn.exec("COMMIT");
+  } catch (e) {
+    conn.exec("ROLLBACK");
+    throw e;
+  }
+  g.__lmswritten = next;
+  // Data that was loaded from the old JSON file now lives in SQLite.
+  if (fs.existsSync(LEGACY)) fs.renameSync(LEGACY, `${LEGACY}.migrated`);
   publish();
 }
 
@@ -84,6 +164,7 @@ export function listCourses() {
   const d = db();
   return Object.values(d.courses).map((c) => ({
     id: c.id,
+    ownerId: c.ownerId,
     title: c.title,
     subtitle: c.subtitle,
     students: c.students.length,

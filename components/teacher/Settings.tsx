@@ -236,12 +236,14 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
               {course.students.map((st) => (
                 <span key={st.id} className="pop inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-1 text-[12.5px]">
                   <Avatar name={st.name} size={20} />{st.name}
+                  <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(`${st.name} will choose a new PIN next time`, { icon: "lock", tone: "plain" }); }}
+                    title="Reset PIN" aria-label={`Reset ${st.name}’s PIN`} className="press rounded-full p-1 text-ink-3 hover:bg-lane hover:text-ink"><Icon name="lock" size={11} /></button>
                   <button onClick={() => confirm(`Remove ${st.name} from the class? Their work stays saved.`) && removeStudent(st.id, st.name)} aria-label={`Remove ${st.name}`} className="press rounded-full p-1 text-ink-3 hover:bg-lane hover:text-bad"><Icon name="x" size={11} /></button>
                 </span>
               ))}
             </div>
           ) : (
-            <p className="text-[13px] text-ink-3">No students yet. Add names below; students pick their name after entering the class code.</p>
+            <p className="text-[13px] text-ink-3">No students yet. Add names below; students pick their name after entering the class code, then choose a 4-digit PIN.</p>
           )}
           <form className="mt-3 flex flex-wrap items-start gap-2" onSubmit={async (e) => {
             e.preventDefault();

@@ -1,3 +1,4 @@
+import { getSession, teacherOf, unauthorized } from "@/lib/auth";
 import { builtinIds, allConnectors, describe } from "@/lib/connectors/registry";
 import { validateManifest } from "@/lib/connectors/declarative";
 import { ConnectorError } from "@/lib/connectors/types";
@@ -9,6 +10,7 @@ export async function GET() {
 
 /** 添加一个自定义的声明式连接器。 */
 export async function POST(request: Request) {
+  if (!teacherOf(getSession(request))) return unauthorized("teacher", "Sign in as a teacher to add connectors");
   try {
     const body = await request.json();
     const taken = [...builtinIds(), ...db().customConnectors.map((m) => m.id)];
@@ -23,6 +25,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  if (!teacherOf(getSession(request))) return unauthorized("teacher", "Sign in as a teacher to remove connectors");
   const id = new URL(request.url).searchParams.get("id");
   const d = db();
   d.customConnectors = d.customConnectors.filter((m) => m.id !== id);

@@ -17,6 +17,7 @@ export async function op<T = Record<string, unknown>>(courseId: string, body: Re
 export function useCourse(courseId: string, as?: string, everyMs = 4000) {
   const [state, setState] = useState<CourseState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [needAuth, setNeedAuth] = useState<"teacher" | "student" | null>(null);
   const alive = useRef(true);
   const last = useRef("");
 
@@ -26,7 +27,10 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
       const raw = await res.text();
       if (!alive.current) return;
       const data = JSON.parse(raw);
-      if (!res.ok) setError(data.error ?? "Couldn't load");
+      if (!res.ok) {
+        setError(data.error ?? "Couldn't load");
+        setNeedAuth(data.needAuth ?? null);
+      }
       else {
         // 内容没变就不更新，避免每次轮询都让整页重画
         if (raw !== last.current) {
@@ -63,7 +67,7 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
     };
   }, [refresh, everyMs, courseId]);
 
-  return { state, error, refresh };
+  return { state, error, refresh, needAuth };
 }
 
 export function useConnectors() {

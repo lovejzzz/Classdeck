@@ -1,6 +1,7 @@
 "use client";
 
 import { MarksContext } from "@/components/Marks";
+import { SignInNeeded } from "@/components/SignInNeeded";
 import { TeacherLive } from "@/components/LiveClass";
 import { Gradebook } from "@/components/teacher/Gradebook";
 import Link from "next/link";
@@ -40,7 +41,7 @@ function readSeen(key: string) {
 
 export default function TeachPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const { state, error, refresh } = useCourse(courseId, undefined, 3000);
+  const { state, error, refresh, needAuth } = useCourse(courseId, undefined, 3000);
   const { connectors } = useConnectors();
   const [tab, setTab] = useState<Tab>("plan");
   const [picked, setPicked] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export default function TeachPage() {
   const seenKey = `seen-at:teacher:${courseId}`;
   const [seenAt, setSeenAt] = useState(() => (typeof window === "undefined" ? 0 : readSeen(seenKey)));
 
+  if (needAuth && !state) return <SignInNeeded who="teacher" courseId={courseId} next={`/teach/${courseId}`} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
   if (!state) {
     return (

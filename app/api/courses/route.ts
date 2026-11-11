@@ -1,3 +1,4 @@
+import { DEMO, getSession, teacherOf, unauthorized } from "@/lib/auth";
 import { cloneWeek } from "@/lib/clone";
 import { fromPreset, uid } from "@/lib/profile";
 import { seedCourse } from "@/lib/seed";
@@ -5,13 +6,29 @@ import { db, listCourses, save } from "@/lib/store";
 import { standardWeek } from "@/lib/templates";
 import type { Course } from "@/lib/types";
 
-export async function GET() {
-  return Response.json({ courses: listCourses() });
+/** The signed-in teacher's courses, plus the open demo. */
+export async function GET(request: Request) {
+  const t = teacherOf(getSession(request));
+  const all = listCourses();
+  return Response.json({
+    courses: all.filter((c) => c.id === DEMO || (t && c.ownerId === t.id)),
+    // Courses made before accounts existed have no owner yet; a signed-in teacher can claim them.
+    unclaimed: t ? all.filter((c) => c.id !== DEMO && !c.ownerId).map((c) => ({ id: c.id, title: c.title, students: c.students })) : [],
+  });
 }
 
 /** Create a course: blank, from the standard weekly template, or as a copy of the CaPS course's weeks. */
 export async function POST(request: Request) {
+  const t = teacherOf(getSession(request));
+  if (!t) return unauthorized("teacher", "Sign in to create a course");
   const body = await request.json().catch(() => ({}));
+  if (body.claim) {
+    const c = db().courses[String(body.claim)];
+    if (!c || c.id === DEMO || c.ownerId) return Response.json({ ok: false, error: "That course can’t be claimed" }, { status: 400 });
+    c.ownerId = t.id;
+    save();
+    return Response.json({ ok: true, id: c.id });
+  }
   const title = String(body.title ?? "").trim().slice(0, 80);
   if (!title) return Response.json({ ok: false, error: "Give the course a name" }, { status: 400 });
   const d = db();
@@ -33,6 +50,7 @@ export async function POST(request: Request) {
 
   const course: Course = {
     id,
+    ownerId: t.id,
     title,
     subtitle: String(body.subtitle ?? "").trim().slice(0, 120) || undefined,
     createdAt: Date.now(),

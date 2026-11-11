@@ -209,6 +209,8 @@ export interface Group {
 
 export interface Course {
   id: string;
+  /** The teacher account that owns this course. The demo course has none. */
+  ownerId?: string;
   title: string;
   subtitle?: string;
   createdAt?: number;

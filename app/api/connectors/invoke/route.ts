@@ -1,3 +1,4 @@
+import { canBeStudent, canTeach, getSession } from "@/lib/auth";
 import { getConnector } from "@/lib/connectors/registry";
 import { ConnectorError } from "@/lib/connectors/types";
 import { findLesson, visibleModules } from "@/lib/profile";
@@ -43,6 +44,10 @@ export async function POST(request: Request) {
       input[k] = String(v ?? "").slice(0, studentId ? 2000 : 20000);
     }
 
+    const session = getSession(request);
+    if (studentId ? !canBeStudent(session, course, studentId) : !canTeach(session, course)) {
+      throw new ConnectorError("forbidden", "Sign in first");
+    }
     let ctx = {};
     if (studentId) {
       if (!course.enabledConnectors.includes(connectorId)) throw new ConnectorError("forbidden", "Your teacher hasn't turned on this tool for the course");

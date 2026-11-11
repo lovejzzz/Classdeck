@@ -1,3 +1,4 @@
+import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
@@ -10,6 +11,12 @@ import type { AnswerValue, Attachment, Course, Live, CourseState, Lesson, Module
 const publicQuestion = (q: Question): Question => ({ id: q.id, kind: q.kind, text: q.text, options: q.kind === "short" ? [] : q.kind === "order" ? [...q.options].sort((a, b) => a.localeCompare(b)) : q.options });
 
 type Ctx = { params: Promise<{ courseId: string }> };
+
+/** Operations a student performs on their own behalf (body.studentId). */
+const STUDENT_OPS = new Set([
+  "setProgress", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
+  "retakeQuiz", "rehearse", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
+]);
 
 /** Each student gives feedback to at least this many peers per studio card. */
 const FEEDBACK_GOAL = 2;
@@ -63,6 +70,8 @@ export async function GET(request: Request, { params }: Ctx) {
     };
     return Response.json(view);
   }
+  const session = getSession(request);
+  if (as ? !canBeStudent(session, course, as) : !canTeach(session, course)) return unauthorized(as ? "student" : "teacher");
   const all = d.progress[courseId] ?? {};
   const choices = d.choices[courseId] ?? {};
   const studio = d.studio[courseId] ?? { posts: [], feedback: [] };
@@ -125,7 +134,9 @@ export async function GET(request: Request, { params }: Ctx) {
     marks: as ? (d.marks[courseId] ?? []).filter((mk) => visibleWork(course, as).has(mk.attachmentId)) : (d.marks[courseId] ?? []),
     live: liveView(d.live[courseId] ?? { hands: {} }, as),
   };
-  return Response.json(state);
+  // Visitors to the open demo get a light session so they can upload recordings there.
+  const headers: Record<string, string> = !session && course.id === DEMO ? { "Set-Cookie": startSession({ kind: "demo" }, 7) } : {};
+  return Response.json(state, { headers });
 }
 
 /** Students see poll counts (not who voted what) once they've voted or the poll is closed, and only their own hand. */
@@ -174,6 +185,17 @@ export async function POST(request: Request, { params }: Ctx) {
   const d = db();
   const course = d.courses[courseId];
   if (!course) return Response.json({ error: "No such course" }, { status: 404 });
+  // Who may do this? Student actions need that student's session (or the course's teacher);
+  // everything else is the teacher's.
+  const session = getSession(request);
+  const actor: string | undefined =
+    body.op === "react" || body.op === "comment" ? body.who
+    : STUDENT_OPS.has(body.op) || body.op === "addPost" || body.op === "addMark" || body.op === "removeMark" ? body.studentId
+    : undefined;
+  if (actor && actor !== "teacher") {
+    if (!course.students.some((st) => st.id === actor)) return Response.json({ ok: false, error: "No such student" }, { status: 400 });
+    if (!canBeStudent(session, course, actor)) return unauthorized("student");
+  } else if (!canTeach(session, course)) return unauthorized("teacher");
   const prog = (d.progress[courseId] ??= {});
   const studio = (d.studio[courseId] ??= { posts: [], feedback: [] });
   const mine = (sid: string, mid: string): Progress => ((prog[sid] ??= {})[mid] ??= { status: "todo", updatedAt: Date.now() });
@@ -449,6 +471,10 @@ export async function POST(request: Request, { params }: Ctx) {
       p.rehearsals = [...(p.rehearsals ?? []), sec].slice(-20);
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
+      break;
+    }
+    case "resetPin": {
+      if (d.pins[courseId]) delete d.pins[courseId][body.studentId];
       break;
     }
     // —— live class ——

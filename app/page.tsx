@@ -14,13 +14,20 @@ export default function Home() {
 
   const [needPass, setNeedPass] = useState(false);
   const [courses, setCourses] = useState<{ id: string; title: string; weeks: number; cards: number; students: number }[] | null>(null);
+  const [unclaimed, setUnclaimed] = useState<{ id: string; title: string; students: number }[]>([]);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [start, setStart] = useState<"blank" | "template" | "caps">("template");
+  const [me, setMe] = useState<{ kind: string | null; name?: string; email?: string; courseId?: string; studentId?: string; courseTitle?: string } | null>(null);
   useEffect(() => {
-    fetch("/api/courses").then((r) => r.json()).then((d) => setCourses(d.courses)).catch(() => setCourses([]));
+    fetch("/api/courses").then((r) => r.json()).then((d) => { setCourses(d.courses); setUnclaimed(d.unclaimed ?? []); }).catch(() => setCourses([]));
+    fetch("/api/auth").then((r) => r.json()).then(setMe).catch(() => setMe({ kind: null }));
   }, []);
+  async function signOut() {
+    await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) });
+    window.location.reload();
+  }
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +48,12 @@ export default function Home() {
     setBusy(true);
     const res = await fetch(`/api/join?code=${encodeURIComponent(code)}${needPass ? `&passcode=${encodeURIComponent(pass)}` : ""}`);
     const data = await res.json();
-    if (res.ok) router.push(`/learn/${data.courseId}`);
+    if (res.ok) {
+      try {
+        if (pass) sessionStorage.setItem(`passcode:${data.courseId}`, pass);
+      } catch {}
+      router.push(`/learn/${data.courseId}?code=${encodeURIComponent(code)}`);
+    }
     else {
       setBusy(false);
       if (data.needPasscode) setNeedPass(true);
@@ -68,8 +80,16 @@ export default function Home() {
           <div className="p-4">
             <div className="flex items-center justify-between">
               <span className="text-[15px] font-medium">Your courses</span>
-              {!creating && <button onClick={() => setCreating(true)} className="btn btn-ghost press h-7 px-2.5 text-[12px]"><Icon name="plus" size={12} /> New course</button>}
+              {!creating && me?.kind === "teacher" && <button onClick={() => setCreating(true)} className="btn btn-ghost press h-7 px-2.5 text-[12px]"><Icon name="plus" size={12} /> New course</button>}
             </div>
+            {me?.kind === "teacher" ? (
+              <p className="mt-0.5 text-[12px] text-ink-3">Signed in as {me.name} · <button onClick={signOut} className="underline-offset-2 hover:text-ink hover:underline">Sign out</button></p>
+            ) : me && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-lane px-3 py-2.5 text-[13px]">
+                <span className="flex-1 text-ink-2">Sign in to create and run your own courses.</span>
+                <Link href="/login" className="btn btn-dark press h-8">Sign in</Link>
+              </div>
+            )}
             {creating ? (
               <form onSubmit={create} className="rise mt-3 space-y-2.5">
                 <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course name, e.g. Debate Club" aria-label="Course name" className="field" />
@@ -103,6 +123,18 @@ export default function Home() {
                     <Icon name="arrow" size={14} className="text-ink-3 transition-transform duration-300 group-hover:translate-x-0.5" />
                   </Link>
                 ))}
+                {unclaimed.map((c) => (
+                  <div key={c.id} className="-mx-2 flex items-center gap-3 px-2 py-2.5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] font-medium">{c.title}</span>
+                      <span className="mono block">made before accounts · {c.students} students</span>
+                    </span>
+                    <button onClick={async () => {
+                      const r = await fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ claim: c.id }) }).then((x) => x.json());
+                      if (r.ok) router.push(`/teach/${c.id}`);
+                    }} className="btn btn-ghost press h-7 px-2.5 text-[12px]">Claim</button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -112,7 +144,13 @@ export default function Home() {
           <Cover type="quiz" label="Student" height={88} />
           <div className="p-4">
             <span className="text-[15px] font-medium">Join with a class code</span>
-            <p className="mt-1 text-[13px] text-ink-2">No sign-up needed. The sample code is <span className="mono text-ink-2">CAPS26</span>.</p>
+            <p className="mt-1 text-[13px] text-ink-2">No account needed: your class code, your name, and a 4-digit PIN. The sample code is <span className="mono text-ink-2">CAPS26</span>.</p>
+            {me?.kind === "student" && (
+              <Link href={`/learn/${me.courseId}/${me.studentId}`} className="mt-3 flex items-center gap-2 rounded-lg bg-lane px-3 py-2.5 text-[13px] hover:bg-line/60">
+                <span className="flex-1">Continue as <span className="font-medium">{me.name}</span> in {me.courseTitle}</span>
+                <Icon name="arrow" size={13} />
+              </Link>
+            )}
             <div className="mt-3 flex gap-2">
               <input
                 value={code}

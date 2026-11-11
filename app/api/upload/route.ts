@@ -1,9 +1,12 @@
 import fs from "fs/promises";
 import path from "path";
+import { getSession } from "@/lib/auth";
 import { kindOf, MAX_UPLOAD, TYPES, UPLOAD_DIR } from "@/lib/uploads";
 
 /** 老师上传卡牌素材（图片、视频、录音、文件）。原型里存在 .data/uploads。 */
 export async function POST(request: Request) {
+  // Anyone signed in (teacher, student, or a demo visitor) can upload.
+  if (!getSession(request)) return Response.json({ ok: false, error: "Sign in to upload files" }, { status: 401 });
   let form: FormData;
   try {
     form = await request.formData();

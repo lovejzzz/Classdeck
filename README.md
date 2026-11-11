@@ -16,7 +16,14 @@ npm run dev
 - 学生端：首页输入班级码 `CAPS26`，或直接打开 `/learn/demo/s2`（Leo）
 - 学生个人练习板：`/learn/demo/s1/board`（Mia）
 
-数据存在 `.data/db.json`，老师端右上角的箭头图标可以恢复示范数据。AI 助教需要在 `.env.local` 里设置 `ANTHROPIC_API_KEY`（见 `.env.example`）。
+数据存在 `.data/classdeck.db`（SQLite，Node 22.13 以上自带，不需要另装）；旧版的 `.data/db.json` 第一次启动时会自动迁移，原文件改名为 `db.json.migrated`。老师端右上角的箭头图标可以恢复示范数据。AI 助教需要在 `.env.local` 里设置 `ANTHROPIC_API_KEY`（见 `.env.example`）。
+
+## 账号
+
+- 老师：在 `/login` 用邮箱和密码注册（scrypt 加密存储），只能打开自己的课程。会话是 HttpOnly cookie，数据库只存 token 的哈希。
+- 学生：首页输入班级码 → 选名字 → 第一次自己设 4 位 PIN，之后用 PIN 登录；忘了 PIN 由老师在设置的名单里重置。
+- CaPS 示范课（`demo`）对所有人开放，当作沙盒，不需要登录。
+- 有账号之前建的课程没有主人：老师登录后在首页点 “Claim” 认领。
 
 ## 为 CaPS 课程加的功能
 
@@ -53,6 +60,6 @@ npm run dev
 
 ## 原型的边界
 
-- 没有登录。学生选名字进入，老师端任何人都能打开。
-- 用轮询代替实时推送；存储是一个 JSON 文件。
+- 账号没有找回密码和邮箱验证；登录限流在内存里，重启后清零。
+- 数据库是单机 SQLite，适合一台服务器；多台服务器需要换成 Postgres 之类。
 - 第 4 周“Connect movement with meaning”需要一段真实的肢体语言示例视频，目前只有文字说明。

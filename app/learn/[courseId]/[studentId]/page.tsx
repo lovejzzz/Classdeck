@@ -18,6 +18,7 @@ import { CardDetail } from "@/components/student/CardDetail";
 import { Pile } from "@/components/student/Pile";
 import { useInbox } from "@/components/student/useInbox";
 import { MarksContext } from "@/components/Marks";
+import { SignInNeeded } from "@/components/SignInNeeded";
 import { StudentLive } from "@/components/LiveClass";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
@@ -58,7 +59,7 @@ interface LiftState {
 
 export default function LearnPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
-  const { state, error, refresh } = useCourse(courseId, studentId);
+  const { state, error, refresh, needAuth } = useCourse(courseId, studentId);
   const { connectors } = useConnectors();
   const query = useQuery();
   const narrow = useNarrow();
@@ -92,6 +93,7 @@ export default function LearnPage() {
     if (el && row) row.scrollTo({ left: el.offsetLeft - 24, behavior: "smooth" });
   }, [course?.currentLessonId, profile?.horizon]);
 
+  if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}`} />;
   if (error && !state) return <Centered>{error}</Centered>;
   if (!course || !profile) {
     return (
@@ -428,11 +430,17 @@ export default function LearnPage() {
                     </TiltCard>
                     </div>
                   </>
+                ) : lessons.every((l) => l.modules.length === 0) ? (
+                  <div className="pop flex h-[252px] w-[180px] flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-line-strong p-4 text-center">
+                    <Icon name="layers" size={20} className="text-ink-3" />
+                    <span className="text-[14px] font-medium">No cards yet</span>
+                    <span className="text-[12px] text-ink-3">Your teacher hasn’t added any cards. Check back soon.</span>
+                  </div>
                 ) : (
                   <div className="pop flex h-[252px] w-[180px] flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-ok/50 bg-ok/[0.04] p-4 text-center">
                     <StatusIcon status="done" size={22} />
                     <span className="text-[14px] font-medium">Every card is done</span>
-                    <span className="text-[12px] text-ink-3">See you in Collab Studio.</span>
+                    <span className="text-[12px] text-ink-3">{course.groups?.length ? "See you in Collab Studio." : "Nice work."}</span>
                   </div>
                 )}
               </div>

@@ -9,5 +9,6 @@ export async function GET(request: Request) {
   if (course.access?.passcode && (q.get("passcode") ?? "") !== course.access.passcode) {
     return Response.json({ error: q.get("passcode") ? "That passcode isn’t right" : "This class needs a passcode", needPasscode: true }, { status: 403 });
   }
-  return Response.json({ courseId: course.id });
+  const pins = db().pins[course.id] ?? {};
+  return Response.json({ courseId: course.id, title: course.title, demo: course.id === "demo", students: course.students.map((s) => ({ id: s.id, name: s.name, hasPin: !!pins[s.id] })) });
 }

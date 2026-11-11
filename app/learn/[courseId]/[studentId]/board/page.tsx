@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { CardFace } from "@/components/cards/CardFace";
 import { MediaView } from "@/components/cards/Media";
+import { SignInNeeded } from "@/components/SignInNeeded";
 import { SkillRadar, teacherLevels } from "@/components/SkillRadar";
 import { Avatar, Icon, StatusIcon } from "@/components/Icon";
 import { useCourse, useQuery } from "@/lib/client";
@@ -14,8 +15,9 @@ import type { Module, Progress } from "@/lib/types";
 /** A student's personal practice board: their growth, their best work, and every week's practice. */
 export default function BoardPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
-  const { state, error } = useCourse(courseId, studentId, 8000);
+  const { state, error, needAuth } = useCourse(courseId, studentId, 8000);
   const query = useQuery();
+  if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}/board`} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
   if (!state) return <div className="mx-auto w-full max-w-4xl px-4 py-10"><div className="skeleton h-64" /></div>;
 
