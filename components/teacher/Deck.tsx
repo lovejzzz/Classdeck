@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { dueAt } from "@/lib/grading";
+import { DocImport } from "./DocImport";
 import { op } from "@/lib/client";
 import { CARD_SIZE } from "@/lib/cards";
 import type { ConnectorInfo } from "@/lib/connectors/types";
@@ -369,7 +370,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
           </section>
         ))}
         <div>
-          <NewWeek n={course.weeks.length} onBlank={async () => {
+          <NewWeek n={course.weeks.length} courseId={course.id} onImported={onRefresh} onBlank={async () => {
             await op(course.id, { op: "addWeek", title: `Week ${course.weeks.length}` });
             onRefresh();
             toast("Added a week");
@@ -448,7 +449,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
 }
 
 /** Add a week: blank, or a standard CaPS week built from a theme. */
-function NewWeek({ n, onBlank, onTemplate }: { n: number; onBlank: () => void; onTemplate: (theme: string) => void }) {
+function NewWeek({ n, onBlank, onTemplate, courseId, onImported }: { n: number; onBlank: () => void; onTemplate: (theme: string) => void; courseId?: string; onImported?: () => void }) {
   const [theme, setTheme] = useState("");
   const [open, setOpen] = useState(false);
   return open ? (
@@ -463,6 +464,7 @@ function NewWeek({ n, onBlank, onTemplate }: { n: number; onBlank: () => void; o
     <div className="flex gap-2">
       <button onClick={() => setOpen(true)} className="btn btn-ghost press"><Icon name="layers" size={13} /> New week from template</button>
       <button onClick={onBlank} className="btn btn-quiet press"><Icon name="plus" size={13} /> Blank week</button>
+      {courseId && onImported && <DocImport courseId={courseId} onDone={onImported} label="Import weeks from a document" />}
     </div>
   );
 }

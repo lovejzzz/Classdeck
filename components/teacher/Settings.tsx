@@ -6,6 +6,7 @@ import { CATEGORIES, type ConnectorInfo } from "@/lib/connectors/types";
 import { PRESETS, PRESET_LABELS, fromPreset } from "@/lib/profile";
 import { download } from "@/lib/download";
 import { toast } from "@/lib/toast";
+import { DocImport } from "./DocImport";
 import type { Course, PresetId, Profile } from "@/lib/types";
 import { Cover } from "../Cover";
 import { Avatar, CONNECTOR_ICON, Icon } from "../Icon";
@@ -143,7 +144,7 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
 
       <section className="card p-6">
         <h3 className="text-[15px] font-medium">Back up and share</h3>
-        <p className="mt-1 text-[13px] text-ink-3">Export the course (weeks, cards, media links, rubric, session agendas) as a file. Import adds the file’s weeks after your current ones; nothing is replaced.</p>
+        <p className="mt-1 text-[13px] text-ink-3">Export the course (weeks, cards, media links, rubric, session agendas) as a file, or as a Common Cartridge for another LMS. Import adds weeks after your current ones, from a Classdeck file or straight from a course plan document; nothing is replaced.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             onClick={() => {
@@ -155,6 +156,10 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
           >
             <Icon name="download" size={13} /> Export course (.json)
           </button>
+          <a href={`/api/course/${course.id}/export`} className="btn btn-ghost press" title="IMS Common Cartridge: imports into Canvas, Moodle, Blackboard, Brightspace, and Schoology">
+            <Icon name="download" size={13} /> Export for Canvas / Moodle (.imscc)
+          </a>
+          <DocImport courseId={course.id} onDone={onChanged} />
           <label className="btn btn-ghost press cursor-pointer">
             <Icon name="upload" size={13} /> Import weeks…
             <input type="file" accept="application/json,.json" className="hidden"

@@ -45,7 +45,7 @@ Test understanding, not recall of exact wording. Make wrong options plausible mi
 const cardContext = (ctx: { moduleTitle?: string; moduleBody?: string; moduleCriteria?: string }) =>
   ctx.moduleTitle ? `Card: “${ctx.moduleTitle}”\n${ctx.moduleBody ?? ""}${ctx.moduleCriteria ? `\nDone when: ${ctx.moduleCriteria}` : ""}\n\n` : "";
 
-async function complete(system: string, user: string): Promise<string> {
+export async function complete(system: string, user: string): Promise<string> {
   let client: Anthropic;
   try {
     client = new Anthropic();
