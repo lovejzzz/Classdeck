@@ -209,7 +209,7 @@ export function SpeechBuilder({ courseId, studentId, module: m, progress, onChan
         )}
       </section>
 
-      {draft && <Rehearsal target={target} takes={progress?.rehearsals ?? []} courseId={courseId} studentId={studentId} moduleId={m.id} onSaved={onChanged} big={big} />}
+      {draft && <Rehearsal target={target} takes={progress?.rehearsals ?? []} feel={progress?.feel} courseId={courseId} studentId={studentId} moduleId={m.id} onSaved={onChanged} big={big} />}
 
       <div className="flex items-center gap-3">
         <button onClick={() => { if (!versions.length) return toast("Save a version first, so your teacher can see what you built", { icon: "layers", tone: "plain" }); onFinish(draft); }} className="btn btn-dark press h-9 px-4">

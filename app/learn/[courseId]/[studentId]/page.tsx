@@ -454,7 +454,7 @@ export default function LearnPage() {
           </section>
 
           {(
-            <ForYou state={state} studentId={studentId} onBoard={() => router.push(`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`)}
+            <ForYou state={state} studentId={studentId} onChanged={synced} onBoard={() => router.push(`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`)}
               onOpen={(lessonId, mid) => {
                 const el = els.current.get(mid) ?? heroRef.current;
                 if (el) open(lessonId, mid, el);
@@ -602,6 +602,7 @@ export default function LearnPage() {
             weekTitle={openWeek?.title ?? ""}
             mine={mine}
             studio={state.studio}
+            plan={state.plans?.[studentId]}
           />
         </Lift>
       )}

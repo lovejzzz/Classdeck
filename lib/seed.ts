@@ -1,5 +1,5 @@
 import { isoDay } from "./grading";
-import type { AnswerValue, Attachment, ClassEvent, Mark, Nudge, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
+import type { AnswerValue, Attachment, ClassEvent, Mark, Nudge, Plan, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
 
 // The demo course: CaPS, a seven-week presentation skills course (Week 0 onboarding + six skill weeks),
 // built from the CaPS Week 0–6 course plan. Each week has one common theme and six cards; one card per
@@ -111,15 +111,15 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
       goal: "Establish an initial performance, identify personal goals, and learn to give specific peer feedback.",
       branches: { w0p: { s2: "Stretch", s3: "Stretch" } },
       choiceSlots: ["w0p"],
-      session: session(60, ["Introductions and group agreements", 10], ["Feedback example", 10], ["Round-robin presentations", 30, true], ["Personal goals and closing", 10]),
+      session: session(60, ["Icebreaker", 5], ["Introductions and group agreements", 5], ["Feedback example", 10], ["Round-robin presentations", 30, true], ["Personal goals and closing", 10]),
       modules: [
         M("w0-1", "read", "Welcome and course overview",
           "Over seven weeks you’ll build one real presentation, 4–5 minutes long, and get better at six skills along the way: audience and purpose, structure and storytelling, vocal delivery, body language and presence, rehearsal and recall, and visual support.\n\nEach week has one common theme. You choose the practice activities that fit your level, keep drafts on your personal board, and bring one piece of work to your Collab Studio group for feedback.\n\nTo start: choose a real communication context (an interview, a research presentation, a project pitch, a class talk) and describe one aspect of your speaking you want to improve.",
           { minutes: 10, submitTo: "personal", criteria: "You’ve named a real speaking context and one thing to improve.", skills: [], attachments: [A("a-w0-map", "image", `${S}/skills-map.svg`, "The six skill areas")],
             questions: [{ id: "w0q1", text: "Where do you keep drafts and first recordings?", options: ["In the Collab Studio", "On your personal board", "On the class wall"], answer: 1, explain: "Your personal board holds your own drafts; Collab Studio is where you bring one piece for feedback." }] }),
         M("w0-2", "selfcheck", "My starting point",
-          "Rate yourself on each of the six skill areas using the four levels (Starting, Developing, Meeting the goal, Adapting). Be honest: this is your baseline, and you’ll compare against it in Week 6.\n\nThen record a 90-second introduction or project overview. Keep this original version on your personal board; don’t re-record it until it’s perfect.",
-          { minutes: 20, submitTo: "personal", criteria: "All six skills rated and a 90-second recording saved.", skills: ["audience", "structure", "vocal", "body", "rehearsal", "visual"] }),
+          "A short questionnaire to set your starting point: why you’re taking the course, your goal and learning objectives, how confident you feel in real speaking situations, a rating on each of the six skill areas, and an optional check on speaking nerves. Be honest: this is your baseline, and you’ll compare against it in Week 6.\n\nThen record a 90-second introduction or project overview. Keep this original version on your personal board; don’t re-record it until it’s perfect.",
+          { minutes: 20, submitTo: "personal", criteria: "All six skills rated and a 90-second recording saved.", skills: ["audience", "structure", "vocal", "body", "rehearsal", "visual"], onboarding: true }),
         ...paths("w0p",
           M("w0-3g", "practice", "Three-step speech starter",
             "Try your introduction again using three steps:\n\n1. Say who you are and what you are talking about.\n2. Make one main point, with one example.\n3. Give one takeaway, and thank the audience.\n\nRecord the new version and keep it next to your first one.",
@@ -127,6 +127,9 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
           M("w0-3s", "practice", "Same talk, new audience",
             "If you’ve presented before: give your introduction again for a different audience (for example, a hiring manager instead of classmates, or a ten-year-old instead of an expert).\n\nRecord it, then note what you changed and why: vocabulary, detail, the example you chose.",
             { minutes: 15, submitTo: "personal", criteria: "A recording for a new audience and a note explaining your adjustments.", skills: ["audience"], tools: [ask] })),
+        M("w0-b", "builder", "Prepare your Speech 1",
+          "Build a short first speech one question at a time: pick an idea you want to share or a story you want to tell, answer each prompt, and watch your speech take shape on the right. Then arrange the pieces, rehearse it against a 90-second timer, and bring it to your first Collab Studio session.",
+          { minutes: 25, submitTo: "personal", criteria: "A complete short speech, rehearsed at least once against the timer.", skills: ["structure"], timer: 90, flow: true }),
         M("w0-4", "wall", "Giving good feedback",
           "Listen to the same teacher example your peers are hearing. Then post your feedback on the wall in three parts:\n\n• What worked.\n• What evidence you noticed (a word, a moment, a timestamp).\n• What the speaker could try next.\n\nGood feedback describes something observable, explains its effect on you, and offers one thing to try. “It was good” isn’t feedback yet. When you’ve posted, vote for the two most specific posts from your classmates.",
           { minutes: 15, submitTo: "studio", criteria: "One post with a specific observation and a suggestion, and two votes.", skills: [], attachments: [A("a-w0-fb", "audio", `${S}/feedback-example.m4a`, "Teacher example: take the stairs (20 sec)")], tools: [ask],
@@ -149,7 +152,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
       goal: "Explain who the audience is, what they need to know, and what you want them to do after listening.",
       branches: { w1p: { s5: "Guided", s7: "Guided", s2: "Stretch", s9: "Stretch" } },
       choiceSlots: ["w1p"],
-      session: session(60, ["Diagnostic and example", 10], ["Audience analysis", 10], ["Round-robin practice and feedback", 30, true], ["Revision commitments", 10]),
+      session: session(60, ["Icebreaker", 5], ["Diagnostic and example", 5], ["Audience analysis", 10], ["Round-robin practice and feedback", 30, true], ["Revision commitments", 10]),
       modules: [
         M("w1-1", "explore", "This week’s goal",
           "Choose one specific audience for your presentation. Describe:\n\n• What they already know about your topic.\n• What matters to them.\n• The one action you want them to take after listening.",
@@ -209,7 +212,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
       goal: "Organize an opening, body, and closing, and support the core message with a relevant example or story.",
       branches: {},
       choiceSlots: ["w2p"],
-      session: session(60, ["Opening examples", 10], ["Outline review", 10], ["Presentations and peer feedback", 30, true], ["Revision and closing", 10]),
+      session: session(60, ["Icebreaker", 5], ["Opening examples", 5], ["Outline review", 10], ["Presentations and peer feedback", 30, true], ["Revision and closing", 10]),
       modules: [
         M("w2-1", "explore", "Choose a structure",
           "Pick one structure that fits your presentation:\n\n• Cause and effect, or comparison: for an informative talk.\n• STAR (Situation, Task, Action, Result): for an interview story.\n• Problem → solution: for a persuasive talk.\n\nSay which one you chose and why it suits your audience.",
@@ -262,7 +265,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
       goal: "Adjust pace, pauses, emphasis, and volume on purpose to make your message easier to understand.",
       branches: {},
       choiceSlots: ["w3p"],
-      session: session(60, ["Listening and examples", 10], ["Paired practice", 15], ["Comparisons and feedback", 25, true], ["Reflection", 10]),
+      session: session(60, ["Icebreaker", 5], ["Listening and examples", 5], ["Paired practice", 15], ["Comparisons and feedback", 25, true], ["Reflection", 10]),
       modules: [
         M("w3-1", "explore", "Choose one vocal delivery goal",
           "Pick one: pace, pauses, emphasis, volume, or filler words. Explain why this is your priority right now. Your Week 0 recording is a good place to look for evidence.",
@@ -298,7 +301,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
       goal: "Use posture, gesture, eye contact, and space to support the message.",
       branches: {},
       choiceSlots: ["w4p"],
-      session: session(60, ["Observation example", 10], ["Paired practice", 10], ["Round-robin presentations and feedback", 30, true], ["Reflection", 10]),
+      session: session(60, ["Icebreaker", 5], ["Observation example", 5], ["Paired practice", 10], ["Round-robin presentations and feedback", 30, true], ["Reflection", 10]),
       modules: [
         M("w4-1", "explore", "Choose a nonverbal goal",
           "Review your earlier recordings. Choose posture, eye contact, gesture, or movement, and explain how it relates to this presentation. Seated delivery and alternatives to direct eye contact are completely fine; choose what fits you.",
@@ -334,7 +337,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
       goal: "Speak from an outline and recover the flow after losing your place or being interrupted.",
       branches: {},
       choiceSlots: ["w5p"],
-      session: session(60, ["Rehearsal strategies", 10], ["Recovery practice", 10], ["Group rehearsal", 30, true], ["Final presentation preparation", 10]),
+      session: session(60, ["Icebreaker", 5], ["Rehearsal strategies", 5], ["Recovery practice", 10], ["Group rehearsal", 30, true], ["Final presentation preparation", 10]),
       modules: [
         M("w5-1", "explore", "Prepare the full presentation",
           "Bring together your audience analysis, structure, vocal delivery, and body language. List the main sections of your presentation and the core message of each.",
@@ -370,7 +373,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
       goal: "Use visual support to reinforce the core message, deliver an integrated presentation, and explain your progress and next steps.",
       branches: {},
       choiceSlots: ["w6p"],
-      session: session(75, ["Opening", 7], ["Final presentations and feedback (about 8 min each)", 48, true], ["Comparing work", 10], ["Next steps and closing", 10]),
+      session: session(75, ["Icebreaker", 3], ["Opening", 4], ["Final presentations and feedback (about 8 min each)", 48, true], ["Comparing work", 10], ["Next steps and closing", 10]),
       modules: [
         M("w6-1", "explore", "One main point per slide",
           "Look at the overloaded slide, then the revised one. Identify the core message, and describe how the title, text, and image were reorganized to support it.",
@@ -696,4 +699,35 @@ export function seedMarks(): Mark[] {
     { id: "mk2", attachmentId: "wk-s2-w1", from: "s1", sec: 9, text: "I lost you here: what does “calibrated” mean?", at: now - 1800_000 },
     { id: "mk3", attachmentId: "wk-s2-w1", from: "teacher", sec: 16, text: "Slow down for the call to action and pause after it.", at: now - 3500_000 },
   ];
+}
+
+/** Plans from the onboarding questionnaire: purposes, goals, confidence, and a few drills. */
+export function seedPlans(): Record<string, Plan> {
+  const now = Date.now();
+  const day = (n: number) => isoDay(-n);
+  return {
+    s3: {
+      purposes: ["Job interviews", "Managing nerves"], goal: "Walk into my internship interviews in December and answer without freezing.",
+      objectives: [
+        { id: "lo-a1", lo: "Answer “tell me about yourself” in under 90 seconds", lm: "A recording under 90 seconds that a peer rates “Meeting the goal” on structure", status: "getting" },
+        { id: "lo-a2", lo: "Recover when I lose my place", lm: "Finish two rehearsals without restarting", status: "notyet" },
+      ],
+      confidence: { interview: 2, class: 3, meeting: 2, impromptu: 1, research: 3, english: 3 },
+      confidenceStart: { interview: 1, class: 3, meeting: 2, impromptu: 1, research: 2, english: 3 },
+      prca: [{ answers: [4, 2, 4, 2, 4, 3], score: 23, at: now - 9 * 86400_000 }],
+      focus: { subskills: ["Recovering when you lose your place", "Filler words"], at: now - 3 * 86400_000 },
+      drills: [{ day: day(3), id: "recover", feel: 2 }, { day: day(2), id: "filler", feel: 3 }, { day: day(1), id: "recover", feel: 3 }],
+      updatedAt: now - 86400_000,
+    },
+    s2: {
+      purposes: ["Pitches and professional talks"], goal: "Pitch my plant-care app at the spring demo day.",
+      objectives: [{ id: "lo-l1", lo: "Open with a hook that lands in 15 seconds", lm: "Two peers mark the hook as clear in Collab Studio", status: "achieved" }],
+      confidence: { interview: 3, class: 4, meeting: 3, impromptu: 3, research: 3, english: 4 },
+      confidenceStart: { interview: 3, class: 3, meeting: 3, impromptu: 2, research: 3, english: 4 },
+      prca: [{ answers: [2, 4, 2, 4, 2, 4], score: 12, at: now - 9 * 86400_000 }],
+      focus: { subskills: ["Pace and tempo"], at: now - 5 * 86400_000 },
+      drills: [{ day: day(4), id: "pace", feel: 3 }, { day: day(3), id: "pace", feel: 4 }, { day: day(1), id: "pace", feel: 4 }, { day: day(0), id: "pace" }],
+      updatedAt: now - 2 * 86400_000,
+    },
+  };
 }

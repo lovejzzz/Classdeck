@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Course, Lesson, StudioPost } from "@/lib/types";
+import { ICEBREAKERS } from "@/lib/onboarding";
 import { rolesFor, sessionIndex } from "@/lib/roles";
 import { Avatar, Icon } from "../Icon";
 import { Present } from "../Present";
@@ -63,6 +64,8 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
   const members = group?.studentIds.map((id) => course.students.find((s) => s.id === id)!).filter(Boolean) ?? [];
   const roles = plan.roles && group ? rolesFor(group.studentIds, sessionIndex(course, lesson.id)) : {};
   const part = plan.agenda[seg];
+  const [ice, setIce] = useState(() => sessionIndex(course, lesson.id) * 2);
+  const isIce = !!part && /ice ?breaker|warm-?up/i.test(part.label);
   const perSpeaker = part?.roundRobin && members.length ? (part.minutes * 60) / members.length : 0;
   const total = part ? (part.roundRobin ? perSpeaker : part.minutes * 60) : 0;
   const left = total - elapsed;
@@ -168,6 +171,13 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
           {cur && (
             <div key={cur.id} className="pop mt-2 flex items-center gap-2 text-[20px] font-semibold">
               <Avatar name={cur.name} size={28} /> {cur.name} is presenting
+            </div>
+          )}
+          {isIce && (
+            <div className="pop mt-4 w-full max-w-xl rounded-2xl border border-line bg-white px-6 py-5 text-center">
+              <div className="eyebrow">Go around the group · 20 seconds each</div>
+              <p className="mt-2 text-[22px] font-medium leading-snug">{ICEBREAKERS[ice % ICEBREAKERS.length]}</p>
+              <button onClick={() => setIce(ice + 1)} className="btn btn-quiet press mt-2 h-8 px-3 text-[13px]"><Icon name="reset" size={12} /> Another prompt</button>
             </div>
           )}
           <div className="relative mt-6">

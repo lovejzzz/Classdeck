@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { op } from "@/lib/client";
 import { recommend, todoList, type Rec } from "@/lib/coach";
+import { isoDay } from "@/lib/grading";
+import { DRILLS, FEEL, drillFor } from "@/lib/onboarding";
 import { TYPE_META } from "@/lib/ui";
 import type { CourseState } from "@/lib/types";
 import { Icon } from "../Icon";
@@ -21,8 +24,8 @@ const KIND: Record<Rec["kind"], { icon: string; tint: string }> = {
  * "For you": next steps worked out from the student's own self-checks, the teacher's reviews,
  * due dates, and feedback; their to-do list; and reminders from the teacher.
  */
-export function ForYou({ state, studentId, onOpen, onBoard }: {
-  state: CourseState; studentId: string; onOpen: (lessonId: string, moduleId: string) => void; onBoard: () => void;
+export function ForYou({ state, studentId, onOpen, onBoard, onChanged }: {
+  state: CourseState; studentId: string; onOpen: (lessonId: string, moduleId: string) => void; onBoard: () => void; onChanged?: () => void;
 }) {
   const [now] = useState(() => Date.now());
   const [tab, setTab] = useState<"next" | "todo">("next");
@@ -41,7 +44,19 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
     if (canNotify && document.hidden) new Notification("Reminder from your teacher", { body: newest.text });
   }, [nudges, canNotify]);
 
-  if (!recs.length && !todos.length && !nudges.length) return null;
+  const plan = state.plans?.[studentId];
+  const today = isoDay(0);
+  const dayNum = Math.floor(now / 86400_000);
+  const drill = plan ? drillFor(plan.focus?.subskills ?? [], dayNum) : undefined;
+  const doneToday = plan?.drills?.find((d) => d.day === today);
+  const doneDrill = doneToday ? DRILLS.find((d) => d.id === doneToday.id) : undefined;
+  const [openDrill, setOpenDrill] = useState(false);
+  async function logDrill(id: string, feel?: number) {
+    await op(state.course.id, { op: "drill", studentId, day: today, id, feel });
+    onChanged?.();
+  }
+
+  if (!recs.length && !todos.length && !nudges.length && !drill) return null;
 
   return (
     <div className="mx-auto max-w-6xl px-4">
@@ -54,6 +69,31 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
             const l = state.course.weeks.flatMap((w) => w.lessons).find((x) => x.modules.some((m) => m.id === nudges[0].moduleId));
             return l ? <button onClick={() => onOpen(l.id, nudges[0].moduleId!)} className="btn btn-quiet press h-7 px-2 text-[12px]">Open card</button> : null;
           })()}
+        </div>
+      )}
+      {drill && (
+        <div className="border-b border-line px-4 py-2.5 text-[13px]">
+          {doneToday ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ok/10 text-ok"><Icon name="check" size={13} /></span>
+              <span className="flex-1"><span className="font-medium">Today’s drill done:</span> {doneDrill?.title ?? doneToday.id}</span>
+              <span className="text-[12px] text-ink-3">How did it feel?</span>
+              {FEEL.map((f, i) => (
+                <button key={f} aria-pressed={doneToday.feel === i + 1} onClick={() => logDrill(doneToday.id, i + 1)}
+                  className={`press chip h-6 ${doneToday.feel === i + 1 ? "bg-ink text-white" : ""}`}>{f}</button>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lane text-[#367195]"><Icon name="timer" size={13} /></span>
+                <span className="min-w-0 flex-1"><span className="font-medium">Today’s 10-minute drill:</span> {drill.title} <span className="text-ink-3">· {drill.sub}</span></span>
+                <button onClick={() => setOpenDrill(!openDrill)} aria-expanded={openDrill} className="btn btn-quiet press h-7 px-2 text-[12px]">{openDrill ? "Hide" : "How"}</button>
+                <button onClick={() => logDrill(drill.id)} className="btn btn-ghost press h-7 px-2.5 text-[12px]"><Icon name="check" size={12} /> I did it</button>
+              </div>
+              {openDrill && <p className="mt-1.5 pl-8 leading-relaxed text-ink-2">{drill.steps}</p>}
+            </>
+          )}
         </div>
       )}
       <div className="flex items-center gap-1 border-b border-line px-2 pt-1.5">
@@ -77,14 +117,14 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
           <ul className="divide-y divide-line">
             {recs.map((r, i) => (
               <li key={r.id} className="rise" style={{ "--i": i } as React.CSSProperties}>
-                <button disabled={!r.anchor && (!r.moduleId || !r.lessonId)} onClick={() => r.anchor ? document.getElementById(r.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" }) : r.moduleId && r.lessonId ? onOpen(r.lessonId, r.moduleId) : onBoard()}
+                <button disabled={!r.anchor && (!r.moduleId || !r.lessonId) && r.id !== "focus" && r.id !== "obj"} onClick={() => r.anchor ? document.getElementById(r.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" }) : r.moduleId && r.lessonId ? onOpen(r.lessonId, r.moduleId) : onBoard()}
                   className="press flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-[#fafaf9] disabled:cursor-default disabled:hover:bg-transparent">
                   <span className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-lane" style={{ color: KIND[r.kind].tint }}><Icon name={KIND[r.kind].icon} size={14} /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-medium">{r.title}</span>
                     <span className="block text-[12.5px] leading-snug text-ink-2">{r.text}</span>
                   </span>
-                  {(r.moduleId || r.anchor) && <Icon name="arrow" size={13} className="mt-1.5 flex-none text-ink-3" />}
+                  {(r.moduleId || r.anchor || r.id === "focus" || r.id === "obj") && <Icon name="arrow" size={13} className="mt-1.5 flex-none text-ink-3" />}
                 </button>
               </li>
             ))}

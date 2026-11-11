@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { op } from "@/lib/client";
 import { fmtSec } from "@/lib/grading";
+import { FEEL } from "@/lib/onboarding";
 import { toast } from "@/lib/toast";
 import type { Level, Review, Skill } from "@/lib/types";
 import { Icon } from "../Icon";
@@ -92,10 +93,12 @@ export const promptsToText = (prompts: string[], responses: string[]) =>
  * A rehearsal timer: start, speak, stop. The ring fills toward the target time and
  * turns amber once you run over. Each run is kept so you can see yourself getting closer.
  */
-export function Rehearsal({ target, takes, courseId, studentId, moduleId, onSaved, big }: {
-  target: number; takes: number[]; courseId: string; studentId: string; moduleId: string; onSaved: () => void; big?: boolean;
+export function Rehearsal({ target, takes, feel = [], courseId, studentId, moduleId, onSaved, big }: {
+  target: number; takes: number[]; feel?: number[]; courseId: string; studentId: string; moduleId: string; onSaved: () => void; big?: boolean;
 }) {
   const [running, setRunning] = useState(false);
+  // After a run: how did it feel? Kept with the run so the student can see confidence change with practice.
+  const [asking, setAsking] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const started = useRef(0);
   // Runs saved here but not yet back from the server, keyed by the position they'll take.
@@ -128,8 +131,17 @@ export function Rehearsal({ target, takes, courseId, studentId, moduleId, onSave
     if (!r.ok) return toast(r.error ?? "Couldn’t save that run", { icon: "timer", tone: "plain" });
     const off = sec - target;
     toast(Math.abs(off) <= target * 0.1 ? `${fmtSec(sec)}: right on time` : off > 0 ? `${fmtSec(sec)}: ${fmtSec(off)} over` : `${fmtSec(sec)}: ${fmtSec(-off)} under`, { icon: "timer" });
+    setAsking(true);
     onSaved();
   }
+
+  async function rate(v: number) {
+    setAsking(false);
+    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "feel", studentId, moduleId, v });
+    if (r.ok) onSaved();
+  }
+  const offset = Math.max(0, takes.length - 8);
+  const felt = feel.filter(Boolean);
 
   const frac = Math.min(1, elapsed / target);
   const over = elapsed > target;
@@ -158,13 +170,23 @@ export function Rehearsal({ target, takes, courseId, studentId, moduleId, onSave
             all.map((s, i) => {
               const ok = Math.abs(s - target) <= target * 0.1;
               return (
-                <span key={i} className={`pop rounded-full px-2 py-[1px] font-mono text-[11px] ${ok ? "bg-ok/10 text-ok" : "bg-lane text-ink-2"}`} style={{ "--i": i } as React.CSSProperties} title={ok ? "Within 10% of the target" : undefined}>
+                <span key={i} className={`pop rounded-full px-2 py-[1px] font-mono text-[11px] ${ok ? "bg-ok/10 text-ok" : "bg-lane text-ink-2"}`} style={{ "--i": i } as React.CSSProperties}
+                  title={[ok ? "Within 10% of the target" : "", feel[offset + i] ? `Felt: ${FEEL[feel[offset + i] - 1]}` : ""].filter(Boolean).join(" · ") || undefined}>
                   {fmtSec(s)}
                 </span>
               );
             })
           )}
         </div>
+        {asking ? (
+          <div className="pop mt-2 flex flex-wrap items-center gap-1" role="group" aria-label="How did that run feel?">
+            <span className="mr-1 text-[12px] text-ink-2">How did that run feel?</span>
+            {FEEL.map((f, i) => <button key={f} onClick={() => rate(i + 1)} className="press chip h-6 hover:bg-ink hover:text-white">{f}</button>)}
+            <button onClick={() => setAsking(false)} className="btn btn-quiet press h-6 px-1.5 text-[11.5px]">Skip</button>
+          </div>
+        ) : felt.length > 1 && (
+          <p className="mt-1.5 text-[11.5px] text-ink-3">Feeling: {FEEL[felt[0] - 1].toLowerCase()} at first, {FEEL[felt[felt.length - 1] - 1].toLowerCase()} lately.</p>
+        )}
       </div>
     </section>
   );

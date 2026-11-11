@@ -11,12 +11,17 @@ import { reviewRing } from "@/lib/pairing";
 import { rolesFor, sessionIndex } from "@/lib/roles";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { WorkComposer } from "./WorkComposer";
+import { SUBSKILLS } from "@/lib/onboarding";
+
+type Rubric = Record<string, { level?: number; note?: string }>;
+type FbIn = { observed: string; effect: string; next: string; level?: number; rubric?: Rubric };
 
 const GOAL = 2;
 
-function FeedbackForm({ onSend, skillName, levels }: { onSend: (f: { observed: string; effect: string; next: string; level?: number }) => Promise<boolean>; skillName?: string; levels: Course["levels"] }) {
+function FeedbackForm({ onSend, skillName, levels, criteria = [] }: { onSend: (f: FbIn) => Promise<boolean>; skillName?: string; levels: Course["levels"]; criteria?: string[] }) {
   const [f, setF] = useState({ observed: "", effect: "", next: "" });
   const [level, setLevel] = useState<number | undefined>();
+  const [rubric, setRubric] = useState<Rubric>({});
   const [busy, setBusy] = useState(false);
   const field = (k: keyof typeof f, label: string, placeholder: string) => (
     <label className="block">
@@ -30,15 +35,37 @@ function FeedbackForm({ onSend, skillName, levels }: { onSend: (f: { observed: s
       onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true);
-        const ok = await onSend({ ...f, level });
+        const ok = await onSend({ ...f, level, rubric: Object.keys(rubric).length ? rubric : undefined });
         setBusy(false);
-        if (ok) setF({ observed: "", effect: "", next: "" });
+        if (ok) { setF({ observed: "", effect: "", next: "" }); setRubric({}); }
       }}
     >
       {field("observed", "What I observed", "A specific sentence, moment, or timestamp. “At 0:12 you paused before…”")}
       {field("effect", "Its effect on me", "How it changed what I understood or felt.")}
       {field("next", "Try next", "One concrete thing to try in the next version.")}
-      {skillName && levels && (
+      {criteria.length > 0 && levels && (
+        <fieldset className="space-y-2.5 rounded-lg border border-line bg-white p-2.5">
+          <legend className="px-1 text-[12px] font-medium text-ink-2">The presenter asked for feedback on</legend>
+          {criteria.map((c) => (
+            <div key={c}>
+              <div className="text-[12.5px] font-medium">{c}</div>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {levels.map((l) => {
+                  const on = rubric[c]?.level === l.n;
+                  return (
+                    <button type="button" key={l.n} aria-pressed={on} aria-label={`${c}: ${l.name}`}
+                      onClick={() => setRubric({ ...rubric, [c]: { ...rubric[c], level: on ? undefined : l.n } })}
+                      className={`press h-6 rounded-full border px-2 text-[11.5px] ${on ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>{l.n} · {l.name}</button>
+                  );
+                })}
+              </div>
+              <input value={rubric[c]?.note ?? ""} onChange={(e) => setRubric({ ...rubric, [c]: { ...rubric[c], note: e.target.value } })}
+                aria-label={`Note on ${c}`} placeholder="A short note (optional)" className="field mt-1 h-8 text-[12.5px]" />
+            </div>
+          ))}
+        </fieldset>
+      )}
+      {skillName && levels && !criteria.length && (
         <div>
           <span className="text-[12px] font-medium text-ink-2">{skillName}, on the rubric (optional)</span>
           <div className="mt-1 flex flex-wrap gap-1">
@@ -58,7 +85,7 @@ function FeedbackForm({ onSend, skillName, levels }: { onSend: (f: { observed: s
 
 function PostView({ post, feedback, course, mine, me, onFeedback, assigned, onHelpful }: {
   post: StudioPost; feedback: Feedback[]; course: Course; mine: boolean; me: string; assigned?: boolean; onHelpful?: (f: Feedback) => void;
-  onFeedback?: (f: { observed: string; effect: string; next: string; level?: number }) => Promise<boolean>;
+  onFeedback?: (f: FbIn) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const name = (id: string) => course.students.find((s) => s.id === id)?.name ?? "Peer";
@@ -84,6 +111,9 @@ function PostView({ post, feedback, course, mine, me, onFeedback, assigned, onHe
         )}
         {post.text && <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed">{post.text}</p>}
         {post.work.map((w) => <MarkedMedia key={w.id} a={w} />)}
+        {post.rubric?.length ? (
+          <p className="flex flex-wrap items-center gap-1 text-[12.5px] text-ink-3">Wants feedback on: {post.rubric.map((c) => <span key={c} className="chip h-5 text-[11.5px]">{c}</span>)}</p>
+        ) : null}
         {post.question && (
           <p className="flex gap-2 rounded-lg bg-[#fbf3ee] px-3 py-2 text-[13.5px]"><Icon name="message" size={14} className="mt-0.5 text-[#ae502f]" /><span><span className="font-medium">Question: </span>{post.question}</span></p>
         )}
@@ -100,6 +130,13 @@ function PostView({ post, feedback, course, mine, me, onFeedback, assigned, onHe
                   <p><span className="text-ink-3">Observed:</span> {f.observed}</p>
                   {f.effect && <p><span className="text-ink-3">Effect:</span> {f.effect}</p>}
                   <p><span className="text-ink-3">Try next:</span> {f.next}</p>
+                  {f.rubric && Object.keys(f.rubric).length > 0 && (
+                    <ul className="mt-1 space-y-0.5 rounded-lg bg-white px-2.5 py-1.5 ring-1 ring-line">
+                      {Object.entries(f.rubric).map(([c, r]) => (
+                        <li key={c} className="text-[12.5px]"><span className="font-medium">{c}</span>{r.level ? <span className="text-ink-2"> · {r.level} {course.levels?.find((l) => l.n === r.level)?.name}</span> : null}{r.note && <span className="text-ink-2">: {r.note}</span>}</li>
+                      ))}
+                    </ul>
+                  )}
                   {mine && onHelpful ? (
                     <button onClick={() => onHelpful(f)} aria-pressed={!!f.helpful}
                       className={`press mt-1 inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11.5px] ${f.helpful ? "border-ok/40 bg-ok/10 text-ok" : "border-line text-ink-3 hover:text-ink"}`}>
@@ -112,7 +149,7 @@ function PostView({ post, feedback, course, mine, me, onFeedback, assigned, onHe
           </div>
           {onFeedback && !mine && (
             open ? (
-              <FeedbackForm skillName={skill} levels={course.levels} onSend={async (f) => {
+              <FeedbackForm skillName={skill} levels={course.levels} criteria={post.rubric} onSend={async (f) => {
                 const ok = await onFeedback(f);
                 if (ok) setOpen(false);
                 return ok;
@@ -157,6 +194,7 @@ export function Studio({
     skill: mine?.skill ?? m.skills?.[0] ?? course.skills?.[0]?.id ?? "",
     question: mine?.question ?? "",
     text: mine?.text ?? "",
+    rubric: mine?.rubric ?? [] as string[],
   });
   const [picked, setPicked] = useState<string[]>(mine?.work.map((w) => w.url) ?? lessonWork.slice(-1).map((x) => x.a.url));
   const given = new Set(feedback.filter((f) => f.fromId === studentId && peers.some((p) => p.id === f.postId)).map((f) => f.postId)).size;
@@ -241,6 +279,18 @@ export function Studio({
               </label>
               {input("question", "Your question for the group", "One specific question")}
             </div>
+            {SUBSKILLS[form.skill] && (
+              <div>
+                <span className="text-[12px] font-medium text-ink-2">Ask reviewers to rate (up to three)</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {SUBSKILLS[form.skill].map((c) => {
+                    const on = form.rubric.includes(c);
+                    return <button type="button" key={c} aria-pressed={on} onClick={() => setForm({ ...form, rubric: on ? form.rubric.filter((x) => x !== c) : [...form.rubric, c].slice(-3) })}
+                      className={`press chip h-7 px-2.5 text-[12px] ${on ? "bg-ink text-white" : ""}`}>{on && <Icon name="check" size={11} />}{c}</button>;
+                  })}
+                </div>
+              </div>
+            )}
             <label className="block">
               <span className="text-[12px] font-medium text-ink-2">Notes (activities you chose, what changed since last time)</span>
               <textarea value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} rows={2} className="field mt-1 resize-none" />

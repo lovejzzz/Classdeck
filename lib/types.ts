@@ -123,6 +123,22 @@ export interface SpeechFields {
   closeType?: string;
 }
 
+/** A learner's plan: why they're here, what they want, how they'll know, and how they feel. Always revisable. */
+export interface Plan {
+  purposes: string[];
+  purposeNote?: string;
+  goal?: string;
+  objectives: { id: string; lo: string; lm: string; status?: "notyet" | "getting" | "achieved" }[];
+  confidence: Record<string, number>;
+  /** The first set of confidence answers, kept so growth is visible. */
+  confidenceStart?: Record<string, number>;
+  prca?: { answers: number[]; score: number; at: number }[];
+  focus?: { subskills: string[]; at: number };
+  /** Days (YYYY-MM-DD) a practice drill was done, with how it felt (1–4). */
+  drills?: { day: string; id: string; feel?: number }[];
+  updatedAt: number;
+}
+
 /** A reminder the teacher sent to a student. */
 export interface Nudge {
   id: string;
@@ -173,6 +189,10 @@ export interface Module {
   checklist?: string[];
   /** Guided prompts: each gets its own answer box. */
   prompts?: string[];
+  /** Self-check: run the full onboarding questionnaire (purpose, goals, confidence, anxiety check). */
+  onboarding?: boolean;
+  /** Speech builder: walk the learner through the guided first-speech flow instead of the free builder. */
+  flow?: boolean;
   /** Speech builder: the structure template to start from (lib/structures.ts). */
   structure?: string;
   /** Rehearsal timer target, in seconds (practice cards). */
@@ -292,6 +312,8 @@ export interface Progress {
   responses?: string[];
   /** Timed rehearsals, in seconds, newest last. */
   rehearsals?: number[];
+  /** How each timed rehearsal felt, 1 (rough) to 4 (strong), aligned with rehearsals. */
+  feel?: number[];
   /** Quiz with a time limit: when this try started. */
   startedAt?: number;
   /** Quiz: which try this is (1-based) and the best score so far. */
@@ -299,6 +321,8 @@ export interface Progress {
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
+  /** Guided first-speech flow: chosen path, answers per step, and the arranged tiles. */
+  flow?: { path?: "idea" | "story"; step?: number; answers: Record<string, string>; tiles?: { id: string; kind: string; text: string }[] };
   /** Speech builder: the current draft and saved versions. */
   speech?: { fields: SpeechFields; versions: { at: number; label?: string; fields: SpeechFields }[] };
   /** Sent to students only: answer keys and explanations they've earned the right to see. */
@@ -317,6 +341,8 @@ export interface StudioPost {
   purpose: string;
   skill: string;
   question: string;
+  /** Sub-skills the poster asks peers to give feedback on: their own rubric. */
+  rubric?: string[];
   text: string;
   work: Attachment[];
   likes?: string[];
@@ -333,6 +359,8 @@ export interface Feedback {
   effect: string;
   next: string;
   level?: number;
+  /** Per-criterion feedback on the poster's rubric. */
+  rubric?: Record<string, { level?: number; note?: string }>;
   /** Marked helpful by the person who received it. */
   helpful?: boolean;
   createdAt: number;
@@ -402,6 +430,8 @@ export interface CourseState {
   uptake: Record<string, Record<string, number>>;
   /** Reminders from the teacher (students get their own). */
   nudges: Nudge[];
+  /** Learner plans (students get their own). */
+  plans: Record<string, Plan>;
   /** For students, votes are counts only (plus their own) and hands are their own. */
   live: Live & { myVote?: number; counts?: number[] };
 }

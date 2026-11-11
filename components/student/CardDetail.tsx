@@ -7,16 +7,18 @@ import { useShortcuts } from "@/lib/shortcuts";
 import { dueInfo, optionOrder, quizSet } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META } from "@/lib/ui";
-import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Post, Progress, Student } from "@/lib/types";
+import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Plan, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
 import { ReadAloud } from "../ReadAloud";
 import { teacherLevels } from "../SkillRadar";
 import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
+import { Onboarding } from "./Onboarding";
 import { SelfCheck } from "./SelfCheck";
 import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, Rehearsal, ReviewNote } from "./CardExtras";
 import { SpeechBuilder } from "./SpeechBuilder";
+import { SpeechFlow } from "./SpeechFlow";
 import { Studio } from "./Studio";
 import { WorkComposer } from "./WorkComposer";
 
@@ -40,6 +42,7 @@ export interface DetailProps {
   weekTitle: string;
   mine: Record<string, Progress>;
   studio: CourseState["studio"];
+  plan?: Plan;
 }
 
 /** What's on the card once it's lifted out of the hand. */
@@ -241,7 +244,7 @@ export function CardDetail(p: DetailProps) {
 
         {m.timer && !m.choice && m.type !== "builder" ? (
           <div className="mt-6">
-            <Rehearsal target={m.timer} takes={p.progress?.rehearsals ?? []} courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onSaved={p.onChanged} big={p.big} />
+            <Rehearsal target={m.timer} takes={p.progress?.rehearsals ?? []} feel={p.progress?.feel} courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onSaved={p.onChanged} big={p.big} />
           </div>
         ) : null}
 
@@ -266,25 +269,35 @@ export function CardDetail(p: DetailProps) {
           </div>
         )}
 
-        {m.type === "selfcheck" && !m.choice && p.course.skills && p.course.levels && (
-          <div className="mt-7">
+        {m.type === "selfcheck" && !m.choice && p.course.skills && p.course.levels && (() => {
+          const check = (onDone: () => void) => (
             <SelfCheck
-              courseId={p.courseId} studentId={p.studentId} moduleId={m.id} skills={p.course.skills} levels={p.course.levels}
+              courseId={p.courseId} studentId={p.studentId} moduleId={m.id} skills={p.course.skills!} levels={p.course.levels!}
               ratings={p.progress?.ratings ?? {}} earlier={earlier} onChanged={p.onChanged} big={p.big} teacher={teacherLevels(p.mine)}
-              onDone={() => save("done")}
+              onDone={onDone}
             />
-          </div>
-        )}
+          );
+          return (
+            <div className="mt-7">
+              {m.onboarding
+                ? <Onboarding courseId={p.courseId} studentId={p.studentId} plan={p.plan} big={p.big} skills={check} onDone={() => { p.onChanged(); save("done"); }} />
+                : check(() => save("done"))}
+            </div>
+          );
+        })()}
 
         {m.type === "builder" && !m.choice && (
           <div className="mt-7">
-            <SpeechBuilder courseId={p.courseId} studentId={p.studentId} module={m} progress={p.progress} onChanged={p.onChanged} big={p.big}
+            {(() => {
+              const Comp = m.flow ? SpeechFlow : SpeechBuilder;
+              return <Comp courseId={p.courseId} studentId={p.studentId} module={m} progress={p.progress} onChanged={p.onChanged} big={p.big}
               onFinish={(text) => {
                 p.optimistic({ status: "done", output: text });
                 op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, status: "done", output: text }).then(p.onChanged);
                 p.onClose(true);
                 toast(`Finished “${m.title}”`);
-              }} />
+              }} />;
+            })()}
           </div>
         )}
 

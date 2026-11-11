@@ -2,8 +2,8 @@ import fs from "fs";
 import { DatabaseSync } from "node:sqlite";
 import path from "path";
 import { publish } from "./bus";
-import { seedChoices, seedCourse, seedEvents, seedMarks, seedNudges, seedPosts, seedProgress, seedStudio, seedUptake } from "./seed";
-import type { ClassEvent, Course, Feedback, Live, Mark, Nudge, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
+import { seedChoices, seedCourse, seedEvents, seedMarks, seedNudges, seedPlans, seedPosts, seedProgress, seedStudio, seedUptake } from "./seed";
+import type { ClassEvent, Course, Feedback, Live, Mark, Nudge, Plan, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
 import type { Manifest } from "./connectors/types";
 
 
@@ -37,6 +37,7 @@ export interface DB {
   live: Record<string, Live>;
   uptake: Record<string, Record<string, Record<string, number>>>;
   nudges: Record<string, Nudge[]>;
+  plans: Record<string, Record<string, Plan>>;
   /** Student PIN hashes: course → student → "salt:hash". Never sent to a browser. */
   pins: Record<string, Record<string, string>>;
   users: Record<string, User>;
@@ -50,7 +51,7 @@ export interface DB {
 const DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), ".data");
 const FILE = path.join(DIR, "classdeck.db");
 const LEGACY = path.join(DIR, "db.json");
-const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges"] as const;
+const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans"] as const;
 const GLOBAL = ["users", "sessions", "customConnectors"] as const;
 
 const g = globalThis as unknown as { __lmsdb?: DB; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string> };
@@ -69,6 +70,7 @@ function fresh(custom: Manifest[] = []): DB {
     live: { [course.id]: { hands: {} } },
     uptake: { [course.id]: seedUptake() },
     nudges: { [course.id]: seedNudges() },
+    plans: { [course.id]: seedPlans() },
     pins: {},
     users: {},
     sessions: {},
@@ -157,7 +159,7 @@ export function save() {
 export function reset() {
   const d = db();
   const f = fresh();
-  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges"] as const) {
+  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges", "plans"] as const) {
     (d[k] as Record<string, unknown>).demo = (f[k] as Record<string, unknown>).demo;
   }
   save();

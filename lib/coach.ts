@@ -115,6 +115,14 @@ export function recommend(state: CourseState, studentId: string, now: number): R
   const late = todos.filter((t) => !t.revise && isLate(t.m, mine[t.m.id], now));
   if (late.length) recs.push({ id: "late", kind: "overdue", title: late.length === 1 ? `“${late[0].m.title}” is overdue` : `${late.length} cards are overdue`, text: late.length === 1 ? `It was ${late[0].due?.label.toLowerCase()}. Finish it first.` : `Start with “${late[0].m.title}”.`, moduleId: late[0].m.id, lessonId: late[0].lesson.id });
 
+  // Onboarding first: without a plan, nothing else can be tailored.
+  const plan = state.plans?.[studentId];
+  const ob = course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.filter((m) => m.onboarding).map((m) => ({ l, m }))))[0];
+  if (ob && !plan) recs.unshift({ id: "plan", kind: "focus", title: "Set your starting point", text: "A 10-minute questionnaire: your goal, objectives, and confidence. Your drills and suggestions follow from it.", moduleId: ob.m.id, lessonId: ob.l.id });
+  else if (plan && !plan.focus?.subskills.length) recs.push({ id: "focus", kind: "focus", title: "Choose this week’s focus", text: "Pick one or two sub-skills on My progress → My plan. Your daily drill will follow them." });
+  const behind = plan?.objectives.find((o) => o.status !== "achieved");
+  if (behind && plan && now - plan.updatedAt > 7 * 86400_000) recs.push({ id: "obj", kind: "reflect", title: "Check in on your objectives", text: `How is “${behind.lo}” going? Update its status on My plan.` });
+
   const { self, teacher, evidence } = skillPicture(mine);
   // When the student's sense of a skill and the teacher's evidence disagree by two levels or more.
   for (const s of skills) {

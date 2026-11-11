@@ -4,7 +4,8 @@ import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
 import { safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet } from "@/lib/grading";
-import type { AnswerValue, Attachment, Course, Live, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
+import { prcaScore } from "@/lib/onboarding";
+import type { AnswerValue, Attachment, Course, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
 // "order" questions go out alphabetised, so the correct order never reaches the browser.
@@ -14,7 +15,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 
 /** Operations a student performs on their own behalf (body.studentId). */
 const STUDENT_OPS = new Set([
-  "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
+  "savePlan", "drill", "feel", "saveFlow", "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
   "retakeQuiz", "rehearse", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
 ]);
 
@@ -70,7 +71,7 @@ export async function GET(request: Request, { params }: Ctx) {
         ...course, students: [], groups: [], joinCode: "", access: undefined,
         weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.map((m) => ({ ...m, questions: m.questions?.map(publicQuestion) })) })) })),
       },
-      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} }, uptake: {}, nudges: [],
+      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} }, uptake: {}, nudges: [], plans: {},
     };
     return Response.json(view);
   }
@@ -139,6 +140,7 @@ export async function GET(request: Request, { params }: Ctx) {
     live: liveView(d.live[courseId] ?? { hands: {} }, as),
     uptake: as ? { [as]: d.uptake[courseId]?.[as] ?? {} } : (d.uptake[courseId] ?? {}),
     nudges: (d.nudges[courseId] ?? []).filter((n) => !as || n.studentId === as),
+    plans: as ? (d.plans[courseId]?.[as] ? { [as]: d.plans[courseId][as] } : {}) : (d.plans[courseId] ?? {}),
   };
   // Visitors to the open demo get a light session so they can upload recordings there.
   const headers: Record<string, string> = !session && course.id === DEMO ? { "Set-Cookie": startSession({ kind: "demo" }, 7) } : {};
@@ -530,6 +532,72 @@ export async function POST(request: Request, { params }: Ctx) {
       else delete mineUp[key];
       break;
     }
+    case "savePlan": {
+      const plans = (d.plans[courseId] ??= {});
+      const prev = plans[body.studentId];
+      const b = body.plan ?? {};
+      const str = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
+      const conf: Record<string, number> = {};
+      for (const [k, v] of Object.entries(b.confidence ?? {})) if (/^[a-z]{2,12}$/.test(k) && Number(v) >= 1 && Number(v) <= 5) conf[k] = Math.round(Number(v));
+      const plan: Plan = {
+        purposes: (Array.isArray(b.purposes) ? b.purposes : []).map((x: unknown) => str(x, 60)).filter(Boolean).slice(0, 8),
+        purposeNote: str(b.purposeNote, 400) || undefined,
+        goal: str(b.goal, 400) || undefined,
+        objectives: (Array.isArray(b.objectives) ? b.objectives : []).slice(0, 5).map((o: { id?: unknown; lo?: unknown; lm?: unknown; status?: unknown }) => ({
+          id: str(o.id, 20) || uid("lo-"), lo: str(o.lo, 300), lm: str(o.lm, 300),
+          status: o.status === "getting" || o.status === "achieved" || o.status === "notyet" ? o.status : undefined,
+        })).filter((o: { lo: string }) => o.lo),
+        confidence: conf,
+        confidenceStart: prev?.confidenceStart ?? (Object.keys(conf).length ? conf : undefined),
+        prca: prev?.prca,
+        focus: prev?.focus,
+        drills: prev?.drills,
+        updatedAt: Date.now(),
+      };
+      if (Array.isArray(b.prca) && b.prca.length === 6 && b.prca.every((x: unknown) => Number(x) >= 1 && Number(x) <= 5)) {
+        const answers = b.prca.map(Number);
+        plan.prca = [...(prev?.prca ?? []), { answers, score: prcaScore(answers).score, at: Date.now() }].slice(-6);
+      }
+      if (Array.isArray(b.focus)) plan.focus = { subskills: b.focus.map((x: unknown) => str(x, 60)).filter(Boolean).slice(0, 2), at: Date.now() };
+      plans[body.studentId] = plan;
+      break;
+    }
+    case "drill": {
+      const plans = (d.plans[courseId] ??= {});
+      const plan = (plans[body.studentId] ??= { purposes: [], objectives: [], confidence: {}, updatedAt: Date.now() });
+      const day = String(body.day ?? "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return fail("Which day?");
+      const feel = Number(body.feel) >= 1 && Number(body.feel) <= 4 ? Number(body.feel) : undefined;
+      plan.drills = [...(plan.drills ?? []).filter((x) => !(x.day === day && x.id === body.id)), { day, id: String(body.id).slice(0, 20), feel }].slice(-200);
+      break;
+    }
+    case "feel": {
+      const p = mine(body.studentId, body.moduleId);
+      const n = (p.rehearsals ?? []).length;
+      const v = Number(body.v);
+      if (!n || !(v >= 1 && v <= 4)) return fail("Nothing to rate");
+      const feel = [...(p.feel ?? [])];
+      feel[n - 1] = v;
+      p.feel = feel;
+      break;
+    }
+    case "saveFlow": {
+      const mod = findModule(course, body.moduleId)?.mod;
+      if (mod?.type !== "builder") return fail("That isn’t a speech card");
+      const f = body.flow ?? {};
+      const answers: Record<string, string> = {};
+      for (const [k, v] of Object.entries(f.answers ?? {})) if (/^[a-z]{2,12}$/.test(k)) answers[k] = String(v ?? "").slice(0, 800);
+      const p = mine(body.studentId, body.moduleId);
+      p.flow = {
+        path: f.path === "idea" || f.path === "story" ? f.path : undefined,
+        step: Number.isInteger(f.step) ? Math.max(0, Math.min(20, f.step)) : undefined,
+        answers,
+        tiles: Array.isArray(f.tiles) ? f.tiles.slice(0, 24).map((t: { id?: unknown; kind?: unknown; text?: unknown }) => ({ id: String(t.id ?? uid("t-")).slice(0, 20), kind: String(t.kind ?? "note").slice(0, 12), text: String(t.text ?? "").slice(0, 1200) })) : undefined,
+      };
+      if (p.status === "todo") p.status = "doing";
+      p.updatedAt = Date.now();
+      break;
+    }
     case "saveSpeech": {
       const mod = findModule(course, body.moduleId)?.mod;
       if (mod?.type !== "builder") return fail("That isn’t a speech builder card");
@@ -790,6 +858,7 @@ export async function POST(request: Request, { params }: Ctx) {
       const fields = {
         title: str(f.title, 140), audience: str(f.audience, 200), purpose: str(f.purpose, 300),
         skill: str(f.skill, 40), question: str(f.question, 300), text: str(f.text, 4000), work,
+        rubric: Array.isArray(f.rubric) ? f.rubric.map((x: unknown) => str(x, 60)).filter(Boolean).slice(0, 3) : undefined,
       };
       if (existing) Object.assign(existing, fields, { updatedAt: Date.now(), groupId: group.id });
       else {
@@ -808,7 +877,15 @@ export async function POST(request: Request, { params }: Ctx) {
       const fb = { observed: str(body.observed), effect: str(body.effect), next: str(body.next) };
       if (!fb.observed || !fb.next) return fail("Describe what you observed and one thing to try next");
       const level = Number(body.level);
-      studio.feedback.push({ id: uid("fb-"), postId: post.id, fromId: body.studentId, ...fb, level: level >= 1 && level <= 4 ? level : undefined, createdAt: Date.now() });
+      const rubric: Record<string, { level?: number; note?: string }> = {};
+      for (const c of post.rubric ?? []) {
+        const r = body.rubric?.[c];
+        if (!r) continue;
+        const lv = Number(r.level);
+        rubric[c] = { level: lv >= 1 && lv <= 4 ? lv : undefined, note: String(r.note ?? "").trim().slice(0, 400) || undefined };
+        if (!rubric[c].level && !rubric[c].note) delete rubric[c];
+      }
+      studio.feedback.push({ id: uid("fb-"), postId: post.id, fromId: body.studentId, ...fb, level: level >= 1 && level <= 4 ? level : undefined, rubric: Object.keys(rubric).length ? rubric : undefined, createdAt: Date.now() });
       const to = course.students.find((s) => s.id === post.studentId)?.name ?? "a peer";
       logEvent(courseId, { kind: "feedback", studentId: body.studentId, moduleId: post.moduleId, text: `Gave feedback to ${to}: “${fb.next.slice(0, 60)}”` });
       studioStatus(body.studentId, post.moduleId);

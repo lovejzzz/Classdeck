@@ -424,6 +424,13 @@ export function CardEditor({
           </div>
         </Section>
 
+        {m.type === "builder" && (
+          <Section title="Speech builder">
+            <Seg value={m.flow ? "flow" : "free"} options={[["flow", "Guided first speech"], ["free", "Free builder with templates"]]} onPick={(v) => set({ flow: v === "flow" || undefined })} />
+            <p className="mt-2 text-[12px] text-ink-3">{m.flow ? "Students choose “Present an idea” or “Tell a story”, answer one question at a time, then arrange their speech as tiles." : "Students lay out their talk part by part with structure templates, versions, and timing."}</p>
+          </Section>
+        )}
+
         {m.type === "studio" && (
           <Section title="Peer review">
             <label className="flex items-start gap-2 text-[13px] text-ink-2">

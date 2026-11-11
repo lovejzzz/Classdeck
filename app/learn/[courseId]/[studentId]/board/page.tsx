@@ -6,6 +6,7 @@ import { useState } from "react";
 import { CardFace } from "@/components/cards/CardFace";
 import { MediaView } from "@/components/cards/Media";
 import { SignInNeeded } from "@/components/SignInNeeded";
+import { PlanPanel } from "@/components/student/PlanPanel";
 import { FeedbackInbox, Journal, PracticeLog } from "@/components/student/Progress";
 import { SkillRadar, teacherLevels } from "@/components/SkillRadar";
 import { Avatar, Icon, StatusIcon } from "@/components/Icon";
@@ -18,9 +19,9 @@ import type { Module, Progress } from "@/lib/types";
 export default function BoardPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
   const { state, error, needAuth, refresh } = useCourse(courseId, studentId, 8000);
-  const [tab, setTab] = useState<"overview" | "practice" | "feedback" | "journal" | "work">(() => {
+  const [tab, setTab] = useState<"plan" | "overview" | "practice" | "feedback" | "journal" | "work">(() => {
     const h = typeof window === "undefined" ? "" : window.location.hash.slice(1);
-    return (["overview", "practice", "feedback", "journal", "work"] as const).find((t) => t === h) ?? "overview";
+    return (["plan", "overview", "practice", "feedback", "journal", "work"] as const).find((t) => t === h) ?? "plan";
   });
   const query = useQuery();
   if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}/board`} />;
@@ -77,12 +78,13 @@ export default function BoardPage() {
         </div>
 
         <div className="no-print mt-6 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Board sections">
-          {([["overview", "Overview"], ["practice", "Practice log"], ["feedback", "Feedback"], ["journal", "Reflections"], ["work", "All work"]] as const).map(([k, label]) => (
+          {([["plan", "My plan"], ["overview", "Skills"], ["practice", "Practice log"], ["feedback", "Feedback"], ["journal", "Reflections"], ["work", "All work"]] as const).map(([k, label]) => (
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); history.replaceState(null, "", `#${k}`); }}
               className={`press -mb-px h-10 flex-none border-b-2 px-3 text-[13.5px] ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
           ))}
         </div>
 
+        {tab === "plan" && <section className="rise mt-6"><PlanPanel courseId={courseId} studentId={studentId} course={course} plan={state.plans?.[studentId]} onChanged={refresh} /></section>}
         {tab === "practice" && <section className="rise mt-6"><PracticeLog state={state} studentId={studentId} /></section>}
         {tab === "feedback" && <section className="rise mt-6"><FeedbackInbox state={state} studentId={studentId} onChanged={refresh} /></section>}
         {tab === "journal" && <section className="rise mt-6"><Journal state={state} studentId={studentId} /></section>}
