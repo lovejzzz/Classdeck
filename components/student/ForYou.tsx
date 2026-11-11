@@ -76,7 +76,7 @@ export function ForYou({ state, studentId, onOpen, onBoard, onChanged }: {
           {doneToday ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ok/10 text-ok"><Icon name="check" size={13} /></span>
-              <span className="flex-1"><span className="font-medium">Today’s drill done:</span> {doneDrill?.title ?? doneToday.id}</span>
+              <span className="min-w-0 flex-1 basis-52"><span className="font-medium">Today’s drill done:</span> {doneDrill?.title ?? doneToday.id}</span>
               <span className="text-[12px] text-ink-3">How did it feel?</span>
               {FEEL.map((f, i) => (
                 <button key={f} aria-pressed={doneToday.feel === i + 1} onClick={() => logDrill(doneToday.id, i + 1)}
@@ -87,7 +87,7 @@ export function ForYou({ state, studentId, onOpen, onBoard, onChanged }: {
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lane text-[#367195]"><Icon name="timer" size={13} /></span>
-                <span className="min-w-0 flex-1"><span className="font-medium">Today’s 10-minute drill:</span> {drill.title} <span className="text-ink-3">· {drill.sub}</span></span>
+                <span className="min-w-0 flex-1 basis-52"><span className="font-medium">Today’s 10-minute drill:</span> {drill.title} <span className="text-ink-3">· {drill.sub}</span></span>
                 <button onClick={() => setOpenDrill(!openDrill)} aria-expanded={openDrill} className="btn btn-quiet press h-7 px-2 text-[12px]">{openDrill ? "Hide" : "How"}</button>
                 <button onClick={() => logDrill(drill.id)} className="btn btn-ghost press h-7 px-2.5 text-[12px]"><Icon name="check" size={12} /> I did it</button>
               </div>

@@ -19,9 +19,22 @@ Nothing here needs a paid service. Google Apps Script is free.
 
 Classdeck must be reachable from the internet for this to work. A copy running on your own computer (`localhost`) can't receive these requests. Use option B instead.
 
+### New students get their own private board automatically
+
+When an onboarding form adds a student (or sets up one who has never signed in), Classdeck makes a **one-time link** for them, and the script emails it to the address the form collected. (Turn on *Collect email addresses* in the form's settings. Emails go out from your Google account, so Google's daily sending limit applies: about 100 a day on a free account.)
+
+The student opens the link, chooses a 4-digit PIN, and lands on their board, already set up with their electives, path, and plan. After that they sign in with the class code, their name, and their PIN.
+
+- Each link works once and expires after 14 days. Sending the form again makes a fresh link.
+- Until the link is used, no one can claim that name with the class code, so a classmate can't get into someone else's board first.
+- The link's secret is in the part after `#`, which browsers never send to servers, and the page removes it from the address bar right away.
+- Each student only ever receives their own cards, progress, feedback, and plan. Choices they didn't make (other electives, the other path) aren't sent to their browser at all.
+
+To turn emails off, set `EMAIL_LINKS = false` in the script and share links from a CSV import instead.
+
 ## Option B: import a CSV (no setup)
 
-In Google Forms: **Responses → ⋮ → Download responses (.csv)**. In Classdeck: **Settings → Google Forms and other tools → Import a CSV of responses**. Each row is reported back: which student it matched, what changed, and anything skipped.
+In Google Forms: **Responses → ⋮ → Download responses (.csv)**. In Classdeck: **Settings → Google Forms and other tools → Import a CSV of responses**. Each row is reported back: which student it matched, what changed, and anything skipped. New students' one-time links are listed too, with **Copy all links** (name, email, link) for a mail merge.
 
 ## How to word your questions
 

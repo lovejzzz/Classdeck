@@ -1,5 +1,6 @@
 import { checkSecret, endSession, getSession, hashSecret, startSession, teacherOf, throttled } from "@/lib/auth";
 import { uid } from "@/lib/profile";
+import { findInvite } from "@/lib/hooks";
 import { db, save } from "@/lib/store";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -55,6 +56,8 @@ export async function POST(request: Request) {
       if (!/^\d{4}$/.test(pin)) return fail("Your PIN is 4 digits");
       if (throttled(`pin:${course.id}:${st.id}`, 8)) return fail("Too many tries. Ask your teacher to reset your PIN, or wait a few minutes.", 429);
       const pins = (d.pins[course.id] ??= {});
+      // Someone added from a form sets up through their own link, so no one else can claim their name first.
+      if (!pins[st.id] && st.invite && st.invite.exp > Date.now()) return fail("Use the link sent to you after the form to set up your board. Lost it? Ask your teacher.", 403);
       if (!pins[st.id]) {
         const h = hashSecret(pin);
         pins[st.id] = `${h.salt}:${h.hash}`;
@@ -63,6 +66,21 @@ export async function POST(request: Request) {
         const [salt, hash] = pins[st.id].split(":");
         if (!checkSecret(pin, salt, hash)) return fail("That PIN isn’t right. If you forgot it, ask your teacher to reset it.", 401);
       }
+      return Response.json({ ok: true, studentId: st.id }, { headers: { "Set-Cookie": startSession({ kind: "student", courseId: course.id, studentId: st.id }) } });
+    }
+    case "invite": {
+      // A one-time link from a form: check it, then (with a PIN) set the PIN and sign in.
+      if (throttled(`invite:${ip}`, 30)) return fail("Too many attempts. Try again in a few minutes.", 429);
+      const course = d.courses[body.courseId];
+      const st = course && findInvite(course, String(body.token ?? ""));
+      if (!course || !st) return fail("This link has expired or was already used. Sign in with your class code, or ask your teacher for a new link.", 404);
+      if (body.pin === undefined) return Response.json({ ok: true, name: st.name, courseTitle: course.title });
+      const pin = String(body.pin);
+      if (!/^\d{4}$/.test(pin)) return fail("Your PIN is 4 digits");
+      const h = hashSecret(pin);
+      (d.pins[course.id] ??= {})[st.id] = `${h.salt}:${h.hash}`;
+      st.invite = undefined;
+      save();
       return Response.json({ ok: true, studentId: st.id }, { headers: { "Set-Cookie": startSession({ kind: "student", courseId: course.id, studentId: st.id }) } });
     }
     case "logout":

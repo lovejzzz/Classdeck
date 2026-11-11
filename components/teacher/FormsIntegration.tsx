@@ -22,6 +22,7 @@ const CLASSDECK_URL = ${q(url)};
 const CLASSDECK_KEY = ${q(key || "PASTE YOUR KEY HERE")};
 const SOURCE = ${q(source)}; // students see this as who sent the feedback
 const CARD = ${q(card)}; // optional: the card every response is about
+const EMAIL_LINKS = true; // email new students the private link to their board (needs "Collect email addresses")
 
 function sendToClassdeck(e) {
   const row = {};
@@ -48,6 +49,16 @@ function sendToClassdeck(e) {
     payload: JSON.stringify({ items: [{ row: row, id: e.response.getId(), source: SOURCE, card: CARD }] }),
   });
   console.log(res.getResponseCode() + " " + res.getContentText());
+  if (res.getResponseCode() !== 200 || !EMAIL_LINKS) return;
+  const reply = JSON.parse(res.getContentText());
+  (reply.results || []).forEach(function (r) {
+    const to = email || r.email;
+    if (!r.link || !to) return;
+    MailApp.sendEmail(to, "Your " + reply.course + " board is ready",
+      "Hi " + r.student + ",\n\nThanks for filling in the form. Your practice board is set up from your answers.\n\n" +
+      "Open it here and choose a 4-digit PIN: " + r.link + "\n\n" +
+      "The link works once and expires in 14 days. After that, sign in with your class code, your name, and your PIN.");
+  });
 }
 `;
 }
@@ -105,6 +116,7 @@ export function FormsIntegration({ course, onChanged }: { course: Course; onChan
     setResults(r.results);
     onChanged();
     const ok = r.results.filter((x) => x.ok).length;
+    if (r.results.some((x) => x.link)) toast("New students got sign-in links: copy them below", { icon: "link" });
     toast(`Imported ${ok} of ${r.results.length} rows`, { icon: ok ? "check" : "x", tone: ok ? "ok" : "plain" });
   }
 
@@ -210,7 +222,13 @@ export function FormsIntegration({ course, onChanged }: { course: Course; onChan
             <span className="flex-1" />
             <button onClick={importRows} disabled={busy || !rows?.length} className="btn btn-dark press h-8">{busy ? "Importing…" : "Import"}</button>
           </div>
-          {results && (
+          {results && (<>
+            {results.some((r) => r.link) && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-[#fbf3dd] px-3 py-2 text-[12.5px]">
+                <span className="min-w-0 flex-1">New students need their private link to open their board. Each link works once and expires in 14 days.</span>
+                <button onClick={() => copy(results.filter((r) => r.link).map((r) => [r.student, r.email ?? "", r.link].join("\t")).join("\n"), "Links copied: paste into a sheet or mail merge")} className="btn btn-ghost press h-7 px-2 text-[12px]">Copy all links</button>
+              </div>
+            )}
             <ul className="mt-3 max-h-64 divide-y divide-line overflow-y-auto rounded-lg border border-line" aria-label="Import results">
               {results.map((r, i) => (
                 <li key={i} className="flex items-start gap-2 px-3 py-2">
@@ -219,11 +237,17 @@ export function FormsIntegration({ course, onChanged }: { course: Course; onChan
                     <span className="font-medium">Row {i + 2}{r.student ? ` · ${r.student}` : ""}{r.card ? ` · ${r.card}` : ""}</span>
                     <span className="block text-[12px] text-ink-2">{r.error ?? (r.did.join("; ") || "no changes")}</span>
                     {r.warnings.length > 0 && <span className="block text-[12px] text-warn">{r.warnings.join("; ")}</span>}
+                    {r.link && (
+                      <span className="mt-1 flex items-center gap-2">
+                        <code className="min-w-0 flex-1 truncate rounded bg-lane px-1.5 py-0.5 font-mono text-[11.5px] text-ink-2">{r.link}</code>
+                        <button onClick={() => copy(r.link!, `Link for ${r.student} copied`)} className="btn btn-quiet press h-6 px-1.5 text-[11.5px]">Copy</button>
+                      </span>
+                    )}
                   </span>
                 </li>
               ))}
             </ul>
-          )}
+          </>)}
         </div>
       </details>
     </section>

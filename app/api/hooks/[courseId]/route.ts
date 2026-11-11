@@ -29,10 +29,10 @@ export async function POST(request: Request, { params }: Ctx) {
   }
   const b = body as { items?: unknown[] };
   const items = Array.isArray(b?.items) ? b.items : Array.isArray(body) ? body : [body];
-  const results = applyMany(courseId, course, items);
+  const results = applyMany(courseId, course, items, new URL(request.url).origin);
   const hook = course.access!.hook!;
   hook.lastUsed = Date.now();
   hook.uses = (hook.uses ?? 0) + 1;
   save();
-  return Response.json({ ok: results.every((r) => r.ok), results });
+  return Response.json({ ok: results.every((r) => r.ok), course: course.title, results });
 }

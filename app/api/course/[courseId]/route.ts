@@ -249,7 +249,7 @@ export async function POST(request: Request, { params }: Ctx) {
     case "importRows": {
       // Rows from a CSV of form responses, applied the same way as the webhook.
       if (!Array.isArray(body.rows)) return fail("No rows");
-      extra = { results: applyMany(courseId, course, body.rows.map((row: unknown) => ({ row, source: body.source || undefined, card: body.card || undefined }))) };
+      extra = { results: applyMany(courseId, course, body.rows.map((row: unknown) => ({ row, source: body.source || undefined, card: body.card || undefined })), new URL(request.url).origin) };
       break;
     }
     case "setCurrentLesson":

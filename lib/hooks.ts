@@ -30,7 +30,32 @@ export interface HookItem {
   status?: string;
 }
 
-export interface HookResult { ok: boolean; student?: string; card?: string; did: string[]; warnings: string[]; error?: string }
+export interface HookResult {
+  ok: boolean; student?: string; card?: string; did: string[]; warnings: string[]; error?: string;
+  /** For a student who hasn't signed in yet: their one-time link to set a PIN and open their board. */
+  link?: string; email?: string;
+}
+
+const INVITE_DAYS = 14;
+
+/** A one-time link for a student to set their PIN. Replaces any earlier link for them. */
+export function issueInvite(st: Student): string {
+  const token = crypto.randomBytes(24).toString("base64url");
+  st.invite = { hash: sha(token), exp: Date.now() + INVITE_DAYS * 86400_000 };
+  return token;
+}
+
+export function findInvite(course: Course, token: string): Student | undefined {
+  if (!token) return undefined;
+  const h = Buffer.from(sha(token), "hex");
+  return course.students.find((s) => {
+    if (!s.invite || s.invite.exp < Date.now()) return false;
+    const b = Buffer.from(s.invite.hash, "hex");
+    return b.length === h.length && crypto.timingSafeEqual(b, h);
+  });
+}
+
+export const inviteUrl = (origin: string, courseId: string, token: string) => `${origin}/learn/${courseId}/welcome#${token}`;
 
 const sha = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 const norm = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ").trim();
@@ -141,7 +166,7 @@ function findCard(course: Course, ref: string): { lesson: Lesson; m: Module } | 
 }
 
 /** Applies one item to the course. Call save() after a batch. */
-export function applyItem(courseId: string, raw: HookItem): HookResult {
+export function applyItem(courseId: string, raw: HookItem, origin = ""): HookResult {
   const d = db();
   const course = d.courses[courseId];
   const did: string[] = [];
@@ -165,6 +190,14 @@ export function applyItem(courseId: string, raw: HookItem): HookResult {
       return res({ ok: false, error: name || email ? `No student matches ${name || email}` : "Say which student: name, email, or Classdeck id" });
     }
   } else if (email && !st.email) st.email = email;
+
+  // A student who hasn't set a PIN yet gets a private link to their board from the form that set it up.
+  let link: string | undefined;
+  if (wantsChoices && origin && !d.pins[courseId]?.[st.id]) {
+    link = inviteUrl(origin, courseId, issueInvite(st));
+    did.push("made a sign-in link");
+  }
+  const who = { student: st.name, link, email: link ? st.email : undefined };
 
   const prog = ((d.progress[courseId] ??= {})[st.id] ??= {});
   const mine = (mid: string): Progress => (prog[mid] ??= { status: "todo", updatedAt: Date.now() });
@@ -237,12 +270,12 @@ export function applyItem(courseId: string, raw: HookItem): HookResult {
 
   // —— an update to one card ——
   if (!item.card) {
-    if (item.feedback || item.scores || item.links || item.score !== undefined) return res({ ok: !wantsChoices ? false : true, student: st.name, error: wantsChoices ? undefined : "Say which card this is for (its title or id)" });
-    if (!did.length) return res({ ok: false, student: st.name, error: "Nothing to do: no choices or card update found" });
-    return res({ student: st.name });
+    if (item.feedback || item.scores || item.links || item.score !== undefined) return res({ ok: wantsChoices, ...who, error: wantsChoices ? undefined : "Say which card this is for (its title or id)" });
+    if (!did.length) return res({ ok: false, ...who, error: "Nothing to do: no choices or card update found" });
+    return res(who);
   }
   const found = findCard(course, item.card);
-  if (!found) return res({ ok: false, student: st.name, error: `No card matches “${item.card}”` });
+  if (!found) return res({ ok: false, ...who, error: `No card matches “${item.card}”` });
   const p = mine(found.m.id);
   const upId = String(item.id ?? "").slice(0, 80) || uid("u-");
   if (p.updates?.some((u) => u.id === upId)) return res({ student: st.name, card: found.m.title, did: ["already received"] });
@@ -293,11 +326,11 @@ export function applyItem(courseId: string, raw: HookItem): HookResult {
     } else warnings.push(`Unknown status “${item.status}”`);
   } else if (p.status === "todo") p.status = "doing";
   p.updatedAt = Date.now();
-  return res({ student: st.name, card: found.m.title });
+  return res({ ...who, card: found.m.title });
 }
 
 /** Up to 300 per call. Each is a form row (header → answer), { row, id?, source?, card? }, or a HookItem. */
-export function applyMany(courseId: string, course: Course, rows: unknown[]): HookResult[] {
+export function applyMany(courseId: string, course: Course, rows: unknown[], origin = ""): HookResult[] {
   const ITEM_KEYS = ["card", "student", "studentId", "electives", "plan", "path", "paths", "feedback", "scores"];
   return rows.slice(0, 300).map((r) => {
     const o = (r ?? {}) as Record<string, unknown>;
@@ -311,7 +344,7 @@ export function applyMany(courseId: string, course: Course, rows: unknown[]): Ho
       item.status ??= o.status ? String(o.status) : undefined;
     } else item = ITEM_KEYS.some((k) => k in o) ? (o as HookItem) : rowToItem(course, o);
     try {
-      return applyItem(courseId, item);
+      return applyItem(courseId, item, origin);
     } catch {
       return { ok: false, did: [], warnings: [], error: "Couldn’t read this one" };
     }

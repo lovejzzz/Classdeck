@@ -248,6 +248,8 @@ export interface Student {
   name: string;
   /** Used only to match responses from outside tools (e.g. a Google Form) to this student. */
   email?: string;
+  /** A pending one-time link (from a form) for the student to set their PIN. Only its SHA-256 is stored. */
+  invite?: { hash: string; exp: number };
 }
 
 export interface Skill {
