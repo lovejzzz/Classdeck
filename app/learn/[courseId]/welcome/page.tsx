@@ -51,7 +51,7 @@ export default function WelcomePage() {
         <form className="rise" onSubmit={submit}>
           <div className="eyebrow">{info.courseTitle}</div>
           <h1 className="mt-1 text-[24px] font-semibold tracking-tight">Welcome, {info.name}</h1>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">Your board is ready, set up from your form answers. Choose a 4-digit PIN: next time, sign in with your class code, your name, and this PIN.</p>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">Your board is ready. Choose a 4-digit PIN: next time, sign in with your class code, your name, and this PIN.</p>
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="new-password" autoFocus
               placeholder="••••" aria-label="Choose a PIN" className="field w-32 text-center font-mono text-[20px] tracking-[0.5em]" />

@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email });
   if (s?.kind === "student" && s.courseId) {
     const c = db().courses[s.courseId];
-    const st = c?.students.find((x) => x.id === s.studentId);
+    const st = c?.students.find((x) => x.id === s.studentId) ?? c?.waiting?.find((x) => x.id === s.studentId);
     if (c && st) return Response.json({ kind: "student", courseId: c.id, courseTitle: c.title, studentId: st.id, name: st.name });
   }
   return Response.json({ kind: null });
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       if (throttled(`pin:${course.id}:${st.id}`, 8)) return fail("Too many tries. Ask your teacher to reset your PIN, or wait a few minutes.", 429);
       const pins = (d.pins[course.id] ??= {});
       // Someone added from a form sets up through their own link, so no one else can claim their name first.
-      if (!pins[st.id] && st.invite && st.invite.exp > Date.now()) return fail("Use the link sent to you after the form to set up your board. Lost it? Ask your teacher.", 403);
+      if (!pins[st.id] && st.invite && st.invite.exp > Date.now()) return fail("Use your own setup link from your teacher to set up your board. Lost it? Ask your teacher for a new one.", 403);
       if (!pins[st.id]) {
         const h = hashSecret(pin);
         pins[st.id] = `${h.salt}:${h.hash}`;
@@ -67,6 +67,36 @@ export async function POST(request: Request) {
         if (!checkSecret(pin, salt, hash)) return fail("That PIN isn’t right. If you forgot it, ask your teacher to reset it.", 401);
       }
       return Response.json({ ok: true, studentId: st.id }, { headers: { "Set-Cookie": startSession({ kind: "student", courseId: course.id, studentId: st.id }) } });
+    }
+    case "join": {
+      // Someone not on the class list adds themselves with the class code, if the teacher allows it.
+      // A whole class often shares one school address, so the limit is per class and generous.
+      if (throttled(`join:${ip}:${body.courseId}`, 60)) return fail("Too many attempts. Try again in a few minutes.", 429);
+      const course = d.courses[body.courseId];
+      if (!course || course.joinCode !== String(body.code ?? "").trim().toUpperCase()) return fail("That class code doesn’t match", 403);
+      if (course.access?.joinOpen === false) return fail("This class isn’t accepting new students right now", 403);
+      if (course.access?.passcode && body.passcode !== course.access.passcode) return fail("That passcode isn’t right", 403);
+      const mode = course.access?.selfJoin;
+      if (!mode) return fail("Ask your teacher to add you to the class list", 403);
+      const name = String(body.name ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+      if (name.length < 2) return fail("Enter your name");
+      const same = (x: { name: string }) => x.name.toLowerCase() === name.toLowerCase();
+      const taken = course.students.find(same) ?? course.waiting?.find(same);
+      if (taken) return fail(`${taken.name} is already on the class list. If that’s you, go back and pick your name. If not, add your last name or initial.`);
+      if (course.students.length + (course.waiting?.length ?? 0) >= 500) return fail("This class is full", 403);
+      const pin = String(body.pin ?? "");
+      if (!/^\d{4}$/.test(pin)) return fail("Your PIN is 4 digits");
+      const st = { id: uid("s-"), name, joinedAt: Date.now() };
+      if (mode === "approve") (course.waiting ??= []).push(st);
+      else {
+        course.students.push(st);
+        const g = course.groups?.length ? [...course.groups].sort((a, b) => a.studentIds.length - b.studentIds.length)[0] : undefined;
+        g?.studentIds.push(st.id);
+      }
+      const h = hashSecret(pin);
+      (d.pins[course.id] ??= {})[st.id] = `${h.salt}:${h.hash}`;
+      save();
+      return Response.json({ ok: true, studentId: st.id, waiting: mode === "approve" }, { headers: { "Set-Cookie": startSession({ kind: "student", courseId: course.id, studentId: st.id }) } });
     }
     case "invite": {
       // A one-time link from a form: check it, then (with a PIN) set the PIN and sign in.

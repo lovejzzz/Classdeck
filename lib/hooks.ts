@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { PURPOSES, SCENARIOS } from "./onboarding";
 import { findLesson, uid } from "./profile";
 import { db, logEvent } from "./store";
-import type { Attachment, Course, ExternalUpdate, Lesson, Module, Plan, Progress, Student } from "./types";
+import type { Attachment, Course, ExternalUpdate, Lesson, Module, Plan, Student } from "./types";
 
 // Updates from outside tools: a Google Form (through a small Apps Script), a CSV of form
 // responses, or any script that can send JSON. One item either sets a student's choices
@@ -200,7 +200,6 @@ export function applyItem(courseId: string, raw: HookItem, origin = ""): HookRes
   const who = { student: st.name, link, email: link ? st.email : undefined };
 
   const prog = ((d.progress[courseId] ??= {})[st.id] ??= {});
-  const mine = (mid: string): Progress => (prog[mid] ??= { status: "todo", updatedAt: Date.now() });
   const choices = ((d.choices[courseId] ??= {})[st.id] ??= {});
 
   // —— choices ——
@@ -276,9 +275,8 @@ export function applyItem(courseId: string, raw: HookItem, origin = ""): HookRes
   }
   const found = findCard(course, item.card);
   if (!found) return res({ ok: false, ...who, error: `No card matches “${item.card}”` });
-  const p = mine(found.m.id);
   const upId = String(item.id ?? "").slice(0, 80) || uid("u-");
-  if (p.updates?.some((u) => u.id === upId)) return res({ student: st.name, card: found.m.title, did: ["already received"] });
+  if (prog[found.m.id]?.updates?.some((u) => u.id === upId)) return res({ student: st.name, card: found.m.title, did: ["already received"] });
 
   const levels: Record<string, number> = {};
   for (const [k, v] of Object.entries(item.scores ?? {})) {
@@ -300,33 +298,51 @@ export function applyItem(courseId: string, raw: HookItem, origin = ""): HookRes
     next: item.next ? String(item.next).slice(0, 1000) : undefined,
     levels: Object.keys(levels).length ? levels : undefined, score, links: links.length ? links : undefined,
   };
-  if (!up.text && !up.next && !up.levels && !up.score && !up.links && !item.status) return res({ ok: false, student: st.name, card: found.m.title, error: "Nothing to post: add feedback, scores, links, or a status" });
-  if (up.text || up.next || up.levels || up.score || up.links) {
-    p.updates = [...(p.updates ?? []), up].slice(-30);
-    did.push([up.text || up.next ? "feedback" : "", up.levels ? "skill levels" : "", up.score ? "score" : "", up.links ? `${links.length} link${links.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(", "));
-  }
+  const r = postUpdate(courseId, st, found.m, up, item.status ?? "");
+  if (r.error) return res({ ok: false, student: st.name, card: found.m.title, error: r.error });
+  did.push(...r.did);
+  warnings.push(...r.warnings);
+  return res({ ...who, card: found.m.title });
+}
+
+/**
+ * Puts an update on one student's card: feedback, levels, a score, links (also added to their
+ * work), and answers. A status of done / revise moves the card. An update with the same id is replaced.
+ */
+export function postUpdate(courseId: string, st: Student, m: Module, up: ExternalUpdate, rawStatus: string): { did: string[]; warnings: string[]; error?: string } {
+  const did: string[] = [];
+  const warnings: string[] = [];
+  const prog = ((db().progress[courseId] ??= {})[st.id] ??= {});
+  const has = !!(up.text || up.next || up.levels || up.score || up.links || up.answers?.length);
+  if (!has && !rawStatus) return { did, warnings, error: "Nothing to post: add feedback, scores, links, or a status" };
+  const p = (prog[m.id] ??= { status: "todo", updatedAt: Date.now() });
+  const kept = (p.updates ?? []).filter((u) => u.id !== up.id);
+  if (has) {
+    p.updates = [...kept, up].slice(-30);
+    did.push([up.text || up.next ? "feedback" : "", up.levels ? "skill levels" : "", up.score ? "score" : "", up.links ? `${up.links.length} link${up.links.length === 1 ? "" : "s"}` : "", up.answers?.length ? "answers" : ""].filter(Boolean).join(", "));
+  } else if (kept.length !== (p.updates ?? []).length) p.updates = kept;
   // Links also become part of the work on that card.
-  for (const l of links) {
+  for (const l of up.links ?? []) {
     if ((p.work ?? []).some((w) => w.url === l.url)) continue;
     const a: Attachment = { id: uid("w-"), kind: "link", url: l.url, name: l.title || `${up.source} link` };
     p.work = [...(p.work ?? []), a].slice(-12);
   }
-  const status = norm(item.status ?? "");
+  const status = norm(rawStatus);
   if (status) {
     if (/revis|redo|again/.test(status)) {
       p.review = { verdict: "revise", text: up.text || up.next || "Please revise this one.", at: Date.now() };
       if (p.status === "done") p.status = "doing";
       did.push("asked to revise");
     } else if (/^(done|complete|completed|yes|finished|pass|passed|attended|true)/.test(status)) {
-      if (p.status !== "done") logEvent(courseId, { kind: "done", studentId: st.id, moduleId: found.m.id, text: `Finished “${found.m.title}” (${up.source})` });
+      if (p.status !== "done") logEvent(courseId, { kind: "done", studentId: st.id, moduleId: m.id, text: `Finished “${m.title}” (${up.source})` });
       p.status = "done";
       did.push("marked done");
     } else if (/progress|started|doing/.test(status)) {
       if (p.status === "todo") p.status = "doing";
-    } else warnings.push(`Unknown status “${item.status}”`);
+    } else warnings.push(`Unknown status “${rawStatus}”`);
   } else if (p.status === "todo") p.status = "doing";
   p.updatedAt = Date.now();
-  return res({ ...who, card: found.m.title });
+  return { did, warnings };
 }
 
 /** Up to 300 per call. Each is a form row (header → answer), { row, id?, source?, card? }, or a HookItem. */

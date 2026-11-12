@@ -9,6 +9,8 @@ Students see updates on the card itself and in their feedback inbox. Skill level
 
 Nothing here needs a paid service. Google Apps Script is free.
 
+You may not need Google at all: Classdeck has its own join QR code, setup links, and forms on cards. See [Running a class without outside tools](joining-and-forms.md).
+
 ## Option A: send responses automatically (Apps Script)
 
 1. In Classdeck, open **Settings → Google Forms and other tools** and choose **Create key**. Copy the key; it is shown only once. Anyone with the key can post updates to your class, so treat it like a password. You can replace or turn it off at any time.

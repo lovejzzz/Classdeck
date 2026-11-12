@@ -8,6 +8,7 @@ import { download } from "@/lib/download";
 import { toast } from "@/lib/toast";
 import { DocImport } from "./DocImport";
 import { FormsIntegration } from "./FormsIntegration";
+import { Joining } from "./Joining";
 import type { Course, PresetId, Profile } from "@/lib/types";
 import { Cover } from "../Cover";
 import { Avatar, CONNECTOR_ICON, Icon } from "../Icon";
@@ -48,10 +49,10 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
     onChanged();
     toast(`Removed ${name}`, { icon: "x", tone: "plain" });
   };
-  const access = { joinOpen: course.access?.joinOpen !== false, passcode: course.access?.passcode, guestToken: course.access?.guestToken };
+  const access = { joinOpen: course.access?.joinOpen !== false, passcode: course.access?.passcode, guestToken: course.access?.guestToken, selfJoin: course.access?.selfJoin };
   const guestUrl = access.guestToken && typeof window !== "undefined" ? `${window.location.origin}/guest/${course.id}?t=${access.guestToken}` : "";
   const setAccess = async (patch: Record<string, unknown>, newCode: boolean, note: string) => {
-    await op(course.id, { op: "setAccess", access: { joinOpen: access.joinOpen, passcode: access.passcode, ...patch }, newCode });
+    await op(course.id, { op: "setAccess", access: { joinOpen: access.joinOpen, passcode: access.passcode, selfJoin: access.selfJoin, ...patch }, newCode });
     onChanged();
     toast(note);
   };
@@ -224,6 +225,9 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
           </div>
         </div>
       </section>
+
+      <Joining course={course} onChanged={onChanged}
+        setSelfJoin={(selfJoin) => setAccess({ selfJoin }, false, selfJoin === "approve" ? "Students not on your list can ask to join" : selfJoin === "open" ? "Anyone with the code can join" : "Only students on your list can join")} />
 
       <FormsIntegration course={course} onChanged={onChanged} />
 

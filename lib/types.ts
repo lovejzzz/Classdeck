@@ -199,6 +199,8 @@ export interface Module {
   timer?: number;
   /** Studio: let students review anyone instead of assigning each two peers. */
   freeReview?: boolean;
+  /** A form the teacher fills in for each student after the activity (e.g. a workshop). Answers reach the student's card. */
+  form?: ActivityForm;
   /** Quiz: how many tries a student gets (default 1). */
   attempts?: number;
   /** Quiz: minutes allowed per try. */
@@ -207,6 +209,19 @@ export interface Module {
   shuffle?: boolean;
   /** Draw this many questions at random from the bank, per student and per try. */
   pick?: number;
+}
+
+export type FormPart = "feedback" | "next" | "levels" | "score" | "links" | "status";
+
+/** The teacher's form for one card: standard parts plus their own questions. */
+export interface ActivityForm {
+  /** Shown to students with the answers, e.g. "Workshop 2 feedback". */
+  title: string;
+  parts: FormPart[];
+  /** Score out of this. */
+  max?: number;
+  /** Extra questions: short answer, or pick one when options are given. */
+  questions?: { id: string; text: string; options?: string[] }[];
 }
 
 export interface SessionPlan {
@@ -250,6 +265,8 @@ export interface Student {
   email?: string;
   /** A pending one-time link (from a form) for the student to set their PIN. Only its SHA-256 is stored. */
   invite?: { hash: string; exp: number };
+  /** When they added themselves with the class code. */
+  joinedAt?: number;
 }
 
 export interface Skill {
@@ -282,10 +299,14 @@ export interface Course {
   groups?: Group[];
   joinCode: string;
   access?: { joinOpen: boolean; passcode?: string; guestToken?: string;
+    /** Students not on the class list may add themselves: straight in, or after the teacher lets them in. Unset: they can't. */
+    selfJoin?: "open" | "approve";
     /** Key for outside tools (Google Forms via Apps Script) to send updates. Only its SHA-256 is stored. */
     hook?: { hash: string; hint: string; createdAt: number; lastUsed?: number; uses?: number } };
   profile: Profile;
   students: Student[];
+  /** Students who added themselves and are waiting for the teacher to let them in. Teacher only. */
+  waiting?: Student[];
   weeks: Week[];
   currentLessonId: string;
   enabledConnectors: string[];
@@ -455,5 +476,7 @@ export interface ExternalUpdate {
   levels?: Record<string, number>;
   score?: { value: number; max?: number };
   links?: { title?: string; url: string }[];
+  /** Answers to the teacher's own questions on a card form. */
+  answers?: { q: string; a: string }[];
   at: number;
 }

@@ -5,8 +5,8 @@ import { db, logEvent, reset, save } from "@/lib/store";
 import { safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet } from "@/lib/grading";
 import { prcaScore } from "@/lib/onboarding";
-import { applyMany, newHookKey } from "@/lib/hooks";
-import type { AnswerValue, Attachment, Course, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
+import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate } from "@/lib/hooks";
+import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
 // "order" questions go out alphabetised, so the correct order never reaches the browser.
@@ -40,6 +40,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
     ...course,
     // Students never receive the class passcode, the tools key, or classmates' emails.
     access: undefined,
+    waiting: undefined,
     students: course.students.map(({ id, name }) => ({ id, name })),
     weeks: course.weeks.map((w) => ({
       ...w,
@@ -80,7 +81,13 @@ export async function GET(request: Request, { params }: Ctx) {
     return Response.json(view);
   }
   const session = getSession(request);
+  // Someone who added themselves and is waiting to be let in sees only that.
+  const waiting = as ? course.waiting?.find((s) => s.id === as) : undefined;
+  if (waiting && canBeStudent(session, course, as!)) {
+    return Response.json({ error: `Thanks, ${waiting.name}. Your teacher needs to let you into ${course.title}. This page opens your board as soon as they do.`, waiting: true }, { status: 403 });
+  }
   if (as ? !canBeStudent(session, course, as) : !canTeach(session, course)) return unauthorized(as ? "student" : "teacher");
+  if (as && !course.students.some((s) => s.id === as)) return Response.json({ error: "You’re not on this class list. Ask your teacher to add you." }, { status: 404 });
   const all = d.progress[courseId] ?? {};
   const choices = d.choices[courseId] ?? {};
   const studio = d.studio[courseId] ?? { posts: [], feedback: [] };
@@ -187,6 +194,20 @@ function cleanAttachment(a: Attachment): Attachment | null {
   };
 }
 
+const FORM_PARTS: FormPart[] = ["feedback", "next", "levels", "score", "links", "status"];
+
+function cleanForm(f: ActivityForm | undefined): ActivityForm | undefined {
+  if (!f || typeof f !== "object") return undefined;
+  // Blank questions are kept while the teacher is still typing; filling in skips them.
+  const questions = (Array.isArray(f.questions) ? f.questions : []).slice(0, 12).map((q) => {
+    const options = Array.isArray(q?.options) ? q.options.map((o) => String(o).slice(0, 80)).slice(0, 8) : [];
+    return { id: String(q?.id || uid("fq-")).slice(0, 40), text: String(q?.text ?? "").slice(0, 200), ...(options.length ? { options } : {}) };
+  });
+  const parts = FORM_PARTS.filter((x) => Array.isArray(f.parts) && f.parts.includes(x));
+  const max = Number(f.max);
+  return { title: String(f.title ?? "").slice(0, 80), parts, max: max > 0 ? Math.min(1000, max) : undefined, questions: questions.length ? questions : undefined };
+}
+
 export async function POST(request: Request, { params }: Ctx) {
   const { courseId } = await params;
   const body = await request.json();
@@ -250,6 +271,68 @@ export async function POST(request: Request, { params }: Ctx) {
       // Rows from a CSV of form responses, applied the same way as the webhook.
       if (!Array.isArray(body.rows)) return fail("No rows");
       extra = { results: applyMany(courseId, course, body.rows.map((row: unknown) => ({ row, source: body.source || undefined, card: body.card || undefined })), new URL(request.url).origin) };
+      break;
+    }
+    case "formResponse": {
+      // The teacher fills in a card's form for one student. Filling it again replaces their earlier answers.
+      const found = findModule(course, body.moduleId);
+      const st = course.students.find((x) => x.id === body.studentId);
+      const form = found?.mod.form;
+      if (!found || !form) return fail("This card has no form");
+      if (!st) return fail("No such student");
+      const a = (body.answers ?? {}) as Record<string, unknown>;
+      const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+      const has = (x: FormPart) => form.parts.includes(x);
+      const levels: Record<string, number> = {};
+      if (has("levels")) for (const sk of course.skills ?? []) {
+        const v = Number((a.levels as Record<string, unknown> | undefined)?.[sk.id]);
+        if (v >= 1 && v <= 4) levels[sk.id] = v;
+      }
+      const sv = Number(a.score);
+      const links = has("links") ? str(a.links, 4000).split(/\s+/).filter((u) => safeUrl(u) && /^https:\/\//i.test(u)).slice(0, 8).map((url) => ({ url: url.slice(0, 1000) })) : [];
+      const answers = (form.questions ?? []).filter((q) => q.text.trim()).map((q) => {
+        const v = str((a.questions as Record<string, unknown> | undefined)?.[q.id], 2000);
+        const opts = (q.options ?? []).map((o) => o.trim()).filter(Boolean);
+        return { q: q.text.trim(), a: opts.length ? (opts.includes(v) ? v : "") : v };
+      }).filter((x) => x.a);
+      const up: ExternalUpdate = {
+        id: `form:${found.mod.id}`, source: form.title.trim() || `${found.mod.title} feedback`, at: Date.now(),
+        text: has("feedback") ? str(a.feedback, 3000) || undefined : undefined,
+        next: has("next") ? str(a.next, 1000) || undefined : undefined,
+        levels: Object.keys(levels).length ? levels : undefined,
+        score: has("score") && a.score !== "" && a.score !== undefined && a.score !== null && Number.isFinite(sv) ? { value: sv, max: form.max } : undefined,
+        links: links.length ? links : undefined,
+        answers: answers.length ? answers : undefined,
+      };
+      const status = has("status") && (a.status === "done" || a.status === "revise") ? a.status : "";
+      const r = postUpdate(courseId, st, found.mod, up, status);
+      if (r.error) return fail(r.error);
+      break;
+    }
+    case "letIn": {
+      // Students who added themselves: let them in (into the smallest group) or turn them away.
+      const ids = new Set((Array.isArray(body.studentIds) ? body.studentIds : [body.studentId]).map(String));
+      const picked = (course.waiting ?? []).filter((s) => ids.has(s.id));
+      course.waiting = (course.waiting ?? []).filter((s) => !ids.has(s.id));
+      if (!course.waiting.length) course.waiting = undefined;
+      if (body.allow) {
+        for (const st of picked) {
+          course.students.push(st);
+          const g = course.groups?.length ? [...course.groups].sort((x, y) => x.studentIds.length - y.studentIds.length)[0] : undefined;
+          g?.studentIds.push(st.id);
+        }
+      } else for (const st of picked) if (d.pins[courseId]) delete d.pins[courseId][st.id];
+      extra = { count: picked.length };
+      break;
+    }
+    case "setupLinks": {
+      // One-time links for students on the list who haven't signed in yet. Each replaces any earlier link.
+      const pins = d.pins[courseId] ?? {};
+      const want = Array.isArray(body.studentIds) ? new Set(body.studentIds.map(String)) : null;
+      const origin = new URL(request.url).origin;
+      extra = {
+        links: course.students.filter((st) => !pins[st.id] && (!want || want.has(st.id))).map((st) => ({ id: st.id, name: st.name, email: st.email, link: inviteUrl(origin, courseId, issueInvite(st)) })),
+      };
       break;
     }
     case "setCurrentLesson":
@@ -332,6 +415,7 @@ export async function POST(request: Request, { params }: Ctx) {
       for (const m of next.modules) {
         if (m.playlist) m.playlist = m.playlist.filter((x) => typeof x.url === "string" && /^https:\/\//.test(x.url)).slice(0, 60);
         m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
+        m.form = cleanForm(m.form);
       }
       for (const w of course.weeks) {
         const i = w.lessons.findIndex((l) => l.id === next.id);
@@ -826,6 +910,7 @@ export async function POST(request: Request, { params }: Ctx) {
         joinOpen: a.joinOpen !== false,
         passcode: a.passcode ? String(a.passcode).slice(0, 40) : undefined,
         guestToken: a.guestToken === true ? Math.random().toString(36).slice(2, 12) : a.guestToken === null ? undefined : course.access?.guestToken,
+        selfJoin: a.selfJoin === "open" || a.selfJoin === "approve" ? a.selfJoin : undefined,
         hook: course.access?.hook,
       };
       if (body.newCode) course.joinCode = Math.random().toString(36).slice(2, 8).toUpperCase();

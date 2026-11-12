@@ -14,6 +14,7 @@ import type { Attachment, Audience, Lesson, Module, ModuleType, Question, Skill,
 import { CardFace } from "../cards/CardFace";
 import { Avatar, CONNECTOR_ICON, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
+import { FormEditor, newForm } from "./ActivityForm";
 
 /** A card preview that tilts toward the pointer, so teachers see exactly what students will hold. */
 function TiltPreview({ m }: { m: Module }) {
@@ -437,6 +438,14 @@ export function CardEditor({
               <input type="checkbox" checked={!m.freeReview} onChange={(e) => set({ freeReview: e.target.checked ? undefined : true })} className="mt-0.5 accent-[#1b1b1a]" />
               <span>Assign each student two peers to review <span className="block text-[12px] text-ink-3">Pairs rotate every week and everyone gets exactly two reviewers. Turn off to let students choose.</span></span>
             </label>
+          </Section>
+        )}
+
+        {m.type !== "wall" && (
+          <Section title="Your form for this card" aside={!m.form ? <button onClick={() => set({ form: newForm(m) })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Add a form</button> : undefined}>
+            {m.form ? <FormEditor key={m.id} form={m.form} onChange={(form) => set({ form })} /> : (
+              <p className="text-[12.5px] leading-relaxed text-ink-3">After a workshop or practice, fill in feedback, skill levels, a score, or your own questions for each student. It replaces an outside form: answers go straight to the student’s card.</p>
+            )}
           </Section>
         )}
 

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar, Icon } from "@/components/Icon";
 import { useQuery } from "@/lib/client";
 
-type Roster = { courseId: string; title: string; demo: boolean; students: { id: string; name: string; hasPin: boolean }[] };
+type Roster = { courseId: string; title: string; demo: boolean; selfJoin: "open" | "approve" | null; students: { id: string; name: string; hasPin: boolean }[] };
 
 /** Joining a class: class code → your name → your 4-digit PIN (chosen the first time). */
 export default function PickName() {
@@ -19,6 +19,8 @@ export default function PickName() {
   const [picked, setPicked] = useState<Roster["students"][number] | null>(null);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
+  const [newbie, setNewbie] = useState(false);
+  const [name, setName] = useState("");
   const pinRef = useRef<HTMLInputElement>(null);
   const passcode = () => {
     try {
@@ -67,9 +69,43 @@ export default function PickName() {
     }
   }
 
+  async function join(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "join", courseId, name, pin, code, passcode: passcode() }) }).then((x) => x.json());
+    if (r.ok) router.push(`/learn/${courseId}/${r.studentId}`);
+    else {
+      setBusy(false);
+      setError(r.error);
+    }
+  }
+
+  // With an empty class list, joining yourself is the only way in.
+  const adding = !!roster?.selfJoin && !roster.demo && (newbie || roster.students.length === 0);
+
   return (
     <main className="mx-auto w-full max-w-xl flex-1 px-4 py-16">
-      {!roster ? (
+      {roster && adding ? (
+        <form className="rise" onSubmit={join}>
+          {roster.students.length > 0 && <button type="button" onClick={() => { setNewbie(false); setPin(""); setError(""); }} className="inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink"><Icon name="back" size={13} /> Back to the class list</button>}
+          <p className="eyebrow mt-5">{roster.title}</p>
+          <h1 className="mt-1 text-[24px] font-semibold tracking-tight">Join this class</h1>
+          <p className="mt-1.5 text-[13.5px] text-ink-2">
+            {roster.selfJoin === "approve" ? "Your teacher will let you in, then your board opens." : "Your board opens right away."} Choose a 4-digit PIN: you’ll sign in with the class code, your name, and this PIN.
+          </p>
+          <div className="mt-5 grid max-w-sm gap-3">
+            <label className="grid gap-1 text-[13px] text-ink-2">Your name, as your teacher knows you
+              <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={60} autoFocus className="field" />
+            </label>
+            <label className="grid gap-1 text-[13px] text-ink-2">Choose a 4-digit PIN
+              <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="off" placeholder="••••" className="field w-32 text-center font-mono text-[20px] tracking-[0.5em]" />
+            </label>
+            <button disabled={name.trim().length < 2 || pin.length !== 4 || busy} className="btn btn-dark press w-fit">{busy ? "…" : "Join"}</button>
+          </div>
+          {error && <p className="rise mt-2 text-[13px] text-bad" role="alert">{error}</p>}
+        </form>
+      ) : !roster ? (
         <form className="rise" onSubmit={(e) => { e.preventDefault(); load(code); }}>
           <h1 className="text-[24px] font-semibold tracking-tight">Join your class</h1>
           <p className="mt-1.5 text-[13.5px] text-ink-2">Enter the class code your teacher gave you.</p>
@@ -95,6 +131,9 @@ export default function PickName() {
             ))}
           </div>
           {roster.demo && <p className="mt-4 text-[12.5px] text-ink-3">This is the open demo course, so there’s no PIN.</p>}
+          {roster.selfJoin && !roster.demo && (
+            <div className="mt-4"><button onClick={() => { setNewbie(true); setPin(""); setError(""); }} className="btn btn-ghost press">I’m not on the list</button></div>
+          )}
         </>
       ) : (
         <form className="rise" onSubmit={signIn}>
@@ -114,7 +153,7 @@ export default function PickName() {
           {error && <p className="rise mt-2 text-[13px] text-bad" role="alert">{error}</p>}
         </form>
       )}
-      <Link href="/" className="mt-10 inline-block text-[12.5px] text-ink-3 hover:text-ink">← Classdeck home</Link>
+      <Link href="/" className="mt-10 block w-fit text-[12.5px] text-ink-3 hover:text-ink">← Classdeck home</Link>
     </main>
   );
 }

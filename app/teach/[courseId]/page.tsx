@@ -174,6 +174,9 @@ export default function TeachPage() {
                 className={`relative h-7 w-20 rounded-md text-[13px] transition-colors duration-300 ${tab === id ? "font-medium text-ink" : "text-ink-2 hover:text-ink"}`}
               >
                 {label}
+                {id === "settings" && !!course.waiting?.length && (
+                  <span title={`${course.waiting.length} waiting to join`} aria-label={`${course.waiting.length} waiting to join`} className="absolute right-1.5 top-1 h-1.5 w-1.5 rounded-full bg-[#ae502f]" />
+                )}
               </button>
             ))}
           </div>

@@ -365,6 +365,7 @@ export function UpdatesNote({ updates, skills = [], levels = [], big }: { update
           </div>
           {u.text && <p className="mt-1 whitespace-pre-wrap leading-relaxed">{u.text}</p>}
           {u.next && <p className="mt-1 leading-relaxed"><span className="text-ink-3">Try next:</span> {u.next}</p>}
+          {u.answers?.map((a, i) => <p key={i} className="mt-1 leading-relaxed"><span className="text-ink-3">{a.q}</span> {a.a}</p>)}
           {u.levels && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {Object.entries(u.levels).map(([k, v]) => <span key={k} className="chip h-auto min-h-5 whitespace-normal bg-white py-0.5 text-[11px]">{skills.find((s) => s.id === k)?.name ?? k} · {v} {levels.find((l) => l.n === v)?.name ?? ""}</span>)}
