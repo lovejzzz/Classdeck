@@ -17,7 +17,7 @@ import { draftOf } from "../student/SpeechBuilder";
 import { Present } from "../Present";
 import { WallBoard } from "../WallBoard";
 import { Avatar, Icon, StatusIcon } from "../Icon";
-import { FormFill } from "./ActivityForm";
+import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
 
 export function Classroom({
   courseId, state, lesson, connectors, sel, setSel,
@@ -273,7 +273,7 @@ export function Classroom({
                         {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{p.score}/{quizSet(m, s.id, p.attempt ?? 1).length}</span>}
                         <span className="flex-1" />
                         {late && <span className={`font-mono text-[10.5px] font-medium ${active ? "text-white" : "text-bad"}`}>late</span>}
-                        {m.form && p?.updates?.some((u) => u.id === `form:${m.id}`) && <span title="You filled in the form" className={active ? "text-white/80" : "text-[#3d6f91]"}><Icon name="text" size={11} /></span>}
+                        {m.form && (m.form.by === "student" ? p?.form : p?.updates?.some((u) => u.id === `form:${m.id}`)) && <span title={m.form.by === "student" ? "They sent the form" : "You filled in the form"} className={active ? "text-white/80" : "text-[#3d6f91]"}><Icon name="text" size={11} /></span>}
                         {rv && <span title={rv.verdict === "revise" ? "You asked for a revision" : "You reviewed this"} className={active ? "text-white/80" : rv.verdict === "revise" ? "text-warn" : "text-ok"}><Icon name={rv.verdict === "revise" ? "reset" : "message"} size={11} /></span>}
                         {tools ? <span className={`flex items-center gap-0.5 font-mono text-[11px] ${active ? "text-white/70" : "text-ink-3"}`}><Icon name="tool" size={10} />{tools}</span> : null}
                       </button>
@@ -396,7 +396,8 @@ export function Classroom({
                 })}
               </ul>
             )}
-            {selModule.form && (
+            {selModule.form?.by === "student" && <FormAnswers m={selModule} progress={selProgress ?? undefined} skills={course.skills ?? []} levels={course.levels ?? []} />}
+            {selModule.form && selModule.form.by !== "student" && (
               <FormFill key={`${sel.sid}-${sel.mid}-form`} courseId={courseId} studentId={sel.sid} name={selStudent.name} m={selModule} skills={course.skills ?? []} levels={course.levels ?? []}
                 prev={selProgress?.updates?.find((u) => u.id === `form:${selModule.id}`)} onNext={() => stepStudent(1)} />
             )}
@@ -434,6 +435,10 @@ export function Classroom({
             })}
           </div>
         </section>
+      ))}
+
+      {lesson.modules.filter((m) => m.form?.by === "student").map((m) => (
+        <FormTable key={m.id} m={m} students={course.students} progress={progress} skills={course.skills ?? []} canSee={(sid) => visible[sid].has(m.id)} />
       ))}
 
       {lesson.modules.filter((m) => m.type === "wall").map((m) => (

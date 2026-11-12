@@ -17,7 +17,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 /** Operations a student performs on their own behalf (body.studentId). */
 const STUDENT_OPS = new Set([
   "savePlan", "drill", "feel", "saveFlow", "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
-  "retakeQuiz", "rehearse", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
+  "retakeQuiz", "rehearse", "fillForm", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
 ]);
 
 /** Each student gives feedback to at least this many peers per studio card. */
@@ -203,9 +203,14 @@ function cleanForm(f: ActivityForm | undefined): ActivityForm | undefined {
     const options = Array.isArray(q?.options) ? q.options.map((o) => String(o).slice(0, 80)).slice(0, 8) : [];
     return { id: String(q?.id || uid("fq-")).slice(0, 40), text: String(q?.text ?? "").slice(0, 200), ...(options.length ? { options } : {}) };
   });
-  const parts = FORM_PARTS.filter((x) => Array.isArray(f.parts) && f.parts.includes(x));
+  const student = f.by === "student";
+  // A student form can ask them to rate themselves and add links; the rest are the teacher's to give.
+  const parts = FORM_PARTS.filter((x) => Array.isArray(f.parts) && f.parts.includes(x) && (!student || x === "levels" || x === "links"));
   const max = Number(f.max);
-  return { title: String(f.title ?? "").slice(0, 80), parts, max: max > 0 ? Math.min(1000, max) : undefined, questions: questions.length ? questions : undefined };
+  return {
+    title: String(f.title ?? "").slice(0, 80), ...(student ? { by: "student" as const, finish: !!f.finish || undefined } : {}),
+    parts, max: !student && max > 0 ? Math.min(1000, max) : undefined, questions: questions.length ? questions : undefined,
+  };
 }
 
 export async function POST(request: Request, { params }: Ctx) {
@@ -279,6 +284,7 @@ export async function POST(request: Request, { params }: Ctx) {
       const st = course.students.find((x) => x.id === body.studentId);
       const form = found?.mod.form;
       if (!found || !form) return fail("This card has no form");
+      if (form.by === "student") return fail("Students fill in this card’s form themselves");
       if (!st) return fail("No such student");
       const a = (body.answers ?? {}) as Record<string, unknown>;
       const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
@@ -464,6 +470,42 @@ export async function POST(request: Request, { params }: Ctx) {
       if (body.status) p.status = body.status;
       if (typeof body.output === "string") p.output = body.output.slice(0, 8000);
       if (p.status === "todo") p.status = "doing";
+      p.updatedAt = Date.now();
+      break;
+    }
+    case "fillForm": {
+      // A student answers the form on one of their cards. Sending again replaces their answers.
+      const found = findModule(course, body.moduleId);
+      const form = found?.mod.form;
+      if (!found || form?.by !== "student") return fail("This card has no form for you to fill in");
+      const chosen = d.choices[courseId]?.[body.studentId] ?? {};
+      const theirs = !(found.lesson.elective && !chosen[`elective:${found.lesson.id}`]) && visibleModules(found.lesson, body.studentId, chosen).some((x) => x.id === found.mod.id);
+      if (!theirs) return fail("This card isn’t on your board");
+      const a = (body.answers ?? {}) as Record<string, unknown>;
+      const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+      const answers: Record<string, string> = {};
+      for (const q of (form.questions ?? []).filter((x) => x.text.trim())) {
+        const v = str(a[q.id], 4000);
+        const opts = (q.options ?? []).map((o) => o.trim()).filter(Boolean);
+        if (v && (!opts.length || opts.includes(v))) answers[q.id] = v;
+      }
+      const ratings: Record<string, number> = {};
+      if (form.parts.includes("levels")) for (const sk of course.skills ?? []) {
+        const v = Number((body.levels as Record<string, unknown> | undefined)?.[sk.id]);
+        if (v >= 1 && v <= 4) ratings[sk.id] = v;
+      }
+      const links = form.parts.includes("links") ? str(body.links, 4000).split(/\s+/).filter((u) => safeUrl(u) && /^https:\/\//i.test(u)).slice(0, 8) : [];
+      if (!Object.keys(answers).length && !Object.keys(ratings).length && !links.length) return fail("Answer at least one question first");
+      const p = mine(body.studentId, found.mod.id);
+      p.form = { answers, at: Date.now() };
+      if (form.parts.includes("levels")) p.ratings = Object.keys(ratings).length ? ratings : undefined;
+      const have = new Set((p.work ?? []).map((w) => w.url));
+      const added = links.filter((u) => !have.has(u)).map((url): Attachment => ({ id: uid("w-"), kind: "link", name: new URL(url).hostname.replace(/^www\./, ""), url: url.slice(0, 1000) }));
+      if (added.length) p.work = [...(p.work ?? []), ...added].slice(-12);
+      if (form.finish && p.status !== "done") {
+        p.status = "done";
+        logEvent(courseId, { kind: "done", studentId: body.studentId, moduleId: found.mod.id, text: `Finished “${found.mod.title}”` });
+      } else if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
       break;
     }

@@ -213,10 +213,15 @@ export interface Module {
 
 export type FormPart = "feedback" | "next" | "levels" | "score" | "links" | "status";
 
-/** The teacher's form for one card: standard parts plus their own questions. */
+/** A form on a card: the teacher fills it in for each student, or each student fills it in themselves. */
 export interface ActivityForm {
   /** Shown to students with the answers, e.g. "Workshop 2 feedback". */
   title: string;
+  /** Who fills it in. Unset: the teacher, per student. "student": each student, on their card. */
+  by?: "student";
+  /** Student forms: sending it finishes the card. */
+  finish?: boolean;
+  /** Teacher forms use every part; student forms use "levels" (rate yourself) and "links". */
   parts: FormPart[];
   /** Score out of this. */
   max?: number;
@@ -350,6 +355,8 @@ export interface Progress {
   review?: Review;
   /** Updates sent in from outside tools, such as a workshop Google Form. */
   updates?: ExternalUpdate[];
+  /** The student's answers to the card's student form, by question id. */
+  form?: { answers: Record<string, string>; at: number };
   /** Guided first-speech flow: chosen path, answers per step, and the arranged tiles. */
   flow?: { path?: "idea" | "story"; step?: number; answers: Record<string, string>; tiles?: { id: string; kind: string; text: string }[] };
   /** Speech builder: the current draft and saved versions. */

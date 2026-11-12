@@ -26,7 +26,7 @@ The join link and QR code use this site's address. On a copy running on your own
 
 ## Forms on cards
 
-Any card except a wall can have a form you fill in for each student, for example after a workshop or a practice talk.
+Any card except a wall can have a form: one you fill in for each student (for example after a workshop or a practice talk), or one each student fills in themselves.
 
 1. Open the card in the Deck and find **Your form for this card → Add a form**.
 2. Name it ("Shown to students as"), choose what it asks for (feedback, try next, skill levels, a score out of a total, links, done / revise), and add your own questions. A question with choices gets buttons; without choices it gets a short written answer.
@@ -36,7 +36,18 @@ What the student sees: your answers on the card itself and in their feedback inb
 
 Filling in a student's form again replaces your earlier answers rather than adding a second set. A small form icon in the Class grid shows whose forms you've done.
 
-Only the teacher fills these forms. Each student only ever receives their own answers.
+Each student only ever receives their own answers.
+
+### Forms students fill in
+
+Under **Who fills it in**, choose **Each student** instead of **Me, for each student**. Use it for a reflection after a workshop, a check-in, or a quick survey.
+
+- Write your questions. A question with choices gets buttons; without choices it gets a written answer. You can also ask students to **rate themselves** (1–4 on the card's skills) and to add **links** (recordings, slides).
+- Students see the form on the card and choose **Send**. They can come back and change their answers; the new ones replace the old.
+- **Sending it finishes the card** is on by default. Turn it off if the card has other work to hand in.
+- In the **Class** tab, the lesson has a table of everyone's answers, with who hasn't sent theirs yet, and **Download CSV**. Opening a student's cell shows their answers too, and a small form icon marks who has sent theirs.
+- Self-ratings count on the student's skill chart as their own rating. Links are added to their work on that card.
+- Only you see a student's answers. Classmates never do.
 
 ## Google Forms is still there
 

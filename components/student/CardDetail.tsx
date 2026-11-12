@@ -16,6 +16,7 @@ import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
 import { Onboarding } from "./Onboarding";
 import { SelfCheck } from "./SelfCheck";
+import { CardForm } from "./CardForm";
 import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, Rehearsal, ReviewNote, UpdatesNote } from "./CardExtras";
 import { SpeechBuilder } from "./SpeechBuilder";
 import { SpeechFlow } from "./SpeechFlow";
@@ -261,6 +262,13 @@ export function CardDetail(p: DetailProps) {
 
         {checklist.length > 0 && !m.choice && (
           <div className="mt-6"><Checklist items={checklist} checks={checks} onToggle={toggleCheck} big={p.big} /></div>
+        )}
+
+        {m.form?.by === "student" && !m.choice && (
+          <div className="mt-7">
+            <CardForm key={`${m.id}-${p.progress?.form?.at ?? 0}`} courseId={p.courseId} studentId={p.studentId} m={m} progress={p.progress}
+              skills={p.course.skills ?? []} levels={p.course.levels ?? []} big={p.big} onChanged={p.onChanged} />
+          </div>
         )}
 
         {m.questions?.length ? <div className="mt-7"><Questions {...p} /></div> : null}
