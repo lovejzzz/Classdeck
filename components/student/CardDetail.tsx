@@ -177,8 +177,11 @@ export function CardDetail(p: DetailProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftText, dirty, retry]);
 
+  // Students only see tools that are ready to use; one that still needs a key from the site owner is left out.
+  const tools = m.tools.filter((t) => p.connectors.find((c) => c.id === t.connector)?.configured !== false);
+
   return (
-    <div className={`grid ${m.tools.length && !m.choice ? "md:grid-cols-[1fr_20rem]" : ""}`}>
+    <div className={`grid ${tools.length && !m.choice ? "md:grid-cols-[1fr_20rem]" : ""}`}>
       <div className="min-w-0 p-6 sm:p-8">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
@@ -385,7 +388,7 @@ export function CardDetail(p: DetailProps) {
 
         {hasOutput && !m.choice && (
           // Stays in view at the bottom of the card while you scroll through long content.
-          <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-7 flex flex-wrap items-center gap-3 border-t border-line bg-white/90 px-6 py-3 backdrop-blur sm:-mx-8 sm:-mb-8 sm:px-8">
+          <div className="sticky -bottom-3 z-10 -mx-6 -mb-6 mt-7 flex flex-wrap items-center gap-3 rounded-b-[inherit] border-t border-line bg-white/95 px-6 pb-6 pt-3 backdrop-blur sm:-bottom-8 sm:-mx-8 sm:-mb-8 sm:px-8 sm:pb-11">
             <button onClick={() => save("done")} disabled={finishing} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>
               <Icon name="check" size={14} /> {p.progress?.status === "done" ? "Save changes" : review?.verdict === "revise" ? "Hand in revision" : meta.doneLabel}
             </button>
@@ -401,10 +404,10 @@ export function CardDetail(p: DetailProps) {
         )}
       </div>
 
-      {m.tools.length > 0 && !m.choice && (
+      {tools.length > 0 && !m.choice && (
         <aside className="min-w-0 border-t border-line bg-[#fafaf9] p-5 md:border-l md:border-t-0">
           <ToolTray
-            tools={m.tools}
+            tools={tools}
             connectors={p.connectors}
             context={{ courseId: p.courseId, lessonId: p.lessonId, studentId: p.studentId, moduleId: m.id }}
             onUse={hasOutput ? (t) => setOutput((o) => (o ? `${o}\n${t}` : t)) : undefined}
@@ -517,7 +520,7 @@ function Questions(p: DetailProps) {
   return (
     <div className="space-y-6">
       {(left !== null || (isQuiz && (tries > 1 || (progress?.best ?? 0) > 0 || m.pick))) && (
-        <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-lg bg-white/90 px-1 py-1.5 text-[12.5px] text-ink-3 backdrop-blur">
+        <div className="sticky -top-3 z-10 -mx-1 -mt-3 flex flex-wrap items-center gap-2 bg-white/95 px-1 pb-1.5 pt-[18px] text-[12.5px] text-ink-3 backdrop-blur sm:-top-8 sm:-mt-8 sm:pt-[38px]">
           <Icon name="quiz" size={13} />
           {tries > 1 && <span>Try {Math.min(attempt, tries)} of {tries}</span>}
           {m.pick && m.questions && m.pick < m.questions.length && <span>· {total} drawn from {m.questions.length}</span>}

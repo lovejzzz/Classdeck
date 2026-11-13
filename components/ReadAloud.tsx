@@ -58,7 +58,7 @@ export function ReadAloud({ text, big }: { text: string; big?: boolean }) {
   return (
     <div className="inline-flex items-center gap-1 rounded-full border border-line bg-white p-0.5 pr-1">
       <button onClick={toggle} aria-label={state === "playing" ? "Pause reading" : "Read this card aloud"}
-        className={`press flex items-center gap-1.5 rounded-full px-2.5 ${big ? "h-9 text-[14px]" : "h-7 text-[12.5px]"} ${state === "idle" ? "text-ink-2 hover:text-ink" : "bg-ink text-white"}`}>
+        className={`press flex items-center gap-1.5 rounded-full px-2.5 ${big ? "h-9 text-[14px]" : "h-7 text-[12.5px] pointer-coarse:h-10 pointer-coarse:text-[14px]"} ${state === "idle" ? "text-ink-2 hover:text-ink" : "bg-ink text-white"}`}>
         <Icon name={state === "playing" ? "pause" : "audio"} size={13} />
         {state === "idle" ? "Read aloud" : state === "playing" ? "Pause" : "Resume"}
       </button>
@@ -67,10 +67,10 @@ export function ReadAloud({ text, big }: { text: string; big?: boolean }) {
           <span className="h-1 w-14 overflow-hidden rounded-full bg-lane" aria-hidden="true">
             <span className="block h-full rounded-full bg-ink transition-[width] duration-300" style={{ width: `${progress * 100}%` }} />
           </span>
-          <button onClick={() => { window.speechSynthesis.cancel(); setState("idle"); setProgress(0); }} aria-label="Stop reading" className="press flex h-7 w-7 items-center justify-center rounded-full text-ink-2 hover:text-ink"><Icon name="stop" size={11} /></button>
+          <button onClick={() => { window.speechSynthesis.cancel(); setState("idle"); setProgress(0); }} aria-label="Stop reading" className="press flex h-7 w-7 pointer-coarse:h-10 pointer-coarse:w-10 items-center justify-center rounded-full text-ink-2 hover:text-ink"><Icon name="stop" size={11} /></button>
         </>
       )}
-      <select value={rate} onChange={(e) => speed(Number(e.target.value))} aria-label="Reading speed" className="h-7 rounded-full bg-transparent px-1 font-mono text-[11.5px] text-ink-2 outline-none">
+      <select value={rate} onChange={(e) => speed(Number(e.target.value))} aria-label="Reading speed" className="h-7 pointer-coarse:h-10 rounded-full bg-transparent px-1 font-mono text-[11.5px] text-ink-2 outline-none">
         {[0.75, 1, 1.25].map((r) => <option key={r} value={r}>{r}×</option>)}
       </select>
     </div>

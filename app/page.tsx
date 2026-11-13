@@ -140,7 +140,8 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="rise card overflow-hidden" style={{ "--i": 4 } as React.CSSProperties}>
+        {/* On a phone the student's box comes first: that's who arrives on a phone. */}
+        <div className="rise card order-first overflow-hidden sm:order-none" style={{ "--i": 4 } as React.CSSProperties}>
           <Cover type="quiz" label="Student" height={88} />
           <div className="p-4">
             <span className="text-[15px] font-medium">Join with a class code</span>

@@ -138,7 +138,7 @@ export function PlanPanel({ courseId, studentId, course, plan, readOnly = false,
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="card p-5">
           <h3 className="text-[14px] font-medium">Confidence in real situations</h3>
-          <p className="mt-0.5 text-[12px] text-ink-3">Outline: when you started. Filled: now.{!readOnly && " Click to update."}</p>
+          <p className="mt-0.5 text-[12px] text-ink-3">Outline: when you started. Filled: now.{!readOnly && " Tap or click a bar to update."}</p>
           <div className="mt-3 space-y-2">
             {SCENARIOS.filter(([k]) => plan.confidence[k] || plan.confidenceStart?.[k]).map(([k, label]) => {
               const now = plan.confidence[k] ?? 0;
@@ -150,7 +150,7 @@ export function PlanPanel({ courseId, studentId, course, plan, readOnly = false,
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button key={n} disabled={readOnly || busy} aria-label={`${label}: ${n} of 5`} aria-pressed={now === n}
                         onClick={() => save({ confidence: { ...plan.confidence, [k]: n } })}
-                        className={`h-3 flex-1 rounded-sm ${n <= now ? "bg-ink" : "bg-[#efefec]"} ${n === start ? "ring-2 ring-[#367195] ring-offset-1" : ""} disabled:cursor-default`} />
+                        className={`h-3 flex-1 rounded-sm pointer-coarse:h-7 pointer-coarse:rounded-md ${n <= now ? "bg-ink" : "bg-[#efefec]"} ${n === start ? "ring-2 ring-[#367195] ring-offset-1" : ""} disabled:cursor-default`} />
                     ))}
                   </div>
                 </div>
