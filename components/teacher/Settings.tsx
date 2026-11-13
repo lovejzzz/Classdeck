@@ -9,6 +9,7 @@ import { toast } from "@/lib/toast";
 import { DocImport } from "./DocImport";
 import { FormsIntegration } from "./FormsIntegration";
 import { Joining } from "./Joining";
+import { DeleteCourse } from "./DeleteCourse";
 import type { Course, PresetId, Profile } from "@/lib/types";
 import { Cover } from "../Cover";
 import { Avatar, CONNECTOR_ICON, Icon } from "../Icon";
@@ -372,6 +373,8 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
         </div>
         ))}
       </section>
+
+      {course.id !== "demo" && <DeleteCourse course={course} />}
     </div>
   );
 }

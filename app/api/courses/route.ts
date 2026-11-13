@@ -2,7 +2,11 @@ import { DEMO, getSession, teacherOf, unauthorized } from "@/lib/auth";
 import { cloneWeek } from "@/lib/clone";
 import { fromPreset, uid } from "@/lib/profile";
 import { seedCourse } from "@/lib/seed";
-import { db, listCourses, save } from "@/lib/store";
+import fs from "fs/promises";
+import path from "path";
+import { r2Ready, remove } from "@/lib/blob";
+import { db, listCourses, removeCourse, save } from "@/lib/store";
+import { UPLOAD_DIR } from "@/lib/uploads";
 import { standardWeek } from "@/lib/templates";
 import type { Course } from "@/lib/types";
 
@@ -74,4 +78,18 @@ export async function POST(request: Request) {
   d.studio[id] = { posts: [], feedback: [] };
   save();
   return Response.json({ ok: true, id });
+}
+
+/** Delete one of your courses, with its students, their work, and the files uploaded to it. */
+export async function DELETE(request: Request) {
+  const t = teacherOf(getSession(request));
+  if (!t) return unauthorized("teacher", "Sign in first");
+  const body = await request.json().catch(() => ({}));
+  const c = db().courses[String(body.id ?? "")];
+  if (!c || c.id === DEMO || c.ownerId !== t.id) return Response.json({ ok: false, error: "You can only delete your own courses" }, { status: 403 });
+  if (String(body.confirm ?? "").trim() !== c.title) return Response.json({ ok: false, error: "Type the course name exactly to confirm" }, { status: 400 });
+  const files = removeCourse(c.id);
+  // Files are removed after the course is gone; a file that fails to delete is only left behind in storage.
+  await Promise.all(files.map((f) => (r2Ready() ? remove(f) : fs.unlink(path.join(/*turbopackIgnore: true*/ UPLOAD_DIR, f))).catch(() => {})));
+  return Response.json({ ok: true, files: files.length });
 }

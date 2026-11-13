@@ -181,6 +181,22 @@ export function save() {
 
 /** 恢复示例数据，保留已添加的自定义连接器。 */
 /** Restore the demo course's sample data. Other courses are left alone. */
+/** Removes a course and everything kept for it. Returns the uploaded file names it used, for the caller to delete. */
+export function removeCourse(id: string): string[] {
+  const d = db();
+  const files = new Set<string>();
+  for (const k of PER_COURSE) {
+    const v = (d[k] as Record<string, unknown>)[id];
+    if (v !== undefined) for (const m of JSON.stringify(v).matchAll(/\/api\/upload\/([a-z0-9]+\.[a-z0-9]{1,5})/g)) files.add(m[1]);
+    delete (d[k] as Record<string, unknown>)[id];
+  }
+  // Sign out students of this course everywhere.
+  for (const [k, s] of Object.entries(d.sessions)) if (s.courseId === id) delete d.sessions[k];
+  for (const f of files) delete d.uploads[f];
+  save();
+  return [...files];
+}
+
 export function reset() {
   const d = db();
   const f = fresh();
