@@ -184,7 +184,7 @@ export function Classroom({
       <section aria-label="Needs attention">
         <h3 className="mb-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">Needs attention</h3>
         {attention.every((a) => a.who.length === 0) ? (
-          <div className="pop card flex items-center gap-2 px-4 py-3 text-[13.5px]"><StatusIcon status="done" size={15} /> Everyone is on track for this lesson.</div>
+          <div className="pop card flex items-center gap-2 px-4 py-3 text-[13.5px]">{course.students.length ? <><StatusIcon status="done" size={15} /> Everyone is on track for this lesson.</> : <span className="text-ink-2">Nothing to show until students join.</span>}</div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {attention.filter((a) => a.who.length).map((a, i) => (

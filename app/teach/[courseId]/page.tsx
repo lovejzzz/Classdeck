@@ -206,6 +206,28 @@ export default function TeachPage() {
         </div>
 
         <main key={tab} className="rise mt-6">
+          {tab !== "settings" && course.students.length === 0 && courseId !== "demo" && (
+            <section aria-label="Getting started" className="card mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 p-5">
+              <div className="min-w-[14rem] flex-1">
+                <h2 className="text-[15px] font-medium">{course.waiting?.length ? `${course.waiting.length} student${course.waiting.length === 1 ? " is" : "s are"} waiting to be let in` : "No students yet"}</h2>
+                <p className="mt-1 text-[13px] text-ink-2">
+                  {tab === "plan"
+                    ? "Build your cards below, then bring your class in: show a QR code on the projector, or add names yourself."
+                    : "This page fills in once students join. Show a QR code on the projector, or add names yourself."}
+                </p>
+              </div>
+              <span className="text-[13px] text-ink-2">Class code <span className="ml-1 font-mono text-[15px] tracking-[0.15em] text-ink">{course.joinCode}</span></span>
+              <button
+                onClick={() => {
+                  setTab("settings");
+                  setTimeout(() => document.getElementById("joining")?.scrollIntoView({ behavior: "smooth", block: "start" }), 350);
+                }}
+                className="btn btn-dark press h-9"
+              >
+                <Icon name="plus" size={13} /> {course.waiting?.length ? "Let them in" : "Invite students"}
+              </button>
+            </section>
+          )}
           {tab === "plan" && <Deck course={course} connectors={connectors} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} />}
           {tab === "class" && lesson && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
           {tab === "grades" && <Gradebook state={state} />}

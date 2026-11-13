@@ -65,7 +65,7 @@ export function Joining({ course, onChanged, setSelfJoin }: { course: Course; on
   }
 
   return (
-    <section className="card p-6">
+    <section id="joining" className="card scroll-mt-20 p-6">
       <h3 className="text-[15px] font-medium">Students joining</h3>
       <p className="mt-1 text-[13px] text-ink-3">Show the code in class. Students scan it, find their name or add themselves, and choose a 4-digit PIN. No email or outside form needed.</p>
       {closed && <p className="mt-3 rounded-lg bg-[#fbf3ee] px-3 py-2 text-[12.5px] text-ink-2">Joining is closed in Access, so new students can’t get in until you turn on “Accept new students”.</p>}

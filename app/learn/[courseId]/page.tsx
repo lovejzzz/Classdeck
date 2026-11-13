@@ -147,6 +147,8 @@ export default function PickName() {
           </div>
           <div className="mt-5 flex gap-2">
             <input ref={pinRef} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="off" autoFocus
+              // Signing in hides the digits from neighbours; choosing a new PIN shows them so it isn't mistyped.
+              type={picked.hasPin ? "password" : "text"}
               placeholder="••••" aria-label={picked.hasPin ? "Your PIN" : "Choose a PIN"} className="field w-32 text-center font-mono text-[20px] tracking-[0.5em]" />
             <button disabled={pin.length !== 4 || busy} className="btn btn-dark press">{busy ? "…" : picked.hasPin ? "Sign in" : "Set PIN and go"}</button>
           </div>

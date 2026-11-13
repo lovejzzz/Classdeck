@@ -58,8 +58,10 @@ export function Onboarding({ courseId, studentId, plan, skills, onDone, big }: {
         {STEPS.map((s, i) => (
           <li key={s}>
             <button onClick={() => plan && setStep(i)} disabled={!plan && i > step} aria-current={i === step ? "step" : undefined}
-              className={`press h-6 rounded-full px-2 text-[11.5px] ${i === step ? "bg-ink text-white" : i < step ? "bg-lane text-ink" : "text-ink-3"}`}>
-              {i + 1}. {s}
+              aria-label={`Step ${i + 1}: ${s}`}
+              className={`press h-6 min-w-6 rounded-full px-2 text-[11.5px] pointer-coarse:h-8 pointer-coarse:min-w-8 pointer-coarse:text-[13px] ${i === step ? "bg-ink text-white" : i < step ? "bg-lane text-ink" : "text-ink-3"}`}>
+              {/* On a phone the steps are numbers only, so they stay on one line; the heading below names the step. */}
+              {i + 1}<span className="max-sm:hidden">. {s}</span>
             </button>
           </li>
         ))}

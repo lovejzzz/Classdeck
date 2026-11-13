@@ -211,7 +211,7 @@ export function WallBoard({ courseId, me, teacher = false, module: m, posts, stu
               Post to
               {sections.map((x) => (
                 <button key={x} onClick={() => setSection(x)} aria-pressed={section === x}
-                  className={`press h-6 rounded-full border px-2.5 ${section === x ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>{x}</button>
+                  className={`press h-6 rounded-full border px-2.5 pointer-coarse:h-9 ${section === x ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>{x}</button>
               ))}
             </div>
           )}
@@ -238,7 +238,7 @@ export function WallBoard({ courseId, me, teacher = false, module: m, posts, stu
           <div className="inline-flex rounded-lg bg-lane p-0.5">
             {(["top", "new"] as const).map((k) => (
               <button key={k} onClick={() => setSort(k)} aria-pressed={sort === k}
-                className={`press h-6 rounded-md px-2.5 text-[12px] ${sort === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2"}`}>{k === "top" ? "Top" : "Newest"}</button>
+                className={`press h-6 rounded-md px-2.5 text-[12px] pointer-coarse:h-9 pointer-coarse:text-[13px] ${sort === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2"}`}>{k === "top" ? "Top" : "Newest"}</button>
             ))}
           </div>
         )}
