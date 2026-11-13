@@ -3,7 +3,7 @@ import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized } 
 import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
-import { safeUrl } from "@/lib/uploads";
+import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet } from "@/lib/grading";
 import { prcaScore } from "@/lib/onboarding";
 import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate } from "@/lib/hooks";
@@ -74,8 +74,9 @@ export async function GET(request: Request, { params }: Ctx) {
     if (!course.access?.guestToken || guest !== course.access.guestToken) return Response.json({ error: "This guest link has been turned off" }, { status: 403 });
     const view: CourseState = {
       course: {
-        ...course, students: [], groups: [], joinCode: "", access: undefined,
-        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.map((m) => ({ ...m, questions: m.questions?.map(publicQuestion) })) })) })),
+        ...course, students: [], groups: [], joinCode: "", access: undefined, waiting: undefined,
+        // Cards made for one student stay private; shared and path cards are shown without who they're for.
+        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student").map((m) => ({ ...m, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: m.questions?.map(publicQuestion) })) })) })),
       },
       progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} }, uptake: {}, nudges: [], plans: {},
     };
@@ -214,9 +215,18 @@ function cleanForm(f: ActivityForm | undefined): ActivityForm | undefined {
   };
 }
 
+/** Keys that would reach an object's prototype; dropped from every request body. */
+const UNSAFE_KEY = /^(__proto__|constructor|prototype)$/;
+
 export async function POST(request: Request, { params }: Ctx) {
   const { courseId } = await params;
-  const body = await request.json();
+  let body: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  try {
+    body = JSON.parse(await request.text(), (k, v) => (UNSAFE_KEY.test(k) ? undefined : v));
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error();
+  } catch {
+    return Response.json({ ok: false, error: "That request didn’t make sense" }, { status: 400 });
+  }
   if (body.op === "reset") {
     if (courseId !== "demo") return Response.json({ ok: false, error: "Only the demo course can be restored" }, { status: 400 });
     reset();
@@ -236,10 +246,20 @@ export async function POST(request: Request, { params }: Ctx) {
     if (!course.students.some((st) => st.id === actor)) return Response.json({ ok: false, error: "No such student" }, { status: 400 });
     if (!canBeStudent(session, course, actor)) return unauthorized("student");
   } else if (!canTeach(session, course)) return unauthorized("teacher");
+  const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
+  // Ids in the request must be real: a card in this course, a student in this class.
+  const isStudent = (sid: unknown) => typeof sid === "string" && course.students.some((st) => st.id === sid);
+  if (body.studentId !== undefined && body.studentId !== null && !isStudent(body.studentId)) return fail("No such student");
+  if (body.moduleId !== undefined && body.moduleId !== null && body.moduleId !== "" && !(typeof body.moduleId === "string" && findModule(course, body.moduleId))) return fail("No such card");
+  // A student only acts on cards that are on their own board.
+  if (actor && actor !== "teacher" && typeof body.moduleId === "string" && body.moduleId && !canTeach(session, course) && !onBoard(course, actor, body.moduleId)) return fail("That card isn’t on your board");
   const prog = (d.progress[courseId] ??= {});
   const studio = (d.studio[courseId] ??= { posts: [], feedback: [] });
-  const mine = (sid: string, mid: string): Progress => ((prog[sid] ??= {})[mid] ??= { status: "todo", updatedAt: Date.now() });
-  const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
+  const mine = (sid: string, mid: string): Progress => {
+    if (!isStudent(sid) || !findModule(course, mid)) throw new Error("Unknown student or card");
+    const row = Object.hasOwn(prog, sid) ? prog[sid] : (prog[sid] = {});
+    return Object.hasOwn(row, mid) ? row[mid] : (row[mid] = { status: "todo", updatedAt: Date.now() });
+  };
   let extra: Record<string, unknown> = {};
 
   /** A studio card is done once you've posted and given feedback to enough peers. */
@@ -257,6 +277,7 @@ export async function POST(request: Request, { params }: Ctx) {
     }
   }
 
+  try {
   switch (body.op) {
     // —— teacher ——
     case "setProfile":
@@ -443,6 +464,9 @@ export async function POST(request: Request, { params }: Ctx) {
 
     // —— student ——
     case "setProgress": {
+      if (body.status !== undefined && !["todo", "doing", "done"].includes(body.status)) return fail("Unknown status");
+      // A quiz is finished only by submitting it, so its answers can't be revealed early or the try reset.
+      if (body.status !== undefined && findModule(course, body.moduleId)?.mod.type === "quiz") delete body.status;
       const p = mine(body.studentId, body.moduleId);
       if (body.status === "done" && p.status !== "done") {
         logEvent(courseId, { kind: "done", studentId: body.studentId, moduleId: body.moduleId, text: `Finished “${findModule(course, body.moduleId)?.mod.title ?? ""}”` });
@@ -945,6 +969,9 @@ export async function POST(request: Request, { params }: Ctx) {
       if (!text && !post.work?.length) return fail("A post can’t be empty");
       post.text = text;
       post.editedAt = Date.now();
+      // On a wall that needs approval, a changed post goes back to the teacher.
+      const wm = findModule(course, post.moduleId)?.mod;
+      if (wm && wallOf(wm).approval) post.approved = false;
       break;
     }
     case "setAccess": {
@@ -952,11 +979,14 @@ export async function POST(request: Request, { params }: Ctx) {
       course.access = {
         joinOpen: a.joinOpen !== false,
         passcode: a.passcode ? String(a.passcode).slice(0, 40) : undefined,
-        guestToken: a.guestToken === true ? Math.random().toString(36).slice(2, 12) : a.guestToken === null ? undefined : course.access?.guestToken,
+        guestToken: a.guestToken === true ? randomCode(16).toLowerCase() : a.guestToken === null ? undefined : course.access?.guestToken,
         selfJoin: a.selfJoin === "open" || a.selfJoin === "approve" ? a.selfJoin : undefined,
         hook: course.access?.hook,
       };
-      if (body.newCode) course.joinCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+      if (body.newCode) {
+        const codes = new Set(Object.values(d.courses).map((c) => c.joinCode));
+        do course.joinCode = randomCode(6); while (codes.has(course.joinCode));
+      }
       break;
     }
     case "duplicateWeek": {
@@ -1052,6 +1082,20 @@ export async function POST(request: Request, { params }: Ctx) {
     default:
       return fail("Unknown operation");
   }
+  } catch (e) {
+    // Malformed input (a null where an object belongs, and so on) is the sender's mistake, not a server crash.
+    console.error("op failed", body.op, e instanceof Error ? e.message : e);
+    return fail("Something in that request wasn’t right");
+  }
   save();
   return Response.json({ ok: true, ...extra });
+}
+
+/** Whether a card is on this student's board: visible to them, and not in an elective they haven't chosen. */
+function onBoard(course: Course, studentId: string, moduleId: string): boolean {
+  const found = findModule(course, moduleId);
+  if (!found) return false;
+  const chosen = db().choices[course.id]?.[studentId] ?? {};
+  if (found.lesson.elective && !chosen[`elective:${found.lesson.id}`]) return false;
+  return visibleModules(found.lesson, studentId, chosen).some((m) => m.id === moduleId);
 }

@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       image: image.startsWith("https://") ? image : "",
       site: meta(html, ["og:site_name"]) || new URL(final).hostname.replace(/^www\./, ""),
     };
+    if (cache.size > 2000) cache.delete(cache.keys().next().value!);
     cache.set(url, { at: Date.now(), data });
     return Response.json({ ok: true, ...data });
   } catch (e) {

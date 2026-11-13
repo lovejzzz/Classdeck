@@ -1,12 +1,17 @@
+import { r2Ready, remove } from "@/lib/blob";
 import { db } from "@/lib/store";
 
 /** Uploads that have been given a link but not finished yet. Kept in memory; an unfinished one simply expires. */
 const g = globalThis as unknown as { __qhPending?: Map<string, { by: string; size: number; original: string; exp: number }> };
 export const pending = (g.__qhPending ??= new Map());
 
+/** Forgets uploads that were never finished, and removes whatever reached storage for them. */
 export function sweep() {
   const now = Date.now();
-  for (const [k, v] of pending) if (v.exp < now) pending.delete(k);
+  for (const [k, v] of pending) if (v.exp < now) {
+    pending.delete(k);
+    if (r2Ready()) remove(k).catch(() => {});
+  }
 }
 
 /** How many bytes this uploader has stored so far. */

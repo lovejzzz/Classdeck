@@ -80,6 +80,15 @@ export function teacherOf(session: Session | null): User | undefined {
   return session?.kind === "teacher" && session.userId ? db().users[session.userId] : undefined;
 }
 
+/** The site owner(s), by email in ADMIN_EMAILS. On a computer without it set (development), every teacher counts. */
+export function isAdmin(session: Session | null): boolean {
+  const t = teacherOf(session);
+  if (!t) return false;
+  const list = (process.env.ADMIN_EMAILS ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  if (!list.length) return process.env.NODE_ENV !== "production";
+  return list.includes(t.email.toLowerCase());
+}
+
 /** May this visitor change this course and see everyone's work? */
 export function canTeach(session: Session | null, course: Course): boolean {
   if (course.id === DEMO) return true;
@@ -101,6 +110,8 @@ export function canView(session: Session | null, course: Course): boolean {
 const attempts = new Map<string, number[]>();
 export function throttled(key: string, limit = 10, windowMs = 10 * 60_000) {
   const now = Date.now();
+  // Forget old entries now and then, so the list can't grow without end.
+  if (attempts.size > 20000) for (const [k, v] of attempts) if (now - v[v.length - 1] > windowMs) attempts.delete(k);
   const recent = (attempts.get(key) ?? []).filter((t) => now - t < windowMs);
   recent.push(now);
   attempts.set(key, recent);

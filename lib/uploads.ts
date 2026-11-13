@@ -33,7 +33,15 @@ export function extFor(fileName: string, type: string): string {
   return TYPES[ext] ? ext : "";
 }
 
-export const storedName = (ext: string) => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}.${ext}`;
+/** A stored file's name: hard to guess, since anyone with the address can open the file. */
+export const storedName = (ext: string) => `${Date.now().toString(36)}${randomCode(12).toLowerCase()}.${ext}`;
+
+/** Random letters and digits from the system's secure random source. */
+export function randomCode(n: number): string {
+  const abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(n));
+  return Array.from(bytes, (b) => abc[b % abc.length]).join("");
+}
 
 export const TYPES: Record<string, string> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",

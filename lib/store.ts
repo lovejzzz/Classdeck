@@ -1,4 +1,5 @@
 import fs from "fs";
+import { r2Ready, remove as removeBlob } from "./blob";
 import { DatabaseSync } from "node:sqlite";
 import path from "path";
 import { publish } from "./bus";
@@ -184,6 +185,7 @@ export function save() {
 /** Removes a course and everything kept for it. Returns the uploaded file names it used, for the caller to delete. */
 export function removeCourse(id: string): string[] {
   const d = db();
+  const ownerId = d.courses[id]?.ownerId;
   const files = new Set<string>();
   for (const k of PER_COURSE) {
     const v = (d[k] as Record<string, unknown>)[id];
@@ -192,14 +194,30 @@ export function removeCourse(id: string): string[] {
   }
   // Sign out students of this course everywhere.
   for (const [k, s] of Object.entries(d.sessions)) if (s.courseId === id) delete d.sessions[k];
-  for (const f of files) delete d.uploads[f];
+  // Only files that belong to this course go: uploaded by its students, or by its teacher and used nowhere else.
+  // A link to someone else's file (pasted into a card) is left alone.
+  const elsewhere = (f: string) => PER_COURSE.some((k) => Object.values(d[k] as Record<string, unknown>).some((v) => JSON.stringify(v ?? null).includes(`/api/upload/${f}`)));
+  const mine = [...files].filter((f) => {
+    const by = d.uploads[f]?.by;
+    return by?.startsWith(`s:${id}:`) || (!!ownerId && by === `u:${ownerId}` && !elsewhere(f));
+  });
+  for (const f of mine) delete d.uploads[f];
   save();
-  return [...files];
+  return mine;
+}
+
+/** Files demo visitors uploaded; cleared with each reset so the demo's upload allowance starts fresh. */
+export function demoUploads(): string[] {
+  return Object.entries(db().uploads).filter(([, u]) => u.by === "demo").map(([k]) => k);
 }
 
 export function reset() {
   const d = db();
   const f = fresh();
+  const gone = demoUploads();
+  for (const k of gone) delete d.uploads[k];
+  // Remove the files themselves in the background; a leftover file only takes up space.
+  for (const k of gone) (r2Ready() ? removeBlob(k) : fs.promises.unlink(path.join(DIR, "uploads", k))).catch(() => {});
   for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges", "plans"] as const) {
     (d[k] as Record<string, unknown>).demo = (f[k] as Record<string, unknown>).demo;
   }

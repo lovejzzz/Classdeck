@@ -17,11 +17,12 @@ function r2() {
 // R2_ENDPOINT is only for testing against a stand-in server; normally it's worked out from the account id.
 const objectUrl = (name: string) => `${env.R2_ENDPOINT || `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`}/${env.R2_BUCKET}/uploads/${name}`;
 
-/** A link the browser can PUT the file to, good for 15 minutes. The content type is part of the signature. */
-export async function presignPut(name: string, type: string): Promise<string> {
+/** A link the browser can PUT the file to, good for 15 minutes. The content type and exact size are part of the
+ * signature, so storage refuses a different kind of file or a bigger one. */
+export async function presignPut(name: string, type: string, size: number): Promise<string> {
   const url = new URL(objectUrl(name));
   url.searchParams.set("X-Amz-Expires", "900");
-  const signed = await r2().sign(new Request(url, { method: "PUT", headers: { "Content-Type": type } }), { aws: { signQuery: true, allHeaders: true } });
+  const signed = await r2().sign(url.toString(), { method: "PUT", headers: { "Content-Type": type, "Content-Length": String(size) }, aws: { signQuery: true, allHeaders: true } });
   return signed.url;
 }
 

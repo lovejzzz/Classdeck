@@ -5,21 +5,18 @@ import { ConnectorError } from "./types";
 const MAX_BYTES = 1_000_000;
 const TIMEOUT_MS = 10_000;
 
+// Addresses the server must never fetch from: private networks, loopback, link-local, and IPv6 forms that
+// wrap an IPv4 address (mapped, NAT64, 6to4, Teredo). Public IPv6 is only the global unicast range 2000::/3.
+const blocked = new net.BlockList();
+for (const [a, n] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["224.0.0.0", 3]] as const) blocked.addSubnet(a, n, "ipv4");
+for (const [a, n] of [["2001::", 32], ["2001:db8::", 32], ["2002::", 16]] as const) blocked.addSubnet(a, n, "ipv6");
+const globalV6 = new net.BlockList();
+globalV6.addSubnet("2000::", 3, "ipv6");
+
 function isPrivate(ip: string): boolean {
-  if (net.isIPv4(ip)) {
-    const [a, b] = ip.split(".").map(Number);
-    return (
-      a === 10 || a === 127 || a === 0 ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 169 && b === 254) ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      a >= 224
-    );
-  }
-  const v6 = ip.toLowerCase();
-  if (v6.startsWith("::ffff:")) return isPrivate(v6.slice(7));
-  return v6 === "::1" || v6 === "::" || v6.startsWith("fc") || v6.startsWith("fd") || v6.startsWith("fe80");
+  if (net.isIPv4(ip)) return blocked.check(ip, "ipv4");
+  if (!net.isIPv6(ip)) return true;
+  return !globalV6.check(ip, "ipv6") || blocked.check(ip, "ipv6");
 }
 
 /** 自定义连接器只能访问公网的 https 地址，防止被用来探测服务器内网。 */

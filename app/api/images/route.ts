@@ -32,7 +32,8 @@ export async function GET(request: Request) {
   for (const timeout of [5000, 7000]) {
     try {
       const results = await search(q, timeout);
-      cache.set(q, { at: Date.now(), results });
+      if (cache.size > 2000) cache.delete(cache.keys().next().value!);
+    cache.set(q, { at: Date.now(), results });
       return Response.json({ ok: true, results });
     } catch {}
   }

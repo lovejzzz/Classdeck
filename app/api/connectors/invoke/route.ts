@@ -1,4 +1,5 @@
-import { canBeStudent, canTeach, getSession } from "@/lib/auth";
+import { canBeStudent, canTeach, DEMO, getSession, teacherOf } from "@/lib/auth";
+import { clientIp } from "@/lib/origin";
 import { getConnector } from "@/lib/connectors/registry";
 import { ConnectorError } from "@/lib/connectors/types";
 import { findLesson, visibleModules } from "@/lib/profile";
@@ -15,10 +16,11 @@ const WINDOW_MS = 60_000;
 const LIMIT = 20;
 const hits = new Map<string, number[]>();
 
-function rateLimited(key: string) {
+function rateLimited(key: string, limit = LIMIT) {
   const now = Date.now();
+  if (hits.size > 5000) for (const [k, v] of hits) if (!v.some((t) => now - t < WINDOW_MS)) hits.delete(k);
   const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= LIMIT) return true;
+  if (recent.length >= limit) return true;
   recent.push(now);
   hits.set(key, recent);
   return false;
@@ -39,14 +41,23 @@ export async function POST(request: Request) {
     const spec = connector.actions.find((a) => a.id === action);
     if (!spec) throw new ConnectorError("bad_input", "No such action");
 
+    const session = getSession(request);
+    // The open demo lets anyone act as its teacher; for tools they get only what a student would.
+    const visitor = course.id === DEMO && !teacherOf(session);
     const input: Record<string, string> = {};
     for (const [k, v] of Object.entries((body.input ?? {}) as Record<string, unknown>)) {
-      input[k] = String(v ?? "").slice(0, studentId ? 2000 : 20000);
+      input[k] = String(v ?? "").slice(0, studentId || visitor ? 2000 : 20000);
     }
 
-    const session = getSession(request);
     if (studentId ? !canBeStudent(session, course, studentId) : !canTeach(session, course)) {
       throw new ConnectorError("forbidden", "Sign in first");
+    }
+    // Every caller has a limit, per visitor address and per teacher.
+    if (rateLimited(`ip:${clientIp(request)}`, visitor ? 10 : 40)) throw new ConnectorError("rate_limited", "Slow down a little. Try again in a minute.");
+    if (!studentId) {
+      if (visitor && (spec.teacherOnly || !course.enabledConnectors.includes(connectorId))) throw new ConnectorError("forbidden", "Sign in as a teacher to use this tool");
+      const t = teacherOf(session);
+      if (t && rateLimited(`t:${t.id}`, 30)) throw new ConnectorError("rate_limited", "Slow down a little. Try again in a minute.");
     }
     let ctx = {};
     if (studentId) {

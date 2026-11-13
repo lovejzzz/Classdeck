@@ -6,7 +6,7 @@ import fs from "fs/promises";
 import path from "path";
 import { r2Ready, remove } from "@/lib/blob";
 import { db, listCourses, removeCourse, save } from "@/lib/store";
-import { UPLOAD_DIR } from "@/lib/uploads";
+import { randomCode, UPLOAD_DIR } from "@/lib/uploads";
 import { standardWeek } from "@/lib/templates";
 import type { Course } from "@/lib/types";
 
@@ -39,10 +39,10 @@ export async function POST(request: Request) {
   const caps = seedCourse();
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "course";
   let id = slug;
-  while (d.courses[id]) id = `${slug}-${Math.random().toString(36).slice(2, 5)}`;
+  while (d.courses[id]) id = `${slug}-${randomCode(4).toLowerCase()}`;
   const codes = new Set(Object.values(d.courses).map((c) => c.joinCode));
   let code = "";
-  do code = Math.random().toString(36).slice(2, 8).toUpperCase(); while (codes.has(code) || code.length < 6);
+  do code = randomCode(6); while (codes.has(code));
 
   const start = body.start === "caps" ? "caps" : body.start === "template" ? "template" : "blank";
   const weeks =

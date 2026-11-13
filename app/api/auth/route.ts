@@ -131,6 +131,13 @@ export async function POST(request: Request) {
         u = d.users[id] = { id, email: who.email, name: who.name, hash: "", salt: "", google: who.sub, createdAt: Date.now() };
       } else if (u.google && u.google !== who.sub) {
         return fail("That email belongs to a different Google account here.", 401);
+      } else if (!u.google) {
+        // First Google sign-in on an account made with a password. Google has shown this person owns the email;
+        // whoever chose the password may not have (sign-up doesn't check email), so the password stops working
+        // and every other session on the account ends.
+        u.hash = "";
+        u.salt = "";
+        for (const [k, s] of Object.entries(d.sessions)) if (s.userId === u.id) delete d.sessions[k];
       }
       u.google = who.sub;
       save();
