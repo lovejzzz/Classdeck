@@ -1,5 +1,6 @@
 "use client";
 
+import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { MarksContext } from "@/components/Marks";
 import { SignInNeeded } from "@/components/SignInNeeded";
 import { TeacherLive } from "@/components/LiveClass";
@@ -87,6 +88,7 @@ export default function TeachPage() {
   return (
     <MarksContext.Provider value={{ courseId, me: "teacher", marks: state.marks ?? [], names: Object.fromEntries(state.course.students.map((s) => [s.id, s.name])), refresh }}>
     <div className="flex-1 overflow-x-clip">
+      {courseId !== "demo" && <ConnectionBanner needAuth={needAuth} error={error} signInHref={`/login?next=/teach/${courseId}`} />}
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
           <Link href="/" className="flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink">

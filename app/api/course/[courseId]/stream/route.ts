@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
         }
       };
       send(`retry: 3000\nevent: hello\ndata: ${currentVersion()}\n\n`);
-      const off = subscribe((v) => send(`event: change\ndata: ${v}\n\n`));
+      const off = subscribe((v, courses) => courses.has(courseId) && send(`event: change\ndata: ${v}\n\n`));
       const ping = setInterval(() => send(`: ping\n\n`), 25000);
       cleanup = () => {
         off();

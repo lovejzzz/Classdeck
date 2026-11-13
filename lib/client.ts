@@ -2,15 +2,41 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ConnectorInfo, ToolResult } from "./connectors/types";
+import { toast } from "./toast";
 import type { CourseState } from "./types";
 
+/** Fired when a request finds the session has ended, so the page can ask the person to sign in again. */
+export const SIGNED_OUT = "qh:signed-out";
+
+/**
+ * Sends one change to the server. Never throws: on failure it resolves to { ok: false, error }.
+ * Network trouble, an ended session, or a server error also show a toast, since many callers don't check;
+ * ordinary refusals (400) are left to the caller to explain.
+ */
 export async function op<T = Record<string, unknown>>(courseId: string, body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`/api/course/${courseId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return res.json();
+  let res: Response;
+  try {
+    res = await fetch(`/api/course/${courseId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    toast("Can’t reach the server. Your last change wasn’t saved; check your connection and try again.", { icon: "x", tone: "bad" });
+    return { ok: false, error: "Can’t reach the server" } as T;
+  }
+  let data: Record<string, unknown>;
+  try {
+    data = await res.json();
+  } catch {
+    data = { error: `The server had a problem (${res.status}). Try again in a moment.` };
+  }
+  if (!res.ok) {
+    data.ok = false;
+    if (res.status === 401) {
+      window.dispatchEvent(new Event(SIGNED_OUT));
+      toast("You’ve been signed out, so that wasn’t saved. Sign in again to keep working.", { icon: "x", tone: "bad" });
+    } else if (res.status >= 500 || res.status === 413 || res.status === 429) {
+      toast(String(data.error ?? "That didn’t save. Try again."), { icon: "x", tone: "bad" });
+    }
+  }
+  return data as T;
 }
 
 /** 读取课程，并每隔几秒刷新一次（原型用轮询代替实时推送）。 */
@@ -30,19 +56,30 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
       if (!res.ok) {
         setError(data.error ?? "Couldn't load");
         setNeedAuth(data.needAuth ?? null);
+        return false;
       }
       else {
+        setNeedAuth(null);
         // 内容没变就不更新，避免每次轮询都让整页重画
         if (raw !== last.current) {
           last.current = raw;
           setState(data);
         }
         setError(null);
+        return true;
       }
     } catch {
       if (alive.current) setError("Can't reach the server");
     }
+    return false;
   }, [courseId, as]);
+
+  // A change that found the session over: check again, which shows the sign-in prompt.
+  useEffect(() => {
+    const again = () => void refresh();
+    window.addEventListener(SIGNED_OUT, again);
+    return () => window.removeEventListener(SIGNED_OUT, again);
+  }, [refresh]);
 
   useEffect(() => {
     alive.current = true;

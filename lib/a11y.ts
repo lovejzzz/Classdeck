@@ -32,8 +32,20 @@ export function useFocusTrap(ref: React.RefObject<HTMLElement | null>, active = 
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      // Return focus to whatever opened the dialog, if it's still on the page.
-      if (before && document.contains(before)) before.focus({ preventScroll: true });
+      // Return focus to whatever opened the dialog. A card that just closed can still be hidden for a moment
+      // (or gone, once finished), so try again after the closing animation and fall back to the main content.
+      const back = () => {
+        if (before && document.contains(before) && before.getClientRects().length && getComputedStyle(before).visibility !== "hidden") {
+          before.focus({ preventScroll: true });
+          return true;
+        }
+        return false;
+      };
+      if (!back()) setTimeout(() => {
+        if (back() || (document.activeElement && document.activeElement !== document.body)) return;
+        const main = document.querySelector<HTMLElement>("main");
+        if (main) { if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1"); main.focus({ preventScroll: true }); }
+      }, 700);
     };
   }, [ref, active]);
 }

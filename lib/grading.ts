@@ -2,7 +2,9 @@ import { hash } from "./cards";
 import type { AnswerValue, Module, Progress, Question } from "./types";
 
 /** Compare short answers loosely: case, spacing, and punctuation don't matter. */
-export const norm = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+/** For comparing short answers: case, accents, apostrophes and thousands separators don't matter. */
+export const norm = (s: string) =>
+  s.toLowerCase().normalize("NFKD").replace(/\p{M}+/gu, "").replace(/['’`]/g, "").replace(/(\d),(?=\d{3}\b)/g, "$1").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
 export function isCorrect(q: Question, given: AnswerValue): boolean {
   if (q.kind === "short") {
@@ -95,7 +97,10 @@ export function dueInfo(due: string | undefined, now: number): { label: string; 
 }
 
 /** A late card is one with a due date in the past that isn't done. */
-export const isLate = (m: Module, p: Progress | undefined, now: number) => !!m.due && p?.status !== "done" && dueAt(m.due) < now;
+/** Finished, for counting and lateness. A quiz handed in once stays finished while the student tries again. */
+export const isFinished = (m: Module, p: Progress | undefined) => p?.status === "done" || (m.type === "quiz" && p?.best !== undefined);
+
+export const isLate = (m: Module, p: Progress | undefined, now: number) => !!m.due && !isFinished(m, p) && dueAt(m.due) < now;
 
 /** A date `n` days from now as YYYY-MM-DD (local). */
 export function isoDay(n: number, from = Date.now()): string {

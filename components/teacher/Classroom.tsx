@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { invokeTool, op } from "@/lib/client";
 import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
@@ -29,7 +29,10 @@ export function Classroom({
   const visible = Object.fromEntries(course.students.map((s) => [s.id, new Set(visibleModules(lesson, s.id, state.choices[s.id]).map((m) => m.id))]));
   const studioIds = new Set(lesson.modules.filter((m) => m.type === "studio").map((m) => m.id));
   const lessonPosts = state.studio.posts.filter((p) => studioIds.has(p.moduleId));
-  const feedbackGiven = (sid: string) => state.studio.feedback.filter((f) => f.fromId === sid && lessonPosts.some((p) => p.id === f.postId && p.studentId !== sid)).length;
+  // Same rule as the server: peers' posts given feedback (each post counted once), against a goal of 2,
+  // or fewer in a small group.
+  const feedbackGiven = (sid: string) => new Set(state.studio.feedback.filter((f) => f.fromId === sid && lessonPosts.some((p) => p.id === f.postId && p.studentId !== sid)).map((f) => f.postId)).size;
+  const feedbackGoal = (sid: string) => Math.min(2, Math.max(0, (course.groups?.find((g) => g.studentIds.includes(sid))?.studentIds.length ?? 1) - 1));
   const helpfulGiven = (sid: string) => state.studio.feedback.filter((f) => f.fromId === sid && f.helpful && lessonPosts.some((p) => p.id === f.postId)).length;
   const groupName = (sid: string) => course.groups?.find((g) => g.studentIds.includes(sid))?.name ?? "";
 
@@ -56,7 +59,7 @@ export function Classroom({
     ? course.students.filter((st) => !notStarted.includes(st) && (lesson.choiceSlots ?? []).some((slot) => !state.choices[st.id]?.[slot]))
     : [];
   const waiting = lessonPosts.filter((p) => !state.studio.feedback.some((f) => f.postId === p.id)).map((p) => course.students.find((st) => st.id === p.studentId)!).filter(Boolean);
-  const owing = course.students.filter((st) => lessonPosts.some((p) => p.studentId === st.id) && feedbackGiven(st.id) < 2);
+  const owing = course.students.filter((st) => lessonPosts.some((p) => p.studentId === st.id) && feedbackGiven(st.id) < feedbackGoal(st.id));
   const studioId = lesson.modules.find((m) => m.type === "studio")?.id;
   const lateCard = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && isLate(m, progress[sid]?.[m.id], now))?.id;
   const overdue = course.students.filter((st) => !!lateCard(st.id));
@@ -71,7 +74,7 @@ export function Classroom({
     { key: "start", icon: "clock", tint: "var(--color-ink-2)", title: "Haven’t started", hint: "No card opened in this lesson yet.", who: notStarted, cell: firstVisible },
     { key: "stall", icon: "timer", tint: "var(--color-warn)", title: "Stalled", hint: "Started, but nothing new for 2+ days.", who: stalled, cell: (sid) => lesson.modules.find((m) => progress[sid]?.[m.id]?.status === "doing")?.id },
     { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted to Collab Studio, no replies yet.", who: waiting, cell: () => studioId },
-    { key: "owe", icon: "studio", tint: "#367195", title: "Owe feedback", hint: "Posted, but replied to fewer than 2 peers.", who: owing, cell: () => studioId },
+    { key: "owe", icon: "studio", tint: "#367195", title: "Owe feedback", hint: "Posted, but gave feedback to fewer than 2 peers (fewer in a small group).", who: owing, cell: () => studioId },
     ...(unpicked.length ? [{ key: "path", icon: "split", tint: "#4b56a8", title: "Haven’t picked a path", hint: "Working, but no Guided/Stretch choice yet.", who: unpicked, cell: firstVisible }] : []),
   ];
   const totals = course.students.reduce(
@@ -120,7 +123,9 @@ export function Classroom({
         if (!visible[st.id].has(m.id)) return "";
         const pr = progress[st.id]?.[m.id];
         const status = pr?.status ?? "todo";
-        return `${status === "done" ? "Done" : status === "doing" ? "In progress" : "Not started"}${m.questions && pr?.score !== undefined ? ` (${pr.score}/${m.questions.length})` : ""}`;
+        // Quizzes show the best try, out of the questions this student actually got.
+        const best = m.type === "quiz" ? pr?.best ?? pr?.score : pr?.score;
+        return `${status === "done" ? "Done" : status === "doing" ? "In progress" : "Not started"}${m.questions && best !== undefined ? ` (${best}/${quizSet(m, st.id, pr?.attempt ?? 1).length})` : ""}`;
       }),
       ...(studioIds.size ? [feedbackGiven(st.id)] : []),
     ]);
@@ -259,7 +264,8 @@ export function Classroom({
                   const status = p?.status ?? "todo";
                   const tools = toolUse[s.id]?.[m.id];
                   const active = sel?.sid === s.id && sel.mid === m.id;
-                  const scored = m.questions && p?.score !== undefined && status === "done";
+                  const shown = m.type === "quiz" ? p?.best ?? p?.score : p?.score;
+                  const scored = m.questions && shown !== undefined && (status === "done" || p?.best !== undefined);
                   const late = isLate(m, p, now);
                   const rv = p?.review;
                   return (
@@ -270,7 +276,7 @@ export function Classroom({
                         className={`press flex h-8 w-full items-center gap-1.5 rounded-lg px-2 transition-colors duration-500 ${active ? "bg-ink text-white" : late ? "bg-bad/[0.06] hover:bg-bad/[0.1]" : status === "done" ? "bg-ok/[0.07] hover:bg-ok/[0.12]" : status === "doing" ? "bg-warn/[0.07] hover:bg-warn/[0.12]" : "hover:bg-lane"}`}
                       >
                         <StatusIcon status={status} size={13} />
-                        {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{p.score}/{quizSet(m, s.id, p.attempt ?? 1).length}</span>}
+                        {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{shown}/{quizSet(m, s.id, p.attempt ?? 1).length}</span>}
                         <span className="flex-1" />
                         {late && <span className={`font-mono text-[10.5px] font-medium ${active ? "text-white" : "text-bad"}`}>late</span>}
                         {m.form && (m.form.by === "student" ? p?.form : p?.updates?.some((u) => u.id === `form:${m.id}`)) && <span title={m.form.by === "student" ? "They sent the form" : "You filled in the form"} className={active ? "text-white/80" : "text-[#3d6f91]"}><Icon name="text" size={11} /></span>}
@@ -282,8 +288,8 @@ export function Classroom({
                 })}
                 {studioIds.size > 0 && (
                   <td className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0">
-                    <span className={`flex h-8 items-center gap-1.5 rounded-lg px-2 font-mono text-[12px] ${feedbackGiven(s.id) >= 2 ? "bg-ok/[0.07] text-ok" : "text-ink-2"}`} title="Given · marked helpful by the receiver">
-                      {feedbackGiven(s.id)}/2
+                    <span className={`flex h-8 items-center gap-1.5 rounded-lg px-2 font-mono text-[12px] ${feedbackGiven(s.id) >= feedbackGoal(s.id) ? "bg-ok/[0.07] text-ok" : "text-ink-2"}`} title="Given · marked helpful by the receiver">
+                      {feedbackGiven(s.id)}/{feedbackGoal(s.id)}
                       {helpfulGiven(s.id) > 0 && <span className="text-[11px] text-ink-3">· {helpfulGiven(s.id)} helpful</span>}
                     </span>
                   </td>
@@ -522,11 +528,21 @@ function WallPanel({ courseId, module: m, state, aiReady }: { courseId: string; 
 
 function ExportMenu({ items }: { items: [string, () => void][] }) {
   const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  // Closes on a tap or click anywhere else, or Escape, not only when the mouse leaves.
+  useEffect(() => {
+    if (!open) return;
+    const off = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("pointerdown", off);
+    window.addEventListener("keydown", esc);
+    return () => { window.removeEventListener("pointerdown", off); window.removeEventListener("keydown", esc); };
+  }, [open]);
   return (
-    <div className="relative">
+    <div className="relative" ref={box}>
       <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="btn btn-ghost press h-8"><Icon name="download" size={13} /> Export <Icon name="chevron" size={12} /></button>
       {open && (
-        <div className="pop absolute right-0 top-10 z-20 w-56 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]" onMouseLeave={() => setOpen(false)}>
+        <div className="pop absolute right-0 top-10 z-20 w-56 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]">
           {items.map(([label, fn]) => (
             <button key={label} onClick={() => { setOpen(false); fn(); }} className="press block w-full rounded-lg px-3 py-2 text-left text-[13px] hover:bg-lane">{label}</button>
           ))}

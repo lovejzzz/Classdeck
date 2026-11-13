@@ -28,34 +28,35 @@ const PRESET_COVER: Record<PresetId, "practice" | "read" | "quiz"> = { primary: 
 export function Settings({ course, connectors, onChanged }: { course: Course; connectors: ConnectorInfo[]; onChanged: () => void }) {
   const p = course.profile;
   const setProfile = async (profile: Profile, note?: string) => {
-    await op(course.id, { op: "setProfile", profile });
+    const r = await op<{ ok?: boolean }>(course.id, { op: "setProfile", profile });
     onChanged();
-    if (note) toast(note);
+    if (note && r.ok !== false) toast(note);
   };
   const toggle = async (c: ConnectorInfo) => {
     const on = course.enabledConnectors.includes(c.id);
     const ids = on ? course.enabledConnectors.filter((x) => x !== c.id) : [...course.enabledConnectors, c.id];
-    await op(course.id, { op: "setEnabledConnectors", ids });
+    const r = await op<{ ok?: boolean }>(course.id, { op: "setEnabledConnectors", ids });
     onChanged();
-    toast(on ? `Turned off ${c.name}` : `Turned on ${c.name}`, { icon: on ? "x" : "check", tone: on ? "plain" : "ok" });
+    if (r.ok !== false) toast(on ? `Turned off ${c.name}` : `Turned on ${c.name}`, { icon: on ? "x" : "check", tone: on ? "plain" : "ok" });
   };
   const first = course.students[0];
   const info = async (patch: { title?: string; subtitle?: string }) => {
-    await op(course.id, { op: "setCourseInfo", title: patch.title ?? course.title, subtitle: patch.subtitle ?? course.subtitle ?? "" });
+    const r = await op<{ ok?: boolean }>(course.id, { op: "setCourseInfo", title: patch.title ?? course.title, subtitle: patch.subtitle ?? course.subtitle ?? "" });
     onChanged();
-    toast("Saved");
+    if (r.ok !== false) toast("Saved");
   };
   const removeStudent = async (studentId: string, name: string) => {
-    await op(course.id, { op: "removeStudent", studentId });
+    const r = await op<{ ok?: boolean }>(course.id, { op: "removeStudent", studentId });
     onChanged();
-    toast(`Removed ${name}`, { icon: "x", tone: "plain" });
+    if (r.ok !== false) toast(`Removed ${name}`, { icon: "x", tone: "plain" });
   };
   const access = { joinOpen: course.access?.joinOpen !== false, passcode: course.access?.passcode, guestToken: course.access?.guestToken, selfJoin: course.access?.selfJoin };
   const guestUrl = access.guestToken && typeof window !== "undefined" ? `${window.location.origin}/guest/${course.id}?t=${access.guestToken}` : "";
   const setAccess = async (patch: Record<string, unknown>, newCode: boolean, note: string) => {
-    await op(course.id, { op: "setAccess", access: { joinOpen: access.joinOpen, passcode: access.passcode, selfJoin: access.selfJoin, ...patch }, newCode });
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "setAccess", access: { joinOpen: access.joinOpen, passcode: access.passcode, selfJoin: access.selfJoin, ...patch }, newCode });
     onChanged();
-    toast(note);
+    if (r.ok === false) toast(r.error ?? "That didn’t save", { icon: "x", tone: "bad" });
+    else toast(note);
   };
   const groups = course.groups ?? [];
   const unassigned = course.students.filter((s) => !groups.some((g) => g.studentIds.includes(s.id)));

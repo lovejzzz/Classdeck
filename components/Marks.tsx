@@ -108,7 +108,7 @@ export function MarkedMedia({ a }: { a: Attachment }) {
                 <span className="font-medium" style={{ color: colorOf(m.from, ctx.me) }}>{name(m.from)}</span> <span className="text-ink-2">{m.text}</span>
               </span>
               {(m.from === ctx.me || ctx.me === "teacher") && (
-                <button onClick={() => remove(m)} aria-label="Delete note" className="flex-none text-ink-3 opacity-0 transition-opacity hover:text-bad focus:opacity-100 group-hover:opacity-100"><Icon name="x" size={13} /></button>
+                <button onClick={() => remove(m)} aria-label="Delete note" className="flex-none text-ink-3 opacity-0 transition-opacity hover:text-bad focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"><Icon name="x" size={13} /></button>
               )}
             </li>
           ))}

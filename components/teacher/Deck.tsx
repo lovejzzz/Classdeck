@@ -80,11 +80,12 @@ function AddCard({ onPick, onTemplate }: { onPick: (t: ModuleType) => void; onTe
 }
 
 /** The teacher's whole course as a deck: one row per week, lessons laid out left to right. */
-export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts = [], choices = {} }: { course: Course; connectors: ConnectorInfo[]; onRefresh: () => void; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>> }) {
+export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts = [], choices = {} }: { course: Course; connectors: ConnectorInfo[]; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>> }) {
   const [drafts, setDrafts] = useState<Record<string, Lesson>>({});
   const [editing, setEditing] = useState<{ lessonId: string; moduleId: string } | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(0);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const latest = useRef<Record<string, Lesson>>({});
   const openRef = useRef(false);
@@ -125,9 +126,18 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
     else setSaving((n) => n + 1);
     timers.current.set(next.id, setTimeout(async () => {
       timers.current.delete(next.id);
-      await op(course.id, { op: "saveLesson", lesson: latest.current[next.id] });
+      const sent = latest.current[next.id];
+      const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent });
       setSaving((n) => n - 1);
-      onRefresh();
+      if (r.ok === false) {
+        // Keep the edit on screen and say so; the next change tries again.
+        setSaveError(r.error ?? "Couldn’t save");
+        return;
+      }
+      setSaveError(null);
+      await onRefresh();
+      // Once the server has this version, show the server's copy again (so edits made elsewhere appear).
+      setDrafts((d) => (d[next.id] === sent && latest.current[next.id] === sent ? Object.fromEntries(Object.entries(d).filter(([k]) => k !== next.id)) : d));
     }, 600));
   }
 
@@ -221,8 +231,8 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
       <div className="mb-2 flex items-center gap-3">
         <p className="flex-1 text-[13px] text-ink-3">Each row is a week. Drag cards to reorder them within a lesson; click a card to edit it.</p>
         <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3" aria-live="polite">
-          <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${saving ? "bg-warn" : "bg-ok"}`} />
-          {saving ? "Saving" : "Saved"}
+          <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${saveError ? "bg-bad" : saving ? "bg-warn" : "bg-ok"}`} />
+          {saveError && !saving ? <span className="text-bad">Not saved: {saveError}</span> : saving ? "Saving" : "Saved"}
         </span>
       </div>
 

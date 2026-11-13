@@ -22,6 +22,8 @@ export function fromPreset(id: PresetId): Profile {
  * version until they pick one; after that, only their pick.
  */
 export function visibleModules(lesson: Lesson, studentId: string, chosen: Record<string, string> = {}): Module[] {
+  // An elective's cards are only on the board of students who chose it.
+  if (lesson.elective && !chosen[`elective:${lesson.id}`]) return [];
   const firstVariant: Record<string, string> = {};
   const counts: Record<string, number> = {};
   for (const m of lesson.modules) {

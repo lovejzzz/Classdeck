@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { download, toCsv } from "@/lib/download";
-import { isLate, quizSet } from "@/lib/grading";
+import { isFinished, isLate, quizSet } from "@/lib/grading";
 import { visibleModules } from "@/lib/profile";
 import type { CourseState, Module } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
@@ -37,15 +37,21 @@ export function Gradebook({ state }: { state: CourseState }) {
         cards.push({ m, week: w.title });
       }
     }
-    const done = cards.filter(({ m }) => mine[m.id]?.status === "done").length;
+    const done = cards.filter(({ m }) => isFinished(m, mine[m.id])).length;
     const late = cards.filter(({ m }) => isLate(m, mine[m.id], now)).length;
-    const quizzes = cards.filter(({ m }) => m.type === "quiz" && m.questions?.length && mine[m.id]?.status === "done");
+    // A quiz counts once it's been handed in, by its best try, even while the student is on another try.
+    const quizzes = cards.filter(({ m }) => m.type === "quiz" && m.questions?.length && isFinished(m, mine[m.id]));
     const quizPct = quizzes.length ? quizzes.reduce((t, { m }) => t + (mine[m.id].best ?? mine[m.id].score ?? 0) / Math.max(1, quizSet(m, st.id, mine[m.id].attempt ?? 1).length), 0) / quizzes.length : undefined;
     const reviews = cards.filter(({ m }) => mine[m.id]?.review).map(({ m, week }) => ({ m, week, r: mine[m.id].review! })).sort((a, b) => b.r.at - a.r.at);
     const waiting = cards.filter(({ m }) => WORK.has(m.type) && !m.questions?.length && mine[m.id]?.status === "done" && !mine[m.id]?.review).length;
     // Latest teacher level per skill, and the student's latest self-rating.
+    // Teacher levels come from reviews and from forms (the teacher's card forms and Google Forms), latest wins.
     const teacher: Record<string, number> = {};
-    for (const { r } of [...reviews].reverse()) for (const [k, v] of Object.entries(r.levels ?? {})) teacher[k] = v;
+    const given = cards.flatMap(({ m }) => [
+      ...(mine[m.id]?.review?.levels ? [{ at: mine[m.id].review!.at, levels: mine[m.id].review!.levels! }] : []),
+      ...(mine[m.id]?.updates ?? []).filter((u) => u.levels).map((u) => ({ at: u.at, levels: u.levels! })),
+    ]).sort((a, b) => a.at - b.at);
+    for (const g of given) Object.assign(teacher, g.levels);
     const self: Record<string, number> = {};
     const checks = cards.filter(({ m }) => m.type === "selfcheck" && mine[m.id]?.ratings).sort((a, b) => mine[a.m.id].updatedAt - mine[b.m.id].updatedAt);
     for (const { m } of checks) Object.assign(self, mine[m.id].ratings);

@@ -165,10 +165,13 @@ export function save() {
   const conn = sql();
   const put = conn.prepare("INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v");
   const del = conn.prepare("DELETE FROM kv WHERE k = ?");
+  // Which courses changed, so only pages showing those courses are told to refresh.
+  const changed = new Set<string>();
+  const note = (k: string) => { const i = k.indexOf(":"); if (i > 0) changed.add(k.slice(i + 1)); };
   conn.exec("BEGIN");
   try {
-    for (const [k, v] of next) if (written.get(k) !== v) put.run(k, v);
-    for (const k of written.keys()) if (!next.has(k)) del.run(k);
+    for (const [k, v] of next) if (written.get(k) !== v) { put.run(k, v); note(k); }
+    for (const k of written.keys()) if (!next.has(k)) { del.run(k); note(k); }
     conn.exec("COMMIT");
   } catch (e) {
     conn.exec("ROLLBACK");
@@ -177,7 +180,7 @@ export function save() {
   g.__lmswritten = next;
   // Data that was loaded from the old JSON file now lives in SQLite.
   if (fs.existsSync(LEGACY)) fs.renameSync(LEGACY, `${LEGACY}.migrated`);
-  publish();
+  publish(changed);
 }
 
 /** 恢复示例数据，保留已添加的自定义连接器。 */
@@ -218,7 +221,7 @@ export function reset() {
   for (const k of gone) delete d.uploads[k];
   // Remove the files themselves in the background; a leftover file only takes up space.
   for (const k of gone) (r2Ready() ? removeBlob(k) : fs.promises.unlink(path.join(DIR, "uploads", k))).catch(() => {});
-  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges", "plans"] as const) {
+  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges", "plans", "pins"] as const) {
     (d[k] as Record<string, unknown>).demo = (f[k] as Record<string, unknown>).demo;
   }
   save();

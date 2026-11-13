@@ -1,5 +1,6 @@
 "use client";
 
+import { ConnectionBanner } from "@/components/ConnectionBanner";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -134,9 +135,9 @@ export default function LearnPage() {
   const size = narrow ? CARD_SIZE.mobile : CARD_SIZE[profile.density];
 
   const optimistic = (moduleId: string, patch: Partial<Progress>) => setLocal((l) => ({ ...l, [moduleId]: { ...l[moduleId], ...patch } }));
+  // Local changes are dropped only once the server's copy has been fetched; if that fails, they stay on screen.
   const synced = async () => {
-    await refresh();
-    setLocal({});
+    if (await refresh()) setLocal({});
   };
 
   function open(lessonId: string, id: string, el: HTMLElement) {
@@ -243,6 +244,7 @@ export default function LearnPage() {
   return (
     <MarksContext.Provider value={{ courseId, me: studentId, marks: state.marks ?? [], names: Object.fromEntries(course.students.map((s) => [s.id, s.name])), refresh: synced }}>
     <main className="flex-1 overflow-x-hidden">
+      {!isPreview && <ConnectionBanner needAuth={needAuth} error={error} signInHref={`/learn/${courseId}`} />}
       {!isPreview && <StudentLive courseId={courseId} studentId={studentId} state={state} onChanged={synced} />}
       {isPreview && (
         <div className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-line bg-white/85 px-4 py-2 text-[13px] backdrop-blur">

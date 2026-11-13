@@ -90,6 +90,7 @@ export async function GET(request: Request, { params }: Ctx) {
   }
   if (as ? !canBeStudent(session, course, as) : !canTeach(session, course)) return unauthorized(as ? "student" : "teacher");
   if (as && !course.students.some((s) => s.id === as)) return Response.json({ error: "You’re not on this class list. Ask your teacher to add you." }, { status: 404 });
+  if (finishExpiredQuizzes(course)) save();
   const all = d.progress[courseId] ?? {};
   const choices = d.choices[courseId] ?? {};
   const studio = d.studio[courseId] ?? { posts: [], feedback: [] };
@@ -130,7 +131,8 @@ export async function GET(request: Request, { params }: Ctx) {
     }
     progress = { [as]: own };
     const group = groupOf(course, as);
-    const posts = studio.posts.filter((p) => p.studentId === as || (group && p.groupId === group.id));
+    // Posts from whoever is in your group now, so regrouping moves who you see.
+    const posts = studio.posts.filter((p) => p.studentId === as || (group && group.studentIds.includes(p.studentId)));
     const ids = new Set(posts.map((p) => p.id));
     studioView = { posts, feedback: studio.feedback.filter((f) => ids.has(f.postId)) };
   }
@@ -179,7 +181,7 @@ function visibleWork(course: Course, studentId: string): Set<string> {
   const ids = new Set<string>();
   for (const p of Object.values(d.progress[course.id]?.[studentId] ?? {})) for (const w of p.work ?? []) ids.add(w.id);
   const group = groupOf(course, studentId);
-  for (const p of d.studio[course.id]?.posts ?? []) if (p.studentId === studentId || (group && p.groupId === group.id)) for (const w of p.work) ids.add(w.id);
+  for (const p of d.studio[course.id]?.posts ?? []) if (p.studentId === studentId || (group && group.studentIds.includes(p.studentId))) for (const w of p.work) ids.add(w.id);
   return ids;
 }
 
@@ -1052,7 +1054,7 @@ export async function POST(request: Request, { params }: Ctx) {
       const post = studio.posts.find((p) => p.id === body.postId);
       if (!post) return fail("That post is gone");
       if (post.studentId === body.studentId) return fail("Give feedback to your peers, not yourself");
-      if (groupOf(course, body.studentId)?.id !== post.groupId) return fail("You can only give feedback in your own group");
+      if (!groupOf(course, body.studentId)?.studentIds.includes(post.studentId)) return fail("You can only give feedback in your own group");
       const str = (v: unknown) => String(v ?? "").trim().slice(0, 1000);
       const fb = { observed: str(body.observed), effect: str(body.effect), next: str(body.next) };
       if (!fb.observed || !fb.next) return fail("Describe what you observed and one thing to try next");
@@ -1089,6 +1091,32 @@ export async function POST(request: Request, { params }: Ctx) {
   }
   save();
   return Response.json({ ok: true, ...extra });
+}
+
+/**
+ * Hands in timed quizzes whose time ran out while the student was away (tab closed, phone locked),
+ * scoring what they answered, the same way the browser does when it's open. Returns whether anything changed.
+ */
+function finishExpiredQuizzes(course: Course): boolean {
+  const prog = db().progress[course.id] ?? {};
+  const now = Date.now();
+  let changed = false;
+  for (const lesson of course.weeks.flatMap((w) => w.lessons)) for (const quiz of lesson.modules) {
+    if (quiz.type !== "quiz" || !quiz.timeLimit) continue;
+    for (const [sid, row] of Object.entries(prog)) {
+      const p = row[quiz.id];
+      if (!p || p.status === "done" || !p.startedAt || now <= p.startedAt + quiz.timeLimit * 60_000 + 30_000) continue;
+      const set = quizSet(quiz, sid, p.attempt ?? 1);
+      p.score = set.filter((x) => p.results?.[x.id]).length;
+      p.status = "done";
+      p.attempt ??= 1;
+      p.best = Math.max(p.best ?? 0, p.score);
+      p.updatedAt = now;
+      logEvent(course.id, { kind: "quiz", studentId: sid, moduleId: quiz.id, text: `Time ran out on “${quiz.title}”: ${p.score}/${set.length}` });
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 /** Whether a card is on this student's board: visible to them, and not in an elective they haven't chosen. */

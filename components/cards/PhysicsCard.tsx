@@ -248,7 +248,8 @@ export function PhysicsCard(props: PhysicsCardProps) {
       tabIndex={props.hidden ? -1 : 0}
       aria-label={props.label}
       aria-disabled={props.locked || undefined}
-      className="absolute left-0 top-0 touch-none outline-none [-webkit-tap-highlight-color:transparent]"
+      // Cards that can be dragged take over touch; the rest let a swipe scroll the row or the page.
+      className={`absolute left-0 top-0 outline-none [-webkit-tap-highlight-color:transparent] ${props.draggable ? "touch-none" : "touch-pan-x touch-pan-y"}`}
       style={{ width: props.w, height: props.h, visibility: props.hidden ? "hidden" : "visible", cursor: props.locked ? "not-allowed" : "pointer" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

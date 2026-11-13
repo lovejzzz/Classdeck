@@ -330,7 +330,8 @@ export function postUpdate(courseId: string, st: Student, m: Module, up: Externa
   const status = norm(rawStatus);
   if (status) {
     if (/revis|redo|again/.test(status)) {
-      p.review = { verdict: "revise", text: up.text || up.next || "Please revise this one.", at: Date.now() };
+      // Keep any rubric levels already given; the update's own levels are on the update.
+      p.review = { verdict: "revise", text: up.text || up.next || "Please revise this one.", at: Date.now(), levels: p.review?.levels };
       if (p.status === "done") p.status = "doing";
       did.push("asked to revise");
     } else if (/^(done|complete|completed|yes|finished|pass|passed|attended|true)/.test(status)) {

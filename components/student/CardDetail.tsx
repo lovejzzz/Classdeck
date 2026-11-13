@@ -57,6 +57,11 @@ export function CardDetail(p: DetailProps) {
   const [checks, setChecks] = useState<number[]>(p.progress?.checks ?? []);
   const [highlights, setHighlights] = useState(p.progress?.highlights ?? []);
   const [watched, setWatched] = useState<string[]>(p.progress?.watched ?? []);
+  // The writing last sent to the server (null after a failed save), and whether "Done" is waiting on the server.
+  const [savedText, setSavedText] = useState<string | null>(p.progress?.output ?? "");
+  // Bumped when a save fails, so unsaved writing is tried again a little later without more typing.
+  const [retry, setRetry] = useState(0);
+  const [finishing, setFinishing] = useState(false);
   const mustWatch = (m.playlist ?? []).filter((x) => !x.optional);
   const [now] = useState(() => Date.now());
   const due = p.progress?.status === "done" ? undefined : dueInfo(m.due, now);
@@ -138,12 +143,39 @@ export function CardDetail(p: DetailProps) {
     const text = prompts.length ? promptsToText(prompts, responses) : output;
     const patch = prompts.length ? { output: text, responses } : { output: text };
     p.optimistic(status ? { ...patch, status } : patch);
-    op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, ...patch, status }).then(p.onChanged);
-    if (status) {
+    setSavedText(text);
+    const sent = op<{ ok?: boolean; error?: string }>(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, ...patch, status });
+    if (!status) {
+      void sent.then((r) => { if (r.ok === false) { setSavedText(null); setRetry((n) => n + 1); } else setRetry(0); p.onChanged(); });
+      return;
+    }
+    // Finishing waits for the server: if the save fails the card stays open with the work in it.
+    setFinishing(true);
+    void sent.then((r) => {
+      setFinishing(false);
+      p.onChanged();
+      if (r.ok === false) {
+        setSavedText(null);
+        setRetry((n) => n + 1);
+        if (r.error && !/signed out|reach the server|server had a problem/i.test(r.error)) toast(r.error, { icon: "x", tone: "plain" });
+        return;
+      }
       p.onClose(true);
       toast(m.type === "submit" ? `Handed in “${m.title}”` : `Finished “${m.title}”`);
-    }
+    });
   }
+
+  // Save while typing (a moment after the last keystroke), and warn before leaving with unsaved writing.
+  const draftText = prompts.length ? promptsToText(prompts, responses) : output;
+  const dirty = hasOutput && !m.choice && draftText !== (savedText ?? p.progress?.output ?? "");
+  useEffect(() => {
+    if (!dirty) return;
+    const t = setTimeout(() => save(), retry ? 12000 : 1500);
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => { clearTimeout(t); window.removeEventListener("beforeunload", warn); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftText, dirty, retry]);
 
   return (
     <div className={`grid ${m.tools.length && !m.choice ? "md:grid-cols-[1fr_20rem]" : ""}`}>
@@ -354,7 +386,7 @@ export function CardDetail(p: DetailProps) {
         {hasOutput && !m.choice && (
           // Stays in view at the bottom of the card while you scroll through long content.
           <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-7 flex flex-wrap items-center gap-3 border-t border-line bg-white/90 px-6 py-3 backdrop-blur sm:-mx-8 sm:-mb-8 sm:px-8">
-            <button onClick={() => save("done")} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>
+            <button onClick={() => save("done")} disabled={finishing} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>
               <Icon name="check" size={14} /> {p.progress?.status === "done" ? "Save changes" : review?.verdict === "revise" ? "Hand in revision" : meta.doneLabel}
             </button>
             {checklist.length > 0 && p.progress?.status !== "done" && (
@@ -421,8 +453,20 @@ function Questions(p: DetailProps) {
   }
 
   async function submit(auto = false) {
+    // A typed short answer that hasn't been sent yet counts too.
+    for (const q of set) {
+      const d = drafts[q.id];
+      if (q.kind === "short" && typeof d === "string" && d.trim() && d.trim() !== answers[q.id]) {
+        await op(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid: q.id, text: d.trim() });
+      }
+    }
+    const r = await op<{ ok?: boolean; score?: number; error?: string }>(p.courseId, { op: "submitQuiz", studentId: p.studentId, moduleId: m.id });
+    if (r.ok === false) {
+      p.onChanged();
+      if (r.error && !/signed out|reach the server|server had a problem/i.test(r.error)) toast(r.error, { icon: "x", tone: "plain" });
+      return;
+    }
     p.optimistic({ status: "done" });
-    const r = await op<{ score?: number }>(p.courseId, { op: "submitQuiz", studentId: p.studentId, moduleId: m.id });
     p.onChanged();
     toast(`${auto ? "Time’s up. " : ""}Submitted. Score: ${r.score ?? 0}/${total}`, { icon: "quiz" });
   }
@@ -592,7 +636,7 @@ function Questions(p: DetailProps) {
                   if (isPicked && showResult) tone = right ? "border-ok/50 bg-ok/[0.06]" : "border-bad/45 bg-bad/[0.05] shake";
                   else if (isKey) tone = "border-dashed border-ok/60 bg-white";
                   return (
-                    <button key={`${oi}-${isPicked && showResult ? (right ? "y" : "n") : ""}`} onClick={() => answer(q.id, oi)} disabled={submitted} aria-pressed={isPicked} className={optBtn(isPicked, tone)}>
+                    <button key={`${oi}-${isPicked && showResult ? (right ? "y" : "n") : ""}`} onClick={() => answer(q.id, oi)} disabled={locked} aria-pressed={isPicked} className={optBtn(isPicked, tone)}>
                       <span className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border ${isPicked ? "border-ink bg-ink" : "border-line-strong"}`}>
                         {isPicked && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </span>

@@ -225,7 +225,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
           title={`${group?.name ?? "Collab Studio"} · ${lesson.title}`}
           subtitle={weekTitle}
           slides={posts
-            .filter((p) => p.moduleId === studioId && p.groupId === groupId)
+            .filter((p) => p.moduleId === studioId && !!group?.studentIds.includes(p.studentId))
             .map((p) => ({
               id: p.id,
               author: course.students.find((s) => s.id === p.studentId)?.name ?? "",

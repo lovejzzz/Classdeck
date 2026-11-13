@@ -14,6 +14,8 @@ export function cloneLesson(src: Lesson, title?: string): Lesson {
   l.modules = l.modules.map((m): Module => ({
     ...m,
     id: uid("m-"),
+    // A copy starts without a due date; the old date would make every copied card overdue at once.
+    due: undefined,
     attachments: m.attachments?.map((a) => ({ ...a, id: uid("a-") })),
     audience: m.audience.kind === "branch" ? { ...m.audience, slot: slot(m.audience.slot) } : m.audience,
   }));
