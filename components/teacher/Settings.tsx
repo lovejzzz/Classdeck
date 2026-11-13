@@ -186,7 +186,7 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
 
       <section className="card p-6">
         <h3 className="text-[15px] font-medium">Access</h3>
-        <p className="mt-1 text-[13px] text-ink-3">Who can join, and a read-only link for guests. Real sign-in comes with deployment; these settings already apply to the class code.</p>
+        <p className="mt-1 text-[13px] text-ink-3">Who can join with the class code, and a read-only link for guests.</p>
         <div className="mt-4 divide-y divide-line border-t border-line text-[13px]">
           <div className="flex flex-wrap items-center gap-3 py-3">
             <span className="w-32 text-ink-2">Class code</span>

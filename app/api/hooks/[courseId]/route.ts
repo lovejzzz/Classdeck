@@ -1,4 +1,4 @@
-import { publicOrigin } from "@/lib/origin";
+import { clientIp, publicOrigin } from "@/lib/origin";
 import { throttled } from "@/lib/auth";
 import { applyMany, checkHookKey } from "@/lib/hooks";
 import { db, save } from "@/lib/store";
@@ -13,7 +13,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 
 export async function POST(request: Request, { params }: Ctx) {
   const { courseId } = await params;
-  const who = `hook:${courseId}:${request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local"}`;
+  const who = `hook:${courseId}:${clientIp(request)}`;
   const course = db().courses[courseId];
   const token = request.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? null;
   if (!course || !checkHookKey(course, token)) {

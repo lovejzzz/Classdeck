@@ -113,7 +113,21 @@ function load(): DB | null {
   return d as unknown as DB;
 }
 
+/** Online, the open demo course goes back to its starting state every night (after 4 a.m. New York time). */
+function nightlyDemoReset() {
+  if (process.env.NODE_ENV !== "production") return;
+  const ny = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const day = ny.toDateString();
+  const gg = g as { __demoDay?: string; __demoResetting?: boolean };
+  if (!gg.__demoDay) { gg.__demoDay = day; return; }
+  if (gg.__demoDay === day || ny.getHours() < 4 || gg.__demoResetting) return;
+  gg.__demoDay = day;
+  gg.__demoResetting = true;
+  try { reset(); } finally { gg.__demoResetting = false; }
+}
+
 export function db(): DB {
+  if (g.__lmsdb) nightlyDemoReset();
   if (!g.__lmsdb) {
     let d = load();
     if (!d) {

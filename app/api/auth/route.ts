@@ -1,3 +1,4 @@
+import { clientIp } from "@/lib/origin";
 import { checkSecret, endSession, getSession, hashSecret, startSession, teacherOf, throttled } from "@/lib/auth";
 import { uid } from "@/lib/profile";
 import { verifyGoogle } from "@/lib/google";
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "local";
+  const ip = clientIp(request);
   const d = db();
 
   switch (body.action) {
