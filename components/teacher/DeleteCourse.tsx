@@ -28,7 +28,7 @@ export function DeleteCourse({ course }: { course: Course }) {
         <button onClick={() => setOpen(true)} className="btn btn-ghost press mt-4 h-9 hover:!border-bad hover:!text-bad"><Icon name="trash" size={13} /> Delete course…</button>
       ) : (
         <div className="rise mt-4 space-y-2">
-          <label className="grid gap-1 text-[13px] text-ink-2">Type <span className="font-medium text-ink">{course.title}</span> to confirm
+          <label className="grid gap-1 text-[13px] text-ink-2"><span>Type <span className="font-medium text-ink">{course.title}</span> to confirm</span>
             <input value={name} onChange={(e) => setName(e.target.value)} autoFocus className="field h-9 max-w-sm" aria-label="Course name to confirm" />
           </label>
           <div className="flex gap-2">
