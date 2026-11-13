@@ -1,6 +1,6 @@
 # Running a class without outside tools
 
-Classdeck can do everything a Google Form did: get students onto their own board, and collect feedback after an activity. Nothing here needs email, an outside form, or a paid service.
+Questhand can do everything a Google Form did: get students onto their own board, and collect feedback after an activity. Nothing here needs email, an outside form, or a paid service.
 
 ## Getting students in
 
@@ -22,7 +22,7 @@ Picking a name from the list is quick, but anyone with the class code could pick
 - **Copy all** copies name, email (if known), and link, for an email merge.
 - Each link works once and expires after 14 days. Making links again replaces the old ones.
 
-The join link and QR code use this site's address. On a copy running on your own computer they only work on that computer; once Classdeck is online, they point to the public address.
+The join link and QR code use this site's address. On a copy running on your own computer they only work on that computer; once Questhand is online, they point to the public address.
 
 ## Forms on cards
 

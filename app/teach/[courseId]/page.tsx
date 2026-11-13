@@ -90,7 +90,7 @@ export default function TeachPage() {
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
           <Link href="/" className="flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink">
-            <span className="inline-block h-4 w-4 rounded-[5px] bg-ink" />Classdeck
+            <span className="inline-block h-4 w-4 rounded-[5px] bg-ink" />Questhand
           </Link>
           <span className="text-line-strong">/</span>
           <h1 className="truncate text-[14px] font-medium">{course.title}</h1>

@@ -78,7 +78,7 @@ export function Joining({ course, onChanged, setSelfJoin }: { course: Course; on
             <button onClick={() => setShow(true)} className="btn btn-dark press h-8"><Icon name="board" size={13} /> Show to the class</button>
             <button onClick={() => { navigator.clipboard?.writeText(joinUrl).catch(() => {}); toast("Join link copied"); }} className="btn btn-ghost press h-8">Copy link</button>
           </div>
-          {local && <p className="text-[12px] text-ink-3">This address only works on this computer. Once Classdeck is online, the code points to the public address.</p>}
+          {local && <p className="text-[12px] text-ink-3">This address only works on this computer. Once Questhand is online, the code points to the public address.</p>}
         </div>
       </div>
 

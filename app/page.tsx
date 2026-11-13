@@ -65,7 +65,7 @@ export default function Home() {
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-4 py-16">
       <div className="rise flex items-center gap-2 text-[13px] font-medium text-ink-2">
         <span className="inline-block h-4 w-4 rounded-[5px] bg-ink" />
-        Classdeck
+        Questhand
       </div>
       <h1 className="rise mt-6 max-w-xl text-[34px] font-semibold leading-[1.15] tracking-tight" style={{ "--i": 1 } as React.CSSProperties}>
         Every lesson is a deck. Every student gets their own hand.

@@ -30,7 +30,7 @@ export default function WelcomePage() {
         if (r.ok) setInfo({ token, name: r.name, courseTitle: r.courseTitle });
         else setError(r.error ?? "This link doesn’t work");
       })
-      .catch(() => setError("Couldn’t reach Classdeck. Check your connection and reload."));
+      .catch(() => setError("Couldn’t reach Questhand. Check your connection and reload."));
   }, [hash, courseId, info]);
 
   async function submit(e: React.FormEvent) {

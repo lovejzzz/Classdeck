@@ -49,7 +49,9 @@ export interface DB {
 // Storage: SQLite (built into Node), one row per course per collection, written only when it changes.
 // The whole database stays in memory for reads; saves are incremental and atomic.
 const DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), ".data");
-const FILE = path.join(DIR, "classdeck.db");
+const FILE = path.join(DIR, "questhand.db");
+/** The database's name before the product was renamed Questhand; moved to FILE on first start. */
+const OLD_FILE = path.join(DIR, "classdeck.db");
 const LEGACY = path.join(DIR, "db.json");
 const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans"] as const;
 const GLOBAL = ["users", "sessions", "customConnectors"] as const;
@@ -82,6 +84,9 @@ function fresh(custom: Manifest[] = []): DB {
 function sql(): DatabaseSync {
   if (!g.__lmssql) {
     fs.mkdirSync(DIR, { recursive: true });
+    if (!fs.existsSync(FILE) && fs.existsSync(OLD_FILE)) {
+      for (const ext of ["", "-wal", "-shm"]) if (fs.existsSync(OLD_FILE + ext)) fs.renameSync(OLD_FILE + ext, FILE + ext);
+    }
     const conn = new DatabaseSync(FILE);
     conn.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
     g.__lmssql = conn;

@@ -51,7 +51,7 @@ export async function fetchJson(
     res = await fetch(url, {
       // Only built-in connectors may POST (e.g. grammar checking); custom manifests are GET-only.
       ...(opts.form && !opts.custom ? { method: "POST", body: new URLSearchParams(opts.form) } : {}),
-      headers: { Accept: "application/json", "User-Agent": "classdeck-prototype/0.1", ...opts.headers },
+      headers: { Accept: "application/json", "User-Agent": "questhand-prototype/0.1", ...opts.headers },
       redirect: opts.custom ? "error" : "follow",
       signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS),
       cache: "no-store",
@@ -84,7 +84,7 @@ export async function fetchHtml(raw: string): Promise<{ url: string; html: strin
     let res: Response;
     try {
       res = await fetch(url, {
-        headers: { Accept: "text/html,application/xhtml+xml", "User-Agent": "Mozilla/5.0 (compatible; classdeck-preview/0.1)" },
+        headers: { Accept: "text/html,application/xhtml+xml", "User-Agent": "Mozilla/5.0 (compatible; questhand-preview/0.1)" },
         redirect: "manual",
         signal: AbortSignal.timeout(6000),
         cache: "no-store",

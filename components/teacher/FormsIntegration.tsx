@@ -14,17 +14,17 @@ const DOCS = "https://github.com/lovejzzz/Classdeck/blob/main/docs/google-forms.
 /** The Apps Script a teacher pastes into their Google Form. */
 function appsScript(url: string, key: string, source: string, card: string) {
   const q = (s: string) => JSON.stringify(s);
-  return `// Classdeck: sends each new response from this form to your class.
+  return `// Questhand: sends each new response from this form to your class.
 // 1. In the form: ⋮ menu → Apps Script. Replace everything with this, then Save.
-// 2. Clock icon (Triggers) → Add Trigger → function sendToClassdeck,
+// 2. Clock icon (Triggers) → Add Trigger → function sendToQuesthand,
 //    event source "From form", event type "On form submit" → Save, and allow access.
-const CLASSDECK_URL = ${q(url)};
-const CLASSDECK_KEY = ${q(key || "PASTE YOUR KEY HERE")};
+const QUESTHAND_URL = ${q(url)};
+const QUESTHAND_KEY = ${q(key || "PASTE YOUR KEY HERE")};
 const SOURCE = ${q(source)}; // students see this as who sent the feedback
 const CARD = ${q(card)}; // optional: the card every response is about
 const EMAIL_LINKS = true; // email new students the private link to their board (needs "Collect email addresses")
 
-function sendToClassdeck(e) {
+function sendToQuesthand(e) {
   const row = {};
   e.response.getItemResponses().forEach(function (r) {
     const item = r.getItem();
@@ -41,11 +41,11 @@ function sendToClassdeck(e) {
   });
   const email = e.response.getRespondentEmail();
   if (email) row["Email"] = email;
-  const res = UrlFetchApp.fetch(CLASSDECK_URL, {
+  const res = UrlFetchApp.fetch(QUESTHAND_URL, {
     method: "post",
     contentType: "application/json",
     muteHttpExceptions: true,
-    headers: { Authorization: "Bearer " + CLASSDECK_KEY },
+    headers: { Authorization: "Bearer " + QUESTHAND_KEY },
     payload: JSON.stringify({ items: [{ row: row, id: e.response.getId(), source: SOURCE, card: CARD }] }),
   });
   console.log(res.getResponseCode() + " " + res.getContentText());
@@ -64,7 +64,7 @@ function sendToClassdeck(e) {
 }
 
 const GUIDE: [string, string][] = [
-  ["Name / Email", "Which student. Turn on “Collect email addresses” in the form, or ask for their name as it appears in Classdeck."],
+  ["Name / Email", "Which student. Turn on “Collect email addresses” in the form, or ask for their name as it appears in Questhand."],
   ["Electives", "Checkboxes with the elective titles. Sets exactly the ones ticked."],
   ["Path", "“Guided” or “Stretch”. Applies to every week that has both."],
   ["Why are you taking this course? / Goal / Objectives", "Fill in the student’s plan. One objective per line; “learn this — how I’ll know” splits the measure."],
@@ -156,7 +156,7 @@ export function FormsIntegration({ course, onChanged }: { course: Course; onChan
           <span className="w-full text-ink-2 sm:w-32">Address</span>
           <code className="min-w-0 flex-1 truncate rounded-md bg-lane px-2 py-1 font-mono text-[12px] text-ink-2">{url}</code>
           <button onClick={() => copy(url, "Address copied")} className="btn btn-ghost press h-8">Copy</button>
-          {local && <span className="basis-full sm:pl-[8.75rem] text-[12px] text-warn">This is a local address, so Google can’t reach it. Use the address of your deployed Classdeck, or import a CSV below.</span>}
+          {local && <span className="basis-full sm:pl-[8.75rem] text-[12px] text-warn">This is a local address, so Google can’t reach it. Use the address of your deployed Questhand, or import a CSV below.</span>}
         </div>
       </div>
 
@@ -181,7 +181,7 @@ export function FormsIntegration({ course, onChanged }: { course: Course; onChan
           {!key && <p className="mt-2 text-[12px] text-ink-3">Create a key first and the script will include it.</p>}
 
           <h4 className="mt-5 text-[13px] font-medium">How to word your questions</h4>
-          <p className="mt-0.5 text-[12.5px] text-ink-3">Classdeck reads answers by question title. Titles only need to contain these words; anything else is ignored.</p>
+          <p className="mt-0.5 text-[12.5px] text-ink-3">Questhand reads answers by question title. Titles only need to contain these words; anything else is ignored.</p>
           <dl className="mt-2 divide-y divide-line rounded-lg border border-line">
             {GUIDE.map(([q, a]) => (
               <div key={q} className="grid gap-1 px-3 py-2 sm:grid-cols-[14rem_1fr] sm:gap-3">

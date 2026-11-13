@@ -153,7 +153,7 @@ export default function PickName() {
           {error && <p className="rise mt-2 text-[13px] text-bad" role="alert">{error}</p>}
         </form>
       )}
-      <Link href="/" className="mt-10 block w-fit text-[12.5px] text-ink-3 hover:text-ink">← Classdeck home</Link>
+      <Link href="/" className="mt-10 block w-fit text-[12.5px] text-ink-3 hover:text-ink">← Questhand home</Link>
     </main>
   );
 }

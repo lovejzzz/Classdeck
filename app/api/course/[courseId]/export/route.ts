@@ -63,7 +63,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
     items.push(`<item identifier="week_${wi}"><title>${esc(w.title)}</title>${children.join("")}</item>`);
   });
   const manifest = `<?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="classdeck_${esc(course.id)}" xmlns="http://www.imsglobal.org/xsd/imsccv1p1/imscp_v1p1" xmlns:lom="http://ltsc.ieee.org/xsd/imsccv1p1/LOM/resource" xmlns:lomimscc="http://ltsc.ieee.org/xsd/imsccv1p1/LOM/manifest">
+<manifest identifier="questhand_${esc(course.id)}" xmlns="http://www.imsglobal.org/xsd/imsccv1p1/imscp_v1p1" xmlns:lom="http://ltsc.ieee.org/xsd/imsccv1p1/LOM/resource" xmlns:lomimscc="http://ltsc.ieee.org/xsd/imsccv1p1/LOM/manifest">
   <metadata><schema>IMS Common Cartridge</schema><schemaversion>1.1.0</schemaversion>
     <lomimscc:lom><lomimscc:general><lomimscc:title><lomimscc:string>${esc(course.title)}</lomimscc:string></lomimscc:title></lomimscc:general></lomimscc:lom>
   </metadata>

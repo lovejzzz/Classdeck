@@ -143,7 +143,7 @@ export function CardFace({
   );
 }
 
-/** The back of a card: dark, with a fine lattice and the Classdeck mark. */
+/** The back of a card: dark, with a fine lattice and the Questhand mark. */
 export function CardBack({ locked = false }: { locked?: boolean }) {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-[14px] border border-[#2c2c29] bg-ink select-none">
@@ -158,7 +158,7 @@ export function CardBack({ locked = false }: { locked?: boolean }) {
         <span className="flex h-9 w-9 items-center justify-center rounded-[9px] border border-white/25 bg-ink">
           {locked ? <Icon name="lock" size={15} /> : <span className="h-3.5 w-3.5 rounded-[4px] bg-white/85" />}
         </span>
-        <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/55">{locked ? "Locked" : "Classdeck"}</span>
+        <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/55">{locked ? "Locked" : "Questhand"}</span>
       </div>
     </div>
   );

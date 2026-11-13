@@ -1,6 +1,6 @@
-# Connecting Google Forms (or any tool) to a Classdeck class
+# Connecting Google Forms (or any tool) to a Questhand class
 
-A form can do two things in Classdeck:
+A form can do two things in Questhand:
 
 1. **Set up each student's board** from their answers: which electives they take, Guided or Stretch path, and their plan (why they're here, goal, objectives, confidence).
 2. **Post an update to a card** after an activity or workshop: feedback, a "try next", skill levels, a score, links, and whether the card is done or needs revising.
@@ -9,21 +9,21 @@ Students see updates on the card itself and in their feedback inbox. Skill level
 
 Nothing here needs a paid service. Google Apps Script is free.
 
-You may not need Google at all: Classdeck has its own join QR code, setup links, and forms on cards. See [Running a class without outside tools](joining-and-forms.md).
+You may not need Google at all: Questhand has its own join QR code, setup links, and forms on cards. See [Running a class without outside tools](joining-and-forms.md).
 
 ## Option A: send responses automatically (Apps Script)
 
-1. In Classdeck, open **Settings → Google Forms and other tools** and choose **Create key**. Copy the key; it is shown only once. Anyone with the key can post updates to your class, so treat it like a password. You can replace or turn it off at any time.
+1. In Questhand, open **Settings → Google Forms and other tools** and choose **Create key**. Copy the key; it is shown only once. Anyone with the key can post updates to your class, so treat it like a password. You can replace or turn it off at any time.
 2. Open **Connect a Google Form**. Fill in "Shown to students as" (e.g. *Workshop 2 form*) and, if every response is about the same card, pick that card. Choose **Copy script**.
 3. In your Google Form: **⋮ → Apps Script**. Replace everything with the copied script and save.
-4. In Apps Script, open **Triggers** (clock icon) → **Add Trigger**: function `sendToClassdeck`, event source *From form*, event type *On form submit*. Save and allow the permissions Google asks for.
-5. Submit a test response. In Apps Script → **Executions** you'll see Classdeck's reply, including anything it couldn't match.
+4. In Apps Script, open **Triggers** (clock icon) → **Add Trigger**: function `sendToQuesthand`, event source *From form*, event type *On form submit*. Save and allow the permissions Google asks for.
+5. Submit a test response. In Apps Script → **Executions** you'll see Questhand's reply, including anything it couldn't match.
 
-Classdeck must be reachable from the internet for this to work. A copy running on your own computer (`localhost`) can't receive these requests. Use option B instead.
+Questhand must be reachable from the internet for this to work. A copy running on your own computer (`localhost`) can't receive these requests. Use option B instead.
 
 ### New students get their own private board automatically
 
-When an onboarding form adds a student (or sets up one who has never signed in), Classdeck makes a **one-time link** for them, and the script emails it to the address the form collected. (Turn on *Collect email addresses* in the form's settings. Emails go out from your Google account, so Google's daily sending limit applies: about 100 a day on a free account.)
+When an onboarding form adds a student (or sets up one who has never signed in), Questhand makes a **one-time link** for them, and the script emails it to the address the form collected. (Turn on *Collect email addresses* in the form's settings. Emails go out from your Google account, so Google's daily sending limit applies: about 100 a day on a free account.)
 
 The student opens the link, chooses a 4-digit PIN, and lands on their board, already set up with their electives, path, and plan. After that they sign in with the class code, their name, and their PIN.
 
@@ -36,11 +36,11 @@ To turn emails off, set `EMAIL_LINKS = false` in the script and share links from
 
 ## Option B: import a CSV (no setup)
 
-In Google Forms: **Responses → ⋮ → Download responses (.csv)**. In Classdeck: **Settings → Google Forms and other tools → Import a CSV of responses**. Each row is reported back: which student it matched, what changed, and anything skipped. New students' one-time links are listed too, with **Copy all links** (name, email, link) for a mail merge.
+In Google Forms: **Responses → ⋮ → Download responses (.csv)**. In Questhand: **Settings → Google Forms and other tools → Import a CSV of responses**. Each row is reported back: which student it matched, what changed, and anything skipped. New students' one-time links are listed too, with **Copy all links** (name, email, link) for a mail merge.
 
 ## How to word your questions
 
-Classdeck reads each answer by its question title. Titles only need to *contain* these words; other questions are ignored.
+Questhand reads each answer by its question title. Titles only need to *contain* these words; other questions are ignored.
 
 | Question title contains | What it does |
 |---|---|
@@ -64,7 +64,7 @@ Sending the same response twice changes nothing: each response's id is remembere
 ## For other tools: the JSON format
 
 ```
-POST https://<your Classdeck>/api/hooks/<course id>
+POST https://<your Questhand>/api/hooks/<course id>
 Authorization: Bearer <key>
 Content-Type: application/json
 
@@ -84,4 +84,4 @@ Content-Type: application/json
 ] }
 ```
 
-You can also send `{ "row": { "<question title>": "<answer>", ... } }` and Classdeck reads it with the wording rules above. Up to 300 items per request. The reply lists, for each item, the student and card matched, what changed, warnings, and errors.
+You can also send `{ "row": { "<question title>": "<answer>", ... } }` and Questhand reads it with the wording rules above. Up to 300 items per request. The reply lists, for each item, the student and card matched, what changed, warnings, and errors.

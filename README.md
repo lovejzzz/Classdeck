@@ -1,4 +1,4 @@
-# Classdeck
+# Questhand
 
 把一门课做成一副卡牌：老师按周发牌，每个学生拿到自己的一手牌。网站界面是英文的。
 
@@ -16,7 +16,7 @@ npm run dev
 - 学生端：首页输入班级码 `CAPS26`，或直接打开 `/learn/demo/s2`（Leo）
 - 学生个人练习板：`/learn/demo/s1/board`（Mia）
 
-数据存在 `.data/classdeck.db`（SQLite，Node 22.13 以上自带，不需要另装）；旧版的 `.data/db.json` 第一次启动时会自动迁移，原文件改名为 `db.json.migrated`。老师端右上角的箭头图标可以恢复示范数据。AI 助教需要在 `.env.local` 里设置 `ANTHROPIC_API_KEY`（见 `.env.example`）。
+数据存在 `.data/questhand.db`（SQLite，Node 22.13 以上自带，不需要另装）；旧版的 `.data/db.json` 第一次启动时会自动迁移，原文件改名为 `db.json.migrated`。老师端右上角的箭头图标可以恢复示范数据。AI 助教需要在 `.env.local` 里设置 `ANTHROPIC_API_KEY`（见 `.env.example`）。
 
 ## 账号
 

@@ -146,12 +146,12 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
 
       <section className="card p-6">
         <h3 className="text-[15px] font-medium">Back up and share</h3>
-        <p className="mt-1 text-[13px] text-ink-3">Export the course (weeks, cards, media links, rubric, session agendas) as a file, or as a Common Cartridge for another LMS. Import adds weeks after your current ones, from a Classdeck file or straight from a course plan document; nothing is replaced.</p>
+        <p className="mt-1 text-[13px] text-ink-3">Export the course (weeks, cards, media links, rubric, session agendas) as a file, or as a Common Cartridge for another LMS. Import adds weeks after your current ones, from a Questhand file or straight from a course plan document; nothing is replaced.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             onClick={() => {
               const { weeks, skills, levels, title, subtitle } = course;
-              download(`${course.title} course.json`, JSON.stringify({ format: "classdeck-course", version: 1, title, subtitle, skills, levels, weeks }, null, 2), "application/json");
+              download(`${course.title} course.json`, JSON.stringify({ format: "questhand-course", version: 1, title, subtitle, skills, levels, weeks }, null, 2), "application/json");
               toast("Course exported", { icon: "download" });
             }}
             className="btn btn-ghost press"
@@ -177,7 +177,7 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
                   onChanged();
                   toast(`Imported ${weeks.length} week${weeks.length === 1 ? "" : "s"}`, { icon: "upload" });
                 } catch {
-                  toast("That file isn’t a Classdeck course export", { icon: "x", tone: "bad" });
+                  toast("That file isn’t a Questhand course export", { icon: "x", tone: "bad" });
                 }
               }} />
           </label>

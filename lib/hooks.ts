@@ -116,7 +116,7 @@ export function rowToItem(course: Course, row: Record<string, unknown>): HookIte
     const sk = skillOf(course, bracket ?? rawKey);
     const lvl = parseLevel(course, val);
     if (sk && lvl && (bracket || !/feedback|comment|note|observ/.test(key))) { scores[sk.id] = lvl; continue; }
-    if (/classdeck id|student id/.test(key)) item.studentId = val;
+    if (/questhand id|classdeck id|student id/.test(key)) item.studentId = val;
     else if (/e ?mail/.test(key)) item.email = val;
     else if (/^(your |student |full )?name\b|^name$|^student$/.test(key)) item.name = val;
     else if (/elective/.test(key)) item.electives = val;
@@ -187,7 +187,7 @@ export function applyItem(courseId: string, raw: HookItem, origin = ""): HookRes
       g?.studentIds.push(st.id);
       did.push(`added ${name} to the class${g ? ` (${g.name})` : ""}`);
     } else {
-      return res({ ok: false, error: name || email ? `No student matches ${name || email}` : "Say which student: name, email, or Classdeck id" });
+      return res({ ok: false, error: name || email ? `No student matches ${name || email}` : "Say which student: name, email, or Questhand id" });
     }
   } else if (email && !st.email) st.email = email;
 

@@ -33,7 +33,7 @@ export default function Login() {
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
-      <Link href="/" className="rise flex items-center gap-2 text-[13px] font-medium text-ink-2"><span className="inline-block h-4 w-4 rounded-[5px] bg-ink" />Classdeck</Link>
+      <Link href="/" className="rise flex items-center gap-2 text-[13px] font-medium text-ink-2"><span className="inline-block h-4 w-4 rounded-[5px] bg-ink" />Questhand</Link>
       <h1 className="rise mt-6 text-[24px] font-semibold tracking-tight">{mode === "login" ? "Sign in" : "Create a teacher account"}</h1>
       <p className="rise mt-1.5 text-[13.5px] text-ink-2">{mode === "login" ? "For teachers. Students join with a class code instead." : "You’ll own the courses you create. Students never need an account."}</p>
       <form onSubmit={submit} className="rise mt-6 space-y-2.5" style={{ "--i": 1 } as React.CSSProperties}>

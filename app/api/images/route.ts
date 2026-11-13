@@ -6,7 +6,7 @@ const cache = new Map<string, { at: number; results: Result[] }>();
 
 async function search(q: string, timeout: number): Promise<Result[]> {
   const res = await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&page_size=18&mature=false`, {
-    headers: { "User-Agent": "classdeck-prototype/0.1" },
+    headers: { "User-Agent": "questhand-prototype/0.1" },
     signal: AbortSignal.timeout(timeout),
     cache: "no-store",
   });
