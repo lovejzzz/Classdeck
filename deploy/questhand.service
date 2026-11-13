@@ -9,9 +9,10 @@ WorkingDirectory=/opt/questhand
 EnvironmentFile=/opt/questhand/.env.local
 Environment=NODE_ENV=production
 # Only reachable from this machine; Cloudflare Tunnel brings visitors in.
-ExecStart=/usr/bin/npx next start -H 127.0.0.1 -p 3000
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3000
 Restart=always
 RestartSec=3
+TimeoutStopSec=10
 
 [Install]
 WantedBy=multi-user.target
