@@ -88,6 +88,7 @@ export default function Login() {
         {mode === "login" ? "New here? Create a teacher account" : "Already have an account? Sign in"} <Icon name="arrow" size={12} className="inline" />
       </button>
       <Link href="/teach/demo" className="rise mt-8 text-[12.5px] text-ink-3 hover:text-ink">Or look around the CaPS demo course without an account →</Link>
+      <p className="rise mt-6 flex gap-4 text-[12px] text-ink-3"><Link href="/privacy" className="hover:text-ink">Privacy</Link><Link href="/terms" className="hover:text-ink">Terms</Link></p>
     </main>
   );
 }

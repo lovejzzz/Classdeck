@@ -177,6 +177,7 @@ export default function Home() {
         <Icon name="plug" size={14} />
         Connectors: plug in outside APIs
       </Link>
+      <p className="mt-10 flex gap-4 text-[12.5px] text-ink-3"><Link href="/privacy" className="hover:text-ink">Privacy</Link><Link href="/terms" className="hover:text-ink">Terms</Link></p>
     </main>
   );
 }
