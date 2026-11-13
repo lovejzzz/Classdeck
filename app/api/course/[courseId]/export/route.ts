@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/lib/origin";
 import { canTeach, getSession, unauthorized } from "@/lib/auth";
 import { db } from "@/lib/store";
 import { TYPE_META } from "@/lib/ui";
@@ -47,7 +48,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
   const course = db().courses[courseId];
   if (!course) return new Response("No such course", { status: 404 });
   if (!canTeach(getSession(request), course)) return unauthorized("teacher");
-  const origin = new URL(request.url).origin;
+  const origin = publicOrigin(request);
   const files: { name: string; data: string }[] = [];
   const items: string[] = [];
   const resources: string[] = [];

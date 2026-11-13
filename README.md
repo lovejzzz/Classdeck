@@ -4,6 +4,10 @@
 
 示范课程是 CaPS 演讲表达课（第 0 到 6 周），内容来自《CaPS Padlet Week 0–6 Course Plan》。
 
+## 上线
+
+见 [docs/deploy.md](docs/deploy.md)：一台小服务器 + Cloudflare R2（文件和数据库备份）+ Cloudflare Tunnel。
+
 ## 运行
 
 ```bash

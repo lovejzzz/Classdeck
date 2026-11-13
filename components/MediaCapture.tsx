@@ -85,7 +85,8 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
     const s = stream.current;
     if (!s) return;
     const type = pickType(video);
-    const r = new MediaRecorder(s, type ? { mimeType: type } : undefined);
+    // Kept small so uploads are quick on school Wi-Fi: about 7 MB a minute for 720p video, under 1 MB a minute for audio.
+    const r = new MediaRecorder(s, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 64_000, ...(video ? { videoBitsPerSecond: screen ? 1_200_000 : 900_000 } : {}) });
     const chunks: Blob[] = [];
     r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     if (captions) {

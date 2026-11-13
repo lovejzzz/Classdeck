@@ -1,12 +1,16 @@
 import fs from "fs/promises";
 import path from "path";
 import { getSession } from "@/lib/auth";
-import { kindOf, MAX_UPLOAD, TYPES, UPLOAD_DIR } from "@/lib/uploads";
+import { r2Ready } from "@/lib/blob";
+import { db, save } from "@/lib/store";
+import { usedBy } from "./pending";
+import { extFor, fmtMB, kindOf, limits, storedName, uploaderOf, UPLOAD_DIR } from "@/lib/uploads";
 
-/** 老师上传卡牌素材（图片、视频、录音、文件）。原型里存在 .data/uploads。 */
+/** Uploads to this computer's disk (development, or when no R2 bucket is set up). Online uploads use /api/upload/start. */
 export async function POST(request: Request) {
-  // Anyone signed in (teacher, student, or a demo visitor) can upload.
-  if (!getSession(request)) return Response.json({ ok: false, error: "Sign in to upload files" }, { status: 401 });
+  const session = getSession(request);
+  if (!session) return Response.json({ ok: false, error: "Sign in to upload files" }, { status: 401 });
+  if (r2Ready()) return Response.json({ ok: false, error: "Uploads go straight to storage here. Reload the page and try again." }, { status: 400 });
   let form: FormData;
   try {
     form = await request.formData();
@@ -15,13 +19,16 @@ export async function POST(request: Request) {
   }
   const file = form.get("file");
   if (!(file instanceof File)) return Response.json({ ok: false, error: "No file received" }, { status: 400 });
-  if (file.size > MAX_UPLOAD) return Response.json({ ok: false, error: "Files must be 25 MB or smaller" }, { status: 413 });
-  let ext = path.extname(file.name).slice(1).toLowerCase();
-  if (!ext && file.type === "audio/webm") ext = "weba";
-  if (ext === "webm" && file.type.startsWith("audio/")) ext = "weba";
-  if (!TYPES[ext]) return Response.json({ ok: false, error: `.${ext || "?"} files aren't supported` }, { status: 415 });
-  const name = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const by = uploaderOf(session);
+  const lim = limits(by, false);
+  if (file.size > lim.file) return Response.json({ ok: false, error: `Files must be ${fmtMB(lim.file)} or smaller` }, { status: 413 });
+  if (usedBy(by) + file.size > lim.total) return Response.json({ ok: false, error: `You’ve used your ${fmtMB(lim.total)} of uploads. Remove some older files, or share a link instead.` }, { status: 413 });
+  const ext = extFor(file.name, file.type);
+  if (!ext) return Response.json({ ok: false, error: `That kind of file isn't supported` }, { status: 415 });
+  const name = storedName(ext);
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
   await fs.writeFile(path.join(/*turbopackIgnore: true*/ UPLOAD_DIR, name), Buffer.from(await file.arrayBuffer()));
+  db().uploads[name] = { by, size: file.size, at: Date.now() };
+  save();
   return Response.json({ ok: true, url: `/api/upload/${name}`, name: file.name, size: file.size, kind: kindOf(ext) });
 }

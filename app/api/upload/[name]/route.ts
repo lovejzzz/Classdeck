@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { presignGet, r2Ready } from "@/lib/blob";
 import { TYPES, UPLOAD_DIR } from "@/lib/uploads";
 
 type Ctx = { params: Promise<{ name: string }> };
@@ -13,6 +14,8 @@ export async function GET(request: Request, { params }: Ctx) {
   try {
     buf = await fs.readFile(path.join(/*turbopackIgnore: true*/ UPLOAD_DIR, name));
   } catch {
+    // Online, files live in R2: send the browser a short-lived link. (Files from before R2 stay on disk and are served above.)
+    if (r2Ready()) return new Response(null, { status: 302, headers: { Location: await presignGet(name), "Cache-Control": "private, max-age=600" } });
     return new Response("not found", { status: 404 });
   }
   const type = TYPES[ext] ?? "application/octet-stream";

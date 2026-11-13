@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/lib/origin";
 import { throttled } from "@/lib/auth";
 import { applyMany, checkHookKey } from "@/lib/hooks";
 import { db, save } from "@/lib/store";
@@ -29,7 +30,7 @@ export async function POST(request: Request, { params }: Ctx) {
   }
   const b = body as { items?: unknown[] };
   const items = Array.isArray(b?.items) ? b.items : Array.isArray(body) ? body : [body];
-  const results = applyMany(courseId, course, items, new URL(request.url).origin);
+  const results = applyMany(courseId, course, items, publicOrigin(request));
   const hook = course.access!.hook!;
   hook.lastUsed = Date.now();
   hook.uses = (hook.uses ?? 0) + 1;

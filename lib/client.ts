@@ -108,10 +108,29 @@ export function useQuery(): URLSearchParams | null {
 
 export type UploadReply = { ok: true; url: string; name: string; size: number; kind: "image" | "video" | "audio" | "file" } | { ok: false; error: string };
 
-export async function uploadFile(file: File): Promise<UploadReply> {
-  const form = new FormData();
-  form.append("file", file);
+/**
+ * Uploads a file. Online, it goes straight from the browser to storage (Cloudflare R2), so big videos never pass
+ * through our server; on a computer without storage set up, it's sent to the server as before.
+ */
+export async function uploadFile(file: File, onProgress?: (fraction: number) => void): Promise<UploadReply> {
   try {
+    const start = await fetch("/api/upload/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, type: file.type, size: file.size }) }).then((r) => r.json());
+    if (!start.ok) return start;
+    if (start.mode === "direct") {
+      const sent = await new Promise<boolean>((resolve) => {
+        const x = new XMLHttpRequest();
+        x.open("PUT", start.put);
+        x.setRequestHeader("Content-Type", start.type);
+        x.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+        x.onload = () => resolve(x.status >= 200 && x.status < 300);
+        x.onerror = () => resolve(false);
+        x.send(file);
+      });
+      if (!sent) return { ok: false, error: "Upload failed. Check your connection." };
+      return await fetch("/api/upload/finish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: start.key }) }).then((r) => r.json());
+    }
+    const form = new FormData();
+    form.append("file", file);
     const res = await fetch("/api/upload", { method: "POST", body: form });
     return await res.json();
   } catch {

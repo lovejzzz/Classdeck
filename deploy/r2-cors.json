@@ -1,0 +1,8 @@
+[
+  {
+    "AllowedOrigins": ["https://questhand.com", "https://www.questhand.com"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["content-type"],
+    "MaxAgeSeconds": 3600
+  }
+]

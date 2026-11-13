@@ -25,6 +25,7 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
   const [mode, setMode] = useState<Mode | null>(null);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [link, setLink] = useState("");
   const file = useRef<HTMLInputElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -38,7 +39,8 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
 
   async function upload(f: File, name?: string, transcript?: string, duration?: number) {
     setBusy(true);
-    const r = await uploadFile(f);
+    setProgress(0);
+    const r = await uploadFile(f, setProgress);
     setBusy(false);
     if (!r.ok) return toast(r.error, { icon: "x", tone: "bad" });
     await onAdd({ kind: r.kind, url: r.url, name: name ?? r.name, size: r.size, transcript, duration });
@@ -59,7 +61,7 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
       <div>
         <MediaCapture video={mode !== "audio"} screen={mode === "screen"} label={label}
           onKeep={(f, transcript, duration) => upload(f, `${mode === "screen" ? "Screen recording" : mode === "video" ? "Video" : "Recording"} · ${stamp()}`, transcript, duration)} onCancel={() => setMode(null)} />
-        {busy && <p className="mt-2 text-[12.5px] text-ink-3">Saving…</p>}
+        {busy && <p className="mt-2 text-[12.5px] text-ink-3" role="status">Saving…{progress > 0 && progress < 1 ? ` ${Math.round(progress * 100)}%` : ""}</p>}
       </div>
     );
   }
@@ -95,7 +97,7 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
     <div className="flex flex-wrap items-center gap-1.5">
       <button onClick={() => setMode("audio")} className={btn}><Icon name="mic" size={13} /> {compact ? "Audio" : "Record audio"}</button>
       <button onClick={() => setMode("video")} className={btn}><Icon name="camera" size={13} /> {compact ? "Video" : "Record video"}</button>
-      <button onClick={() => file.current?.click()} disabled={busy} className={btn}><Icon name="upload" size={13} /> {busy ? "Uploading…" : "Upload"}</button>
+      <button onClick={() => file.current?.click()} disabled={busy} className={btn}><Icon name="upload" size={13} /> {busy ? `Uploading…${progress > 0 && progress < 1 ? ` ${Math.round(progress * 100)}%` : ""}` : "Upload"}</button>
       <div ref={menu} className="relative">
         <button onClick={() => setMore((m) => !m)} aria-expanded={more} className={btn}>More <Icon name="chevron" size={12} className={`transition-transform duration-300 ${more ? "rotate-180" : ""}`} /></button>
         {more && (

@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/lib/origin";
 import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
@@ -275,7 +276,7 @@ export async function POST(request: Request, { params }: Ctx) {
     case "importRows": {
       // Rows from a CSV of form responses, applied the same way as the webhook.
       if (!Array.isArray(body.rows)) return fail("No rows");
-      extra = { results: applyMany(courseId, course, body.rows.map((row: unknown) => ({ row, source: body.source || undefined, card: body.card || undefined })), new URL(request.url).origin) };
+      extra = { results: applyMany(courseId, course, body.rows.map((row: unknown) => ({ row, source: body.source || undefined, card: body.card || undefined })), publicOrigin(request)) };
       break;
     }
     case "formResponse": {
@@ -335,7 +336,7 @@ export async function POST(request: Request, { params }: Ctx) {
       // One-time links for students on the list who haven't signed in yet. Each replaces any earlier link.
       const pins = d.pins[courseId] ?? {};
       const want = Array.isArray(body.studentIds) ? new Set(body.studentIds.map(String)) : null;
-      const origin = new URL(request.url).origin;
+      const origin = publicOrigin(request);
       extra = {
         links: course.students.filter((st) => !pins[st.id] && (!want || want.has(st.id))).map((st) => ({ id: st.id, name: st.name, email: st.email, link: inviteUrl(origin, courseId, issueInvite(st)) })),
       };

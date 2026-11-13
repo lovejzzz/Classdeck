@@ -1,0 +1,13 @@
+[Unit]
+Description=Questhand database backup to R2 (Litestream)
+After=network-online.target
+
+[Service]
+User=questhand
+EnvironmentFile=/opt/questhand/.env.local
+ExecStart=/usr/local/bin/litestream replicate -config /opt/questhand/deploy/litestream.yml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

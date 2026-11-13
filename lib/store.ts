@@ -44,6 +44,8 @@ export interface DB {
   /** Keyed by the SHA-256 of the session token, so a leaked database can't be used to log in. */
   sessions: Record<string, Session>;
   customConnectors: Manifest[];
+  /** Uploaded files by stored name: who uploaded it and how big it is, for upload limits. */
+  uploads: Record<string, { by: string; size: number; at: number }>;
 }
 
 // Storage: SQLite (built into Node), one row per course per collection, written only when it changes.
@@ -54,7 +56,7 @@ const FILE = path.join(DIR, "questhand.db");
 const OLD_FILE = path.join(DIR, "classdeck.db");
 const LEGACY = path.join(DIR, "db.json");
 const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans"] as const;
-const GLOBAL = ["users", "sessions", "customConnectors"] as const;
+const GLOBAL = ["users", "sessions", "customConnectors", "uploads"] as const;
 
 const g = globalThis as unknown as { __lmsdb?: DB; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string> };
 
@@ -78,6 +80,7 @@ function fresh(custom: Manifest[] = []): DB {
     users: {},
     sessions: {},
     customConnectors: custom,
+    uploads: {},
   };
 }
 
@@ -130,7 +133,7 @@ export function db(): DB {
 
 /** Older saved data may predate newer fields; fill them in so reads never crash. */
 function fill(d: DB): DB {
-  for (const k of [...PER_COURSE, "users", "sessions"] as const) (d as unknown as Record<string, unknown>)[k] ??= {};
+  for (const k of [...PER_COURSE, "users", "sessions", "uploads"] as const) (d as unknown as Record<string, unknown>)[k] ??= {};
   d.customConnectors ??= [];
   return d;
 }
