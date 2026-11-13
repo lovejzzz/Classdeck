@@ -11,9 +11,11 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  /** scrypt hash and salt, hex. */
+  /** scrypt hash and salt, hex. Empty for accounts that only sign in with Google. */
   hash: string;
   salt: string;
+  /** Google account id, once they've signed in with Google. */
+  google?: string;
   createdAt: number;
 }
 

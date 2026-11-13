@@ -1,5 +1,6 @@
 import { checkSecret, endSession, getSession, hashSecret, startSession, teacherOf, throttled } from "@/lib/auth";
 import { uid } from "@/lib/profile";
+import { verifyGoogle } from "@/lib/google";
 import { findInvite } from "@/lib/hooks";
 import { db, save } from "@/lib/store";
 
@@ -10,13 +11,15 @@ const fail = (error: string, status = 400) => Response.json({ ok: false, error }
 export async function GET(request: Request) {
   const s = getSession(request);
   const t = teacherOf(s);
-  if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email });
+  // The Google client id is public: it's what the "Sign in with Google" button needs.
+  const google = process.env.GOOGLE_CLIENT_ID || null;
+  if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email, google });
   if (s?.kind === "student" && s.courseId) {
     const c = db().courses[s.courseId];
     const st = c?.students.find((x) => x.id === s.studentId) ?? c?.waiting?.find((x) => x.id === s.studentId);
-    if (c && st) return Response.json({ kind: "student", courseId: c.id, courseTitle: c.title, studentId: st.id, name: st.name });
+    if (c && st) return Response.json({ kind: "student", courseId: c.id, courseTitle: c.title, studentId: st.id, name: st.name, google });
   }
-  return Response.json({ kind: null });
+  return Response.json({ kind: null, google });
 }
 
 export async function POST(request: Request) {
@@ -43,6 +46,7 @@ export async function POST(request: Request) {
       const email = String(body.email ?? "").trim().toLowerCase();
       if (throttled(`login:${ip}:${email}`, 8)) return fail("Too many attempts. Try again in a few minutes.", 429);
       const u = Object.values(d.users).find((x) => x.email === email);
+      if (u && !u.hash) return fail("This account signs in with Google. Use “Sign in with Google”.", 401);
       if (!u || !checkSecret(String(body.password ?? ""), u.salt, u.hash)) return fail("That email and password don’t match", 401);
       return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: u.id }) } });
     }
@@ -112,6 +116,24 @@ export async function POST(request: Request) {
       st.invite = undefined;
       save();
       return Response.json({ ok: true, studentId: st.id }, { headers: { "Set-Cookie": startSession({ kind: "student", courseId: course.id, studentId: st.id }) } });
+    }
+    case "google": {
+      // Teachers sign in (or sign up) with Google. An existing account with the same email is the same person.
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      if (!clientId) return fail("Google sign-in isn’t set up on this site");
+      if (throttled(`google:${ip}`, 30)) return fail("Too many attempts. Try again in a few minutes.", 429);
+      const who = await verifyGoogle(String(body.credential ?? ""), clientId).catch(() => null);
+      if (!who) return fail("Google sign-in didn’t work. Try again.", 401);
+      let u = Object.values(d.users).find((x) => x.google === who.sub) ?? Object.values(d.users).find((x) => x.email === who.email);
+      if (!u) {
+        const id = uid("u-");
+        u = d.users[id] = { id, email: who.email, name: who.name, hash: "", salt: "", google: who.sub, createdAt: Date.now() };
+      } else if (u.google && u.google !== who.sub) {
+        return fail("That email belongs to a different Google account here.", 401);
+      }
+      u.google = who.sub;
+      save();
+      return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: u.id }) } });
     }
     case "logout":
       return Response.json({ ok: true }, { headers: { "Set-Cookie": endSession(request) } });
