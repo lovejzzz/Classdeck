@@ -5,7 +5,7 @@ After=network-online.target
 [Service]
 User=questhand
 EnvironmentFile=/opt/questhand/.env.local
-ExecStart=/usr/local/bin/litestream replicate -config /opt/questhand/deploy/litestream.yml
+ExecStart=/usr/bin/litestream replicate -config /opt/questhand/deploy/litestream.yml
 Restart=always
 RestartSec=5
 

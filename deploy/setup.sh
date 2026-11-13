@@ -56,7 +56,7 @@ echo "== Services"
 cp "$DIR/deploy/questhand.service" "$DIR/deploy/questhand-backup.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now questhand questhand-backup >/dev/null
-systemctl restart questhand
+systemctl restart questhand questhand-backup
 
 echo "== Cloudflare Tunnel"
 if ! command -v cloudflared >/dev/null; then
