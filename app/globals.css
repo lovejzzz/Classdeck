@@ -69,6 +69,8 @@ body {
     padding: 7px 10px; font-size: 13.5px; color: var(--color-ink);
   }
   .field::placeholder { color: var(--color-ink-3); }
+  /* Multi-line examples are set in italics so they aren't mistaken for text already typed. */
+  textarea.field::placeholder { font-style: italic; }
   .field:focus { outline: none; border-color: #a8a8a3; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05); }
 
   /* Phones and tablets: buttons big enough for a finger, and text fields at 16px so iOS doesn't zoom the page on focus. */

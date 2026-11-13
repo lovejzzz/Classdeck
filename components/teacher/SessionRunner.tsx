@@ -56,6 +56,14 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
   const [elapsed, setElapsed] = useState(0);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [presenting, setPresenting] = useState(false);
+  // Full screen for the projector: the timer is drawn larger so the back row can read it.
+  const shell = useRef<HTMLDivElement>(null);
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const on = () => setFull(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", on);
+    return () => document.removeEventListener("fullscreenchange", on);
+  }, []);
   const studioId = lesson.modules.find((m) => m.type === "studio")?.id;
   const last = useRef(0);
   const chimed = useRef(false);
@@ -126,7 +134,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
   const cur = part?.roundRobin ? members[speaker] : undefined;
 
   return createPortal(
-    <div className="fade fixed inset-0 z-50 flex flex-col bg-canvas" role="dialog" aria-modal="true" aria-label="Run Collab Studio session">
+    <div ref={shell} className="fade fixed inset-0 z-50 flex flex-col bg-canvas" role="dialog" aria-modal="true" aria-label="Run Collab Studio session">
       <header className="flex h-14 flex-none items-center gap-3 border-b border-line px-5">
         <Icon name="studio" size={16} className="text-[#ae502f]" />
         <div className="min-w-0">
@@ -142,6 +150,11 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
                 className={`press h-7 rounded-md px-3 text-[12.5px] ${g.id === groupId ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2"}`}>{g.name}</button>
             ))}
           </div>
+        )}
+        {typeof document !== "undefined" && document.fullscreenEnabled && (
+          <button onClick={() => (document.fullscreenElement ? document.exitFullscreen() : shell.current?.requestFullscreen())?.catch(() => {})} className="btn btn-ghost press hidden h-8 sm:inline-flex">
+            <Icon name="board" size={12} /> {full ? "Exit full screen" : "Full screen"}
+          </button>
         )}
         <button onClick={onClose} aria-label="Close session" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
       </header>
@@ -181,10 +194,11 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
             </div>
           )}
           <div className="relative mt-6">
-            <Ring total={total} left={left} />
+            <Ring total={total} left={left} size={full ? 380 : 260} />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={`font-mono text-[52px] tracking-tight ${left < 0 ? "text-bad" : ""}`}>{fmt(left)}</span>
-              <span className="text-[12.5px] text-ink-3">{left < 0 ? "over time" : running ? "remaining" : "paused"}</span>
+              {/* The last half minute turns amber, over time turns red. */}
+              <span className={`font-mono tracking-tight ${full ? "text-[84px]" : "text-[52px]"} ${left < 0 ? "text-bad" : left <= 30 && running ? "text-warn" : ""}`}>{fmt(left)}</span>
+              <span className={`text-ink-3 ${full ? "text-[16px]" : "text-[12.5px]"}`}>{left < 0 ? "over time" : running ? (left <= 30 ? "wrap up" : "remaining") : left >= total ? "ready" : "paused"}</span>
             </div>
           </div>
           <div className="mt-6 flex flex-wrap justify-center gap-2">

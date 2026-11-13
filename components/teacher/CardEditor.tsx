@@ -53,9 +53,34 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
   );
 }
 
+/** Short names for the jump bar at the top of the editor. */
+const SHORT: Record<string, string> = {
+  "Card type": "Type", "Activity details": "Details", "How students work": "Steps", "Wall settings": "Wall", "Check for understanding": "Questions",
+  "Who gets this card": "Who", "Tools (APIs) on this card": "Tools", "Speech builder": "Builder", "Peer review": "Review", "Your form for this card": "Form",
+};
+
+/** A row of section names that stays at the top of the editor, so a long card doesn't mean a long scroll. */
+function SectionNav({ watch }: { watch: string }) {
+  const ref = useRef<HTMLElement>(null);
+  const [names, setNames] = useState<string[]>([]);
+  useEffect(() => {
+    const box = ref.current?.parentElement;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads which sections this card type shows
+    setNames([...(box?.querySelectorAll<HTMLElement>("section[data-sec]") ?? [])].map((x) => x.dataset.sec!));
+  }, [watch]);
+  return (
+    <nav ref={ref} aria-label="Jump to a section" className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-line bg-white/95 px-4 py-2 backdrop-blur [scrollbar-width:none]">
+      {names.map((n) => (
+        <button key={n} onClick={() => ref.current?.parentElement?.querySelector(`section[data-sec="${n}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          className="press h-7 flex-none rounded-full px-2.5 text-[12px] text-ink-2 hover:bg-lane hover:text-ink">{SHORT[n] ?? n}</button>
+      ))}
+    </nav>
+  );
+}
+
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
-    <section className="border-t border-line px-5 py-4">
+    <section data-sec={title} className="scroll-mt-11 border-t border-line px-5 py-4">
       <div className="mb-2.5 flex items-center"><h3 className="flex-1 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{title}</h3>{aside}</div>
       {children}
     </section>
@@ -131,6 +156,7 @@ export function CardEditor({
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        <SectionNav watch={`${m.id}:${m.type}:${!!m.form}`} />
         <div className="bg-[#f7f7f5] px-5 py-7"><TiltPreview m={m} /></div>
 
         <Section title="Card type">
