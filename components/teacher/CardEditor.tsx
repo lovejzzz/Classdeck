@@ -9,7 +9,7 @@ import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { fmtSec, isoDay } from "@/lib/grading";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
-import { TYPE_META, TYPE_ORDER } from "@/lib/ui";
+import { TYPE_META, SUITS, suitOf } from "@/lib/ui";
 import type { Attachment, Audience, Lesson, Module, ModuleType, Question, Skill, Student, WallSettings } from "@/lib/types";
 import { CardFace } from "../cards/CardFace";
 import { Avatar, CONNECTOR_ICON, Icon } from "../Icon";
@@ -56,7 +56,7 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 /** Short names for the jump bar at the top of the editor. */
 const SHORT: Record<string, string> = {
   "Card type": "Type", "Activity details": "Details", "How students work": "Steps", "Wall settings": "Wall", "Check for understanding": "Questions",
-  "Who gets this card": "Who", "Tools (APIs) on this card": "Tools", "Speech builder": "Builder", "Peer review": "Review", "Your form for this card": "Form",
+  "Who gets this card": "Who", "Tools (APIs) on this card": "Tools", "Builder": "Builder", "Peer review": "Review", "Your form for this card": "Form",
 };
 
 /** A row of section names that stays at the top of the editor, so a long card doesn't mean a long scroll. */
@@ -163,19 +163,33 @@ export function CardEditor({
         <div className="bg-[#f7f7f5] px-5 py-7"><TiltPreview m={m} /></div>
 
         <Section title="Card type">
-          <div className="grid grid-cols-4 gap-1.5">
-            {TYPE_ORDER.map((t) => (
-              <button
-                key={t}
-                onClick={() => set({ type: t as ModuleType, questions: (t === "practice" || t === "quiz") && !m.questions?.length ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : m.questions })}
-                aria-pressed={m.type === t}
-                className={`press flex h-14 flex-col items-center justify-center gap-1 rounded-lg border text-[11.5px] ${m.type === t ? "border-ink bg-white text-ink" : "border-line text-ink-2 hover:border-line-strong"}`}
-              >
-                <span style={{ color: TYPE_META[t].tint }}><Icon name={t} size={15} /></span>
-                {TYPE_META[t].name}
-              </button>
-            ))}
-          </div>
+          {(() => {
+            const pick = (t: ModuleType) => set({ type: t, questions: (t === "practice" || t === "quiz") && !m.questions?.length ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : m.questions });
+            const suit = suitOf(m.type);
+            return (
+              <>
+                {/* Three suits, like a card game; the variant is the kind of activity inside it. */}
+                <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Suit">
+                  {SUITS.map((x) => (
+                    <button key={x.id} role="radio" aria-checked={suit.id === x.id} onClick={() => suit.id !== x.id && pick(x.types[0])}
+                      className={`press rounded-lg border px-2.5 py-2 text-left ${suit.id === x.id ? "border-ink bg-white" : "border-line hover:border-line-strong"}`}>
+                      <span className="flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: x.tint }}><span className="h-2 w-2 rounded-full" style={{ background: x.tint }} />{x.name}</span>
+                      <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-3">{x.rule}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label={`Kind of ${suit.name} card`}>
+                  {suit.types.map((t) => (
+                    <button key={t} role="radio" aria-checked={m.type === t} onClick={() => m.type !== t && pick(t)} title={TYPE_META[t].hint}
+                      className={`press inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12.5px] pointer-coarse:h-10 ${m.type === t ? "border-ink bg-white text-ink" : "border-line text-ink-2 hover:border-line-strong"}`}>
+                      <span style={{ color: suit.tint }}><Icon name={t} size={13} /></span>{TYPE_META[t].name}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[12px] text-ink-3">{TYPE_META[m.type].hint}.</p>
+              </>
+            );
+          })()}
         </Section>
 
         <Section title="Text">
@@ -455,7 +469,7 @@ export function CardEditor({
         </Section>}
 
         {m.type === "builder" && (
-          <Section title="Speech builder">
+          <Section title="Builder">
             <Seg value={m.flow ? "flow" : "free"} options={[["flow", "Guided first speech"], ["free", "Free builder with templates"]]} onPick={(v) => set({ flow: v === "flow" || undefined })} />
             <p className="mt-2 text-[12px] text-ink-3">{m.flow ? "Students choose “Present an idea” or “Tell a story”, answer one question at a time, then arrange their speech as tiles." : "Students lay out their talk part by part with structure templates, versions, and timing."}</p>
           </Section>

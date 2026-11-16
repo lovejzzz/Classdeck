@@ -10,7 +10,7 @@ import { HScroll } from "@/components/HScroll";
 import { Icon } from "@/components/Icon";
 import { CARD_SIZE } from "@/lib/cards";
 import { useCourse, useQuery } from "@/lib/client";
-import { TYPE_META } from "@/lib/ui";
+import { TYPE_META, suitOf } from "@/lib/ui";
 
 /** A read-only view for guests: browse every card, but no students and no work. */
 export default function GuestPage() {
@@ -74,7 +74,7 @@ function Guest({ courseId, token }: { courseId: string; token: string }) {
           <div className="p-6 sm:p-8">
             <div className="flex items-start gap-3">
               <div className="flex-1">
-                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: TYPE_META[m.type].tint }}><Icon name={m.type} size={13} strokeWidth={2} /> {TYPE_META[m.type].name}</div>
+                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: TYPE_META[m.type].tint }}><Icon name={m.type} size={13} strokeWidth={2} /> {suitOf(m.type).name}<span className="font-normal normal-case tracking-normal text-ink-3">· {TYPE_META[m.type].name}</span></div>
                 <h2 className="mt-2 text-[22px] font-semibold tracking-tight">{m.title}</h2>
               </div>
               <button onClick={() => setLift((x) => (x ? { ...x, open: false } : x))} aria-label="Close" className="btn btn-quiet press h-9 w-9 justify-center px-0"><Icon name="x" size={17} /></button>

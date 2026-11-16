@@ -1,6 +1,6 @@
 import { fileExt, hash, heroAttachment, hostOf } from "@/lib/cards";
 import { videoEmbed } from "@/lib/media";
-import { TYPE_META } from "@/lib/ui";
+import { TYPE_META, suitOf } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
 import { Icon, StatusIcon } from "../Icon";
 import { GenArt } from "./GenArt";
@@ -99,8 +99,10 @@ export function CardFace({
       {/* corner index */}
       <div className="relative flex items-center gap-1.5 px-3 pt-2.5" style={{ color: meta.tint }}>
         <Icon name={m.type} size={big ? 14 : 12} strokeWidth={2} />
-        <span className={`font-medium uppercase tracking-[0.08em] ${big ? "text-[11px]" : "text-[9.5px]"}`}>{meta.name}</span>
-        <span className="flex-1" />
+        <span className={`flex min-w-0 flex-1 items-baseline gap-1 ${big ? "text-[11px]" : "text-[9.5px]"}`}>
+          <span className="font-semibold uppercase tracking-[0.1em]">{suitOf(m.type).name}</span>
+          <span className="truncate text-ink-3">{meta.label}</span>
+        </span>
         {status === "done" ? <StatusIcon status="done" size={big ? 15 : 13} /> : due && due.tone !== "later" ? (
           <span title={due.label} className={`whitespace-nowrap rounded-full px-1.5 py-[1px] font-mono text-[10px] font-medium ${due.tone === "late" ? "bg-bad/10 text-bad" : "bg-warn/10 text-warn"}`}>
             {due.label.replace("Due ", "").replace(/ days? late/, "d late")}

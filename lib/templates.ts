@@ -37,7 +37,7 @@ export const CARD_TEMPLATES: CardTemplate[] = [
     make: () => base({ type: "wall", title: "Share and vote", body: "Post your answer. Then vote for the two most specific posts from your classmates.", minutes: 15, submitTo: "studio", wall: { posting: "students", comments: true, reactions: "votes", anonymous: false, approval: false } }),
   },
   {
-    id: "self", name: "Self-check", description: "Rate the six skills on the four-level rubric.",
+    id: "self", name: "Rate yourself", description: "Rate each skill on the four-level rubric.",
     make: () => base({ type: "selfcheck", title: "Self-check", body: "Rate yourself honestly on each skill. You’ll compare against this later.", minutes: 15, submitTo: "personal", criteria: "All skills rated." }),
   },
   {

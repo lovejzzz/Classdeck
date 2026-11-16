@@ -8,7 +8,7 @@ import { CARD_SIZE } from "@/lib/cards";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { uid } from "@/lib/profile";
 import { toast } from "@/lib/toast";
-import { TYPE_META, TYPE_ORDER } from "@/lib/ui";
+import { TYPE_META, SUITS, suitOf } from "@/lib/ui";
 import type { Course, Lesson, Module, ModuleType, ProgressMap, StudioPost } from "@/lib/types";
 import { HScroll } from "../HScroll";
 import { scrollToWeek, WeekNav } from "../WeekNav";
@@ -51,7 +51,7 @@ function AddCard({ onPick, onTemplate }: { onPick: (t: ModuleType) => void; onTe
     if (open) return setOpen(false);
     // The menu floats over the page (not inside the sideways-scrolling row, which would cut it off).
     const r = ref.current!.getBoundingClientRect();
-    const w = 256, h = 340;
+    const w = 256, h = 380;
     setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), top: Math.max(8, Math.min(r.top, window.innerHeight - h - 8)) });
     setOpen(true);
   }
@@ -72,29 +72,42 @@ function AddCard({ onPick, onTemplate }: { onPick: (t: ModuleType) => void; onTe
               <button key={k} onClick={() => setTab(k)} className={`press h-6 flex-1 rounded-md text-[12px] ${tab === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2"}`}>{k === "template" ? "Templates" : "Blank"}</button>
             ))}
           </div>
-          {tab === "blank" ? (
-            <div className="grid grid-cols-2 gap-1">
-              {TYPE_ORDER.map((t, i) => (
-                <button key={t} onClick={() => { setOpen(false); onPick(t); }} style={{ "--i": i } as React.CSSProperties}
-                  className="rise press flex h-8 items-center gap-1.5 rounded-md px-2 text-[12px] hover:bg-lane">
-                  <span style={{ color: TYPE_META[t].tint }}><Icon name={t} size={13} /></span>{TYPE_META[t].name}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="max-h-72 space-y-0.5 overflow-y-auto">
-              {CARD_TEMPLATES.map((t, i) => {
-                const type = t.make().type;
-                return (
-                  <button key={t.id} onClick={() => { setOpen(false); onTemplate(t); }} style={{ "--i": i } as React.CSSProperties}
-                    className="rise press flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-lane">
-                    <span className="mt-0.5" style={{ color: TYPE_META[type].tint }}><Icon name={type} size={13} /></span>
-                    <span><span className="block text-[12.5px] font-medium">{t.name}</span><span className="block text-[11.5px] text-ink-3">{t.description}</span></span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <div className="max-h-80 overflow-y-auto">
+            {SUITS.map((suit) => {
+              const temps = CARD_TEMPLATES.filter((t) => suitOf(t.make().type).id === suit.id);
+              if (tab === "template" && !temps.length) return null;
+              return (
+                <div key={suit.id} className="mb-1">
+                  <div className="flex items-center gap-1.5 px-2 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: suit.tint }}>
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: suit.tint }} />{suit.name}
+                  </div>
+                  {tab === "blank" ? (
+                    <div className="grid grid-cols-2 gap-1">
+                      {suit.types.map((t) => (
+                        <button key={t} onClick={() => { setOpen(false); onPick(t); }} title={TYPE_META[t].hint}
+                          className="press flex h-8 items-center gap-1.5 rounded-md px-2 text-[12px] hover:bg-lane">
+                          <span style={{ color: suit.tint }}><Icon name={t} size={13} /></span>{TYPE_META[t].name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {temps.map((t) => {
+                        const type = t.make().type;
+                        return (
+                          <button key={t.id} onClick={() => { setOpen(false); onTemplate(t); }}
+                            className="press flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-lane">
+                            <span className="mt-0.5" style={{ color: suit.tint }}><Icon name={type} size={13} /></span>
+                            <span><span className="block text-[12.5px] font-medium">{t.name}</span><span className="block text-[11.5px] text-ink-3">{t.description}</span></span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>,
         document.body,
       )}
@@ -277,7 +290,13 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
   return (
     <div>
       <div className="mb-2 flex items-center gap-3">
-        <p className="flex-1 text-[13px] text-ink-3">Each row is a week. Drag cards to reorder them within a lesson; click a card to edit it.</p>
+        <p className="flex-1 text-[13px] text-ink-3">
+          Every card is{" "}
+          {SUITS.map((x, i) => (
+            <span key={x.id}><span className="inline-flex items-center gap-1 font-medium" style={{ color: x.tint }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: x.tint }} />{x.name}</span>{i === 0 ? ", " : i === 1 ? ", or " : ". "}</span>
+          ))}
+          Each row is a week; drag to reorder, click a card to edit.
+        </p>
         <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3" aria-live="polite">
           <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${saveError ? "bg-bad" : saving ? "bg-warn" : "bg-ok"}`} />
           {saveError && !saving ? <span className="text-bad">Not saved: {saveError}</span> : saving ? "Saving" : "Saved"}
