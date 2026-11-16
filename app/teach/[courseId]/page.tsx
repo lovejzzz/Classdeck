@@ -61,7 +61,7 @@ export default function TeachPage() {
     return (
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
         <div className="skeleton h-8 w-72" />
-        <div className="mt-8 flex gap-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="skeleton h-[235px] w-[168px]" />)}</div>
+        <div className="mt-8 flex gap-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="skeleton h-[238px] w-[170px]" />)}</div>
       </div>
     );
   }

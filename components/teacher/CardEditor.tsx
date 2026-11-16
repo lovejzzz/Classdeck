@@ -88,9 +88,11 @@ function Section({ title, children, aside }: { title: string; children: React.Re
 }
 
 export function CardEditor({
-  lesson, module: m, students, connectors, enabled, open, onChange, onClose, onDelete, onBranchOut, onDuplicate, onPrev, onNext, position, skills = [],
+  lesson, module: m, students, connectors, enabled, open, onChange, onClose, onDelete, onBranchOut, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [],
 }: {
   onDuplicate: () => void;
+  /** Keep a copy among the teacher's saved cards, to reuse from New card in any course. */
+  onSaveToLibrary?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
   position?: { index: number; total: number; lesson: string };
@@ -153,6 +155,7 @@ export function CardEditor({
           <span className="font-medium">Card {position ? position.index + 1 : ""}</span>
           {position && <span className="text-ink-3"> of {position.total} · {position.lesson}</span>}
         </span>
+        {onSaveToLibrary && <button onClick={onSaveToLibrary} className="btn btn-quiet press h-8" title="Save a copy to reuse from New card in any of your courses"><Icon name="star" size={13} /> Save to my cards</button>}
         <button onClick={onDuplicate} className="btn btn-quiet press h-8"><Icon name="layers" size={13} /> Duplicate</button>
         <button onClick={onDelete} className="btn btn-quiet press h-8 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
         <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>

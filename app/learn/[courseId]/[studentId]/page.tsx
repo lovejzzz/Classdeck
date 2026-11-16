@@ -506,11 +506,11 @@ export default function LearnPage() {
                         className="group mt-3 flex items-center gap-5 rounded-2xl p-2 text-left"
                         aria-label={`${week.title}: all ${ms.length} cards done. Show cards`}
                       >
-                        <span className="relative block h-[118px] w-[86px] flex-none">
+                        <span className="relative block h-[119px] w-[85px] flex-none">
                           {[2, 1, 0].map((i) => (
                             <span key={i} className="absolute inset-0 transition-transform duration-500 ease-[var(--ease-spring)]"
                               style={{ transform: `translate(${i * 4}px, ${i * -3}px) rotate(${(i - 1) * 4}deg)`, zIndex: 3 - i }}>
-                              <span className="block h-[252px] w-[180px] origin-top-left scale-[0.475]">
+                              <span className="block h-[252px] w-[180px] origin-top-left scale-[0.4722]">
                                 <CardFace m={ms[Math.min(i, ms.length - 1)]} status="done" />
                               </span>
                             </span>

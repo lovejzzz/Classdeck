@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import path from "path";
 import { publish } from "./bus";
 import { seedChoices, seedCourse, seedEvents, seedMarks, seedNudges, seedPlans, seedPosts, seedProgress, seedStudio, seedUptake } from "./seed";
-import type { ClassEvent, Course, Feedback, Live, Mark, Nudge, Plan, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
+import type { Module, ClassEvent, Course, Feedback, Live, Mark, Nudge, Plan, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
 import type { Manifest } from "./connectors/types";
 
 
@@ -19,7 +19,17 @@ export interface User {
   google?: string;
   /** Their Google profile photo, refreshed at each Google sign-in. */
   picture?: string;
+  /** Cards they saved to reuse in any of their courses (the "custom" choices in New card). */
+  cards?: SavedCard[];
   createdAt: number;
+}
+
+export interface SavedCard {
+  id: string;
+  name: string;
+  /** The card as saved, without its id, who it's for, or a due date. */
+  module: Omit<Module, "id">;
+  at: number;
 }
 
 export interface Session {

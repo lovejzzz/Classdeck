@@ -17,103 +17,12 @@ import { CardTable } from "../cards/CardTable";
 import { Icon } from "../Icon";
 import { useShortcuts } from "@/lib/shortcuts";
 import { useUrlState } from "@/lib/urlState";
-import { createPortal } from "react-dom";
-import { CARD_TEMPLATES, standardWeek, type CardTemplate } from "@/lib/templates";
+import { standardWeek, type CardTemplate } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
 import { SessionRunner } from "./SessionRunner";
+import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
 
 const SIZE = CARD_SIZE.deck;
-
-/** A dashed card-shaped slot: start a blank card by type, or from a template. */
-function AddCard({ onPick, onTemplate }: { onPick: (t: ModuleType) => void; onTemplate: (t: CardTemplate) => void }) {
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"blank" | "template">("template");
-  const [at, setAt] = useState<{ left: number; top: number } | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const off = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && !menu.current?.contains(e.target as Node) && setOpen(false);
-    const close = (e: Event) => !menu.current?.contains(e.target as Node) && setOpen(false);
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("pointerdown", off);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    window.addEventListener("keydown", esc);
-    return () => {
-      window.removeEventListener("pointerdown", off);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-      window.removeEventListener("keydown", esc);
-    };
-  }, [open]);
-  function toggle() {
-    if (open) return setOpen(false);
-    // The menu floats over the page (not inside the sideways-scrolling row, which would cut it off).
-    const r = ref.current!.getBoundingClientRect();
-    const w = 256, h = 380;
-    setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), top: Math.max(8, Math.min(r.top, window.innerHeight - h - 8)) });
-    setOpen(true);
-  }
-  return (
-    <div ref={ref} className="relative h-full w-full">
-      <button
-        onClick={toggle}
-        className={`press flex h-full w-full flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed text-[13px] transition-colors ${open ? "border-ink text-ink" : "border-line-strong text-ink-3 hover:border-ink-3 hover:text-ink-2"}`}
-        aria-expanded={open}
-      >
-        <Icon name="plus" size={18} className={`transition-transform duration-300 ${open ? "rotate-45" : ""}`} />
-        New card
-      </button>
-      {open && at && createPortal(
-        <div ref={menu} style={{ left: at.left, top: at.top }} className="pop fixed z-50 w-64 rounded-xl border border-line bg-white p-1.5 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]">
-          <div className="mb-1 flex rounded-lg bg-lane p-0.5">
-            {(["template", "blank"] as const).map((k) => (
-              <button key={k} onClick={() => setTab(k)} className={`press h-6 flex-1 rounded-md text-[12px] ${tab === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2"}`}>{k === "template" ? "Templates" : "Blank"}</button>
-            ))}
-          </div>
-          <div className="max-h-80 overflow-y-auto">
-            {SUITS.map((suit) => {
-              const temps = CARD_TEMPLATES.filter((t) => suitOf(t.make().type).id === suit.id);
-              if (tab === "template" && !temps.length) return null;
-              return (
-                <div key={suit.id} className="mb-1">
-                  <div className="flex items-center gap-1.5 px-2 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: suit.tint }}>
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: suit.tint }} />{suit.name}
-                  </div>
-                  {tab === "blank" ? (
-                    <div className="grid grid-cols-2 gap-1">
-                      {suit.types.map((t) => (
-                        <button key={t} onClick={() => { setOpen(false); onPick(t); }} title={TYPE_META[t].hint}
-                          className="press flex h-8 items-center gap-1.5 rounded-md px-2 text-[12px] hover:bg-lane">
-                          <span style={{ color: suit.tint }}><Icon name={t} size={13} /></span>{TYPE_META[t].name}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-0.5">
-                      {temps.map((t) => {
-                        const type = t.make().type;
-                        return (
-                          <button key={t.id} onClick={() => { setOpen(false); onTemplate(t); }}
-                            className="press flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-lane">
-                            <span className="mt-0.5" style={{ color: suit.tint }}><Icon name={type} size={13} /></span>
-                            <span><span className="block text-[12.5px] font-medium">{t.name}</span><span className="block text-[11.5px] text-ink-3">{t.description}</span></span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>,
-        document.body,
-      )}
-    </div>
-  );
-}
 
 /** The teacher's whole course as a deck: one row per week, lessons laid out left to right. */
 export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts = [], choices = {}, live }: { course: Course; connectors: ConnectorInfo[]; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode }) {
@@ -246,6 +155,31 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
     edit(l.id, m.id);
   }
 
+  /** What the New card fan hands back: a blank card, a kind, a ready-made card, a saved card, or a custom one. */
+  function addChosen(l: Lesson, c: NewCardChoice) {
+    if (c.kind === "type") return addCard(l, c.type);
+    if (c.kind === "template") return addFromTemplate(l, c.template);
+    let m: Module;
+    if (c.kind === "saved") {
+      const own = new Set((course.skills ?? []).map((x) => x.id));
+      const copy = structuredClone(c.card.module);
+      m = { ...copy, id: uid("m-"), skills: copy.skills?.filter((x) => own.has(x)), audience: { kind: "all" } };
+    } else {
+      const type = c.kind === "custom" ? SUITS.find((x) => x.id === c.suit)!.types[0] : "practice";
+      m = { id: uid("m-"), type, title: c.kind === "custom" ? `My ${SUITS.find((x) => x.id === c.suit)!.name} card` : "Untitled card", body: "", audience: { kind: "all" }, tools: [], attachments: [] };
+    }
+    change({ ...l, modules: [...l.modules, m] });
+    edit(l.id, m.id);
+    if (c.kind === "custom") toast("Make it your own, then press “Save to my cards” at the top to reuse it", { icon: "star" });
+  }
+
+  async function saveToLibrary(m: Module) {
+    const r = await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ module: m, name: m.title }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+    if (!r.ok) return toast(r.error ?? "Couldn’t save it", { icon: "x", tone: "bad" });
+    await loadLibrary(true);
+    toast(`Saved. It’s under New card → ${suitOf(m.type).name}`, { icon: "star" });
+  }
+
   async function duplicate(op_: "duplicateWeek" | "duplicateLesson", id: string, what: string) {
     await op(course.id, op_ === "duplicateWeek" ? { op: op_, weekId: id } : { op: op_, lessonId: id });
     onRefresh();
@@ -343,7 +277,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                 <span className="flex -space-x-6">
                   {w.lessons.flatMap((l) => l.modules).slice(0, 5).map((m, i) => (
                     <span key={m.id} className="block h-[56px] w-[40px] overflow-hidden rounded-[6px] shadow-[0_2px_6px_-2px_rgba(0,0,0,0.2)] ring-2 ring-canvas" style={{ rotate: `${(i - 2) * 3}deg` }}>
-                      <span className="block h-[235px] w-[168px] origin-top-left scale-[0.238]"><CardFace m={m} /></span>
+                      <span className="block h-[238px] w-[170px] origin-top-left scale-[0.2353]"><CardFace m={m} /></span>
                     </span>
                   ))}
                 </span>
@@ -438,7 +372,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                         onActivate={(id) => edit(l.id, id)}
                         register={(id, el) => (el ? cardEls.current.set(id, el) : cardEls.current.delete(id))}
                         onReorder={(ids) => change({ ...l, modules: ids.map((id) => l.modules.find((m) => m.id === id)!) })}
-                        after={<AddCard onPick={(t) => addCard(l, t)} onTemplate={(t) => addFromTemplate(l, t)} />}
+                        after={<NewCardFan onChoose={(c) => addChosen(l, c)} />}
                         ariaLabel={l.title}
                       />
                     </div>
@@ -481,6 +415,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
           position={{ index: cur.modules.findIndex((x) => x.id === curModule.id), total: cur.modules.length, lesson: cur.title }}
           onPrev={at > 0 ? () => step(-1) : undefined}
           onNext={at >= 0 && at < order.length - 1 ? () => step(1) : undefined}
+          onSaveToLibrary={() => saveToLibrary(curModule)}
           onDuplicate={() => {
             const copy: Module = { ...structuredClone(curModule), id: uid("m-"), title: `${curModule.title} (copy)` };
             const i = cur.modules.findIndex((x) => x.id === curModule.id);

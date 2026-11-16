@@ -1,10 +1,11 @@
 import type { Attachment, Density } from "./types";
 
+/** Every card is a playing card: 5 wide by 7 tall. */
 export const CARD_SIZE: Record<Density | "deck" | "mobile", { w: number; h: number }> = {
-  spacious: { w: 214, h: 300 },
+  spacious: { w: 215, h: 301 },
   comfortable: { w: 180, h: 252 },
-  compact: { w: 156, h: 218 },
-  deck: { w: 168, h: 235 },
+  compact: { w: 155, h: 217 },
+  deck: { w: 170, h: 238 },
   mobile: { w: 150, h: 210 },
 };
 
