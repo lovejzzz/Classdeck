@@ -118,6 +118,9 @@ export function CardEditor({
     { keys: "[", label: "Previous card", run: () => onPrev?.(), enabled: open && !!onPrev },
     { keys: "]", label: "Next card", run: () => onNext?.(), enabled: open && !!onNext },
   ]);
+  // Less-used sections are folded away; a section in use on this card always shows.
+  const [more, setMore] = useState(false);
+  const usesSteps = !!(m.checklist?.length || m.playlist?.length || m.prompts?.length || m.timer);
   const set = (patch: Partial<Module>) => onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? { ...x, ...patch } : x)) });
   const attachments = m.attachments ?? [];
   const addAttachment = (a: Omit<Attachment, "id">) => set({ attachments: [...attachments, { ...a, id: uid("a-") }] });
@@ -156,7 +159,7 @@ export function CardEditor({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <SectionNav watch={`${m.id}:${m.type}:${!!m.form}`} />
+        <SectionNav watch={`${m.id}:${m.type}:${!!m.form}:${more}`} />
         <div className="bg-[#f7f7f5] px-5 py-7"><TiltPreview m={m} /></div>
 
         <Section title="Card type">
@@ -221,7 +224,7 @@ export function CardEditor({
           </div>
         </Section>
 
-        {m.type !== "wall" && m.type !== "studio" && m.type !== "quiz" && (
+        {m.type !== "wall" && m.type !== "studio" && m.type !== "quiz" && (more || usesSteps) && (
           <Section title="How students work">
             <div className="space-y-4 text-[13px]">
               <div>
@@ -317,7 +320,7 @@ export function CardEditor({
           </Section>
         )}
 
-        {(m.type === "practice" || m.type === "quiz" || m.type === "read") && (
+        {(m.type === "quiz" || ((m.type === "practice" || m.type === "read") && (more || !!m.questions?.length))) && (
           <Section title={m.type === "read" ? "Check for understanding" : "Questions"} aside={m.type === "quiz" ? (
             <label className="flex items-center gap-2 text-[12px] text-ink-2">Tries
               <Seg value={String(m.attempts ?? 1)} options={[["1", "1"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ attempts: Number(v) > 1 ? Number(v) : undefined })} />
@@ -415,7 +418,7 @@ export function CardEditor({
           )}
         </Section>
 
-        <Section title="Tools (APIs) on this card">
+        {(more || m.tools.length > 0) && <Section title="Tools (APIs) on this card">
           <div className="space-y-1.5">
             {available.map(({ c, a: act }, k) => {
               const header = k === 0 || available[k - 1].c.category !== c.category;
@@ -449,7 +452,7 @@ export function CardEditor({
             })}
             {available.length === 0 && <p className="text-[13px] text-ink-3">No connectors are on for this course yet. Turn some on in Settings.</p>}
           </div>
-        </Section>
+        </Section>}
 
         {m.type === "builder" && (
           <Section title="Speech builder">
@@ -467,7 +470,7 @@ export function CardEditor({
           </Section>
         )}
 
-        {m.type !== "wall" && (
+        {m.type !== "wall" && (more || !!m.form) && (
           <Section title="Your form for this card" aside={!m.form ? <button onClick={() => set({ form: newForm(m) })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Add a form</button> : undefined}>
             {m.form ? <FormEditor key={m.id} form={m.form} onChange={(form) => set({ form })} /> : (
               <p className="text-[12.5px] leading-relaxed text-ink-3">After a workshop or practice, fill in feedback, skill levels, a score, or your own questions for each student. It replaces an outside form: answers go straight to the student’s card.</p>
@@ -475,12 +478,20 @@ export function CardEditor({
           </Section>
         )}
 
-        <Section title="Rules">
+        {(more || !!m.gate) && <Section title="Rules">
           <label className="flex items-center gap-2 text-[13px] text-ink-2">
             <input type="checkbox" checked={!!m.gate} onChange={(e) => set({ gate: e.target.checked })} className="accent-[#1b1b1a]" />
             Stay face down until the cards before it are done
           </label>
-        </Section>
+        </Section>}
+
+        {/* Less-used options stay folded until they're wanted; any already in use always show. */}
+        <div className="border-t border-line px-5 py-4">
+          <button onClick={() => setMore((x) => !x)} aria-expanded={more} className="btn btn-quiet press h-8 px-2 text-[12.5px]">
+            <Icon name="chevron" size={12} className={`transition-transform ${more ? "rotate-180" : ""}`} />
+            {more ? "Fewer options" : "More options: steps, questions, tools, a form, rules"}
+          </button>
+        </div>
       </div>
     </aside>,
     document.body,

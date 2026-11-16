@@ -1,5 +1,6 @@
 "use client";
 
+import { BackCloses } from "../BackCloses";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { op } from "@/lib/client";
@@ -139,6 +140,7 @@ export function Joining({ course, onChanged, setSelfJoin }: { course: Course; on
         )}
       </div>
 
+      <BackCloses name="qr" value={show ? "1" : null} onBack={() => setShow(false)} />
       {show && joinUrl && <JoinScreen title={course.title} code={course.joinCode} url={joinUrl} onClose={() => setShow(false)} />}
     </section>
   );

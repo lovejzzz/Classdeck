@@ -4,12 +4,12 @@ Questhand can do everything a Google Form did: get students onto their own board
 
 ## Getting students in
 
-Open **Settings → Students joining**.
+Open the **Students** tab.
 
 - **Show to the class** puts a large QR code and the class code on screen. Students scan it (or go to the site and type the code), then either pick their name from your list or add themselves, and choose a 4-digit PIN. After that they sign in with the class code, their name, and their PIN.
 - **Who can join** decides what happens to students who aren't on your list:
   - *Only my list*: they can't add themselves.
-  - *Anyone, with my OK*: they add themselves and wait. You see them under **Waiting to be let in** (and a dot on the Settings tab) and choose **Let in** or **Turn away**. Their board opens by itself as soon as you let them in.
+  - *Anyone, with my OK*: they add themselves and wait. You see them under **Waiting to be let in** (and a dot on the Students tab) and choose **Let in** or **Turn away**. Their board opens by itself as soon as you let them in.
   - *Anyone, straight in*: they add themselves and start right away.
 - A name already on the list can't be added again, so a student who is on the list picks their name instead.
 - New students are put in the smallest Collab Studio group.

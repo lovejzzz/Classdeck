@@ -81,7 +81,7 @@ function AddCard({ onPick, onTemplate }: { onPick: (t: ModuleType) => void; onTe
 }
 
 /** The teacher's whole course as a deck: one row per week, lessons laid out left to right. */
-export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts = [], choices = {} }: { course: Course; connectors: ConnectorInfo[]; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>> }) {
+export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts = [], choices = {}, live }: { course: Course; connectors: ConnectorInfo[]; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode }) {
   const [drafts, setDrafts] = useState<Record<string, Lesson>>({});
   const [editing, setEditing] = useState<{ lessonId: string; moduleId: string } | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -164,16 +164,26 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
   }
 
   function edit(lessonId: string, moduleId: string) {
+    const already = openRef.current;
     openRef.current = true;
     setEditing({ lessonId, moduleId });
     requestAnimationFrame(() => setEditorOpen(true));
     reveal(moduleId);
+    // The open card is in the address, so the browser's Back button closes the editor.
+    setCardParam(moduleId, { replace: already });
   }
-  function closeEditor() {
+  function closeEditor(fromHistory = false) {
     openRef.current = false;
     setEditorOpen(false);
     setTimeout(() => !openRef.current && setEditing(null), 500);
+    if (!fromHistory) setCardParam(null);
   }
+  const [cardParam, setCardParam] = useUrlState("card");
+  // Back pressed while the editor is open: the card leaves the address, so close the editor to match.
+  useEffect(() => {
+    if (cardParam === null && openRef.current) closeEditor(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardParam]);
 
   function addCard(l: Lesson, type: ModuleType) {
     const m: Module = {
@@ -306,6 +316,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                           className="-ml-1.5 w-auto min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none"
                           style={{ width: `${Math.max(8, l.title.length + 2)}ch` }}
                         />
+                        {/^Lesson \d+$/.test(l.title) && <span className="-ml-1 text-[12px] text-ink-3" aria-hidden="true">← click to rename</span>}
                         {isToday ? (
                           <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>
                         ) : (
@@ -407,7 +418,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
       </div>
 
       {running && (
-        <SessionRunner course={course} lesson={lessonOf(running.lessonId)} weekTitle={running.weekTitle} posts={studioPosts} onClose={() => setRunning(null)} />
+        <SessionRunner course={course} lesson={lessonOf(running.lessonId)} weekTitle={running.weekTitle} posts={studioPosts} onClose={() => setRunning(null)} live={live} />
       )}
 
       {cur && curModule && (
@@ -421,7 +432,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
           enabled={course.enabledConnectors}
           open={editorOpen}
           onChange={change}
-          onClose={closeEditor}
+          onClose={() => closeEditor()}
           position={{ index: cur.modules.findIndex((x) => x.id === curModule.id), total: cur.modules.length, lesson: cur.title }}
           onPrev={at > 0 ? () => step(-1) : undefined}
           onNext={at >= 0 && at < order.length - 1 ? () => step(1) : undefined}

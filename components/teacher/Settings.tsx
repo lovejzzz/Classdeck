@@ -10,6 +10,7 @@ import { DocImport } from "./DocImport";
 import { FormsIntegration } from "./FormsIntegration";
 import { Joining } from "./Joining";
 import { DeleteCourse } from "./DeleteCourse";
+import { SkillsEditor } from "./SkillsEditor";
 import type { Course, PresetId, Profile } from "@/lib/types";
 import { Cover } from "../Cover";
 import { Avatar, CONNECTOR_ICON, Icon } from "../Icon";
@@ -25,7 +26,8 @@ const DIMS: { key: keyof Omit<Profile, "preset">; label: string; options: [strin
 
 const PRESET_COVER: Record<PresetId, "practice" | "read" | "quiz"> = { primary: "practice", secondary: "read", higher: "quiz" };
 
-export function Settings({ course, connectors, onChanged }: { course: Course; connectors: ConnectorInfo[]; onChanged: () => void }) {
+/** The Settings tab (part "settings") and the Students tab (part "students") share this component and its helpers. */
+export function Settings({ course, connectors, onChanged, part = "settings" }: { course: Course; connectors: ConnectorInfo[]; onChanged: () => void; part?: "settings" | "students" }) {
   const p = course.profile;
   const setProfile = async (profile: Profile, note?: string) => {
     const r = await op<{ ok?: boolean }>(course.id, { op: "setProfile", profile });
@@ -73,6 +75,159 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
 
   return (
     <div className="space-y-6">
+      {part === "students" ? (
+        <>
+      <section className="card p-6">
+        <h3 className="text-[15px] font-medium">Class list</h3>
+        <div className="mt-3">
+          <div className="mb-2 flex items-center gap-2 text-[13px]"><span className="text-ink-2">Students</span><span className="mono">{course.students.length}</span></div>
+          {course.students.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {course.students.map((st) => (
+                <span key={st.id} className="pop inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-1 text-[12.5px]">
+                  <Avatar name={st.name} size={20} />{st.name}
+                  <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(`${st.name} will choose a new PIN next time`, { icon: "lock", tone: "plain" }); }}
+                    title="Reset PIN" aria-label={`Reset ${st.name}’s PIN`} className="press rounded-full p-1 text-ink-3 hover:bg-lane hover:text-ink"><Icon name="lock" size={11} /></button>
+                  <button onClick={() => confirm(`Remove ${st.name} from the class? Their work stays saved.`) && removeStudent(st.id, st.name)} aria-label={`Remove ${st.name}`} className="press rounded-full p-1 text-ink-3 hover:bg-lane hover:text-bad"><Icon name="x" size={11} /></button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[13px] text-ink-3">No students yet. Add names below; students pick their name after entering the class code, then choose a 4-digit PIN.</p>
+          )}
+          <form className="mt-3 flex flex-wrap items-start gap-2" onSubmit={async (e) => {
+            e.preventDefault();
+            const ta = e.currentTarget.elements.namedItem("names") as HTMLTextAreaElement;
+            if (!ta.value.trim()) return;
+            const r = await op<{ added?: number }>(course.id, { op: "addStudents", names: ta.value });
+            ta.value = "";
+            onChanged();
+            toast(`Added ${r.added ?? 0} student${r.added === 1 ? "" : "s"}`, { icon: "users" });
+          }}>
+            <textarea name="names" rows={2} placeholder={"Paste names, one per line\nMia Chen\nLeo Park"} aria-label="Student names" className="field min-w-0 flex-1 resize-y" />
+            <button type="submit" className="btn btn-dark press">Add students</button>
+          </form>
+        </div>
+      </section>
+
+      <Joining course={course} onChanged={onChanged}
+        setSelfJoin={(selfJoin) => setAccess({ selfJoin }, false, selfJoin === "approve" ? "Students not on your list can ask to join" : selfJoin === "open" ? "Anyone with the code can join" : "Only students on your list can join")} />
+
+      <section className="card p-6">
+        <h3 className="text-[15px] font-medium">Class code and guest link</h3>
+        <p className="mt-1 text-[13px] text-ink-3">Turn joining on or off, change the code, add a passcode, or share a read-only link.</p>
+        <div className="mt-4 divide-y divide-line border-t border-line text-[13px]">
+          <div className="flex flex-wrap items-center gap-3 py-3">
+            <span className="w-32 text-ink-2">Class code</span>
+            <span className="font-mono text-[15px] tracking-[0.2em]">{course.joinCode}</span>
+            <button onClick={() => setAccess({}, true, "New class code made. The old one stops working.")} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="reset" size={12} /> New code</button>
+            <span className="flex-1" />
+            <label className="flex items-center gap-2 text-ink-2">
+              <span className={`relative h-[18px] w-8 rounded-full p-[2px] transition-colors duration-300 ${access.joinOpen ? "bg-ok" : "bg-line-strong"}`}>
+                <span className={`block h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-300 ease-[var(--ease-spring)] ${access.joinOpen ? "translate-x-[14px]" : ""}`} />
+              </span>
+              <input type="checkbox" className="sr-only" checked={access.joinOpen} onChange={(e) => setAccess({ joinOpen: e.target.checked }, false, e.target.checked ? "Joining is open" : "Joining is closed")} />
+              Accept new students
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 py-3">
+            <span className="w-32 text-ink-2">Join passcode</span>
+            <input defaultValue={access.passcode ?? ""} placeholder="None" aria-label="Join passcode" className="field h-8 w-40 py-0"
+              onBlur={(e) => (e.target.value || undefined) !== access.passcode && setAccess({ passcode: e.target.value || undefined }, false, e.target.value ? "Passcode set" : "Passcode removed")} />
+            <span className="text-[12px] text-ink-3">Students enter it after the class code.</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 py-3">
+            <span className="w-32 text-ink-2">Guest link</span>
+            {access.guestToken ? (
+              <>
+                <code className="min-w-0 flex-1 truncate rounded-md bg-lane px-2 py-1 font-mono text-[12px] text-ink-2">{guestUrl}</code>
+                <button onClick={() => { navigator.clipboard?.writeText(guestUrl).catch(() => {}); toast("Guest link copied"); }} className="btn btn-ghost press h-8">Copy</button>
+                <a href={guestUrl} target="_blank" rel="noreferrer" className="btn btn-quiet press h-8">Open <Icon name="external" size={11} /></a>
+                <button onClick={() => setAccess({ guestToken: null }, false, "Guest link turned off")} className="btn btn-quiet press h-8 hover:!text-bad">Turn off</button>
+              </>
+            ) : (
+              <>
+                <span className="flex-1 text-[12.5px] text-ink-3">Read-only: guests browse the cards but see no students or their work.</span>
+                <button onClick={() => setAccess({ guestToken: true }, false, "Guest link created")} className="btn btn-ghost press h-8"><Icon name="link" size={13} /> Create link</button>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="card p-6">
+        <div className="flex items-center">
+          <h3 className="flex-1 text-[15px] font-medium">Collab Studio groups</h3>
+          <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6 }); onChanged(); toast("Split the class into balanced groups", { icon: "users" }); }} className="btn btn-ghost press mr-2 h-8"><Icon name="users" size={13} /> Auto-group</button>
+          {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
+            <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6, by: "elective" }); onChanged(); toast("Grouped students who share an elective", { icon: "users" }); }}
+              title="Students who chose the same elective share a group, so early feedback uses the same rubric" className="btn btn-ghost press mr-2 h-8"><Icon name="layers" size={13} /> Group by elective</button>
+          )}
+          {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
+            <label className="mr-2 inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
+              Each student takes at least
+              <input type="number" min={0} max={10} defaultValue={course.electiveMin ?? 2} aria-label="Minimum electives"
+                onBlur={async (e) => { await op(course.id, { op: "setElectiveMin", min: Number(e.target.value) }); onChanged(); }}
+                className="field h-8 w-14 py-0 text-center" />
+              electives
+            </label>
+          )}
+          <button onClick={() => saveGroups([...groups, { id: uid("g-"), name: `Studio ${String.fromCharCode(65 + groups.length)}`, studentIds: [] }])} className="btn btn-ghost press h-8"><Icon name="plus" size={13} /> Add group</button>
+        </div>
+        <p className="mt-1 text-[13px] text-ink-3">Groups of 4–6 work best. Tap a student to move them to the next group. Students see and give feedback only within their own group.</p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {groups.map((g) => (
+            <div key={g.id} className="rounded-xl bg-lane p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <input defaultValue={g.name} onBlur={(e) => e.target.value !== g.name && saveGroups(groups.map((x) => (x.id === g.id ? { ...x, name: e.target.value || x.name } : x)))}
+                  aria-label="Group name" className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-[13.5px] font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none" />
+                <span className={`mono ${g.studentIds.length > 6 || (g.studentIds.length > 0 && g.studentIds.length < 3) ? "text-warn" : ""}`}>{g.studentIds.length}</span>
+                {g.studentIds.length === 0 && (
+                  <button onClick={() => saveGroups(groups.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name}`} className="btn btn-quiet press h-6 w-6 justify-center px-0"><Icon name="x" size={12} /></button>
+                )}
+              </div>
+              <div className="flex min-h-8 flex-wrap gap-1.5">
+                {g.studentIds.map((sid) => {
+                  const st = course.students.find((x) => x.id === sid);
+                  return st && (
+                    <button key={sid} onClick={() => moveOn(sid)} className="pop press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
+                      <Avatar name={st.name} size={20} />{st.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {unassigned.length > 0 && (
+            <div className="rounded-xl border border-dashed border-line-strong p-3">
+              <div className="mb-2 text-[13.5px] font-medium text-ink-2">Not in a group <span className="mono">{unassigned.length}</span></div>
+              <div className="flex flex-wrap gap-1.5">
+                {unassigned.map((st) => (
+                  <button key={st.id} onClick={() => groups[0] && saveGroups(groups.map((g, i) => (i === 0 ? { ...g, studentIds: [...g.studentIds, st.id] } : g)))}
+                    className="pop press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
+                    <Avatar name={st.name} size={20} />{st.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+        </>
+      ) : (
+        <>
+      <section className="card p-6">
+        <h3 className="text-[15px] font-medium">Course</h3>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-[13px]"><span className="text-ink-2">Course name</span>
+            <input defaultValue={course.title} onBlur={(e) => e.target.value.trim() && e.target.value !== course.title && info({ title: e.target.value })} className="field mt-1" />
+          </label>
+          <label className="block text-[13px]"><span className="text-ink-2">Subtitle</span>
+            <input defaultValue={course.subtitle ?? ""} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field mt-1" />
+          </label>
+        </div>
+      </section>
+
       <section className="card p-6">
         <h3 className="text-[15px] font-medium">Who this course is for</h3>
         <p className="mt-1 text-[13px] text-ink-3">Pick a preset to set all four options at once. You can still change any one of them afterward.</p>
@@ -146,6 +301,8 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
         )}
       </section>
 
+      <SkillsEditor course={course} onChanged={onChanged} />
+
       <section className="card p-6">
         <h3 className="text-[15px] font-medium">Back up and share</h3>
         <p className="mt-1 text-[13px] text-ink-3">Export the course (weeks, cards, media links, rubric, session agendas) as a file, or as a Common Cartridge for another LMS. Import adds weeks after your current ones, from a Questhand file or straight from a course plan document; nothing is replaced.</p>
@@ -186,152 +343,7 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
         </div>
       </section>
 
-      <section className="card p-6">
-        <h3 className="text-[15px] font-medium">Access</h3>
-        <p className="mt-1 text-[13px] text-ink-3">Who can join with the class code, and a read-only link for guests.</p>
-        <div className="mt-4 divide-y divide-line border-t border-line text-[13px]">
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-32 text-ink-2">Class code</span>
-            <span className="font-mono text-[15px] tracking-[0.2em]">{course.joinCode}</span>
-            <button onClick={() => setAccess({}, true, "New class code made. The old one stops working.")} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="reset" size={12} /> New code</button>
-            <span className="flex-1" />
-            <label className="flex items-center gap-2 text-ink-2">
-              <span className={`relative h-[18px] w-8 rounded-full p-[2px] transition-colors duration-300 ${access.joinOpen ? "bg-ok" : "bg-line-strong"}`}>
-                <span className={`block h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-300 ease-[var(--ease-spring)] ${access.joinOpen ? "translate-x-[14px]" : ""}`} />
-              </span>
-              <input type="checkbox" className="sr-only" checked={access.joinOpen} onChange={(e) => setAccess({ joinOpen: e.target.checked }, false, e.target.checked ? "Joining is open" : "Joining is closed")} />
-              Accept new students
-            </label>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-32 text-ink-2">Join passcode</span>
-            <input defaultValue={access.passcode ?? ""} placeholder="None" aria-label="Join passcode" className="field h-8 w-40 py-0"
-              onBlur={(e) => (e.target.value || undefined) !== access.passcode && setAccess({ passcode: e.target.value || undefined }, false, e.target.value ? "Passcode set" : "Passcode removed")} />
-            <span className="text-[12px] text-ink-3">Students enter it after the class code.</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-32 text-ink-2">Guest link</span>
-            {access.guestToken ? (
-              <>
-                <code className="min-w-0 flex-1 truncate rounded-md bg-lane px-2 py-1 font-mono text-[12px] text-ink-2">{guestUrl}</code>
-                <button onClick={() => { navigator.clipboard?.writeText(guestUrl).catch(() => {}); toast("Guest link copied"); }} className="btn btn-ghost press h-8">Copy</button>
-                <a href={guestUrl} target="_blank" rel="noreferrer" className="btn btn-quiet press h-8">Open <Icon name="external" size={11} /></a>
-                <button onClick={() => setAccess({ guestToken: null }, false, "Guest link turned off")} className="btn btn-quiet press h-8 hover:!text-bad">Turn off</button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 text-[12.5px] text-ink-3">Read-only: guests browse the cards but see no students or their work.</span>
-                <button onClick={() => setAccess({ guestToken: true }, false, "Guest link created")} className="btn btn-ghost press h-8"><Icon name="link" size={13} /> Create link</button>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <Joining course={course} onChanged={onChanged}
-        setSelfJoin={(selfJoin) => setAccess({ selfJoin }, false, selfJoin === "approve" ? "Students not on your list can ask to join" : selfJoin === "open" ? "Anyone with the code can join" : "Only students on your list can join")} />
-
       <FormsIntegration course={course} onChanged={onChanged} />
-
-      <section className="card p-6">
-        <h3 className="text-[15px] font-medium">Course and students</h3>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="block text-[13px]"><span className="text-ink-2">Course name</span>
-            <input defaultValue={course.title} onBlur={(e) => e.target.value.trim() && e.target.value !== course.title && info({ title: e.target.value })} className="field mt-1" />
-          </label>
-          <label className="block text-[13px]"><span className="text-ink-2">Subtitle</span>
-            <input defaultValue={course.subtitle ?? ""} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field mt-1" />
-          </label>
-        </div>
-        <div className="mt-5">
-          <div className="mb-2 flex items-center gap-2 text-[13px]"><span className="font-medium">Students</span><span className="mono">{course.students.length}</span></div>
-          {course.students.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {course.students.map((st) => (
-                <span key={st.id} className="pop inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-1 text-[12.5px]">
-                  <Avatar name={st.name} size={20} />{st.name}
-                  <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(`${st.name} will choose a new PIN next time`, { icon: "lock", tone: "plain" }); }}
-                    title="Reset PIN" aria-label={`Reset ${st.name}’s PIN`} className="press rounded-full p-1 text-ink-3 hover:bg-lane hover:text-ink"><Icon name="lock" size={11} /></button>
-                  <button onClick={() => confirm(`Remove ${st.name} from the class? Their work stays saved.`) && removeStudent(st.id, st.name)} aria-label={`Remove ${st.name}`} className="press rounded-full p-1 text-ink-3 hover:bg-lane hover:text-bad"><Icon name="x" size={11} /></button>
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[13px] text-ink-3">No students yet. Add names below; students pick their name after entering the class code, then choose a 4-digit PIN.</p>
-          )}
-          <form className="mt-3 flex flex-wrap items-start gap-2" onSubmit={async (e) => {
-            e.preventDefault();
-            const ta = e.currentTarget.elements.namedItem("names") as HTMLTextAreaElement;
-            if (!ta.value.trim()) return;
-            const r = await op<{ added?: number }>(course.id, { op: "addStudents", names: ta.value });
-            ta.value = "";
-            onChanged();
-            toast(`Added ${r.added ?? 0} student${r.added === 1 ? "" : "s"}`, { icon: "users" });
-          }}>
-            <textarea name="names" rows={2} placeholder={"Paste names, one per line\nMia Chen\nLeo Park"} aria-label="Student names" className="field min-w-0 flex-1 resize-y" />
-            <button type="submit" className="btn btn-dark press">Add students</button>
-          </form>
-        </div>
-      </section>
-
-      <section className="card p-6">
-        <div className="flex items-center">
-          <h3 className="flex-1 text-[15px] font-medium">Collab Studio groups</h3>
-          <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6 }); onChanged(); toast("Split the class into balanced groups", { icon: "users" }); }} className="btn btn-ghost press mr-2 h-8"><Icon name="users" size={13} /> Auto-group</button>
-          {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
-            <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6, by: "elective" }); onChanged(); toast("Grouped students who share an elective", { icon: "users" }); }}
-              title="Students who chose the same elective share a group, so early feedback uses the same rubric" className="btn btn-ghost press mr-2 h-8"><Icon name="layers" size={13} /> Group by elective</button>
-          )}
-          {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
-            <label className="mr-2 inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
-              Each student takes at least
-              <input type="number" min={0} max={10} defaultValue={course.electiveMin ?? 2} aria-label="Minimum electives"
-                onBlur={async (e) => { await op(course.id, { op: "setElectiveMin", min: Number(e.target.value) }); onChanged(); }}
-                className="field h-8 w-14 py-0 text-center" />
-              electives
-            </label>
-          )}
-          <button onClick={() => saveGroups([...groups, { id: uid("g-"), name: `Studio ${String.fromCharCode(65 + groups.length)}`, studentIds: [] }])} className="btn btn-ghost press h-8"><Icon name="plus" size={13} /> Add group</button>
-        </div>
-        <p className="mt-1 text-[13px] text-ink-3">Groups of 4–6 work best. Tap a student to move them to the next group. Students see and give feedback only within their own group.</p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {groups.map((g) => (
-            <div key={g.id} className="rounded-xl bg-lane p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <input defaultValue={g.name} onBlur={(e) => e.target.value !== g.name && saveGroups(groups.map((x) => (x.id === g.id ? { ...x, name: e.target.value || x.name } : x)))}
-                  aria-label="Group name" className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-[13.5px] font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none" />
-                <span className={`mono ${g.studentIds.length > 6 || (g.studentIds.length > 0 && g.studentIds.length < 3) ? "text-warn" : ""}`}>{g.studentIds.length}</span>
-                {g.studentIds.length === 0 && (
-                  <button onClick={() => saveGroups(groups.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name}`} className="btn btn-quiet press h-6 w-6 justify-center px-0"><Icon name="x" size={12} /></button>
-                )}
-              </div>
-              <div className="flex min-h-8 flex-wrap gap-1.5">
-                {g.studentIds.map((sid) => {
-                  const st = course.students.find((x) => x.id === sid);
-                  return st && (
-                    <button key={sid} onClick={() => moveOn(sid)} className="pop press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
-                      <Avatar name={st.name} size={20} />{st.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-          {unassigned.length > 0 && (
-            <div className="rounded-xl border border-dashed border-line-strong p-3">
-              <div className="mb-2 text-[13.5px] font-medium text-ink-2">Not in a group <span className="mono">{unassigned.length}</span></div>
-              <div className="flex flex-wrap gap-1.5">
-                {unassigned.map((st) => (
-                  <button key={st.id} onClick={() => groups[0] && saveGroups(groups.map((g, i) => (i === 0 ? { ...g, studentIds: [...g.studentIds, st.id] } : g)))}
-                    className="pop press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
-                    <Avatar name={st.name} size={20} />{st.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
 
       <section className="card p-6">
         <div className="flex items-center">
@@ -376,6 +388,8 @@ export function Settings({ course, connectors, onChanged }: { course: Course; co
       </section>
 
       {course.id !== "demo" && <DeleteCourse course={course} />}
+        </>
+      )}
     </div>
   );
 }

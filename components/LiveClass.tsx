@@ -62,7 +62,7 @@ export function TeacherLive({ courseId, state, onChanged }: { courseId: string; 
         {hands.length > 0 && <span className="pop ml-0.5 rounded-full bg-bad px-1.5 font-mono text-[10.5px] text-white">{hands.length}</span>}
       </button>
       {open && createPortal(
-        <aside className="fixed bottom-0 right-0 top-0 z-40 flex w-full max-w-[26rem] flex-col border-l border-line bg-white shadow-[-24px_0_60px_-30px_rgba(20,20,18,0.35)]" style={{ animation: "panel-in 0.38s var(--ease-out) both" }} aria-label="Live class">
+        <aside className="fixed bottom-0 right-0 top-0 z-[55] flex w-full max-w-[26rem] flex-col border-l border-line bg-white shadow-[-24px_0_60px_-30px_rgba(20,20,18,0.35)]" style={{ animation: "panel-in 0.38s var(--ease-out) both" }} aria-label="Live class">
           <div className="flex h-14 flex-none items-center gap-2 border-b border-line px-5">
             <span className="h-2 w-2 animate-pulse rounded-full bg-bad" />
             <span className="flex-1 text-[14px] font-medium">Live class</span>

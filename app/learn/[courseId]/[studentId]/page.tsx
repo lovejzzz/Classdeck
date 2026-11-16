@@ -1,5 +1,6 @@
 "use client";
 
+import { BackCloses } from "@/components/BackCloses";
 import { AccountMenu } from "@/components/AccountMenu";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import Link from "next/link";
@@ -568,6 +569,7 @@ export default function LearnPage() {
 
       {burst && <Burst key={burst.key} seed={burst.key} x={burst.x} y={burst.y} colors={burst.colors} onDone={() => setBurst(null)} />}
 
+      {!isPreview && <BackCloses name="card" value={lift?.open ? lift.id : null} onBack={() => close()} />}
       {lift && openModule && (
         <Lift
           from={lift.from}

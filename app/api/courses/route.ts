@@ -7,6 +7,7 @@ import path from "path";
 import { r2Ready, remove } from "@/lib/blob";
 import { db, listCourses, removeCourse, save } from "@/lib/store";
 import { randomCode, UPLOAD_DIR } from "@/lib/uploads";
+import { DEFAULT_LEVELS, SKILL_SETS } from "@/lib/skillsets";
 import { standardWeek } from "@/lib/templates";
 import type { Course } from "@/lib/types";
 
@@ -49,9 +50,18 @@ export async function POST(request: Request) {
     start === "caps"
       ? caps.weeks.map((w) => cloneWeek(w, w.title))
       : start === "template"
-        ? Array.from({ length: Math.max(1, Math.min(12, Number(body.weeks) || 3)) }, (_, i) => cloneWeek(standardWeek(`Topic ${i + 1}`, i + 1), `Week ${i + 1}`))
+        ? Array.from({ length: Math.max(1, Math.min(12, Number(body.weeks) || 3)) }, (_, i) => cloneWeek(standardWeek(`Lesson ${i + 1}`, i + 1), `Week ${i + 1}`))
         : [{ id: uid("w-"), title: "Week 1", lessons: [{ id: uid("l-"), title: "Lesson 1", modules: [], branches: {} }] }];
 
+  // The subject's skills: the CaPS copy is always speaking; otherwise the teacher's pick (default speaking).
+  const set = (start === "caps" ? undefined : SKILL_SETS.find((x) => x.id === body.skillSet)) ?? SKILL_SETS[0];
+  if (set.id !== "speaking") {
+    const ids = new Set(set.skills.map((x) => x.id));
+    for (const w of weeks) for (const l of w.lessons) for (const m of l.modules) if (m.skills) {
+      m.skills = m.skills.filter((id) => ids.has(id));
+      if (!m.skills.length) m.skills = undefined;
+    }
+  }
   const course: Course = {
     id,
     ownerId: t.id,
@@ -62,8 +72,8 @@ export async function POST(request: Request) {
     access: { joinOpen: true },
     profile: { ...fromPreset("secondary"), preset: "custom", horizon: "term" },
     students: [],
-    skills: caps.skills,
-    levels: caps.levels,
+    skills: set.skills,
+    levels: start === "caps" || set.id === "speaking" ? caps.levels : DEFAULT_LEVELS,
     groups: [{ id: uid("g-"), name: "Studio A", studentIds: [] }],
     currentLessonId: weeks[0].lessons[0].id,
     enabledConnectors: ["wikipedia", "dictionary", "ai"],

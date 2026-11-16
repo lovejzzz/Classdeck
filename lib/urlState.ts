@@ -7,13 +7,13 @@ import { useCallback } from "react";
  * A piece of page state kept in the address (?key=value), so the browser's Back button steps back through it
  * and reloading keeps it. Setting it adds a history entry; clearing it goes back when we added that entry.
  */
-export function useUrlState(key: string): [string | null, (value: string | null) => void] {
+export function useUrlState(key: string): [string | null, (value: string | null, opts?: { replace?: boolean }) => void] {
   const search = useSearchParams();
   const router = useRouter();
   const path = usePathname();
   const value = search.get(key);
   const set = useCallback(
-    (next: string | null) => {
+    (next: string | null, opts?: { replace?: boolean }) => {
       const p = new URLSearchParams(window.location.search);
       if (next === null) {
         // If the entry we're closing was added on this page, step back so Back and the close button agree.
@@ -26,7 +26,14 @@ export function useUrlState(key: string): [string | null, (value: string | null)
         return;
       }
       if (p.get(key) === next) return;
+      const replacing = opts?.replace && p.get(key) !== null;
       p.set(key, next);
+      if (replacing) {
+        // Moving within something already open (the next card, say) changes the address without a new Back step.
+        router.replace(`${path}?${p}`, { scroll: false });
+        setTimeout(() => window.history.replaceState({ ...window.history.state, qhOpened: key }, ""), 0);
+        return;
+      }
       router.push(`${path}?${p}`, { scroll: false });
       // Mark the new entry so closing it can go back instead of piling up entries.
       setTimeout(() => window.history.replaceState({ ...window.history.state, qhOpened: key }, ""), 0);

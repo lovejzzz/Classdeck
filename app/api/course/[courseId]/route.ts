@@ -430,6 +430,54 @@ export async function POST(request: Request, { params }: Ctx) {
       }));
       break;
     }
+    case "sessionNotes": {
+      // Notes the teacher typed while running a Collab Studio session, sent to each student's studio card.
+      // Sending again the same day replaces that day's notes rather than adding more.
+      const found = findModule(course, String(body.moduleId ?? ""));
+      if (!found) return fail("This lesson has no Collab Studio card to send notes to");
+      const notes = (body.notes && typeof body.notes === "object" ? body.notes : {}) as Record<string, unknown>;
+      const day = new Date().toISOString().slice(0, 10);
+      let sent = 0;
+      for (const [sid, v] of Object.entries(notes)) {
+        const st = course.students.find((x) => x.id === sid);
+        const text = typeof v === "string" ? v.trim().slice(0, 2000) : "";
+        if (!st || !text) continue;
+        const r = postUpdate(courseId, st, found.mod, { id: `session:${found.mod.id}:${day}`, source: "Your teacher’s notes from Collab Studio", at: Date.now(), text }, "");
+        if (!r.error) sent++;
+      }
+      extra = { sent };
+      break;
+    }
+    case "setSkills": {
+      // The skills students practise and are rated on, and the four level names. Existing skills keep their ids,
+      // so ratings and reviews already given still line up; a removed skill is also taken off every card.
+      const raw = Array.isArray(body.skills) ? body.skills : [];
+      const seen = new Set<string>();
+      const skills = raw.slice(0, 10).map((x: { id?: unknown; name?: unknown }) => {
+        const name = String(x?.name ?? "").trim().slice(0, 40);
+        let id = typeof x?.id === "string" && /^[\w-]{1,40}$/.test(x.id) && !UNSAFE_KEY.test(x.id) ? x.id : uid("sk-");
+        if (seen.has(id)) id = uid("sk-");
+        seen.add(id);
+        return { id, name };
+      }).filter((x: { name: string }) => x.name);
+      if (!skills.length) return fail("Keep at least one skill");
+      if (Array.isArray(body.levels)) {
+        if (body.levels.length !== 4) return fail("There are always four levels");
+        course.levels = body.levels.map((l: { name?: unknown; description?: unknown; use?: unknown }, i: number) => ({
+          n: i + 1,
+          name: String(l?.name ?? "").trim().slice(0, 30) || `Level ${i + 1}`,
+          description: String(l?.description ?? "").trim().slice(0, 200),
+          use: String(l?.use ?? course.levels?.[i]?.use ?? "").trim().slice(0, 200),
+        }));
+      }
+      const keep = new Set(skills.map((x: { id: string }) => x.id));
+      course.skills = skills;
+      for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) if (m.skills) {
+        m.skills = m.skills.filter((id) => keep.has(id));
+        if (!m.skills.length) m.skills = undefined;
+      }
+      break;
+    }
     case "setCourseInfo": {
       if (String(body.title ?? "").trim()) course.title = String(body.title).trim().slice(0, 80);
       if (typeof body.subtitle === "string") course.subtitle = body.subtitle.trim().slice(0, 120) || undefined;

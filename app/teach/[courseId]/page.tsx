@@ -21,7 +21,7 @@ import { toast } from "@/lib/toast";
 import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
 
-const TABS = [["plan", "Deck"], ["class", "Class"], ["grades", "Grades"], ["settings", "Settings"]] as const;
+const TABS = [["plan", "Deck"], ["class", "Class"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
 type Tab = (typeof TABS)[number][0];
 
 const KIND: Record<ClassEvent["kind"], { icon: string; tint: string }> = {
@@ -117,8 +117,9 @@ export default function TeachPage() {
             list={[
               { keys: "1", label: "Deck", run: () => setTab("plan") },
               { keys: "2", label: "Class", run: () => setTab("class") },
-              { keys: "3", label: "Grades", run: () => setTab("grades") },
-              { keys: "4", label: "Settings", run: () => setTab("settings") },
+              { keys: "3", label: "Students", run: () => setTab("students") },
+              { keys: "4", label: "Grades", run: () => setTab("grades") },
+              { keys: "5", label: "Settings", run: () => setTab("settings") },
             ]}
             extra={tab === "plan" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s Collab Studio" }, { keys: "[", label: "Previous / next week ( [ ] )" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
@@ -168,7 +169,7 @@ export default function TeachPage() {
 
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative flex rounded-lg bg-lane p-0.5" role="tablist">
+          <div className="relative flex max-w-full overflow-x-auto rounded-lg bg-lane p-0.5 [scrollbar-width:none]" role="tablist">
             <span
               className="absolute inset-y-0.5 left-0.5 w-20 rounded-md bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-[var(--ease-out)]"
               style={{ transform: `translateX(${TABS.findIndex((t) => t[0] === tab) * 5}rem)` }}
@@ -179,10 +180,10 @@ export default function TeachPage() {
                 role="tab"
                 aria-selected={tab === id}
                 onClick={() => setTab(id)}
-                className={`relative h-7 w-20 rounded-md text-[13px] transition-colors duration-300 ${tab === id ? "font-medium text-ink" : "text-ink-2 hover:text-ink"}`}
+                className={`relative h-7 w-20 flex-none rounded-md text-[13px] transition-colors duration-300 ${tab === id ? "font-medium text-ink" : "text-ink-2 hover:text-ink"}`}
               >
                 {label}
-                {id === "settings" && !!course.waiting?.length && (
+                {id === "students" && !!course.waiting?.length && (
                   <span title={`${course.waiting.length} waiting to join`} aria-label={`${course.waiting.length} waiting to join`} className="absolute right-1.5 top-1 h-1.5 w-1.5 rounded-full bg-[#ae502f]" />
                 )}
               </button>
@@ -212,7 +213,7 @@ export default function TeachPage() {
         </div>
 
         <main key={tab} className="rise mt-6">
-          {tab !== "settings" && course.students.length === 0 && courseId !== "demo" && (
+          {(tab === "plan" || tab === "class" || tab === "grades") && course.students.length === 0 && courseId !== "demo" && (
             <section aria-label="Getting started" className="card mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 p-5">
               <div className="min-w-[14rem] flex-1">
                 <h2 className="text-[15px] font-medium">{course.waiting?.length ? `${course.waiting.length} student${course.waiting.length === 1 ? " is" : "s are"} waiting to be let in` : "No students yet"}</h2>
@@ -225,7 +226,7 @@ export default function TeachPage() {
               <span className="text-[13px] text-ink-2">Class code <span className="ml-1 font-mono text-[15px] tracking-[0.15em] text-ink">{course.joinCode}</span></span>
               <button
                 onClick={() => {
-                  setTab("settings");
+                  setTab("students");
                   setTimeout(() => document.getElementById("joining")?.scrollIntoView({ behavior: "smooth", block: "start" }), 350);
                 }}
                 className="btn btn-dark press h-9"
@@ -234,9 +235,10 @@ export default function TeachPage() {
               </button>
             </section>
           )}
-          {tab === "plan" && <Deck course={course} connectors={connectors} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} />}
+          {tab === "plan" && <Deck course={course} connectors={connectors} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} />}
           {tab === "class" && lesson && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
           {tab === "grades" && <Gradebook state={state} />}
+          {tab === "students" && <Settings part="students" course={course} connectors={connectors} onChanged={refresh} />}
           {tab === "settings" && <Settings course={course} connectors={connectors} onChanged={refresh} />}
         </main>
       </div>

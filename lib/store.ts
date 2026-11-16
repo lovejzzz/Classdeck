@@ -230,6 +230,16 @@ export function reset() {
 }
 
 /** Every course, newest first, with a little summary for the course list. */
+/** What a teacher wants to know at a glance: today's lesson, work waiting for feedback, students waiting to join. */
+function glance(c: Course, prog: ProgressMap) {
+  const lessons = c.weeks.flatMap((w) => w.lessons);
+  const today = lessons.find((l) => l.id === c.currentLessonId) ?? lessons[0];
+  const reviewable = new Set(lessons.flatMap((l) => l.modules).filter((m) => ["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length).map((m) => m.id));
+  let toReview = 0;
+  for (const st of c.students) for (const [mid, p] of Object.entries(prog[st.id] ?? {})) if (reviewable.has(mid) && p.status === "done" && !p.review) toReview++;
+  return { today: today?.title ?? null, toReview, waiting: c.waiting?.length ?? 0 };
+}
+
 export function listCourses() {
   const d = db();
   return Object.values(d.courses).map((c) => ({
@@ -241,6 +251,7 @@ export function listCourses() {
     weeks: c.weeks.length,
     cards: c.weeks.reduce((n, w) => n + w.lessons.reduce((m, l) => m + l.modules.length, 0), 0),
     createdAt: c.createdAt ?? 0,
+    ...glance(c, d.progress[c.id] ?? {}),
   })).sort((a, b) => b.createdAt - a.createdAt);
 }
 

@@ -56,7 +56,8 @@ export function standardWeek(theme: string, n: number): Week {
   const lesson: Lesson = {
     id: "new",
     title: theme,
-    goal: `Practice ${theme.toLowerCase()} and bring one piece of work to Collab Studio.`,
+    // A placeholder name ("Lesson 2") gets no goal, so the goal field invites the teacher to write one.
+    goal: /^Lesson \d+$/.test(theme) ? undefined : `Practice ${theme.toLowerCase()} and bring one piece of work to Collab Studio.`,
     branches: {},
     choiceSlots: ["path"],
     session: { minutes: 60, agenda: [{ label: "Warm-up and example", minutes: 10 }, { label: "Paired practice", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }] },
