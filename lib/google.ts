@@ -15,7 +15,7 @@ async function keys(): Promise<Jwk[]> {
   return keys;
 }
 
-export interface GoogleUser { sub: string; email: string; name: string }
+export interface GoogleUser { sub: string; email: string; name: string; picture?: string }
 
 /** The person in a Google ID token, or null if the token isn't genuine, is expired, or is meant for another site. */
 export async function verifyGoogle(token: string, clientId: string): Promise<GoogleUser | null> {
@@ -40,5 +40,7 @@ export async function verifyGoogle(token: string, clientId: string): Promise<Goo
   if (typeof claims.exp !== "number" || claims.exp < now - 60) return null;
   if (claims.email_verified !== true || typeof claims.email !== "string" || typeof claims.sub !== "string") return null;
   const email = claims.email.toLowerCase();
-  return { sub: claims.sub, email, name: typeof claims.name === "string" && claims.name.trim() ? claims.name.trim().slice(0, 60) : email.split("@")[0] };
+  // The profile photo is only kept when it's an https address on Google's own image host.
+  const pic = typeof claims.picture === "string" && /^https:\/\/[a-z0-9-]+\.googleusercontent\.com\//.test(claims.picture) ? claims.picture.slice(0, 500) : undefined;
+  return { sub: claims.sub, email, name: typeof claims.name === "string" && claims.name.trim() ? claims.name.trim().slice(0, 60) : email.split("@")[0], picture: pic };
 }

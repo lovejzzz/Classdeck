@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AccountMenu } from "@/components/AccountMenu";
 import { Cover } from "@/components/Cover";
+import { GoogleButton } from "@/components/GoogleButton";
 import { Icon } from "@/components/Icon";
 
 export default function Home() {
@@ -24,6 +26,11 @@ export default function Home() {
     fetch("/api/courses").then((r) => r.json()).then((d) => { setCourses(d.courses); setUnclaimed(d.unclaimed ?? []); }).catch(() => setCourses([]));
     fetch("/api/auth").then((r) => r.json()).then(setMe).catch(() => setMe({ kind: null }));
   }, []);
+  async function google(credential: string) {
+    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "google", credential }) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
+    if (r.ok) window.location.reload();
+    else setError(r.error ?? "Google sign-in didn’t work. Try again.");
+  }
   async function signOut() {
     await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) });
     window.location.reload();
@@ -67,6 +74,7 @@ export default function Home() {
         <span className="inline-block h-4 w-4 rounded-[5px] bg-ink" />
         Questhand
       </div>
+      <AccountMenu className="!fixed right-4 top-4 z-30 sm:right-6 sm:top-5" />
       <h1 className="rise mt-6 max-w-xl text-[34px] font-semibold leading-[1.15] tracking-tight" style={{ "--i": 1 } as React.CSSProperties}>
         Every lesson is a deck. Every student gets their own hand.
       </h1>
@@ -85,9 +93,11 @@ export default function Home() {
             {me?.kind === "teacher" ? (
               <p className="mt-0.5 text-[12px] text-ink-3">Signed in as {me.name} · <button onClick={signOut} className="underline-offset-2 hover:text-ink hover:underline">Sign out</button></p>
             ) : me && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-lane px-3 py-2.5 text-[13px]">
-                <span className="flex-1 text-ink-2">Sign in to create and run your own courses.</span>
-                <Link href="/login" className="btn btn-dark press h-8">Sign in</Link>
+              <div className="mt-2 rounded-lg bg-lane px-3 py-3 text-[13px]">
+                <p className="text-ink-2">Sign in to create and run your own courses.</p>
+                <div className="mt-2.5"><GoogleButton onCredential={google} /></div>
+                {error && !code && <p className="mt-2 text-bad" role="alert">{error}</p>}
+                <Link href="/login" className="mt-2.5 inline-block text-[12.5px] text-ink-2 underline-offset-2 hover:text-ink hover:underline">Use email and password instead</Link>
               </div>
             )}
             {creating ? (

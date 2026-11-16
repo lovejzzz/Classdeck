@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountMenu } from "@/components/AccountMenu";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { MarksContext } from "@/components/Marks";
 import { SignInNeeded } from "@/components/SignInNeeded";
@@ -142,6 +143,7 @@ export default function TeachPage() {
               setSel({ sid: ev.studentId, mid: ev.moduleId });
             }}
           />
+          <AccountMenu />
           {courseId === "demo" && <button
             onClick={async () => {
               if (!confirm("Restore the sample data? All edits and student work will be cleared.")) return;

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const t = teacherOf(s);
   // The Google client id is public: it's what the "Sign in with Google" button needs.
   const google = process.env.GOOGLE_CLIENT_ID || null;
-  if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email, google });
+  if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email, picture: t.picture ?? null, google });
   if (s?.kind === "student" && s.courseId) {
     const c = db().courses[s.courseId];
     const st = c?.students.find((x) => x.id === s.studentId) ?? c?.waiting?.find((x) => x.id === s.studentId);
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
       let u = Object.values(d.users).find((x) => x.google === who.sub) ?? Object.values(d.users).find((x) => x.email === who.email);
       if (!u) {
         const id = uid("u-");
-        u = d.users[id] = { id, email: who.email, name: who.name, hash: "", salt: "", google: who.sub, createdAt: Date.now() };
+        u = d.users[id] = { id, email: who.email, name: who.name, hash: "", salt: "", google: who.sub, picture: who.picture, createdAt: Date.now() };
       } else if (u.google && u.google !== who.sub) {
         return fail("That email belongs to a different Google account here.", 401);
       } else if (!u.google) {
@@ -140,6 +140,7 @@ export async function POST(request: Request) {
         for (const [k, s] of Object.entries(d.sessions)) if (s.userId === u.id) delete d.sessions[k];
       }
       u.google = who.sub;
+      u.picture = who.picture;
       save();
       return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: u.id }) } });
     }

@@ -17,6 +17,8 @@ export interface User {
   salt: string;
   /** Google account id, once they've signed in with Google. */
   google?: string;
+  /** Their Google profile photo, refreshed at each Google sign-in. */
+  picture?: string;
   createdAt: number;
 }
 

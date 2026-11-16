@@ -14,7 +14,7 @@ export default function Privacy() {
 
       <h2>Teachers</h2>
       <ul>
-        <li>Your name and email, and either a password (stored only as a salted hash) or your Google account id if you sign in with Google. From Google we receive only your name, email, and account id.</li>
+        <li>Your name and email, and either a password (stored only as a salted hash) or your Google account id if you sign in with Google. From Google we receive only your name, email, profile photo, and account id.</li>
         <li>The courses you build, and the feedback you give.</li>
       </ul>
 

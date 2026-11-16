@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountMenu } from "@/components/AccountMenu";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -379,6 +380,7 @@ export default function LearnPage() {
                   }, 80);
                 }}
               />
+              {!isPreview && <AccountMenu />}
             </div>
 
             <div className="rise mt-6 grid items-center gap-8 md:grid-cols-[1fr_auto]">
