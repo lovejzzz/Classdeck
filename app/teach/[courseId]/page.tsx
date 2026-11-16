@@ -16,7 +16,6 @@ import { Classroom } from "@/components/teacher/Classroom";
 import { Deck } from "@/components/teacher/Deck";
 import { Settings } from "@/components/teacher/Settings";
 import { op, useConnectors, useCourse } from "@/lib/client";
-import { PRESET_LABELS } from "@/lib/profile";
 import { toast } from "@/lib/toast";
 import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
@@ -113,7 +112,6 @@ export default function TeachPage() {
           >
             <span className="text-ink-3">Class code</span><span className="font-mono tracking-[0.15em]">{course.joinCode}</span>
           </button>
-          <span className="chip hidden sm:inline-flex">{course.profile.preset === "custom" ? "Custom" : PRESET_LABELS[course.profile.preset]}</span>
           <Shortcuts
             list={[
               { keys: "1", label: "Deck", run: () => setTab("plan") },
@@ -191,7 +189,7 @@ export default function TeachPage() {
             ))}
           </div>
 
-          {tab === "class" && lesson && (
+          {tab === "class" && lesson && course.students.length > 0 && (
             <div className="relative">
               <select
                 value={lesson.id}
@@ -224,7 +222,6 @@ export default function TeachPage() {
                     : "This page fills in once students join. Show a QR code on the projector, or add names yourself."}
                 </p>
               </div>
-              <span className="text-[13px] text-ink-2">Class code <span className="ml-1 font-mono text-[15px] tracking-[0.15em] text-ink">{course.joinCode}</span></span>
               <button
                 onClick={() => {
                   setTab("students");
@@ -237,8 +234,9 @@ export default function TeachPage() {
             </section>
           )}
           {tab === "plan" && <Deck course={course} connectors={connectors} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} />}
-          {tab === "class" && lesson && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
-          {tab === "grades" && <Gradebook state={state} />}
+          {/* Class and Grades have nothing to show until someone joins; the card above says how to bring them in. */}
+          {tab === "class" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
+          {tab === "grades" && (course.students.length > 0 || courseId === "demo") && <Gradebook state={state} />}
           {tab === "students" && <Settings part="students" course={course} connectors={connectors} onChanged={refresh} />}
           {tab === "settings" && <Settings course={course} connectors={connectors} onChanged={refresh} />}
         </main>

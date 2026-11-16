@@ -94,6 +94,11 @@ export function Joining({ course, onChanged, setSelfJoin }: { course: Course; on
             </button>
           ))}
         </div>
+        {mode === "off" && course.students.length === 0 && (
+          <p className="mt-2 rounded-lg bg-warn/10 px-3 py-2 text-[12.5px] text-ink-2">
+            Your class list is empty, so no one can join yet. Add names above, or pick “Anyone, with my OK”.
+          </p>
+        )}
       </div>
 
       {waiting.length > 0 && (
@@ -116,7 +121,7 @@ export function Joining({ course, onChanged, setSelfJoin }: { course: Course; on
         </div>
       )}
 
-      <div className="mt-5 border-t border-line pt-4">
+      {course.students.length > 0 && <div className="mt-5 border-t border-line pt-4">
         <div className="text-[13px] font-medium">Private setup links</div>
         <p className="mt-0.5 text-[12.5px] text-ink-3">For students on your list who haven’t signed in yet. Each gets a one-time link to their own board, and no one else can claim their name with the class code. Print them as slips with QR codes, or copy them into an email.</p>
         <button onClick={makeLinks} disabled={busy} className="btn btn-ghost press mt-2 h-8"><Icon name="link" size={13} /> {busy ? "Making…" : links ? "Make new links" : "Make links"}</button>
@@ -138,7 +143,7 @@ export function Joining({ course, onChanged, setSelfJoin }: { course: Course; on
             <p className="mt-1.5 text-[12px] text-ink-3">Making links again replaces these. Each works once, for 14 days.</p>
           </div>
         )}
-      </div>
+      </div>}
 
       <BackCloses name="qr" value={show ? "1" : null} onBack={() => setShow(false)} />
       {show && joinUrl && <JoinScreen title={course.title} code={course.joinCode} url={joinUrl} onClose={() => setShow(false)} />}

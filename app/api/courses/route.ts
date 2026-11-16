@@ -1,4 +1,4 @@
-import { DEMO, getSession, teacherOf, unauthorized } from "@/lib/auth";
+import { DEMO, getSession, isAdmin, teacherOf, unauthorized } from "@/lib/auth";
 import { cloneWeek } from "@/lib/clone";
 import { fromPreset, uid } from "@/lib/profile";
 import { seedCourse } from "@/lib/seed";
@@ -13,21 +13,24 @@ import type { Course } from "@/lib/types";
 
 /** The signed-in teacher's courses, plus the open demo. */
 export async function GET(request: Request) {
-  const t = teacherOf(getSession(request));
+  const session = getSession(request);
+  const t = teacherOf(session);
   const all = listCourses();
   return Response.json({
     courses: all.filter((c) => c.id === DEMO || (t && c.ownerId === t.id)),
-    // Courses made before accounts existed have no owner yet; a signed-in teacher can claim them.
-    unclaimed: t ? all.filter((c) => c.id !== DEMO && !c.ownerId).map((c) => ({ id: c.id, title: c.title, students: c.students })) : [],
+    // Courses made before accounts existed have no owner yet; only the site owner can claim them.
+    unclaimed: t && isAdmin(session) ? all.filter((c) => c.id !== DEMO && !c.ownerId).map((c) => ({ id: c.id, title: c.title, students: c.students })) : [],
   });
 }
 
 /** Create a course: blank, from the standard weekly template, or as a copy of the CaPS course's weeks. */
 export async function POST(request: Request) {
-  const t = teacherOf(getSession(request));
+  const session = getSession(request);
+  const t = teacherOf(session);
   if (!t) return unauthorized("teacher", "Sign in to create a course");
   const body = await request.json().catch(() => ({}));
   if (body.claim) {
+    if (!isAdmin(session)) return Response.json({ ok: false, error: "Only the site owner can claim older courses" }, { status: 403 });
     const c = db().courses[String(body.claim)];
     if (!c || c.id === DEMO || c.ownerId) return Response.json({ ok: false, error: "That course can’t be claimed" }, { status: 400 });
     c.ownerId = t.id;
@@ -69,7 +72,8 @@ export async function POST(request: Request) {
     subtitle: String(body.subtitle ?? "").trim().slice(0, 120) || undefined,
     createdAt: Date.now(),
     joinCode: code,
-    access: { joinOpen: true },
+    // A new class list is empty, so students who scan the code add themselves and the teacher lets them in.
+    access: { joinOpen: true, selfJoin: "approve" },
     profile: { ...fromPreset("secondary"), preset: "custom", horizon: "term" },
     students: [],
     skills: set.skills,

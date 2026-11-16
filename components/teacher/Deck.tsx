@@ -17,6 +17,7 @@ import { CardTable } from "../cards/CardTable";
 import { Icon } from "../Icon";
 import { useShortcuts } from "@/lib/shortcuts";
 import { useUrlState } from "@/lib/urlState";
+import { createPortal } from "react-dom";
 import { CARD_TEMPLATES, standardWeek, type CardTemplate } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
 import { SessionRunner } from "./SessionRunner";
@@ -27,25 +28,45 @@ const SIZE = CARD_SIZE.deck;
 function AddCard({ onPick, onTemplate }: { onPick: (t: ModuleType) => void; onTemplate: (t: CardTemplate) => void }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"blank" | "template">("template");
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const off = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const off = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && !menu.current?.contains(e.target as Node) && setOpen(false);
+    const close = (e: Event) => !menu.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("pointerdown", off);
-    return () => window.removeEventListener("pointerdown", off);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", esc);
+    return () => {
+      window.removeEventListener("pointerdown", off);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", esc);
+    };
   }, [open]);
+  function toggle() {
+    if (open) return setOpen(false);
+    // The menu floats over the page (not inside the sideways-scrolling row, which would cut it off).
+    const r = ref.current!.getBoundingClientRect();
+    const w = 256, h = 340;
+    setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), top: Math.max(8, Math.min(r.top, window.innerHeight - h - 8)) });
+    setOpen(true);
+  }
   return (
     <div ref={ref} className="relative h-full w-full">
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className={`press flex h-full w-full flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed text-[13px] transition-colors ${open ? "border-ink text-ink" : "border-line-strong text-ink-3 hover:border-ink-3 hover:text-ink-2"}`}
         aria-expanded={open}
       >
         <Icon name="plus" size={18} className={`transition-transform duration-300 ${open ? "rotate-45" : ""}`} />
         New card
       </button>
-      {open && (
-        <div className="pop absolute bottom-12 left-0 z-30 w-64 rounded-xl border border-line bg-white p-1.5 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]">
+      {open && at && createPortal(
+        <div ref={menu} style={{ left: at.left, top: at.top }} className="pop fixed z-50 w-64 rounded-xl border border-line bg-white p-1.5 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]">
           <div className="mb-1 flex rounded-lg bg-lane p-0.5">
             {(["template", "blank"] as const).map((k) => (
               <button key={k} onClick={() => setTab(k)} className={`press h-6 flex-1 rounded-md text-[12px] ${tab === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2"}`}>{k === "template" ? "Templates" : "Blank"}</button>
@@ -74,7 +95,8 @@ function AddCard({ onPick, onTemplate }: { onPick: (t: ModuleType) => void; onTe
               })}
             </div>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -128,6 +150,8 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
   }, [course.id]);
 
   const lessonOf = (id: string) => drafts[id] ?? course.weeks.flatMap((w) => w.lessons).find((l) => l.id === id)!;
+  // The "click to rename" hint shows once, on the first lesson still called "Lesson N".
+  const firstUnnamed = course.weeks.flatMap((w) => w.lessons).map((l) => lessonOf(l.id)).find((l) => /^Lesson \d+$/.test(l.title))?.id;
 
   function change(next: Lesson) {
     latest.current[next.id] = next;
@@ -260,14 +284,14 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
         </span>
       </div>
 
-      <WeekNav
+      {course.weeks.length > 1 && <WeekNav
         className="top-14 -mx-4 mb-4"
         weeks={course.weeks.map((w, i) => ({ id: w.id, label: w.title.split(" · ")[0], ...classDone(w), current: i === currentWeekIndex }))}
         onPick={(id) => {
           setUnfolded((u) => new Set(u).add(id));
           scrollToWeek(id);
         }}
-      />
+      />}
 
       <div className="space-y-6 pb-8">
         {course.weeks.map((w, wi) => (
@@ -291,6 +315,9 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                 <button onClick={() => toggleFold(w.id)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">{isFolded(wi, w.id) ? "Show cards" : "Fold"}</button>
               )}
               <More label={`${w.title} actions`} items={[["Duplicate week", () => duplicate("duplicateWeek", w.id, `“${w.title}”`)]]} />
+              <button onClick={() => addLesson(w.id, w.lessons.length)} className="btn btn-quiet press h-7 px-2 text-[12.5px]">
+                <Icon name="plus" size={12} /> Add a lesson
+              </button>
             </div>
             {isFolded(wi, w.id) ? (
               <button onClick={() => toggleFold(w.id)} className="press mt-2 flex w-full items-center gap-4 rounded-xl border border-line bg-white/60 px-4 py-3 text-left hover:bg-white">
@@ -317,7 +344,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                     m.audience.kind === "branch" ? m.audience.variant : m.audience.kind === "student" ? course.students.find((s) => s.id === (m.audience as { studentId: string }).studentId)?.name : undefined;
                   return (
                     <div key={l.id}>
-                      <div className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ maxWidth: Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 280) }}>
+                      <div className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ maxWidth: `min(${Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 360)}px, calc(100vw - 2rem))` }}>
                         <input
                           value={l.title}
                           onChange={(e) => change({ ...l, title: e.target.value })}
@@ -325,7 +352,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                           className="-ml-1.5 w-auto min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none"
                           style={{ width: `${Math.max(8, l.title.length + 2)}ch` }}
                         />
-                        {/^Lesson \d+$/.test(l.title) && <span className="-ml-1 text-[12px] text-ink-3" aria-hidden="true">← click to rename</span>}
+                        {l.id === firstUnnamed && <span className="-ml-1 text-[12px] text-ink-3" aria-hidden="true">← click to rename</span>}
                         {isToday ? (
                           <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>
                         ) : (
@@ -340,7 +367,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                             Set as today
                           </button>
                         )}
-                        <span className="mono">{l.modules.length} cards</span>
+                        {l.modules.length > 0 && <span className="mono">{l.modules.length} card{l.modules.length === 1 ? "" : "s"}</span>}
                         {l.elective && (
                           <span className="chip h-5 bg-[#eef0fb] text-[11px] text-[#4b56a8]" title="Students choose whether to take this lesson">
                             Elective · {Object.values(choices).filter((c) => c[`elective:${l.id}`]).length} chose it
@@ -398,16 +425,6 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                     </div>
                   );
                 })}
-                <div className="pt-7">
-                  <button
-                    onClick={() => addLesson(w.id, w.lessons.length)}
-                    className="press mt-[22px] flex flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-line-strong text-[13px] text-ink-3 hover:border-ink-3 hover:text-ink-2"
-                    style={{ width: 120, height: SIZE.h }}
-                  >
-                    <Icon name="layers" size={18} />
-                    New lesson
-                  </button>
-                </div>
               </div>
             </HScroll>
             )}
