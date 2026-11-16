@@ -16,6 +16,7 @@ import { CardFace } from "../cards/CardFace";
 import { CardTable } from "../cards/CardTable";
 import { Icon } from "../Icon";
 import { useShortcuts } from "@/lib/shortcuts";
+import { useUrlState } from "@/lib/urlState";
 import { CARD_TEMPLATES, standardWeek, type CardTemplate } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
 import { SessionRunner } from "./SessionRunner";
@@ -102,7 +103,11 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
     const done = ms.reduce((n, m) => n + course.students.filter((st) => progress[st.id]?.[m.id]?.status === "done").length, 0);
     return { done, total };
   };
-  const [running, setRunning] = useState<{ lessonId: string; weekTitle: string } | null>(null);
+  // The session timer is in the address (?run=lesson), so the browser's Back button closes it.
+  const [runId, setRunId] = useUrlState("run");
+  const runLesson = runId ? course.weeks.flatMap((w) => w.lessons.map((l) => ({ l, w }))).find((x) => x.l.id === runId && x.l.session) : undefined;
+  const running = runLesson ? { lessonId: runLesson.l.id, weekTitle: runLesson.w.title } : null;
+  const setRunning = (r: { lessonId: string; weekTitle?: string } | null) => setRunId(r ? r.lessonId : null);
 
   useEffect(() => {
     const map = timers.current;

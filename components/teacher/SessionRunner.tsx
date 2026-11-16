@@ -49,12 +49,29 @@ function Ring({ total, left, size = 260 }: { total: number; left: number; size?:
 export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }: { course: Course; lesson: Lesson; weekTitle: string; onClose: () => void; posts?: StudioPost[] }) {
   const plan = lesson.session!;
   const groups = course.groups ?? [];
-  const [groupId, setGroupId] = useState(groups[0]?.id ?? "");
-  const [seg, setSeg] = useState(0);
-  const [speaker, setSpeaker] = useState(0);
+  // Where the teacher is in the session (group, part, speaker, time, notes) is kept on this computer,
+  // so closing by accident or reloading picks up where they left off.
+  const saveKey = `qh-run:${course.id}:${lesson.id}`;
+  // Only today's session is picked up again; an older one starts fresh.
+  const [fresh] = useState(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(saveKey) ?? "null") as { groupId?: string; seg?: number; speaker?: number; elapsed?: number; notes?: Record<string, string>; at?: number } | null;
+      return v && v.at && Date.now() - v.at < 12 * 3600_000 ? v : null;
+    } catch {
+      return null;
+    }
+  });
+  const [groupId, setGroupId] = useState(fresh?.groupId && groups.some((g) => g.id === fresh.groupId) ? fresh.groupId : groups[0]?.id ?? "");
+  const [seg, setSeg] = useState(Math.min(fresh?.seg ?? 0, Math.max(0, plan.agenda.length - 1)));
+  const [speaker, setSpeaker] = useState(fresh?.speaker ?? 0);
   const [running, setRunning] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [elapsed, setElapsed] = useState(fresh?.elapsed ?? 0);
+  const [notes, setNotes] = useState<Record<string, string>>(fresh?.notes ?? {});
+  useEffect(() => {
+    try {
+      localStorage.setItem(saveKey, JSON.stringify({ groupId, seg, speaker, elapsed: Math.round(elapsed), notes, at: Date.now() }));
+    } catch {}
+  }, [saveKey, groupId, seg, speaker, elapsed, notes]);
   const [presenting, setPresenting] = useState(false);
   // Full screen for the projector: the timer is drawn larger so the back row can read it.
   const shell = useRef<HTMLDivElement>(null);
@@ -135,7 +152,12 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
 
   return createPortal(
     <div ref={shell} className="fade fixed inset-0 z-50 flex flex-col bg-canvas" role="dialog" aria-modal="true" aria-label="Run Collab Studio session">
-      <header className="flex h-14 flex-none items-center gap-3 border-b border-line px-5">
+      <header className="flex h-14 flex-none items-center gap-3 border-b border-line px-3 sm:px-5">
+        <button onClick={onClose} className="btn btn-quiet press h-8 px-2.5" title="Back to the deck (Esc). Your place and notes are kept.">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+          Back
+        </button>
+        <span className="h-5 w-px bg-line" aria-hidden="true" />
         <Icon name="studio" size={16} className="text-[#ae502f]" />
         <div className="min-w-0">
           <div className="truncate text-[14px] font-medium">Collab Studio · {lesson.title}</div>
@@ -156,7 +178,6 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
             <Icon name="board" size={12} /> {full ? "Exit full screen" : "Full screen"}
           </button>
         )}
-        <button onClick={onClose} aria-label="Close session" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
       </header>
       <div className="h-1 flex-none bg-lane"><div className="h-full bg-ok transition-[width] duration-300" style={{ width: `${(doneMinutes / plan.minutes) * 100}%` }} /></div>
 
@@ -170,7 +191,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
                   <span className={`flex h-6 w-6 flex-none items-center justify-center rounded-full font-mono text-[11px] ${i < seg ? "bg-ok text-white" : i === seg ? "bg-ink text-white" : "bg-lane text-ink-2"}`}>
                     {i < seg ? <Icon name="check" size={11} strokeWidth={3} /> : i + 1}
                   </span>
-                  <span className="flex-1">{a.label}{a.roundRobin && <span className="block text-[11.5px] text-ink-3">Round robin · {members.length ? `${Math.round((a.minutes / members.length) * 10) / 10} min each` : ""}</span>}</span>
+                  <span className="flex-1">{a.label}{a.roundRobin && <span className="block text-[11.5px] text-ink-3">{members.length ? `Round robin · ${Math.round((a.minutes / members.length) * 10) / 10} min each` : "Round robin · no one in this group yet"}</span>}</span>
                   <span className="mono">{a.minutes}m</span>
                 </button>
               </li>
@@ -193,6 +214,12 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
               <button onClick={() => setIce(ice + 1)} className="btn btn-quiet press mt-2 h-8 px-3 text-[13px]"><Icon name="reset" size={12} /> Another prompt</button>
             </div>
           )}
+          {part?.roundRobin && members.length === 0 ? (
+            <div className="pop mt-6 w-full max-w-md rounded-2xl border border-line bg-white px-6 py-5 text-center text-[14px] text-ink-2">
+              <p className="font-medium text-ink">{group ? `No one is in ${group.name} yet.` : "There are no Collab Studio groups yet."}</p>
+              <p className="mt-1.5">This part splits {part.minutes} minutes between the presenters, so it needs students. Add them, or put them in groups, under Settings.</p>
+            </div>
+          ) : (
           <div className="relative mt-6">
             <Ring total={total} left={left} size={full ? 380 : 260} />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -201,6 +228,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }
               <span className={`text-ink-3 ${full ? "text-[16px]" : "text-[12.5px]"}`}>{left < 0 ? "over time" : running ? (left <= 30 ? "wrap up" : "remaining") : left >= total ? "ready" : "paused"}</span>
             </div>
           </div>
+          )}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <button onClick={() => setRunning((r) => !r)} className="btn btn-dark press h-11 px-6 text-[15px]">
               <Icon name={running ? "pause" : "play"} size={14} /> {running ? "Pause" : elapsed > 0 ? "Resume" : "Start"}

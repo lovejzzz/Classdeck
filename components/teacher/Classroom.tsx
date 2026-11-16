@@ -135,6 +135,16 @@ export function Classroom({
   const selProgress = sel && progress[sel.sid]?.[sel.mid];
   const selStudent = sel && course.students.find((s) => s.id === sel.sid);
   // Step through the class on the same card (↑/↓), skipping students who don't have it.
+  /** After giving feedback, open the next student (in class-list order) whose finished work on this card is still waiting for it. */
+  function nextWaiting(justDone: string) {
+    if (!sel) return;
+    const list = course.students.filter((st) => visible[st.id].has(sel.mid));
+    const i = list.findIndex((st) => st.id === sel.sid);
+    const order = [...list.slice(i + 1), ...list.slice(0, i)];
+    const next = order.find((st) => st.id !== justDone && progress[st.id]?.[sel.mid]?.status === "done" && !progress[st.id]?.[sel.mid]?.review);
+    if (next) setSel({ sid: next.id, mid: sel.mid });
+    else toast("That’s everyone who finished this card", { icon: "check", tone: "ok" });
+  }
   function stepStudent(d: number) {
     if (!sel) return;
     const list = course.students.filter((st) => visible[st.id].has(sel.mid));
@@ -409,7 +419,7 @@ export function Classroom({
             )}
             {!selModule.questions?.length && selModule.type !== "wall" && (
               <ReviewBox key={`${sel.sid}-${sel.mid}`} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"}
-                skills={(course.skills ?? []).filter((sk) => selModule.skills?.includes(sk.id))} levels={course.levels ?? []} />
+                skills={(course.skills ?? []).filter((sk) => selModule.skills?.includes(sk.id))} levels={course.levels ?? []} onNext={() => nextWaiting(sel.sid)} />
             )}
             </div>
           </aside>,
@@ -553,7 +563,7 @@ function ExportMenu({ items }: { items: [string, () => void][] }) {
 }
 
 /** The teacher's response to one piece of work: a note, and either "looks good" or "revise". */
-function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels }: { courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean; skills: Skill[]; levels: Level[] }) {
+function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels, onNext }: { courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean; skills: Skill[]; levels: Level[]; onNext?: () => void }) {
   const [text, setText] = useState(review?.text ?? "");
   const [rubric, setRubric] = useState<Record<string, number>>(review?.levels ?? {});
   const [busy, setBusy] = useState(false);
@@ -564,6 +574,8 @@ function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, 
     if (r.ok === false) return toast(r.error ?? "Couldn’t save", { icon: "message", tone: "plain" });
     if (verdict === "clear") setText("");
     toast(verdict === "revise" ? `Sent back to ${name} for a revision` : verdict === "good" ? `Sent to ${name}` : "Feedback removed", { icon: verdict === "revise" ? "reset" : "message" });
+    // Marking down a list of work: go straight on to the next one waiting.
+    if (verdict !== "clear") onNext?.();
   }
   return (
     <section aria-label="Your feedback" className="mt-6 border-t border-line pt-5">

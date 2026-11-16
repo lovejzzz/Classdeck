@@ -18,6 +18,7 @@ import { Settings } from "@/components/teacher/Settings";
 import { op, useConnectors, useCourse } from "@/lib/client";
 import { PRESET_LABELS } from "@/lib/profile";
 import { toast } from "@/lib/toast";
+import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
 
 const TABS = [["plan", "Deck"], ["class", "Class"], ["grades", "Grades"], ["settings", "Settings"]] as const;
@@ -45,7 +46,10 @@ export default function TeachPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const { state, error, refresh, needAuth } = useCourse(courseId, undefined, 3000);
   const { connectors } = useConnectors();
-  const [tab, setTab] = useState<Tab>("plan");
+  // The tab lives in the address, so Back returns to the previous tab and a reload stays put.
+  const [tabParam, setTabParam] = useUrlState("tab");
+  const tab: Tab = TABS.some(([id]) => id === tabParam) ? (tabParam as Tab) : "plan";
+  const setTab = (t: Tab) => setTabParam(t === "plan" ? null : t);
   const [picked, setPicked] = useState<string | null>(null);
   const [sel, setSel] = useState<{ sid: string; mid: string } | null>(null);
   const seenKey = `seen-at:teacher:${courseId}`;
