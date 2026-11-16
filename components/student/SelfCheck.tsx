@@ -83,7 +83,7 @@ export function SelfCheck({
       </p>
       <button
         onClick={() => {
-          if (!complete) return toast("Rate all six skills first", { icon: "selfcheck", tone: "plain" });
+          if (!complete) return toast("Rate every skill first", { icon: "selfcheck", tone: "plain" });
           onDone();
         }}
         className={`btn btn-dark press mt-3 ${big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}

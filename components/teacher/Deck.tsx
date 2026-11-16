@@ -90,6 +90,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const latest = useRef<Record<string, Lesson>>({});
   const openRef = useRef(false);
+  const pushedRef = useRef(false);
   const [agendaFor, setAgendaFor] = useState<string | null>(null);
   // Weeks before the current one start folded; the teacher can open any of them.
   const currentWeekIndex = Math.max(0, course.weeks.findIndex((w) => w.lessons.some((l) => l.id === course.currentLessonId)));
@@ -107,7 +108,12 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
   const [runId, setRunId] = useUrlState("run");
   const runLesson = runId ? course.weeks.flatMap((w) => w.lessons.map((l) => ({ l, w }))).find((x) => x.l.id === runId && x.l.session) : undefined;
   const running = runLesson ? { lessonId: runLesson.l.id, weekTitle: runLesson.w.title } : null;
-  const setRunning = (r: { lessonId: string; weekTitle?: string } | null) => setRunId(r ? r.lessonId : null);
+  // Opening adds a history entry; closing on screen steps back out of it (only if this page opened it).
+  const ranHere = useRef(false);
+  const setRunning = (r: { lessonId: string; weekTitle?: string } | null) => {
+    if (r) { ranHere.current = true; setRunId(r.lessonId); }
+    else { setRunId(null, { back: ranHere.current }); ranHere.current = false; }
+  };
 
   useEffect(() => {
     const map = timers.current;
@@ -166,6 +172,8 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
   function edit(lessonId: string, moduleId: string) {
     const already = openRef.current;
     openRef.current = true;
+    // Only step back on close if opening added the entry (not when the card came in with the address on load).
+    if (!already) pushedRef.current = !new URLSearchParams(window.location.search).has("card");
     setEditing({ lessonId, moduleId });
     requestAnimationFrame(() => setEditorOpen(true));
     reveal(moduleId);
@@ -176,7 +184,8 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
     openRef.current = false;
     setEditorOpen(false);
     setTimeout(() => !openRef.current && setEditing(null), 500);
-    if (!fromHistory) setCardParam(null);
+    if (!fromHistory) setCardParam(null, { back: pushedRef.current });
+    pushedRef.current = false;
   }
   const [cardParam, setCardParam] = useUrlState("card");
   // Back pressed while the editor is open: the card leaves the address, so close the editor to match.

@@ -47,6 +47,9 @@ export default function BoardPage() {
     return !!p && (p.status === "done" || !!p.output || !!p.work?.length || posts.some((x) => x.moduleId === m.id));
   };
   const done = all.filter((x) => mine[x.m.id]?.status === "done").length;
+  // "My plan" comes from the speaking-course questionnaire; a course without that card (or a plan) has no plan tab.
+  const hasPlan = !!state.plans?.[studentId] || all.some((x) => x.m.onboarding);
+  const shown = tab === "plan" && !hasPlan ? "overview" : tab;
   const takes = all.reduce((n, x) => n + (mine[x.m.id]?.work?.filter((w) => w.kind === "audio" || w.kind === "video").length ?? 0), 0);
 
   return (
@@ -78,21 +81,21 @@ export default function BoardPage() {
         </div>
 
         <div className="no-print mt-6 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Board sections">
-          {([["plan", "My plan"], ["overview", "Skills"], ["practice", "Practice log"], ["feedback", "Feedback"], ["journal", "Reflections"], ["work", "All work"]] as const).map(([k, label]) => (
-            <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); history.replaceState(null, "", `#${k}`); }}
-              className={`press -mb-px h-10 flex-none border-b-2 px-3 text-[13.5px] ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
+          {([["plan", "My plan"], ["overview", "Skills"], ["practice", "Practice log"], ["feedback", "Feedback"], ["journal", "Reflections"], ["work", "All work"]] as const).filter(([k]) => k !== "plan" || hasPlan).map(([k, label]) => (
+            <button key={k} role="tab" aria-selected={shown === k} onClick={() => { setTab(k); history.replaceState(null, "", `#${k}`); }}
+              className={`press -mb-px h-10 flex-none border-b-2 px-3 text-[13.5px] ${shown === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
           ))}
         </div>
 
-        {tab === "plan" && <section className="rise mt-6"><PlanPanel courseId={courseId} studentId={studentId} course={course} plan={state.plans?.[studentId]} onChanged={refresh} /></section>}
-        {tab === "practice" && <section className="rise mt-6"><PracticeLog state={state} studentId={studentId} /></section>}
-        {tab === "feedback" && <section className="rise mt-6"><FeedbackInbox state={state} studentId={studentId} onChanged={refresh} /></section>}
-        {tab === "journal" && <section className="rise mt-6"><Journal state={state} studentId={studentId} /></section>}
+        {shown === "plan" && <section className="rise mt-6"><PlanPanel courseId={courseId} studentId={studentId} course={course} plan={state.plans?.[studentId]} onChanged={refresh} /></section>}
+        {shown === "practice" && <section className="rise mt-6"><PracticeLog state={state} studentId={studentId} /></section>}
+        {shown === "feedback" && <section className="rise mt-6"><FeedbackInbox state={state} studentId={studentId} onChanged={refresh} /></section>}
+        {shown === "journal" && <section className="rise mt-6"><Journal state={state} studentId={studentId} /></section>}
 
-        {tab === "overview" && <>
+        {shown === "overview" && <>
         <section className="rise card mt-6 p-5" style={{ "--i": 2 } as React.CSSProperties}>
           <div className="flex items-center gap-3">
-            <h2 className="flex-1 text-[15px] font-medium">Six skill areas</h2>
+            <h2 className="flex-1 text-[15px] font-medium">Your skills</h2>
             {first && (
               <span className="flex items-center gap-3 text-[12px] text-ink-3">
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border-2 border-[#367195]" />{first.w.title.split(" · ")[0]}</span>
@@ -101,7 +104,7 @@ export default function BoardPage() {
             )}
           </div>
           {!first ? (
-            <p className="mt-3 text-[13px] text-ink-3">Your self-check from Week 0 will show up here.</p>
+            <p className="mt-3 text-[13px] text-ink-3">Your ratings from self-check cards will show up here.</p>
           ) : (
             <div className="mt-4 grid items-center gap-6 md:grid-cols-[21rem_1fr]">
             <SkillRadar skills={course.skills ?? []} size={220} series={[
@@ -155,7 +158,7 @@ export default function BoardPage() {
 
         </>}
 
-        {tab === "work" && <section className="mt-6 space-y-6">
+        {shown === "work" && <section className="mt-6 space-y-6">
           {course.weeks.map((w) => {
             const items = w.lessons.flatMap((l) => l.modules).filter(hasContent);
             if (!items.length) return null;

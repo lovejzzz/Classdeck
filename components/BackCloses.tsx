@@ -19,8 +19,9 @@ export function BackCloses({ name, value, onBack }: { name: string; value: strin
       setParam(value, { replace: shown.current !== null });
       shown.current = value;
     } else if (!value && shown.current) {
+      // Closed on screen: step back out of the entry this opened, so Back isn't left with a dead step.
       shown.current = null;
-      setParam(null);
+      setParam(null, { back: true });
     }
   }, [value, setParam]);
 

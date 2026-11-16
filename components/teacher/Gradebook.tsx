@@ -149,10 +149,12 @@ export function Gradebook({ state }: { state: CourseState }) {
                           ))}
                         </ul>
                       )}
-                      <details className="group mt-4">
-                        <summary className="cursor-pointer text-[13px] font-medium text-ink-2 hover:text-ink">Plan: goal, objectives, confidence, and nerves check</summary>
-                        <div className="mt-3"><PlanPanel courseId={state.course.id} studentId={r.st.id} course={state.course} plan={state.plans?.[r.st.id]} readOnly /></div>
-                      </details>
+                      {(state.plans?.[r.st.id] || state.course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => m.onboarding)))) && (
+                        <details className="group mt-4">
+                          <summary className="cursor-pointer text-[13px] font-medium text-ink-2 hover:text-ink">Plan: goal, objectives, confidence, and nerves check</summary>
+                          <div className="mt-3"><PlanPanel courseId={state.course.id} studentId={r.st.id} course={state.course} plan={state.plans?.[r.st.id]} readOnly /></div>
+                        </details>
+                      )}
                       <details className="group mt-3">
                         <summary className="cursor-pointer text-[13px] font-medium text-ink-2 hover:text-ink">Reflections</summary>
                         <div className="mt-3"><Journal state={state} studentId={r.st.id} /></div>

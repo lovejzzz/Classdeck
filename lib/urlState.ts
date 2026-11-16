@@ -4,39 +4,40 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
 /**
- * A piece of page state kept in the address (?key=value), so the browser's Back button steps back through it
- * and reloading keeps it. Setting it adds a history entry; clearing it goes back when we added that entry.
+ * How to change the address:
+ * - push (default when setting a value): a new history entry, so Back returns to the previous state.
+ * - replace: change the address without a new entry (moving between cards inside an open editor).
+ * - back: the caller opened this entry itself and is closing it on screen, so step back out of it,
+ *   leaving no dead entry behind for the Back button.
  */
-export function useUrlState(key: string): [string | null, (value: string | null, opts?: { replace?: boolean }) => void] {
+type How = { replace?: boolean; back?: boolean; push?: boolean };
+
+/** A piece of page state kept in the address (?key=value), so Back steps through it and a reload keeps it. */
+export function useUrlState(key: string): [string | null, (value: string | null, how?: How) => void] {
   const search = useSearchParams();
   const router = useRouter();
   const path = usePathname();
   const value = search.get(key);
   const set = useCallback(
-    (next: string | null, opts?: { replace?: boolean }) => {
+    (next: string | null, how: How = {}) => {
       const p = new URLSearchParams(window.location.search);
+      const current = p.get(key);
       if (next === null) {
-        // If the entry we're closing was added on this page, step back so Back and the close button agree.
-        if (p.get(key) !== null && (window.history.state as { qhOpened?: string } | null)?.qhOpened === key) {
+        if (current === null) return;
+        if (how.back) {
           window.history.back();
           return;
         }
         p.delete(key);
-        router.replace(`${path}${p.size ? `?${p}` : ""}`, { scroll: false });
+        const href = `${path}${p.size ? `?${p}` : ""}`;
+        if (how.push) router.push(href, { scroll: false });
+        else router.replace(href, { scroll: false });
         return;
       }
-      if (p.get(key) === next) return;
-      const replacing = opts?.replace && p.get(key) !== null;
+      if (current === next) return;
       p.set(key, next);
-      if (replacing) {
-        // Moving within something already open (the next card, say) changes the address without a new Back step.
-        router.replace(`${path}?${p}`, { scroll: false });
-        setTimeout(() => window.history.replaceState({ ...window.history.state, qhOpened: key }, ""), 0);
-        return;
-      }
-      router.push(`${path}?${p}`, { scroll: false });
-      // Mark the new entry so closing it can go back instead of piling up entries.
-      setTimeout(() => window.history.replaceState({ ...window.history.state, qhOpened: key }, ""), 0);
+      if (how.replace && current !== null) router.replace(`${path}?${p}`, { scroll: false });
+      else router.push(`${path}?${p}`, { scroll: false });
     },
     [key, path, router],
   );
