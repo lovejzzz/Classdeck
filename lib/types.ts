@@ -272,8 +272,10 @@ export interface Student {
   name: string;
   /** Used only to match responses from outside tools (e.g. a Google Form) to this student. */
   email?: string;
-  /** A pending one-time link (from a form) for the student to set their PIN. Only its SHA-256 is stored. */
+  /** An older single sign-in link, from before links could be reused. Only its SHA-256 is stored. */
   invite?: { hash: string; exp: number };
+  /** The student's own sign-in links (emailed, copied, or from a form). Only their SHA-256 is stored. */
+  invites?: { hash: string; exp: number }[];
   /** When they added themselves with the class code. */
   joinedAt?: number;
   /** When Questhand last emailed them an invitation. */

@@ -74,8 +74,8 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
                 </span>
                 {!readOnly && (
                   <span className="flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
-                    <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(`${st.name} will choose a new PIN next time`, { icon: "lock", tone: "plain" }); }}
-                      className="btn btn-quiet press h-8 px-2 text-[12px]" aria-label={`Reset ${st.name}’s PIN`}><Icon name="lock" size={12} /> Reset PIN</button>
+                    <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(st.email ? `${st.name}’s links stopped working. Send a new invitation.` : `${st.name} will choose a new PIN next time`, { icon: "lock", tone: "plain" }); }}
+                      className="btn btn-quiet press h-8 px-2 text-[12px]" aria-label={`Reset ${st.name}’s sign-in`}><Icon name="lock" size={12} /> Reset sign-in</button>
                     <button onClick={async () => (await ask({ title: `Remove ${st.name} from the class?`, body: "Their work stays saved.", confirm: "Remove", danger: true })) && removeStudent(st.id, st.name)}
                       className="btn btn-quiet press h-8 px-2 text-[12px] hover:!text-bad" aria-label={`Remove ${st.name}`}><Icon name="x" size={12} /> Remove</button>
                   </span>

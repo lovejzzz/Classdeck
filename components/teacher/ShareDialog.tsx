@@ -199,7 +199,7 @@ export function InviteStudents({ course, me, onClose, onChanged }: { course: Cou
         note={mode === "off" && !course.students.length
           ? "The class list is empty and access is Restricted, so no one can join yet. Add students above, or open access to anyone with the link."
           : mailOn
-            ? "An invitation from Questhand carries each student’s own one-time link to set up their board. Or share the class link: students open it, pick their name, and choose a 4-digit PIN."
+            ? "An invitation from Questhand carries each student’s own link: it opens their board, no PIN needed. Or share the class link: students open it, pick their name, and choose a 4-digit PIN."
             : "Sending email from Questhand isn’t set up on this site yet. Copy the link (or use Email the link) to send it yourself. Students open it, pick their name, and choose a 4-digit PIN."}
         onClose={onClose}
       />

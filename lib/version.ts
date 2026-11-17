@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.2",
+    date: "2026-11-18",
+    changes: [
+      "A student’s invitation link opens their board straight away: no PIN to choose.",
+      "The link keeps working for 120 days, so the same email gets them back in on another device. Sending again doesn’t break the links already sent.",
+      "Reset PIN is now Reset sign-in: it also turns off that student’s links.",
+    ],
+  },
+  {
     version: "0.1.1",
     date: "2026-11-18",
     changes: [

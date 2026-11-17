@@ -56,8 +56,8 @@ function sendToQuesthand(e) {
     if (!r.link || !to) return;
     MailApp.sendEmail(to, "Your " + reply.course + " board is ready",
       "Hi " + r.student + ",\n\nThanks for filling in the form. Your practice board is set up from your answers.\n\n" +
-      "Open it here and choose a 4-digit PIN: " + r.link + "\n\n" +
-      "The link works once and expires in 14 days. After that, sign in with your class code, your name, and your PIN.");
+      "Open it here: " + r.link + "\n\n" +
+      "The link is only for you. Keep this email: the link gets you back in on another device.");
   });
 }
 `;
@@ -225,7 +225,7 @@ export function FormsIntegration({ course, onChanged }: { course: Course; onChan
           {results && (<>
             {results.some((r) => r.link) && (
               <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-[#fbf3dd] px-3 py-2 text-[12.5px]">
-                <span className="min-w-0 flex-1">New students need their private link to open their board. Each link works once and expires in 14 days.</span>
+                <span className="min-w-0 flex-1">New students need their private link to open their board. It signs them straight in, and keeps working for 120 days.</span>
                 <button onClick={() => copy(results.filter((r) => r.link).map((r) => [r.student, r.email ?? "", r.link].join("\t")).join("\n"), "Links copied: paste into a sheet or mail merge")} className="btn btn-ghost press h-7 px-2 text-[12px]">Copy all links</button>
               </div>
             )}

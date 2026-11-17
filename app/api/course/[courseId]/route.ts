@@ -8,7 +8,7 @@ import { isCorrect, quizSet, asked } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
-import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate } from "@/lib/hooks";
+import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate, revokeInvites } from "@/lib/hooks";
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
@@ -391,7 +391,7 @@ export async function POST(request: Request, { params }: Ctx) {
       break;
     }
     case "emailInvites": {
-      // Email students on this course's list a personal one-time link, in Questhand's name. Fixed wording only.
+      // Email students on this course's list their own sign-in link, in Questhand's name. Fixed wording only.
       const me = session?.kind === "teacher" && session.userId ? d.users[session.userId] : undefined;
       if (!me || course.id === DEMO) return fail("Sign in as a teacher to send invitations", 403);
       if (!mailReady()) return fail("Sending email isn’t set up on this site yet");
@@ -410,7 +410,7 @@ export async function POST(request: Request, { params }: Ctx) {
       break;
     }
     case "setupLinks": {
-      // One-time links for students on the list who haven't signed in yet. Each replaces any earlier link.
+      // Sign-in links for students on the list who haven't set a PIN. Earlier links keep working (up to a few per student).
       const pins = d.pins[courseId] ?? {};
       const want = Array.isArray(body.studentIds) ? new Set(body.studentIds.map(String)) : null;
       const origin = publicOrigin(request);
@@ -941,7 +941,10 @@ export async function POST(request: Request, { params }: Ctx) {
       break;
     }
     case "resetPin": {
+      // Resetting a student's sign-in clears their PIN and turns off their links (a link that went to the wrong person).
       if (d.pins[courseId]) delete d.pins[courseId][body.studentId];
+      const st = course.students.find((s) => s.id === body.studentId);
+      if (st) revokeInvites(st);
       break;
     }
     // —— live class ——

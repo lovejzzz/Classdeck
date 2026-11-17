@@ -28,12 +28,12 @@ export async function sendInvite(to: string, p: { course: string; teacher: strin
   if (/@(example\.(test|com|org|net)|[^@]+\.(test|invalid|localhost))$/i.test(to)) return false;
   const course = plain(p.course), teacher = plain(p.teacher, 60);
   const subject = `${teacher} invited you to ${course} on Questhand`;
-  const text = `${teacher} added you to ${course} on Questhand.\n\nOpen your own link to set up your board and choose a 4-digit PIN:\n${p.link}\n\nThis link is only for you and works once, for 14 days. If you weren’t expecting this, you can ignore it.`;
+  const text = `${teacher} added you to ${course} on Questhand.\n\nOpen your board:\n${p.link}\n\nThis link is only for you: keep this email, and use the link again to get back in on another device. If you weren’t expecting this, you can ignore it.`;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
   const html = `<div style="font:15px/1.5 system-ui,sans-serif;color:#1b1b1a;max-width:480px">
 <p><b>${esc(teacher)}</b> added you to <b>${esc(course)}</b> on Questhand.</p>
 <p><a href="${esc(p.link)}" style="display:inline-block;background:#1b1b1a;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none">Open my board</a></p>
-<p style="color:#55544f;font-size:13px">You’ll choose a 4-digit PIN. This link is only for you and works once, for 14 days. If you weren’t expecting this, you can ignore it.</p></div>`;
+<p style="color:#55544f;font-size:13px">This link is only for you: keep this email, and use the link again to get back in on another device. If you weren’t expecting this, you can ignore it.</p></div>`;
   try {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",

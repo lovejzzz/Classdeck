@@ -36,23 +36,38 @@ export interface HookResult {
   link?: string; email?: string;
 }
 
-const INVITE_DAYS = 14;
+const INVITE_DAYS = 120;
+/** Links kept per student: a new one (sent again, copied) doesn't break the ones already in their inbox. */
+const KEEP_LINKS = 5;
 
-/** A one-time link for a student to set their PIN. Replaces any earlier link for them. */
+/** A student's own sign-in link: opening it signs them in to their board, as often as they need, until it expires. */
 export function issueInvite(st: Student): string {
   const token = crypto.randomBytes(24).toString("base64url");
-  st.invite = { hash: sha(token), exp: Date.now() + INVITE_DAYS * 86400_000 };
+  const now = Date.now();
+  const live = liveInvites(st, now);
+  st.invites = [...live, { hash: sha(token), exp: now + INVITE_DAYS * 86400_000 }].slice(-KEEP_LINKS);
+  st.invite = undefined;
   return token;
+}
+
+/** The student's links that still work (including one from before links could be reused). */
+export const liveInvites = (st: Student, now = Date.now()) => [...(st.invite ? [st.invite] : []), ...(st.invites ?? [])].filter((x) => x.exp > now);
+
+/** Turn off every link a student has (their teacher reset their sign-in). */
+export function revokeInvites(st: Student) {
+  st.invite = undefined;
+  st.invites = undefined;
 }
 
 export function findInvite(course: Course, token: string): Student | undefined {
   if (!token) return undefined;
   const h = Buffer.from(sha(token), "hex");
-  return course.students.find((s) => {
-    if (!s.invite || s.invite.exp < Date.now()) return false;
-    const b = Buffer.from(s.invite.hash, "hex");
-    return b.length === h.length && crypto.timingSafeEqual(b, h);
-  });
+  return course.students.find((s) =>
+    liveInvites(s).some((x) => {
+      const b = Buffer.from(x.hash, "hex");
+      return b.length === h.length && crypto.timingSafeEqual(b, h);
+    }),
+  );
 }
 
 export const inviteUrl = (origin: string, courseId: string, token: string) => `${origin}/learn/${courseId}/welcome#${token}`;

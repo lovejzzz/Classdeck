@@ -233,6 +233,24 @@ async function main() {
   check("unknown op refused", (await A.op(fresh.id, { op: "nope" })).ok === false);
   check("unknown card refused", (await S1.op(fresh.id, { op: "setProgress", studentId: mia.id, moduleId: "m-nope", status: "done" })).ok === false);
 
+  // ---- A student's own link signs them straight in, no PIN, and keeps working
+  {
+    const tokenOf = (r) => (r.links ?? []).find((x) => x.id === leo.id)?.link?.split("#")[1];
+    const t1 = tokenOf(await A.op(fresh.id, { op: "setupLinks", studentIds: [leo.id] }));
+    check("teacher gets a link for a listed student", !!t1);
+    const L1 = client();
+    const in1 = await L1.post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 });
+    check("link signs the student in", in1.ok && in1.studentId === leo.id && !!L1.cookie, in1);
+    check("signed-in student reads their board", (await L1.state(`${fresh.id}?as=${leo.id}`)).status === 200);
+    check("the same link works again (another device)", (await client().post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 })).ok === true);
+    const t2 = tokenOf(await A.op(fresh.id, { op: "setupLinks", studentIds: [leo.id] }));
+    check("a new link doesn't break the first one", t2 !== t1 && (await client().post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 })).ok === true);
+    check("no one can claim the name with a PIN", (await client().post("/api/auth", { action: "student", courseId: fresh.id, code, studentId: leo.id, pin: "1111" })).ok === false);
+    check("a made-up link is refused", (await client().post("/api/auth", { action: "invite", courseId: fresh.id, token: "nope" })).ok === false);
+    await A.op(fresh.id, { op: "resetPin", studentId: leo.id });
+    check("reset sign-in turns the links off", (await client().post("/api/auth", { action: "invite", courseId: fresh.id, token: t2 })).ok === false);
+  }
+
   // "Only my list" with an empty list: nobody can add themselves.
   const off = await A.op(made["blank/music"], { op: "setAccess", access: { joinOpen: true } });
   check("turn self-join off", off.ok !== false, off);
