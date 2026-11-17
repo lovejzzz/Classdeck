@@ -7,6 +7,7 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { GenArt } from "@/components/cards/GenArt";
 import { GoogleButton } from "@/components/GoogleButton";
 import { Icon } from "@/components/Icon";
+import { Clearable } from "@/components/Clearable";
 import { LogoMark, Wordmark } from "@/components/Logo";
 import { CARD_SIZE } from "@/lib/cards";
 
@@ -52,6 +53,9 @@ export default function Home() {
       setError(data.error);
     }
   }
+
+  // Until we know who's here, show nothing: otherwise a signed-in teacher sees the class-code page flash past.
+  if (me === null) return <main className="flex-1" aria-busy="true" />;
 
   // A signed-in teacher lands on their courses: one card per course, and a card-shaped slot for a new one.
   if (me?.kind === "teacher") {
@@ -184,8 +188,8 @@ function NewCourse({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/25 p-4 pt-[12vh]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form role="dialog" aria-modal="true" aria-label="New course" onSubmit={create} className="pop w-full max-w-md space-y-3 rounded-2xl bg-white p-6 shadow-[0_30px_80px_-24px_rgba(20,20,18,0.45)]">
         <h2 className="text-[20px] font-medium tracking-tight">New course</h2>
-        <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course name" aria-label="Course name" className="field h-11 text-[14px]" />
-        <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Subtitle (optional), e.g. Spring 2027 · Tuesdays" aria-label="Subtitle" className="field" />
+        <Clearable><input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course name" aria-label="Course name" className="field h-11 text-[14px]" /></Clearable>
+        <Clearable><input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Subtitle (optional), e.g. Spring 2027 · Tuesdays" aria-label="Subtitle" className="field" /></Clearable>
         <div className="grid gap-1.5">
           {([["blank", "Start blank", "One empty week."], ["template", "Standard weeks", "Three weeks with a ready-made rhythm: goal, practice, group feedback, reflection."]] as const).map(([k, label, hint]) => (
             <label key={k} className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 text-[13px] transition-colors ${start === k ? "border-ink" : "border-line hover:border-line-strong"}`}>

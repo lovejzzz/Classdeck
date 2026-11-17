@@ -1,4 +1,4 @@
-import { fetchHtml } from "@/lib/connectors/safety";
+import { fetchHtml, fetchJson } from "@/lib/connectors/safety";
 import { ConnectorError } from "@/lib/connectors/types";
 
 // Link previews: title, description, image, and site name from a page's meta tags. Cached in memory.
@@ -23,6 +23,21 @@ export async function GET(request: Request) {
   if (!/^https:\/\//i.test(url)) return Response.json({ ok: false, error: "Only https links get previews" }, { status: 400 });
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < 6 * 3600_000) return Response.json({ ok: true, ...hit.data });
+  // Videos: ask the site itself for the title (its oEmbed endpoint); a page fetched from a server can be a consent wall.
+  const oembed = /^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(url) ? `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`
+    : /^https:\/\/(www\.|player\.)?vimeo\.com\//i.test(url) ? `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}` : null;
+  if (oembed) {
+    try {
+      const o = (await fetchJson(oembed, { timeoutMs: 6000 })) as { title?: string; thumbnail_url?: string; provider_name?: string };
+      if (o?.title) {
+        const data = { title: String(o.title).slice(0, 200), description: "", image: String(o.thumbnail_url ?? "").startsWith("https://") ? String(o.thumbnail_url) : "", site: String(o.provider_name ?? "") };
+        cache.set(url, { at: Date.now(), data });
+        return Response.json({ ok: true, ...data });
+      }
+    } catch {
+      // Fall back to reading the page.
+    }
+  }
   try {
     const { url: final, html } = await fetchHtml(url);
     const title = meta(html, ["og:title", "twitter:title"]) || decode(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "");

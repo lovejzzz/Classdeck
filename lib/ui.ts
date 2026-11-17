@@ -23,6 +23,9 @@ export const suitOf = (t: ModuleType): (typeof SUITS)[number] => SUITS.find((s) 
 
 export const TYPE_ORDER: ModuleType[] = SUITS.flatMap((s) => s.types);
 
+/** A card's suit: the one the teacher chose, or (for older cards) the one its type belongs to. */
+export const suitOfCard = (m: { type: ModuleType; suit?: string }): (typeof SUITS)[number] => SUITS.find((s) => s.id === m.suit) ?? suitOf(m.type);
+
 type Meta = { label: string; name: string; hint: string; tint: string; cover: string; outputLabel?: string; doneLabel: string };
 const variant = (t: ModuleType, v: Omit<Meta, "tint" | "cover">): Meta => {
   const s = suitOf(t);

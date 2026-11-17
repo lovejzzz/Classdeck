@@ -29,7 +29,7 @@ import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
 import { useConnectors, useCourse, useQuery } from "@/lib/client";
 import { toast } from "@/lib/toast";
-import { TYPE_META } from "@/lib/ui";
+import { suitOfCard } from "@/lib/ui";
 import type { Lesson, Module, Profile, Progress, Status } from "@/lib/types";
 
 const narrowQuery = "(max-width: 639px)";
@@ -559,7 +559,7 @@ export default function LearnPage() {
               if (handMode) setBump((b) => b + 1);
               const target = handMode ? pileRef.current : els.current.get(lift.id);
               const r = target?.getBoundingClientRect();
-              if (r) setBurst({ x: r.left + r.width / 2, y: r.top + r.height / 2, colors: [TYPE_META[openModule.type].tint, "#247b46", "#f2c94c", "#1b1b1a"], key: Date.now() });
+              if (r) setBurst({ x: r.left + r.width / 2, y: r.top + r.height / 2, colors: [suitOfCard(openModule).tint, "#247b46", "#f2c94c", "#1b1b1a"], key: Date.now() });
             }
             setLift(null);
           }}

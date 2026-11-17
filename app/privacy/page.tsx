@@ -21,7 +21,7 @@ export default function Privacy() {
 
       <h2>Students</h2>
       <ul>
-        <li>The name your teacher adds (or you add when you join), a 4-digit PIN stored only as a salted hash, and an email only if your teacher adds you by email or a class form provides one. Questhand doesn’t send email to students; your teacher shares the class link themselves.</li>
+        <li>The name your teacher adds (or you add when you join), a 4-digit PIN stored only as a salted hash, and an email only if your teacher adds you by email or a class form provides one. If your teacher asks, Questhand emails you one invitation with your own link to the class; we send nothing else.</li>
         <li>Your work: answers, writing, recordings, files and links you add, ratings, your plan, and feedback you give and receive.</li>
         <li>Your teacher can see your work in their class. Classmates see only what is shared on purpose, such as wall posts and Collab Studio work in your group. Other students never receive your answers or feedback.</li>
       </ul>
@@ -30,6 +30,7 @@ export default function Privacy() {
       <ul>
         <li>Course data is kept on our server (Hetzner, in Finland) and backed up to Cloudflare R2. Uploaded files are stored in Cloudflare R2 and opened through short-lived links.</li>
         <li>Pages are delivered through Cloudflare, which sees standard request information such as IP addresses.</li>
+        <li>Invitation emails are sent through Resend, which receives the student’s email address and the invitation’s text.</li>
         <li>If a teacher turns on optional tools (for example the AI coach or an image search), the text sent to that tool goes to its provider.</li>
       </ul>
 

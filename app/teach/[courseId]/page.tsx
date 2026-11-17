@@ -252,7 +252,7 @@ export default function TeachPage() {
         </main>
       </div>
     </div>
-      {inviting && <InviteStudents course={course} onClose={() => setInviting(false)} onChanged={refresh} />}
+      {inviting && <InviteStudents course={course} me={state.me} onClose={() => setInviting(false)} onChanged={refresh} />}
     </MarksContext.Provider>
   );
 }

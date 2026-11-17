@@ -167,6 +167,8 @@ export function PhysicsCard(props: PhysicsCardProps) {
   const longTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const longFired = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
+  const unlisten = useRef<() => void>(() => {});
+  useEffect(() => () => unlisten.current(), []);
 
   function onPointerDown(e: React.PointerEvent) {
     if (e.button !== 0) return;
@@ -175,10 +177,24 @@ export function PhysicsCard(props: PhysicsCardProps) {
     const p = local(e);
     s.drag = { ...s.drag, down: true, active: false, sx: e.clientX, sy: e.clientY, ox: p.x - s.x.x, oy: p.y - s.y.x, px: p.x, py: p.y, lastX: e.clientX, vx: 0 };
     lastPos.current = { x: e.clientX, y: e.clientY };
-    // Hold the pointer from the start, so letting go anywhere (even off the card) ends the press here.
-    if (P.current.draggable) {
-      try { outer.current?.setPointerCapture(e.pointerId); } catch {}
-    }
+    // Follow the press on the whole window, not just this card: the card can move under the pointer (or even be
+    // moved in the page as the row re-sorts), and letting go anywhere must end it.
+    unlisten.current();
+    const move = (ev: PointerEvent) => pressMove(ev);
+    const up = (ev: PointerEvent) => {
+      if (longFired.current) { longFired.current = false; finish(null, false); return; }
+      finish(ev, true);
+    };
+    const cancel = (ev: PointerEvent) => finish(ev, false);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    unlisten.current = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      unlisten.current = () => {};
+    };
     longFired.current = false;
     clearTimeout(longTimer.current);
     if (P.current.onLongPress) {
@@ -188,13 +204,15 @@ export function PhysicsCard(props: PhysicsCardProps) {
         longFired.current = true;
         d.down = false;
         P.current.onLongPress?.();
+        // The release that follows mustn't open the card; the window listener swallows it.
       }, 550);
     }
   }
 
-  /** End a press or a drag, wherever the pointer is: let go, cancelled, or the capture lost. */
+  /** End a press or a drag, wherever the pointer is: let go, or cancelled. */
   function finish(e: { clientX: number; clientY: number } | null, tapAllowed: boolean) {
     clearTimeout(longTimer.current);
+    unlisten.current();
     const s = st.current;
     const d = s.drag;
     if (!d.down) return;
@@ -221,15 +239,20 @@ export function PhysicsCard(props: PhysicsCardProps) {
       inner.current?.style.setProperty("--mx", `${s.mx * 100}%`);
       inner.current?.style.setProperty("--my", `${s.my * 100}%`);
     }
+  }
+
+  /** The pointer moved while this card is pressed (heard on the whole window). */
+  function pressMove(e: PointerEvent) {
+    const s = st.current;
     const d = s.drag;
     if (!d.down) return;
+    wake.current();
     lastPos.current = { x: e.clientX, y: e.clientY };
-    // The button was let go somewhere this card never heard about: end here instead of following the pointer.
+    // The button was let go somewhere the page never heard about (outside the window): end the drag here.
     if (e.pointerType === "mouse" && e.buttons === 0) return finish(e, false);
     if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) clearTimeout(longTimer.current);
     if (!d.active && P.current.draggable && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) {
       d.active = true;
-      try { outer.current?.setPointerCapture(e.pointerId); } catch {}
       document.body.style.cursor = "grabbing";
       P.current.onDragStart?.();
     }
@@ -241,14 +264,6 @@ export function PhysicsCard(props: PhysicsCardProps) {
       d.lastX = e.clientX;
       P.current.onDragMove?.({ x: p.x - d.ox + P.current.w / 2, y: p.y - d.oy + P.current.h / 2 });
     }
-  }
-
-  function onPointerUp(e: React.PointerEvent) {
-    if (longFired.current) {
-      longFired.current = false;
-      return;
-    }
-    finish(e, true);
   }
 
   function activate() {
@@ -290,9 +305,7 @@ export function PhysicsCard(props: PhysicsCardProps) {
       style={{ width: props.w, height: props.h, visibility: props.hidden ? "hidden" : "visible", cursor: props.locked ? "not-allowed" : "pointer" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={(e) => finish(e, false)}
-      onLostPointerCapture={() => finish(null, false)}
+
       onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
       onPointerLeave={() => setHover(false)}
       onFocus={() => setHover(true)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CARD_SIZE, formatSize, hostOf } from "@/lib/cards";
 import { uid } from "@/lib/profile";
@@ -8,14 +8,19 @@ import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { isoDay } from "@/lib/grading";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
-import { suitOf } from "@/lib/ui";
+import { suitOf, suitOfCard } from "@/lib/ui";
+import { ask } from "../Confirm";
+import { Clearable } from "../Clearable";
 import { CARD_TEMPLATES } from "@/lib/templates";
 import { loadLibrary, useLibrary } from "./NewCardFan";
-import { RESPONSES, SHARES, clearOlder, fold, olderSettings, responseOf, shareOf, typeFor, withAnswers, type Response, type ShareWith } from "@/lib/cardmodel";
+import { RESPONSES, SHARES, clearOlder, fold, olderSettings, responseOf, shareOf, withAnswers, type Response, type ShareWith } from "@/lib/cardmodel";
 import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { CardFace } from "../cards/CardFace";
 import { Avatar, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
+
+/** The time, for grouping quick edits into one undo step (only ever read in event handlers). */
+const clock = () => Date.now();
 
 /** A card preview that tilts toward the pointer, so teachers see exactly what students will hold. */
 function TiltPreview({ m }: { m: Module }) {
@@ -88,7 +93,55 @@ export function CardEditor({
   ]);
   const lessonRef = useRef(lesson);
   useEffect(() => { lessonRef.current = lesson; });
-  const set = (patch: Partial<Module>) => onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? { ...x, ...patch } : x)) });
+  /** Put a version of this card in place, in the latest copy of its lesson. */
+  const put = (next: Module) => onChange({ ...lessonRef.current, modules: lessonRef.current.modules.map((x) => (x.id === next.id ? next : x)) });
+
+  // Undo and redo for this card only. Quick edits (typing) count as one step.
+  const hist = useRef<{ past: Module[]; future: Module[]; at: number }>({ past: [], future: [], at: 0 });
+  const [steps, setSteps] = useState({ undo: 0, redo: 0 });
+  const sync = () => setSteps({ undo: hist.current.past.length, redo: hist.current.future.length });
+  function record(prev: Module) {
+    const h = hist.current;
+    const t = clock();
+    if (t - h.at > 1000) h.past = [...h.past, prev].slice(-100);
+    h.at = t;
+    h.future = [];
+    sync();
+  }
+  function undo() {
+    const h = hist.current;
+    const prev = h.past.pop();
+    if (!prev) return;
+    h.future.push(m);
+    h.at = 0;
+    put(prev);
+    sync();
+  }
+  function redo() {
+    const h = hist.current;
+    const next = h.future.pop();
+    if (!next) return;
+    h.past.push(m);
+    h.at = 0;
+    put(next);
+    sync();
+  }
+  useEffect(() => {
+    if (!open) return;
+    const k = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+      const t = e.target;
+      if (t instanceof Element && t.closest("input, textarea, select, [contenteditable=true]")) return;
+      e.preventDefault();
+      if (e.shiftKey) redo(); else undo();
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  });
+  const set = (patch: Partial<Module>) => {
+    record(m);
+    put({ ...m, ...patch });
+  };
   const attachments = m.attachments ?? [];
   const addAttachment = (a: Omit<Attachment, "id">) => set({ attachments: [...attachments, { ...a, id: uid("a-") }] });
   const a = m.audience;
@@ -98,11 +151,13 @@ export function CardEditor({
   // A card just put down, still empty: offer the teacher's saved cards and ready-made ones as a starting point.
   const fresh = !m.body.trim() && !attachments.length && !m.questions?.some((q) => q.text.trim()) && /^(New .+ card|Untitled card)$/.test(m.title);
 
-  function answers(r: Response, sh: ShareWith) {
+  async function answers(r: Response, sh: ShareWith) {
     if (r === response && (r !== "answer" || sh === share)) return;
-    if (started > 0 && !confirm(`${started === 1 ? "1 student has" : `${started} students have`} already worked on this card. What they handed in stays where it is and won’t move. Change it anyway?`)) return;
-    set(withAnswers(m, r, sh));
+    if (started > 0 && !(await ask({ title: "Change what comes back?", body: `${started === 1 ? "1 student has" : `${started} students have`} already worked on this card. What they handed in stays where it is and won’t move.`, confirm: "Change it" }))) return;
+    // The suit stays what the teacher put down, whatever comes back and whoever sees it.
+    set({ ...withAnswers(m, r, sh), suit: suitOfCard(m).id });
   }
+  const suit = suitOfCard(m);
 
   // Rendered into <body> so no animated ancestor can become its positioning box.
   return createPortal(
@@ -121,7 +176,8 @@ export function CardEditor({
           <span className="font-medium">Card {position ? position.index + 1 : ""}</span>
           {position && <span className="text-ink-3"> of {position.total} · {position.lesson}</span>}
         </span>
-        {onSaveToLibrary && <button onClick={onSaveToLibrary} className="btn btn-quiet press h-8 px-2" title="Save a copy to reuse in any of your courses"><Icon name="star" size={13} /> Save</button>}
+        <button onClick={undo} disabled={!steps.undo} aria-label="Undo" title="Undo (⌘Z)" className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><UndoArrow /></button>
+        <button onClick={redo} disabled={!steps.redo} aria-label="Redo" title="Redo (⇧⌘Z)" className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><UndoArrow flip /></button>
         <button onClick={onDuplicate} className="btn btn-quiet press h-8 px-2"><Icon name="layers" size={13} /> Duplicate</button>
         <button onClick={onDelete} className="btn btn-quiet press h-8 px-2 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
         <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
@@ -135,14 +191,15 @@ export function CardEditor({
           {fresh && (
             <StartFrom m={m} onApply={(content) => {
               const own = new Set(skills.map((x) => x.id));
-              const next: Module = { ...fold(structuredClone(content)), id: m.id, audience: m.audience, due: m.due, skills: content.skills?.filter((x) => own.has(x)) } as Module;
-              onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? next : x)) });
+              const next: Module = { ...fold(structuredClone(content)), id: m.id, audience: m.audience, due: m.due, suit: suit.id, skills: content.skills?.filter((x) => own.has(x)) } as Module;
+              record(m);
+              put(next);
             }} />
           )}
 
           <Panel n={1} title="Title and what to do">
-            <input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" />
-            <textarea value={m.body} onChange={(e) => set({ body: e.target.value })} rows={5} placeholder="What students should read, watch or do" aria-label="Body" className="field mt-2 resize-y leading-relaxed" />
+            <Clearable><input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" /></Clearable>
+            <Clearable multiline className="mt-2"><textarea value={m.body} onChange={(e) => set({ body: e.target.value })} rows={5} placeholder="What students should read, watch or do" aria-label="Body" className="field resize-y leading-relaxed" /></Clearable>
             <div className="mt-3">
           <div className="space-y-1.5">
             {attachments.map((x, i) => {
@@ -152,9 +209,9 @@ export function CardEditor({
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-7 w-7 flex-none items-center justify-center rounded-md bg-lane text-ink-2"><Icon name={x.kind} size={13} /></span>
                     <span className="min-w-0 flex-1">
-                      <input defaultValue={x.name ?? ""} placeholder={x.kind === "link" ? hostOf(x.url) : "Label"} aria-label="Label"
+                      <Clearable><input key={`${x.id}:${x.name ?? ""}`} defaultValue={x.name ?? ""} placeholder={x.kind === "link" ? hostOf(x.url) : "Label"} aria-label="Label"
                         onBlur={(e) => e.target.value !== (x.name ?? "") && set({ attachments: attachments.map((y) => (y.id === x.id ? { ...y, name: e.target.value || undefined } : y)) })}
-                        className="block w-full truncate rounded border border-transparent bg-transparent px-1 text-[13px] hover:border-line focus:border-line-strong focus:bg-white focus:outline-none" />
+                        className="block w-full truncate rounded border border-transparent bg-transparent px-1 text-[13px] hover:border-line focus:border-line-strong focus:bg-white focus:outline-none" /></Clearable>
                       <span className="mono block truncate px-1 text-[11px]">{x.kind}{x.size ? ` · ${formatSize(x.size)}` : ""}{i === 0 ? " · cover" : ""}</span>
                     </span>
                     {i > 0 && (
@@ -177,7 +234,7 @@ export function CardEditor({
             })}
           </div>
           <div className="mt-2">
-            <AttachMenu compact onAdd={(a) => { addAttachment(a); toast(`Added ${a.name ?? a.kind}`, { icon: "upload" }); }} />
+            <AttachMenu compact teacher onAdd={(a) => { addAttachment(a); toast(`Added ${a.name ?? a.kind}`, { icon: "upload" }); }} />
           </div>
             </div>
           </Panel>
@@ -185,13 +242,19 @@ export function CardEditor({
           <Panel n={2} title="What comes back">
             <div className={`grid gap-2 ${skills.length || response === "rating" ? "grid-cols-4" : "grid-cols-3"}`} role="radiogroup" aria-label="What comes back">
               {RESPONSES.filter((r) => r.id !== "rating" || skills.length > 0 || response === "rating").map((r) => {
-                const suit = suitOf(typeFor(r.id, r.id === "answer" ? share : "teacher", m));
                 return (
                   <MiniCard key={r.id} tint={suit.tint} cover={suit.cover} icon={<Icon name={r.icon} size={20} />} title={r.name} sub={r.hint}
                     selected={response === r.id} onClick={() => answers(r.id, r.id === "answer" ? share : "teacher")} />
                 );
               })}
             </div>
+            {response === "answer" && (
+              // Who sees the answers: part of what comes back, not a separate question.
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px]">
+                <span className="text-ink-2">Who sees the answers</span>
+                <Seg value={share} options={SHARES.map((x) => [x.id, x.name])} onPick={(v) => answers("answer", v as ShareWith)} />
+              </div>
+            )}
             {response === "questions" && (
               <div className="mt-4">
                 <QuestionsEditor questions={m.questions ?? []} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
@@ -202,18 +265,7 @@ export function CardEditor({
             )}
           </Panel>
 
-          {response === "answer" && (
-            <Panel n={3} title="Who sees it">
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Who sees it">
-                {SHARES.map((x) => {
-                  const suit = suitOf(typeFor("answer", x.id, m));
-                  return <MiniCard key={x.id} short tint={suit.tint} cover={suit.cover} icon={<Icon name={x.icon} size={18} />} title={x.name} sub={x.hint} selected={share === x.id} onClick={() => answers("answer", x.id)} />;
-                })}
-              </div>
-            </Panel>
-          )}
-
-          <Panel n={response === "answer" ? 4 : 3} title="When and for whom">
+          <Panel n={3} title="When and for whom">
             <div className="flex flex-wrap items-center gap-1.5">
               <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="field h-8 w-40 py-0" />
               {([["Today", 0], ["+3 days", 3], ["+1 week", 7]] as const).map(([label, n]) => (
@@ -244,6 +296,12 @@ export function CardEditor({
             )}
           </Panel>
 
+          {onSaveToLibrary && (
+            <button onClick={onSaveToLibrary} className="btn btn-ghost press h-10 w-full justify-center bg-white" title="Save a copy to reuse in any of your courses">
+              <Icon name="star" size={14} /> Save to my cards
+            </button>
+          )}
+
           {older.length > 0 && (
             <p className="px-1 text-[12px] text-ink-3">
               Older settings on this card still apply: {older.join(" · ")}.{" "}
@@ -257,7 +315,15 @@ export function CardEditor({
   );
 }
 
-/** One of the four parts of a card, numbered in the order a teacher fills them in. */
+function UndoArrow({ flip = false }: { flip?: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={flip ? { transform: "scaleX(-1)" } : undefined}>
+      <path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </svg>
+  );
+}
+
+/** One of the parts of a card, numbered in the order a teacher fills them in. */
 function Panel({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
     <section data-sec={title} className="rounded-xl border border-line bg-white px-4 py-3.5">
@@ -295,12 +361,12 @@ function MiniCard({ tint, cover, icon, title, sub, selected, dashed, short, onCl
 
 /** For a card just put down: start from one of the teacher's saved cards or a ready-made one of this suit. */
 function StartFrom({ m, onApply }: { m: Module; onApply: (content: Omit<Module, "id">) => void }) {
-  const suit = suitOf(m.type);
-  const saved = useLibrary().filter((c) => suitOf(c.module.type).id === suit.id);
+  const suit = suitOfCard(m);
+  const saved = useLibrary().filter((c) => suitOfCard(c.module).id === suit.id);
   const temps = CARD_TEMPLATES.filter((t) => suitOf(t.make().type).id === suit.id);
   if (!saved.length && !temps.length) return null;
   async function forget(id: string, name: string) {
-    if (!confirm(`Remove “${name}” from your saved cards? Cards already in your courses stay.`)) return;
+    if (!(await ask({ title: `Remove “${name}” from your saved cards?`, body: "Cards already in your courses stay.", confirm: "Remove", danger: true }))) return;
     const r = await fetch("/api/library", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) return toast("Couldn’t remove it", { icon: "x", tone: "bad" });
     await loadLibrary(true);

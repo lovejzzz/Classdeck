@@ -21,6 +21,8 @@ export interface User {
   google?: string;
   /** Their Google profile photo, refreshed at each Google sign-in. */
   picture?: string;
+  /** Invitation emails sent today (a daily cap). */
+  mail?: { day: string; n: number };
   /** Cards they saved to reuse in any of their courses (the "custom" choices in New card). */
   cards?: SavedCard[];
   createdAt: number;

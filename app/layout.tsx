@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SkipLink } from "@/components/SkipLink";
 import { Toaster } from "@/components/Toaster";
+import { ConfirmHost } from "@/components/Confirm";
 import Link from "next/link";
 import { VERSION } from "@/lib/version";
 import "./globals.css";
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/changelog" className="font-mono hover:text-ink" title="What’s new">v{VERSION}</Link>
         </footer>
         <Toaster />
+        <ConfirmHost />
       </body>
     </html>
   );

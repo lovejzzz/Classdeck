@@ -3,6 +3,22 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.1",
+    date: "2026-11-18",
+    changes: [
+      "Signing in (or going home) no longer flashes the class-code page first.",
+      "Invite students: Questhand can email each student a personal invitation with their own one-time link (once sending email is turned on for the site).",
+      "Drag a card past as many others as you like.",
+      "The Run Collab Studio button moved into the lesson’s ⋯ menu.",
+      "Today’s lesson shows Today where its date goes; click it to change the date.",
+      "Adding media to a card: Link, Upload, Draw, and More (audio, video and screen recordings, and a photo). A video link takes the video’s own title. Make cover works. Find an image is gone.",
+      "A card keeps the suit you put it down as. Who sees the answers is a switch inside What comes back, and You is now Teacher.",
+      "Text fields show a small × to clear them.",
+      "The card editor has undo and redo for that card at the top; Save to my cards moved to the bottom.",
+      "In delete mode, click anywhere off the cards to finish. Deleting asks in the site’s own style.",
+    ],
+  },
+  {
     version: "0.1.0",
     date: "2026-11-17",
     changes: [

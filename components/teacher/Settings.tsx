@@ -7,6 +7,8 @@ import { toast } from "@/lib/toast";
 import { DocImport } from "./DocImport";
 import { InviteTeachers } from "./ShareDialog";
 import { useState } from "react";
+import { ask } from "../Confirm";
+import { Clearable } from "../Clearable";
 import { DeleteCourse } from "./DeleteCourse";
 import type { Course, CourseState } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
@@ -74,7 +76,7 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
                   <span className="flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
                     <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(`${st.name} will choose a new PIN next time`, { icon: "lock", tone: "plain" }); }}
                       className="btn btn-quiet press h-8 px-2 text-[12px]" aria-label={`Reset ${st.name}’s PIN`}><Icon name="lock" size={12} /> Reset PIN</button>
-                    <button onClick={() => confirm(`Remove ${st.name} from the class? Their work stays saved.`) && removeStudent(st.id, st.name)}
+                    <button onClick={async () => (await ask({ title: `Remove ${st.name} from the class?`, body: "Their work stays saved.", confirm: "Remove", danger: true })) && removeStudent(st.id, st.name)}
                       className="btn btn-quiet press h-8 px-2 text-[12px] hover:!text-bad" aria-label={`Remove ${st.name}`}><Icon name="x" size={12} /> Remove</button>
                   </span>
                 )}
@@ -168,10 +170,10 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
         <h3 className="text-[15px] font-medium">Course</h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block text-[13px]"><span className="text-ink-2">Course name</span>
-            <input defaultValue={course.title} onBlur={(e) => e.target.value.trim() && e.target.value !== course.title && info({ title: e.target.value })} className="field mt-1" />
+            <Clearable className="mt-1"><input defaultValue={course.title} placeholder="Course name" onBlur={(e) => e.target.value.trim() && e.target.value !== course.title && info({ title: e.target.value })} className="field" /></Clearable>
           </label>
           <label className="block text-[13px]"><span className="text-ink-2">Subtitle</span>
-            <input defaultValue={course.subtitle ?? ""} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field mt-1" />
+            <Clearable className="mt-1"><input defaultValue={course.subtitle ?? ""} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field" /></Clearable>
           </label>
         </div>
       </section>

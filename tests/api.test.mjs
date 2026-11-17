@@ -313,6 +313,21 @@ async function main() {
     check("emails not sent to classmates", !courseOf(await S1.state(`${ec}?as=${mia.id}`)).students.some((x) => "email" in x));
   }
 
+  // ---- Invitation emails: only when the site has a mail key (never in tests), and never to classmates
+  {
+    const ec = made["template/writing"];
+    const kids = courseOf(await A.state(ec)).students.filter((x) => x.email).map((x) => x.id);
+    const r = await A.op(ec, { op: "emailInvites", studentIds: kids });
+    check("invitations refused when sending isn't set up", r.ok === false && /isn.t set up/.test(r.error ?? ""), r);
+    check("students can't send invitations", [401, 403].includes((await S1.op(ec, { op: "emailInvites", studentIds: kids })).status));
+    check("teacher view says whether mail is on", typeof (await A.state(ec)).me?.mail === "boolean");
+    const l0 = courseOf(await A.state(ec)).weeks[0].lessons[0];
+    await A.op(ec, { op: "saveLesson", lesson: { ...l0, modules: l0.modules.map((m, i) => (i === 0 ? { ...m, suit: "share" } : i === 1 ? { ...m, suit: "boss" } : m)) } });
+    const back = courseOf(await A.state(ec)).weeks[0].lessons[0].modules;
+    check("a card keeps its suit", back[0].suit === "share", back[0].suit);
+    check("an unknown suit is dropped", back[1].suit === undefined, back[1].suit);
+  }
+
   // ---- Demo course
   const demo = await anon.state("demo");
   check("demo is open to visitors", demo.status === 200);

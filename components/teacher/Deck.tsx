@@ -9,7 +9,9 @@ import { CARD_SIZE } from "@/lib/cards";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { uid } from "@/lib/profile";
 import { toast } from "@/lib/toast";
-import { SUITS, suitOf } from "@/lib/ui";
+import { SUITS, suitOf, suitOfCard } from "@/lib/ui";
+import { ask } from "../Confirm";
+import { Clearable } from "../Clearable";
 import type { Course, Lesson, Module, ModuleType, ProgressMap, StudioPost } from "@/lib/types";
 import { HScroll } from "../HScroll";
 import { scrollToWeek, WeekNav } from "../WeekNav";
@@ -129,6 +131,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+      // The card editor has its own undo for the card it shows.
+      if (openRef.current) return;
       // Text fields keep their own undo.
       const t = e.target;
       if (t instanceof Element && t.closest("input, textarea, select, [contenteditable=true]")) return;
@@ -148,11 +152,21 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   useEffect(() => {
     if (!trashWeek) return;
     const k = (e: KeyboardEvent) => e.key === "Escape" && setTrashWeek(null);
+    // A click anywhere that isn't a card (or the delete box) ends delete mode.
+    const away = (e: PointerEvent) => {
+      const t = e.target;
+      if (t instanceof Element && (t.closest('[role="button"][aria-label^="Edit "]') || t.closest("[data-confirm]"))) return;
+      setTrashWeek(null);
+    };
     window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
+    window.addEventListener("pointerdown", away);
+    return () => {
+      window.removeEventListener("keydown", k);
+      window.removeEventListener("pointerdown", away);
+    };
   }, [trashWeek]);
-  function removeCard(l: Lesson, m: Module) {
-    if (!confirm(`Delete “${m.title}”? Students’ work on it stays saved.`)) return;
+  async function removeCard(l: Lesson, m: Module) {
+    if (!(await ask({ title: `Delete “${m.title}”?`, body: "Students’ work on it stays saved, and you can undo this.", confirm: "Delete", danger: true }))) return;
     change({ ...l, modules: l.modules.filter((x) => x.id !== m.id) });
     toast(`Deleted “${m.title}”`, { icon: "trash", tone: "plain", action: { label: "Undo", run: undo } });
   }
@@ -201,7 +215,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
 
   function addCard(l: Lesson, type: ModuleType) {
     const m: Module = {
-      id: uid("m-"), type, title: `New ${suitOf(type).name} card`, body: "", audience: { kind: "all" }, tools: [], attachments: [],
+      id: uid("m-"), type, suit: suitOf(type).id, title: `New ${suitOf(type).name} card`, body: "", audience: { kind: "all" }, tools: [], attachments: [],
       questions: type === "quiz" ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : undefined,
     };
     change({ ...l, modules: [...l.modules, m] });
@@ -212,7 +226,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   function addChosen(l: Lesson, c: NewCardChoice) {
     const suit = c.kind === "suit" ? SUITS.find((x) => x.id === c.suit)! : undefined;
     const m: Module = {
-      id: uid("m-"), type: suit ? suit.types[0] : "practice", title: suit ? `New ${suit.name} card` : "Untitled card",
+      id: uid("m-"), type: suit ? suit.types[0] : "practice", suit: suit?.id ?? "do", title: suit ? `New ${suit.name} card` : "Untitled card",
       body: "", audience: { kind: "all" }, tools: [], attachments: [],
     };
     change({ ...l, modules: [...l.modules, m] });
@@ -223,7 +237,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     const r = await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ module: m, name: m.title }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) return toast(r.error ?? "Couldn’t save it", { icon: "x", tone: "bad" });
     await loadLibrary(true);
-    toast(`Saved to Your cards. Put down a ${suitOf(m.type).name} card to use it.`, { icon: "star" });
+    toast(`Saved to Your cards. Put down a ${suitOfCard(m).name} card to use it.`, { icon: "star" });
   }
 
   async function duplicate(op_: "duplicateWeek" | "duplicateLesson", id: string, what: string) {
@@ -300,7 +314,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
         {course.weeks.map((w, wi) => (
           <section key={w.id} id={`week-${w.id}`} aria-label={w.title} className="scroll-mt-32">
             <div className="flex items-center gap-3">
-              <input
+              <Clearable inline><input
                 key={w.title}
                 defaultValue={w.title}
                 readOnly={readOnly}
@@ -312,9 +326,9 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                   onRefresh();
                 }}
                 onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                style={{ width: `${Math.max(10, w.title.length + 2)}ch` }}
+                style={{ width: `${Math.max(10, w.title.length + 4)}ch` }}
                 className={`-ml-1.5 min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[13px] font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none ${wi === currentWeekIndex ? "text-ink" : "text-ink-2"}`}
-              />
+              /></Clearable>
               {wi < currentWeekIndex && (
                 <button onClick={() => toggleFold(w.id)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">{isFolded(wi, w.id) ? "Show cards" : "Fold"}</button>
               )}
@@ -354,29 +368,26 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                   return (
                     <div key={l.id}>
                       <div className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ maxWidth: `min(${Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 360)}px, calc(100vw - 2rem))` }}>
-                        <input
+                        <Clearable inline><input
                           value={l.title}
                           readOnly={readOnly}
                           onChange={(e) => change({ ...l, title: e.target.value })}
                           aria-label="Lesson title"
                           className="-ml-1.5 w-auto min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none"
-                          style={{ width: `${Math.max(8, l.title.length + 2)}ch` }}
-                        />
-                        {isToday && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
-                        <LessonDateChip value={dates.get(l.id)} disabled={readOnly} onChange={(date) => change({ ...l, date })} />
+                          style={{ width: `${Math.max(8, l.title.length + 4)}ch` }}
+                        /></Clearable>
+                        {/* Today's lesson shows "Today" in place of its date; clicking it changes the date like any other. */}
+                        <LessonDateChip value={dates.get(l.id)} today={isToday} disabled={readOnly} onChange={(date) => change({ ...l, date })} />
                         {l.elective && (
                           <span className="chip h-5 bg-[#eef0fb] text-[11px] text-[#4b56a8]" title="Students choose whether to take this lesson">
                             Elective · {Object.values(choices).filter((c) => c[`elective:${l.id}`]).length} chose it
                           </span>
                         )}
-                        {l.session && (
-                          <button onClick={() => setRunning({ lessonId: l.id, weekTitle: w.title })} className="btn btn-quiet press h-6 px-2 text-[11.5px] text-[#ae502f]">
-                            <Icon name="timer" size={12} /> Run Collab Studio · {l.session.minutes}m
-                          </button>
-                        )}
                         {!readOnly && <More
                           label={`${l.title} actions`}
                           items={[
+                            // The session timer (with Live, polls and notes) is opened from here now, not a button on the lesson.
+                            ...(l.session ? [[`Run Collab Studio (${l.session.minutes} min)`, () => setRunning({ lessonId: l.id, weekTitle: w.title })] as [string, () => void]] : []),
                             [l.session ? "Edit Collab Studio agenda" : "Add a Collab Studio session", () => {
                               if (!l.session) {
                                 const agenda = [{ label: "Warm-up", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }];
@@ -392,7 +403,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                           ]}
                         />}
                       </div>
-                      <input
+                      <Clearable><input
                         value={l.goal ?? ""}
                         readOnly={readOnly}
                         onChange={(e) => change({ ...l, goal: e.target.value || undefined })}
@@ -400,7 +411,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                         aria-label="Lesson goal"
                         className="-ml-1.5 mt-0.5 block w-full rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[12.5px] text-ink-3 placeholder:text-ink-3 hover:border-line focus:border-line-strong focus:bg-white focus:text-ink-2 focus:outline-none"
                         style={{ maxWidth: Math.min(Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 280), 576) }}
-                      />
+                      /></Clearable>
                       {agendaFor === l.id && <AgendaEditor lesson={l} onChange={change} onClose={() => setAgendaFor(null)} />}
                       <CardTable
                         cards={l.modules.map((m) => ({
@@ -613,7 +624,7 @@ function UndoIcon({ flip = false }: { flip?: boolean }) {
  * A lesson's date, with a calendar to change it. A date the teacher set is shown solid; one worked out from the
  * week before is lighter, until it's changed.
  */
-function LessonDateChip({ value, disabled, onChange }: { value?: LessonDate; disabled?: boolean; onChange: (date: string | undefined) => void }) {
+function LessonDateChip({ value, today = false, disabled, onChange }: { value?: LessonDate; today?: boolean; disabled?: boolean; onChange: (date: string | undefined) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const past = value && value.date < localDay();
   return (
@@ -623,13 +634,15 @@ function LessonDateChip({ value, disabled, onChange }: { value?: LessonDate; dis
         disabled={disabled}
         onClick={() => { const el = input.current; if (!el) return; try { el.showPicker(); } catch { el.focus(); el.click(); } }}
         title={value ? (value.own ? "Change the date" : "Worked out from the week before. Click to change it.") : "Set the date this lesson meets"}
-        className={`press inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11.5px] disabled:cursor-default ${value?.own ? "border-line bg-white text-ink-2" : "border-dashed border-line-strong text-ink-3"} ${past ? "opacity-70" : ""}`}
+        className={today
+          ? "press inline-flex h-6 items-center gap-1.5 rounded-full bg-ok/10 px-2 text-[11.5px] text-ok disabled:cursor-default"
+          : `press inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11.5px] disabled:cursor-default ${value?.own ? "border-line bg-white text-ink-2" : "border-dashed border-line-strong text-ink-3"} ${past ? "opacity-70" : ""}`}
       >
-        <Icon name="clock" size={11} />{value ? shortDate(value.date) : "Set date"}
+        {today ? <><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</> : <><Icon name="clock" size={11} />{value ? shortDate(value.date) : "Set date"}</>}
       </button>
       <input ref={input} type="date" tabIndex={-1} aria-label="Lesson date" value={value?.date ?? ""} onChange={(e) => onChange(e.target.value || undefined)}
         className="pointer-events-none absolute inset-0 h-full w-full opacity-0" />
-      {value?.own && !disabled && (
+      {value?.own && !disabled && !today && (
         <button type="button" onClick={() => onChange(undefined)} aria-label="Clear the date" title="Clear: follow the week before again" className="press ml-0.5 rounded-full p-0.5 text-ink-3 hover:text-ink"><Icon name="x" size={10} /></button>
       )}
     </span>

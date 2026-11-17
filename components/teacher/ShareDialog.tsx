@@ -8,6 +8,7 @@ import type { Course, CourseState } from "@/lib/types";
 import { BackCloses } from "../BackCloses";
 import { Avatar, Icon } from "../Icon";
 import { QR } from "../QR";
+import { Clearable } from "../Clearable";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const splitEmails = (s: string) => s.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
@@ -18,9 +19,10 @@ type Row = { key: string; name: string; email?: string; picture?: string; right:
  * A share box in the familiar shape: add people by email, see who has access, set general access, copy the link.
  * Used for inviting students and for inviting other teachers.
  */
-function ShareBox({ title, placeholder, onAdd, rows, general, link, linkLabel, extra, note, onClose, addLabel = "Add", roleSelect }: {
+function ShareBox({ title, placeholder, onAdd, rows, general, link, linkLabel, extra, note, onClose, addLabel = "Add", roleSelect, underInput }: {
   title: string; placeholder: string; onAdd?: (emails: string[]) => Promise<void> | void; rows: Row[]; general?: React.ReactNode;
   link: string; linkLabel: string; extra?: React.ReactNode; note?: React.ReactNode; onClose: () => void; addLabel?: string; roleSelect?: React.ReactNode;
+  underInput?: React.ReactNode;
 }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -48,14 +50,15 @@ function ShareBox({ title, placeholder, onAdd, rows, general, link, linkLabel, e
           <form className="mt-4 flex gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
             <label className="min-w-0 flex-1">
               <span className="sr-only">{placeholder}</span>
-              <input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} inputMode="email" autoComplete="off"
-                className="field h-11 text-[14px]" aria-invalid={bad.length > 0} />
+              <Clearable><input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} inputMode="email" autoComplete="off"
+                className="field h-11 text-[14px]" aria-invalid={bad.length > 0} /></Clearable>
             </label>
             {roleSelect}
             <button type="submit" disabled={!emails.length || bad.length > 0 || busy} className="btn btn-dark press h-11 px-4">{busy ? "Adding…" : addLabel}</button>
           </form>
         )}
         {bad.length > 0 && <p className="mt-1.5 text-[12.5px] text-bad">{bad[0]} isn’t an email address.</p>}
+        {underInput}
 
         <h3 className="mt-6 text-[14px] font-medium">People with access</h3>
         <ul className="mt-2 max-h-72 space-y-0.5 overflow-y-auto">
@@ -103,9 +106,19 @@ const ACCESS: { v: "off" | "approve" | "open"; label: string; hint: string }[] =
 ];
 
 /** Invite students: add them by email, or share the class link or QR code. Students have no permissions to set. */
-export function InviteStudents({ course, onClose, onChanged }: { course: Course; onClose: () => void; onChanged: () => void }) {
+export function InviteStudents({ course, me, onClose, onChanged }: { course: Course; me?: CourseState["me"]; onClose: () => void; onChanged: () => void }) {
   const [origin, setOrigin] = useState("");
   const [qr, setQr] = useState(false);
+  const mailOn = !!me?.mail;
+  const [emailThem, setEmailThem] = useState(true);
+  async function sendInvites(ids: string[], who: string) {
+    const r = await op<{ ok?: boolean; sent?: number; failed?: number; overLimit?: number; error?: string }>(course.id, { op: "emailInvites", studentIds: ids });
+    onChanged();
+    if (r.ok === false) return toast(r.error ?? "Couldn’t send the invitations", { icon: "x", tone: "bad" });
+    if (r.sent) toast(`Emailed ${r.sent === 1 ? who : `${r.sent} students`} an invitation`, { icon: "message" });
+    if (r.failed) toast(`${r.failed} invitation${r.failed === 1 ? "" : "s"} couldn’t be sent. Check the address and try again.`, { icon: "x", tone: "bad" });
+    if (r.overLimit) toast(`Today’s limit for invitations is reached; ${r.overLimit} weren’t sent. Try again tomorrow.`, { tone: "plain" });
+  }
   // eslint-disable-next-line react-hooks/set-state-in-effect -- the address is only known in the browser
   useEffect(() => setOrigin(window.location.origin), []);
   const link = `${origin}/learn/${course.id}?code=${course.joinCode}`;
@@ -132,10 +145,24 @@ export function InviteStudents({ course, onClose, onChanged }: { course: Course;
         title={`Invite students to “${course.title}”`}
         placeholder="Add students by email"
         onAdd={async (emails) => {
+          const before = new Set(course.students.map((s) => s.id));
           const r = await op<{ added?: number; error?: string }>(course.id, { op: "addStudentEmails", emails });
           onChanged();
           toast(r.added ? `Added ${r.added} student${r.added === 1 ? "" : "s"}` : "They’re already on the list", { tone: r.added ? "ok" : "plain" });
+          if (mailOn && emailThem && r.added) {
+            // The new students: everyone on the list now with one of these addresses who wasn't there before.
+            const st = await fetch(`/api/course/${course.id}`).then((x) => x.json()).catch(() => null);
+            const wanted = new Set(emails.map((e) => e.toLowerCase()));
+            const fresh = ((st?.course?.students ?? []) as Course["students"]).filter((s) => !before.has(s.id) && s.email && wanted.has(s.email.toLowerCase()));
+            if (fresh.length) await sendInvites(fresh.map((s) => s.id), fresh[0].name);
+          }
         }}
+        underInput={mailOn ? (
+          <label className="mt-2 flex items-center gap-2 text-[13px] text-ink-2">
+            <input type="checkbox" checked={emailThem} onChange={(e) => setEmailThem(e.target.checked)} className="accent-[#1b1b1a]" />
+            Email each one a personal invitation from Questhand
+          </label>
+        ) : undefined}
         rows={[
           ...waiting.map((s) => ({ key: s.id, name: s.name, email: "Waiting to be let in", right: (
             <span className="flex gap-1">
@@ -143,7 +170,12 @@ export function InviteStudents({ course, onClose, onChanged }: { course: Course;
               <button onClick={() => letIn([s.id], false, s.name)} className="btn btn-quiet press h-7 px-2 text-[12px] hover:!text-bad">Turn away</button>
             </span>
           ) })),
-          ...course.students.map((s) => ({ key: s.id, name: s.name, email: s.email, right: "Student" })),
+          ...course.students.map((s) => ({ key: s.id, name: s.name, email: s.email, right: mailOn && s.email ? (
+            <span className="flex items-center gap-2">
+              {s.invitedAt && <span className="text-[12px]">Invited {new Date(s.invitedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
+              <button onClick={() => sendInvites([s.id], s.name)} className="btn btn-quiet press h-7 px-2 text-[12px]">{s.invitedAt ? "Send again" : "Send invite"}</button>
+            </span>
+          ) : "Student" })),
         ]}
         general={(
           <label className="flex items-start gap-3 rounded-xl bg-lane/70 px-3 py-2.5">
@@ -166,7 +198,9 @@ export function InviteStudents({ course, onClose, onChanged }: { course: Course;
         )}
         note={mode === "off" && !course.students.length
           ? "The class list is empty and access is Restricted, so no one can join yet. Add students above, or open access to anyone with the link."
-          : "Questhand doesn’t send emails. Copy the link (or use Email the link) to send it yourself. Students open it, pick their name, and choose a 4-digit PIN."}
+          : mailOn
+            ? "An invitation from Questhand carries each student’s own one-time link to set up their board. Or share the class link: students open it, pick their name, and choose a 4-digit PIN."
+            : "Sending email from Questhand isn’t set up on this site yet. Copy the link (or use Email the link) to send it yourself. Students open it, pick their name, and choose a 4-digit PIN."}
         onClose={onClose}
       />
       <BackCloses name="qr" value={qr ? "1" : null} onBack={() => setQr(false)} />

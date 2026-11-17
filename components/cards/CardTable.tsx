@@ -130,8 +130,10 @@ export function CardTable({
       aria-label={ariaLabel}
       role="list"
     >
+      {/* Rendered in the cards' own order, never the dragged order: moving elements mid-drag would make the browser
+          drop the press. The slots alone show the new order. */}
       {(width > 0 || mode === "row") &&
-        ids.map((id, i) => {
+        cards.map((c0) => c0.id).filter((id) => slots.has(id)).map((id, i) => {
           const c = byId.get(id)!;
           return (
             <PhysicsCard

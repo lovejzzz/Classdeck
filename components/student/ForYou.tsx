@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { recommend, todoList, type Rec } from "@/lib/coach";
-import { TYPE_META } from "@/lib/ui";
+import { suitOfCard } from "@/lib/ui";
 import type { CourseState } from "@/lib/types";
 import { Icon } from "../Icon";
 
@@ -95,7 +95,7 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
           {todos.map((t) => (
             <li key={t.m.id}>
               <button onClick={() => onOpen(t.lesson.id, t.m.id)} className="press flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-[#fafaf9]">
-                <span style={{ color: TYPE_META[t.m.type].tint }}><Icon name={t.m.type} size={14} /></span>
+                <span style={{ color: suitOfCard(t.m).tint }}><Icon name={t.m.type} size={14} /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13.5px]">{t.m.choice ? `${t.m.title.replace(/\s*\([^)]*\)\s*$/, "")} (pick a path)` : t.m.title}</span>
                   <span className="block text-[11.5px] text-ink-3">{t.week} · {t.status === "doing" ? "in progress" : "not started"}</span>

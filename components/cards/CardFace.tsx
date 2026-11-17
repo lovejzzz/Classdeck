@@ -1,13 +1,13 @@
 import { fileExt, hash, heroAttachment, hostOf } from "@/lib/cards";
 import { videoEmbed } from "@/lib/media";
-import { TYPE_META, suitOf } from "@/lib/ui";
+import { suitOfCard } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
 import { Icon, StatusIcon } from "../Icon";
 import { GenArt } from "./GenArt";
 
 /** The artwork window: shows the card's main media, or a soft gradient with the type glyph. */
 function Art({ m, big }: { m: Module; big: boolean }) {
-  const meta = TYPE_META[m.type];
+  const meta = suitOfCard(m);
   const a = heroAttachment(m.attachments);
   const glyph = big ? 34 : 28;
   if (a?.kind === "image") {
@@ -90,14 +90,14 @@ export function CardFace({
   due?: { label: string; tone: "late" | "soon" | "later" };
 }) {
   const tag = badge ?? (m.choice ? (m.choice.recommended ? "Recommended path" : "Pick a path") : m.picked ? "Your path" : personal ? "For you" : undefined);
-  const meta = TYPE_META[m.type];
+  const meta = suitOfCard(m);
   return (
     <div className="@container relative flex h-full w-full flex-col overflow-hidden rounded-[14px] border border-line bg-white select-none">
       <div className="pointer-events-none absolute inset-[5px] rounded-[10px] border border-line/70" />
       {/* corner: the suit, and one status (done, or a due date that's close or past) */}
       <div className="relative flex min-h-[18px] items-center gap-1.5 px-3 pt-2.5" style={{ color: meta.tint }}>
         <span className="rounded-full" style={{ background: meta.tint, width: big ? 7 : 6, height: big ? 7 : 6 }} />
-        <span className={`font-semibold uppercase tracking-[0.1em] ${big ? "text-[11px]" : "text-[10px]"}`}>{suitOf(m.type).name}</span>
+        <span className={`font-semibold uppercase tracking-[0.1em] ${big ? "text-[11px]" : "text-[10px]"}`}>{suitOfCard(m).name}</span>
         <span className="flex-1" />
         {status === "done" ? <StatusIcon status="done" size={big ? 15 : 13} /> : due && due.tone !== "later" ? (
           <span title={due.label} className={`whitespace-nowrap rounded-full px-1.5 py-[1px] text-[10px] font-medium ${due.tone === "late" ? "bg-bad/10 text-bad" : "bg-warn/10 text-warn"}`}>

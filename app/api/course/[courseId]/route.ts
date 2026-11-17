@@ -6,6 +6,7 @@ import { db, logEvent, reset, save } from "@/lib/store";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
+import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate } from "@/lib/hooks";
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
@@ -174,7 +175,7 @@ export async function GET(request: Request, { params }: Ctx) {
   };
   if (!as) {
     const owner = course.ownerId ? d.users[course.ownerId] : undefined;
-    state.me = { role: roleOf(session, course) ?? (course.id === DEMO ? "owner" : "viewer"), owner: owner ? { name: owner.name, email: owner.email, picture: owner.picture } : undefined };
+    state.me = { role: roleOf(session, course) ?? (course.id === DEMO ? "owner" : "viewer"), owner: owner ? { name: owner.name, email: owner.email, picture: owner.picture } : undefined, mail: mailReady() };
   }
   // Visitors to the open demo get a light session so they can upload recordings there.
   const headers: Record<string, string> = !session && course.id === DEMO ? { "Set-Cookie": startSession({ kind: "demo" }, 7) } : {};
@@ -389,6 +390,25 @@ export async function POST(request: Request, { params }: Ctx) {
       extra = { count: picked.length };
       break;
     }
+    case "emailInvites": {
+      // Email students on this course's list a personal one-time link, in Questhand's name. Fixed wording only.
+      const me = session?.kind === "teacher" && session.userId ? d.users[session.userId] : undefined;
+      if (!me || course.id === DEMO) return fail("Sign in as a teacher to send invitations", 403);
+      if (!mailReady()) return fail("Sending email isn’t set up on this site yet");
+      const want = new Set((Array.isArray(body.studentIds) ? body.studentIds : []).map(String));
+      const to = course.students.filter((st) => want.has(st.id) && st.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(st.email));
+      const allowed = takeAllowance(me.id, to.length);
+      const origin = publicOrigin(request);
+      let sent = 0;
+      for (const st of to.slice(0, allowed)) {
+        if (await sendInvite(st.email!, { course: course.title, teacher: me.name, link: inviteUrl(origin, courseId, issueInvite(st)) })) {
+          st.invitedAt = Date.now();
+          sent++;
+        }
+      }
+      extra = { sent, failed: Math.min(to.length, allowed) - sent, overLimit: to.length - allowed };
+      break;
+    }
     case "setupLinks": {
       // One-time links for students on the list who haven't signed in yet. Each replaces any earlier link.
       const pins = d.pins[courseId] ?? {};
@@ -559,6 +579,7 @@ export async function POST(request: Request, { params }: Ctx) {
         m.form = cleanForm(m.form);
       }
       if (next.date !== undefined && !(typeof next.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(next.date))) next.date = undefined;
+      for (const m of next.modules ?? []) if (m.suit !== undefined && !["learn", "do", "share"].includes(m.suit)) m.suit = undefined;
       for (const w of course.weeks) {
         const i = w.lessons.findIndex((l) => l.id === next.id);
         if (i < 0) continue;

@@ -169,6 +169,8 @@ export interface Module {
   gate?: boolean;
   /** 只在发给学生时设置：这张卡片不是全班共有的（分支或个人模块）。 */
   personal?: boolean;
+  /** The suit the teacher put the card down as. Unset: worked out from its type. */
+  suit?: "learn" | "do" | "share";
   /** Suggested time in minutes, shown on the card like a cost. */
   minutes?: number;
   /** Where students hand in work from this card. */
@@ -274,6 +276,8 @@ export interface Student {
   invite?: { hash: string; exp: number };
   /** When they added themselves with the class code. */
   joinedAt?: number;
+  /** When Questhand last emailed them an invitation. */
+  invitedAt?: number;
 }
 
 export interface Skill {
@@ -481,7 +485,7 @@ export interface CourseState {
   /** For students, votes are counts only (plus their own) and hands are their own. */
   live: Live & { myVote?: number; counts?: number[] };
   /** Teacher views only: this teacher's role, and who owns the course. */
-  me?: { role: "owner" | "editor" | "viewer"; owner?: { name: string; email: string; picture?: string } };
+  me?: { role: "owner" | "editor" | "viewer"; owner?: { name: string; email: string; picture?: string }; mail?: boolean };
 }
 
 /** Feedback, scores, and links sent to a student's card from an outside tool. */

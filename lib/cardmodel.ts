@@ -16,7 +16,7 @@ export const RESPONSES: { id: Response; name: string; hint: string; icon: string
 ];
 
 export const SHARES: { id: ShareWith; name: string; hint: string; icon: string }[] = [
-  { id: "teacher", name: "You", hint: "You give feedback", icon: "user" },
+  { id: "teacher", name: "Teacher", hint: "The teacher gives feedback", icon: "user" },
   { id: "group", name: "Their group", hint: "Classmates give feedback", icon: "users" },
   { id: "class", name: "The class", hint: "A wall everyone sees", icon: "wall" },
 ];

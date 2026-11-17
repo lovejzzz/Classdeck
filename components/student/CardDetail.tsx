@@ -6,7 +6,7 @@ import type { ConnectorInfo } from "@/lib/connectors/types";
 import { useShortcuts } from "@/lib/shortcuts";
 import { dueInfo, optionOrder, quizSet } from "@/lib/grading";
 import { toast } from "@/lib/toast";
-import { TYPE_META, suitOf } from "@/lib/ui";
+import { TYPE_META, suitOfCard } from "@/lib/ui";
 import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Plan, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
@@ -185,8 +185,8 @@ export function CardDetail(p: DetailProps) {
       <div className="min-w-0 p-6 sm:p-8">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: meta.tint }}>
-              <Icon name={m.type} size={13} strokeWidth={2} /> {suitOf(m.type).name}<span className="font-normal normal-case tracking-normal text-ink-3">· {meta.name}</span>
+            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: suitOfCard(m).tint }}>
+              <Icon name={m.type} size={13} strokeWidth={2} /> {suitOfCard(m).name}<span className="font-normal normal-case tracking-normal text-ink-3">· {meta.name}</span>
               {m.personal && <span className="chip ml-1 h-5 normal-case tracking-normal">For you</span>}
             </div>
             <h2 className={`mt-2 font-semibold tracking-tight ${p.big ? "text-[28px]" : "text-[22px]"}`}>{m.title}</h2>

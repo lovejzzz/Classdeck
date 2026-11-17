@@ -16,12 +16,11 @@ export function hash(s: string) {
   return ((h >>> 0) % 10000) / 10000;
 }
 
-const ORDER: Attachment["kind"][] = ["image", "video", "audio", "file", "link"];
 
 /** The attachment that becomes the card's artwork. */
+/** The card's artwork: its first item, which the teacher picks with "Make cover". */
 export function heroAttachment(list?: Attachment[]) {
-  if (!list?.length) return undefined;
-  return [...list].sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind))[0];
+  return list?.[0];
 }
 
 export function fileExt(a: Attachment) {

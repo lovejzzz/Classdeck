@@ -7,7 +7,7 @@ import { invokeTool, op } from "@/lib/client";
 import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
-import { STATUS_LABEL, TYPE_META } from "@/lib/ui";
+import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
 import type { CourseState, Lesson, Level, Module, Review, Skill } from "@/lib/types";
 import { download, toCsv } from "@/lib/download";
 import { toast } from "@/lib/toast";
@@ -235,7 +235,7 @@ export function Classroom({
                 const done = who.filter((s) => progress[s.id]?.[m.id]?.status === "done").length;
                 return (
                   <th key={m.id} className="min-w-[6.5rem] border-b border-line px-2 py-3 text-left font-normal">
-                    <div className="flex items-center gap-1.5" style={{ color: TYPE_META[m.type].tint }}>
+                    <div className="flex items-center gap-1.5" style={{ color: suitOfCard(m).tint }}>
                       <Icon name={m.type} size={13} />
                     </div>
                     <div className="mt-1.5 max-w-28 truncate text-[12.5px] font-medium text-ink" title={m.title}>{m.title}</div>
@@ -327,7 +327,7 @@ export function Classroom({
             </div>
             <div className="flex-1 overflow-y-auto p-5">
             <div className="flex items-center gap-2">
-              <span style={{ color: TYPE_META[selModule.type].tint }}><Icon name={selModule.type} size={14} /></span>
+              <span style={{ color: suitOfCard(selModule).tint }}><Icon name={selModule.type} size={14} /></span>
               <h3 className="flex-1 text-[15px] font-medium">{selModule.title}</h3>
               <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status={selProgress?.status ?? "todo"} size={12} />{STATUS_LABEL[selProgress?.status ?? "todo"]}</span>
             </div>
@@ -430,7 +430,7 @@ export function Classroom({
       {lesson.modules.filter((m) => m.questions?.length).map((m) => (
         <section key={m.id} className="card p-5">
           <h3 className="flex items-center gap-2 text-[14px] font-medium">
-            <span style={{ color: TYPE_META[m.type].tint }}><Icon name={m.type} size={14} /></span>
+            <span style={{ color: suitOfCard(m).tint }}><Icon name={m.type} size={14} /></span>
             {m.title}<span className="font-normal text-ink-3">· correct by question</span>
           </h3>
           <div className="mt-4 space-y-2.5">

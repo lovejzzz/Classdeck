@@ -5,22 +5,23 @@ import { uploadFile } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import type { Attachment } from "@/lib/types";
 import { Icon } from "./Icon";
-import { ImageSearch } from "./ImageSearch";
 import { MediaCapture } from "./MediaCapture";
 import { PhotoCapture } from "./PhotoCapture";
 import { SketchPad } from "./SketchPad";
 
-type Mode = "audio" | "video" | "screen" | "photo" | "draw" | "search" | "link";
+type Mode = "audio" | "video" | "screen" | "photo" | "draw" | "link";
 
 /**
- * Every way to add something: record audio, video, or your screen; take a photo; draw; find an image;
- * upload a file; or paste a link. The three most common sit in the row; the rest are under "More".
+ * Every way to add something: record audio, video, or your screen; take a photo; draw; upload a file; or paste a link.
+ * Students see recording first (that's what they hand in). Teachers building a card see Link, Upload, Draw, and the
+ * recordings under More.
  */
-export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pdf,.doc,.docx,.ppt,.pptx,.key,.txt,.csv", compact = false }: {
+export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pdf,.doc,.docx,.ppt,.pptx,.key,.txt,.csv", compact = false, teacher = false }: {
   onAdd: (a: Omit<Attachment, "id">) => Promise<void> | void;
   label?: string;
   accept?: string;
   compact?: boolean;
+  teacher?: boolean;
 }) {
   const [mode, setMode] = useState<Mode | null>(null);
   const [more, setMore] = useState(false);
@@ -48,13 +49,20 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
   }
 
   const stamp = () => new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  const options: { mode: Mode; label: string; icon: string }[] = [
-    { mode: "screen", label: "Record screen", icon: "board" },
-    { mode: "photo", label: "Take a photo", icon: "camera" },
-    { mode: "draw", label: "Draw", icon: "practice" },
-    { mode: "search", label: "Find an image", icon: "image" },
-    { mode: "link", label: "Paste a link", icon: "link" },
-  ];
+  type Opt = { mode: Mode; label: string; icon: string; group?: string };
+  const options: Opt[] = teacher
+    ? [
+        { mode: "audio", label: "Audio", icon: "mic", group: "Recording" },
+        { mode: "video", label: "Video", icon: "camera", group: "Recording" },
+        { mode: "screen", label: "Screen", icon: "board", group: "Recording" },
+        { mode: "photo", label: "Take a photo", icon: "image" },
+      ]
+    : [
+        { mode: "screen", label: "Record screen", icon: "board" },
+        { mode: "photo", label: "Take a photo", icon: "camera" },
+        { mode: "draw", label: "Draw", icon: "practice" },
+        { mode: "link", label: "Paste a link", icon: "link" },
+      ];
 
   if (mode === "audio" || mode === "video" || mode === "screen") {
     return (
@@ -67,9 +75,6 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
   }
   if (mode === "photo") return <PhotoCapture onKeep={(f) => upload(f, `Photo · ${stamp()}`)} onCancel={() => setMode(null)} />;
   if (mode === "draw") return <SketchPad onKeep={(f) => upload(f, `Drawing · ${stamp()}`)} onCancel={() => setMode(null)} />;
-  if (mode === "search") {
-    return <ImageSearch onCancel={() => setMode(null)} onPick={async (r) => { await onAdd({ kind: "image", url: r.url, name: r.title, credit: r.credit }); setMode(null); }} />;
-  }
   if (mode === "link") {
     return (
       <form
@@ -95,18 +100,29 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
   const btn = `btn btn-ghost press ${compact ? "h-8 px-2.5" : ""}`;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <button onClick={() => setMode("audio")} className={btn}><Icon name="mic" size={13} /> {compact ? "Audio" : "Record audio"}</button>
-      <button onClick={() => setMode("video")} className={btn}><Icon name="camera" size={13} /> {compact ? "Video" : "Record video"}</button>
+      {teacher ? (
+        <button onClick={() => setMode("link")} className={btn}><Icon name="link" size={13} /> Link</button>
+      ) : (
+        <>
+          <button onClick={() => setMode("audio")} className={btn}><Icon name="mic" size={13} /> {compact ? "Audio" : "Record audio"}</button>
+          <button onClick={() => setMode("video")} className={btn}><Icon name="camera" size={13} /> {compact ? "Video" : "Record video"}</button>
+        </>
+      )}
       <button onClick={() => file.current?.click()} disabled={busy} className={btn}><Icon name="upload" size={13} /> {busy ? `Uploading…${progress > 0 && progress < 1 ? ` ${Math.round(progress * 100)}%` : ""}` : "Upload"}</button>
+      {teacher && <button onClick={() => setMode("draw")} className={btn}><Icon name="practice" size={13} /> Draw</button>}
       <div ref={menu} className="relative">
         <button onClick={() => setMore((m) => !m)} aria-expanded={more} className={btn}>More <Icon name="chevron" size={12} className={`transition-transform duration-300 ${more ? "rotate-180" : ""}`} /></button>
         {more && (
           <div className="pop absolute bottom-full left-0 z-20 mb-1.5 w-48 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]" role="menu">
             {options.map((o, i) => (
-              <button key={o.mode} role="menuitem" onClick={() => { setMore(false); setMode(o.mode); }} style={{ "--i": i } as React.CSSProperties}
-                className="rise press flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-lane">
-                <Icon name={o.icon} size={14} className="text-ink-2" />{o.label}
-              </button>
+              <div key={o.mode}>
+                {o.group && o.group !== options[i - 1]?.group && <div className="px-2.5 pb-0.5 pt-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{o.group}</div>}
+                {!o.group && options[i - 1]?.group && <div className="my-1 border-t border-line" />}
+                <button role="menuitem" onClick={() => { setMore(false); setMode(o.mode); }} style={{ "--i": i } as React.CSSProperties}
+                  className={`rise press flex w-full items-center gap-2.5 rounded-lg py-2 text-left text-[13px] hover:bg-lane ${o.group ? "pl-4 pr-2.5" : "px-2.5"}`}>
+                  <Icon name={o.icon} size={14} className="text-ink-2" />{o.label}
+                </button>
+              </div>
             ))}
           </div>
         )}
