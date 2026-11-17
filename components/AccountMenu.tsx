@@ -51,6 +51,7 @@ export function AccountMenu({ className = "" }: { className?: string }) {
           </div>
           <div className="my-1 border-t border-line" />
           {me.kind === "teacher" && <Link role="menuitem" href="/" onClick={() => setOpen(false)} className="press block rounded-lg px-2.5 py-2 text-[13px] hover:bg-lane">Your courses</Link>}
+          {me.kind === "teacher" && <Link role="menuitem" href="/settings" onClick={() => setOpen(false)} className="press block rounded-lg px-2.5 py-2 text-[13px] hover:bg-lane">Settings</Link>}
           {me.kind === "student" && <Link role="menuitem" href={`/learn/${me.courseId}/${me.studentId}`} onClick={() => setOpen(false)} className="press block rounded-lg px-2.5 py-2 text-[13px] hover:bg-lane">My cards</Link>}
           <button role="menuitem" onClick={signOut} className="press block w-full rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-lane">Sign out</button>
         </div>

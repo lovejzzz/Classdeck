@@ -1,23 +1,26 @@
-import { DEMO, getSession, isAdmin, teacherOf, unauthorized } from "@/lib/auth";
+import { DEMO, getSession, isAdmin, roleOf, teacherOf, unauthorized } from "@/lib/auth";
 import { cloneWeek } from "@/lib/clone";
 import { fromPreset, uid } from "@/lib/profile";
-import { seedCourse } from "@/lib/seed";
 import fs from "fs/promises";
 import path from "path";
 import { r2Ready, remove } from "@/lib/blob";
 import { db, listCourses, removeCourse, save } from "@/lib/store";
 import { randomCode, UPLOAD_DIR } from "@/lib/uploads";
-import { DEFAULT_LEVELS, SKILL_SETS } from "@/lib/skillsets";
+import { DEFAULT_LEVELS } from "@/lib/skillsets";
 import { standardWeek } from "@/lib/templates";
 import type { Course } from "@/lib/types";
 
-/** The signed-in teacher's courses, plus the open demo. */
+/** The signed-in teacher's courses: their own and those shared with them. (The demo stays reachable by its address.) */
 export async function GET(request: Request) {
   const session = getSession(request);
   const t = teacherOf(session);
   const all = listCourses();
   return Response.json({
-    courses: all.filter((c) => c.id === DEMO || (t && c.ownerId === t.id)),
+    courses: t ? all.flatMap((c) => {
+      if (c.id === DEMO) return [];
+      const role = roleOf(session, db().courses[c.id]);
+      return role ? [{ ...c, role }] : [];
+    }) : [],
     // Courses made before accounts existed have no owner yet; only the site owner can claim them.
     unclaimed: t && isAdmin(session) ? all.filter((c) => c.id !== DEMO && !c.ownerId).map((c) => ({ id: c.id, title: c.title, students: c.students })) : [],
   });
@@ -40,7 +43,6 @@ export async function POST(request: Request) {
   const title = String(body.title ?? "").trim().slice(0, 80);
   if (!title) return Response.json({ ok: false, error: "Give the course a name" }, { status: 400 });
   const d = db();
-  const caps = seedCourse();
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "course";
   let id = slug;
   while (d.courses[id]) id = `${slug}-${randomCode(4).toLowerCase()}`;
@@ -48,23 +50,14 @@ export async function POST(request: Request) {
   let code = "";
   do code = randomCode(6); while (codes.has(code));
 
-  const start = body.start === "caps" ? "caps" : body.start === "template" ? "template" : "blank";
+  // Blank, or the standard weekly template. (Copying the CaPS course and picking subject skills were retired.)
+  const start = body.start === "template" ? "template" : "blank";
   const weeks =
-    start === "caps"
-      ? caps.weeks.map((w) => cloneWeek(w, w.title))
-      : start === "template"
-        ? Array.from({ length: Math.max(1, Math.min(12, Number(body.weeks) || 3)) }, (_, i) => cloneWeek(standardWeek(`Lesson ${i + 1}`, i + 1), `Week ${i + 1}`))
-        : [{ id: uid("w-"), title: "Week 1", lessons: [{ id: uid("l-"), title: "Lesson 1", modules: [], branches: {} }] }];
-
-  // The subject's skills: the CaPS copy is always speaking; otherwise the teacher's pick (default speaking).
-  const set = (start === "caps" ? undefined : SKILL_SETS.find((x) => x.id === body.skillSet)) ?? SKILL_SETS[0];
-  if (set.id !== "speaking") {
-    const ids = new Set(set.skills.map((x) => x.id));
-    for (const w of weeks) for (const l of w.lessons) for (const m of l.modules) if (m.skills) {
-      m.skills = m.skills.filter((id) => ids.has(id));
-      if (!m.skills.length) m.skills = undefined;
-    }
-  }
+    start === "template"
+      ? Array.from({ length: Math.max(1, Math.min(12, Number(body.weeks) || 3)) }, (_, i) => cloneWeek(standardWeek(`Lesson ${i + 1}`, i + 1), `Week ${i + 1}`))
+      : [{ id: uid("w-"), title: "Week 1", lessons: [{ id: uid("l-"), title: "Lesson 1", modules: [], branches: {} }] }];
+  // New courses have no skills to rate; cards and reviews then leave skills out entirely.
+  for (const w of weeks) for (const l of w.lessons) for (const m of l.modules) m.skills = undefined;
   const course: Course = {
     id,
     ownerId: t.id,
@@ -76,8 +69,8 @@ export async function POST(request: Request) {
     access: { joinOpen: true, selfJoin: "approve" },
     profile: { ...fromPreset("secondary"), preset: "custom", horizon: "term" },
     students: [],
-    skills: set.skills,
-    levels: start === "caps" || set.id === "speaking" ? caps.levels : DEFAULT_LEVELS,
+    skills: [],
+    levels: DEFAULT_LEVELS,
     groups: [{ id: uid("g-"), name: "Studio A", studentIds: [] }],
     currentLessonId: weeks[0].lessons[0].id,
     enabledConnectors: ["wikipedia", "dictionary", "ai"],

@@ -35,6 +35,8 @@ export interface PhysicsCardProps {
   onDragStart?: () => void;
   onDragMove?: (p: { x: number; y: number }) => void;
   onDragEnd?: (p: { x: number; y: number }) => void;
+  /** Press and hold without moving. The click that follows the release is swallowed. */
+  onLongPress?: () => void;
 }
 
 /**
@@ -162,12 +164,51 @@ export function PhysicsCard(props: PhysicsCardProps) {
     return { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
   }
 
+  const longTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const longFired = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
+
   function onPointerDown(e: React.PointerEvent) {
     if (e.button !== 0) return;
     wake.current();
     const s = st.current;
     const p = local(e);
     s.drag = { ...s.drag, down: true, active: false, sx: e.clientX, sy: e.clientY, ox: p.x - s.x.x, oy: p.y - s.y.x, px: p.x, py: p.y, lastX: e.clientX, vx: 0 };
+    lastPos.current = { x: e.clientX, y: e.clientY };
+    // Hold the pointer from the start, so letting go anywhere (even off the card) ends the press here.
+    if (P.current.draggable) {
+      try { outer.current?.setPointerCapture(e.pointerId); } catch {}
+    }
+    longFired.current = false;
+    clearTimeout(longTimer.current);
+    if (P.current.onLongPress) {
+      longTimer.current = setTimeout(() => {
+        const d = st.current.drag;
+        if (!d.down || d.active) return;
+        longFired.current = true;
+        d.down = false;
+        P.current.onLongPress?.();
+      }, 550);
+    }
+  }
+
+  /** End a press or a drag, wherever the pointer is: let go, cancelled, or the capture lost. */
+  function finish(e: { clientX: number; clientY: number } | null, tapAllowed: boolean) {
+    clearTimeout(longTimer.current);
+    const s = st.current;
+    const d = s.drag;
+    if (!d.down) return;
+    d.down = false;
+    if (d.active) {
+      d.active = false;
+      document.body.style.cursor = "";
+      const at = e ?? { clientX: lastPos.current.x, clientY: lastPos.current.y };
+      const p = local(at);
+      P.current.onDragEnd?.({ x: p.x - d.ox + P.current.w / 2, y: p.y - d.oy + P.current.h / 2 });
+      return;
+    }
+    if (!tapAllowed || !e || Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) return;
+    activate();
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -182,9 +223,13 @@ export function PhysicsCard(props: PhysicsCardProps) {
     }
     const d = s.drag;
     if (!d.down) return;
+    lastPos.current = { x: e.clientX, y: e.clientY };
+    // The button was let go somewhere this card never heard about: end here instead of following the pointer.
+    if (e.pointerType === "mouse" && e.buttons === 0) return finish(e, false);
+    if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) clearTimeout(longTimer.current);
     if (!d.active && P.current.draggable && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) {
       d.active = true;
-      outer.current?.setPointerCapture(e.pointerId);
+      try { outer.current?.setPointerCapture(e.pointerId); } catch {}
       document.body.style.cursor = "grabbing";
       P.current.onDragStart?.();
     }
@@ -199,19 +244,11 @@ export function PhysicsCard(props: PhysicsCardProps) {
   }
 
   function onPointerUp(e: React.PointerEvent) {
-    const s = st.current;
-    const d = s.drag;
-    if (!d.down) return;
-    d.down = false;
-    if (d.active) {
-      d.active = false;
-      document.body.style.cursor = "";
-      const p = local(e);
-      P.current.onDragEnd?.({ x: p.x - d.ox + P.current.w / 2, y: p.y - d.oy + P.current.h / 2 });
+    if (longFired.current) {
+      longFired.current = false;
       return;
     }
-    if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) return;
-    activate();
+    finish(e, true);
   }
 
   function activate() {
@@ -254,7 +291,8 @@ export function PhysicsCard(props: PhysicsCardProps) {
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerCancel={(e) => finish(e, false)}
+      onLostPointerCapture={() => finish(null, false)}
       onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
       onPointerLeave={() => setHover(false)}
       onFocus={() => setHover(true)}

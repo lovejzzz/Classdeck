@@ -1,5 +1,5 @@
 import { publicOrigin } from "@/lib/origin";
-import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized } from "@/lib/auth";
+import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
@@ -8,7 +8,7 @@ import { isCorrect, quizSet, asked } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
 import { prcaScore } from "@/lib/onboarding";
 import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate } from "@/lib/hooks";
-import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
+import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
 // "order" questions go out alphabetised, so the correct order never reaches the browser.
@@ -21,6 +21,18 @@ const STUDENT_OPS = new Set([
   "savePlan", "drill", "feel", "saveFlow", "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
   "retakeQuiz", "rehearse", "fillForm", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
 ]);
+
+const AUTO_LESSON = /^Lesson \d+$/;
+const STRUCTURAL = new Set(["addLesson", "addWeek", "duplicateLesson", "duplicateWeek", "insertWeek", "insertLesson"]);
+
+/** Lessons still named "Lesson N" take their place in the course as their number; named lessons keep their names. */
+function renumberLessons(course: Course) {
+  let i = 0;
+  for (const w of course.weeks) for (const l of w.lessons) {
+    i++;
+    if (AUTO_LESSON.test(l.title)) l.title = `Lesson ${i}`;
+  }
+}
 
 /** Each student gives feedback to at least this many peers per studio card. */
 const FEEDBACK_GOAL = 2;
@@ -40,8 +52,10 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
   const taken = (lessonId: string) => Object.entries(all).filter(([sid, c]) => sid !== studentId && c[`elective:${lessonId}`]).length;
   return {
     ...course,
-    // Students never receive the class passcode, the tools key, or classmates' emails.
+    // Students never receive the class passcode, the tools key, classmates' emails, or the co-teachers.
     access: undefined,
+    people: undefined,
+    ownerId: undefined,
     waiting: undefined,
     students: course.students.map(({ id, name }) => ({ id, name })),
     weeks: course.weeks.map((w) => ({
@@ -75,7 +89,7 @@ export async function GET(request: Request, { params }: Ctx) {
     if (!course.access?.guestToken || guest !== course.access.guestToken) return Response.json({ error: "This guest link has been turned off" }, { status: 403 });
     const view: CourseState = {
       course: {
-        ...course, students: [], groups: [], joinCode: "", access: undefined, waiting: undefined,
+        ...course, students: [], groups: [], joinCode: "", access: undefined, waiting: undefined, people: undefined, ownerId: undefined,
         // Cards made for one student stay private; shared and path cards are shown without who they're for.
         weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student").map((m) => ({ ...m, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
       },
@@ -89,7 +103,7 @@ export async function GET(request: Request, { params }: Ctx) {
   if (waiting && canBeStudent(session, course, as!)) {
     return Response.json({ error: `Thanks, ${waiting.name}. Your teacher needs to let you into ${course.title}. This page opens your board as soon as they do.`, waiting: true }, { status: 403 });
   }
-  if (as ? !canBeStudent(session, course, as) : !canTeach(session, course)) return unauthorized(as ? "student" : "teacher");
+  if (as ? !canBeStudent(session, course, as) : !canSeeTeacher(session, course)) return unauthorized(as ? "student" : "teacher");
   if (as && !course.students.some((s) => s.id === as)) return Response.json({ error: "You’re not on this class list. Ask your teacher to add you." }, { status: 404 });
   if (finishExpiredQuizzes(course)) save();
   const all = d.progress[courseId] ?? {};
@@ -158,6 +172,10 @@ export async function GET(request: Request, { params }: Ctx) {
     nudges: (d.nudges[courseId] ?? []).filter((n) => !as || n.studentId === as),
     plans: as ? (d.plans[courseId]?.[as] ? { [as]: d.plans[courseId][as] } : {}) : (d.plans[courseId] ?? {}),
   };
+  if (!as) {
+    const owner = course.ownerId ? d.users[course.ownerId] : undefined;
+    state.me = { role: roleOf(session, course) ?? (course.id === DEMO ? "owner" : "viewer"), owner: owner ? { name: owner.name, email: owner.email, picture: owner.picture } : undefined };
+  }
   // Visitors to the open demo get a light session so they can upload recordings there.
   const headers: Record<string, string> = !session && course.id === DEMO ? { "Set-Cookie": startSession({ kind: "demo" }, 7) } : {};
   return Response.json(state, { headers });
@@ -281,7 +299,22 @@ export async function POST(request: Request, { params }: Ctx) {
   }
 
   try {
+  // Managing who else can see or edit the course is for its owner alone.
+  if (body.op === "setPeople" && roleOf(session, course) !== "owner") return Response.json({ ok: false, error: "Only the course’s owner can change who has access" }, { status: 403 });
   switch (body.op) {
+    case "setPeople": {
+      const raw = Array.isArray(body.people) ? body.people : [];
+      const seen = new Set<string>();
+      const ownerEmail = course.ownerId ? d.users[course.ownerId]?.email.toLowerCase() : undefined;
+      course.people = raw.flatMap((x: { email?: unknown; role?: unknown; at?: unknown }) => {
+        const email = String(x?.email ?? "").trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120 || seen.has(email) || email === ownerEmail) return [];
+        seen.add(email);
+        return [{ email, role: x?.role === "viewer" ? "viewer" : "editor", at: typeof x?.at === "number" ? x.at : Date.now() } as const];
+      }).slice(0, 50);
+      if (!course.people?.length) course.people = undefined;
+      break;
+    }
     // —— teacher ——
     case "setProfile":
       course.profile = body.profile;
@@ -379,6 +412,33 @@ export async function POST(request: Request, { params }: Ctx) {
       const added = names.filter((n) => !have.has(n.toLowerCase()) && (have.add(n.toLowerCase()), true)).map((n) => ({ id: uid("s-"), name: n.slice(0, 60) }));
       course.students.push(...added);
       // Put each new student in the smallest group so they can use Collab Studio right away.
+      if (course.groups?.length) {
+        for (const st of added) {
+          const g = [...course.groups].sort((a, b) => a.studentIds.length - b.studentIds.length)[0];
+          g.studentIds.push(st.id);
+        }
+      }
+      extra = { added: added.length };
+      break;
+    }
+    case "addStudentEmails": {
+      // Students invited by email: each gets a place on the class list, named from their address until they change it.
+      // Nothing is emailed; the teacher shares the class link themselves.
+      const emails: string[] = (Array.isArray(body.emails) ? body.emails : String(body.emails ?? "").split(/[\s,;]+/))
+        .map((x: unknown) => String(x ?? "").trim().toLowerCase()).filter((x: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x) && x.length <= 120).slice(0, 200);
+      const haveEmail = new Set(course.students.map((x) => x.email?.toLowerCase()).filter(Boolean));
+      const haveName = new Set(course.students.map((x) => x.name.toLowerCase()));
+      const added: Student[] = [];
+      for (const email of emails) {
+        if (haveEmail.has(email)) continue;
+        haveEmail.add(email);
+        let name = email.split("@")[0].split(/[._\-+]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ").slice(0, 60) || email;
+        // Two people with the same name: tell them apart by their address.
+        if (haveName.has(name.toLowerCase())) name = email.slice(0, 60);
+        haveName.add(name.toLowerCase());
+        added.push({ id: uid("s-"), name, email });
+      }
+      course.students.push(...added);
       if (course.groups?.length) {
         for (const st of added) {
           const g = [...course.groups].sort((a, b) => a.studentIds.length - b.studentIds.length)[0];
@@ -498,15 +558,19 @@ export async function POST(request: Request, { params }: Ctx) {
         m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
         m.form = cleanForm(m.form);
       }
+      if (next.date !== undefined && !(typeof next.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(next.date))) next.date = undefined;
       for (const w of course.weeks) {
         const i = w.lessons.findIndex((l) => l.id === next.id);
-        if (i >= 0) w.lessons[i] = next;
+        if (i < 0) continue;
+        // "Lesson N" names belong to the server (they follow position); a stale copy can't put an old number back.
+        if (AUTO_LESSON.test(next.title ?? "") && AUTO_LESSON.test(w.lessons[i].title)) next.title = w.lessons[i].title;
+        w.lessons[i] = next;
       }
       break;
     }
     case "addLesson": {
       const week = course.weeks.find((w) => w.id === body.weekId);
-      const lesson: Lesson = { id: uid("l-"), title: body.title || "New lesson", modules: [], branches: {} };
+      const lesson: Lesson = { id: uid("l-"), title: typeof body.title === "string" && body.title.trim() && !AUTO_LESSON.test(body.title) ? body.title.trim().slice(0, 80) : "Lesson 0", modules: [], branches: {} };
       week?.lessons.push(lesson);
       extra = { lessonId: lesson.id };
       break;
@@ -1137,6 +1201,8 @@ export async function POST(request: Request, { params }: Ctx) {
     default:
       return fail("Unknown operation");
   }
+    // After anything that adds or moves lessons, placeholder names follow position: Lesson 1, 2, 3 across the course.
+    if (STRUCTURAL.has(body.op)) renumberLessons(course);
   } catch (e) {
     // Malformed input (a null where an object belongs, and so on) is the sender's mistake, not a server crash.
     console.error("op failed", body.op, e instanceof Error ? e.message : e);

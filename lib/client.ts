@@ -1,5 +1,6 @@
 "use client";
 
+import { todayLessonId } from "./dates";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ConnectorInfo, ToolResult } from "./connectors/types";
 import { toast } from "./toast";
@@ -63,6 +64,8 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
         // 内容没变就不更新，避免每次轮询都让整页重画
         if (raw !== last.current) {
           last.current = raw;
+          // Today's lesson follows the lesson dates, in this browser's own calendar day.
+          if (data?.course?.weeks) data.course.currentLessonId = todayLessonId(data.course);
           setState(data);
         }
         setError(null);

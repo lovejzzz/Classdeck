@@ -89,10 +89,31 @@ export function isAdmin(session: Session | null): boolean {
   return list.includes(t.email.toLowerCase());
 }
 
-/** May this visitor change this course and see everyone's work? */
+export type Role = "owner" | "editor" | "viewer";
+
+/**
+ * This teacher's role in a course. A co-teacher counts only once they've signed in with Google using the invited
+ * address: a password account could claim any email, so it never matches an invite.
+ */
+export function roleOf(session: Session | null, course: Course): Role | null {
+  if (session?.kind !== "teacher" || !session.userId) return null;
+  if (course.ownerId === session.userId) return "owner";
+  const u = db().users[session.userId];
+  if (!u?.google || !course.people?.length) return null;
+  const email = u.email.toLowerCase();
+  return course.people.find((p) => p.email.toLowerCase() === email)?.role ?? null;
+}
+
+/** May this visitor change this course and see everyone's work? (Its owner, or an editor.) */
 export function canTeach(session: Session | null, course: Course): boolean {
   if (course.id === DEMO) return true;
-  return session?.kind === "teacher" && !!session.userId && course.ownerId === session.userId;
+  const r = roleOf(session, course);
+  return r === "owner" || r === "editor";
+}
+
+/** May this visitor see the teacher's view of this course? (Also viewers, who can't change anything.) */
+export function canSeeTeacher(session: Session | null, course: Course): boolean {
+  return canTeach(session, course) || roleOf(session, course) === "viewer";
 }
 
 /** May this visitor act as this student in this course? */
@@ -103,7 +124,7 @@ export function canBeStudent(session: Session | null, course: Course, studentId:
 
 /** Any signed-in visitor of this course (for live updates). */
 export function canView(session: Session | null, course: Course): boolean {
-  return course.id === DEMO || canTeach(session, course) || (session?.kind === "student" && session.courseId === course.id);
+  return course.id === DEMO || canSeeTeacher(session, course) || (session?.kind === "student" && session.courseId === course.id);
 }
 
 // —— simple in-memory throttle for sign-in attempts ——

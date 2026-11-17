@@ -61,28 +61,28 @@ async function main() {
   const B = await teacher("b");
   const anon = client();
 
-  // ---- Courses: each way to start, each subject
+  // ---- Courses: blank or the standard weeks (no subject skills, no CaPS copy)
   const made = {};
-  for (const [start, skillSet] of [["blank", "music"], ["template", "writing"], ["caps", "music"], ["template", undefined]]) {
-    const r = await A.post("/api/courses", { title: `C ${start} ${skillSet ?? "default"} ${run}`, start, skillSet });
-    check(`create ${start}/${skillSet}`, r.ok && r.id, r);
-    made[`${start}/${skillSet}`] = r.id;
+  for (const [key, start] of [["blank/music", "blank"], ["template/writing", "template"]]) {
+    const r = await A.post("/api/courses", { title: `C ${key} ${run}`, start, skillSet: "music" });
+    check(`create ${key}`, r.ok && r.id, r);
+    made[key] = r.id;
   }
   const blank = courseOf(await A.state(made["blank/music"]));
-  check("blank: music skills", blank.skills?.[0]?.id === "mu-pitch", blank.skills);
+  check("new course has no skills (the picker is gone)", Array.isArray(blank.skills) && blank.skills.length === 0, blank.skills);
   check("blank: 4 levels", blank.levels?.length === 4, blank.levels?.length);
   check("blank: one week, one lesson, no cards", blank.weeks.length === 1 && blank.weeks[0].lessons.length === 1 && modulesOf(blank).length === 0);
   check("new course: students add themselves with the teacher's OK", blank.access?.selfJoin === "approve", blank.access);
   const tmpl = courseOf(await A.state(made["template/writing"]));
-  check("template/writing: writing skills", tmpl.skills?.[0]?.id === "wr-ideas");
-  check("template/writing: no speaking skill ids left on cards", !modulesOf(tmpl).some((m) => (m.skills ?? []).some((s) => !s.startsWith("wr-"))), modulesOf(tmpl).map((m) => m.skills));
-  const caps = courseOf(await A.state(made["caps/music"]));
-  check("caps copy keeps speaking skills", caps.skills?.[0]?.id === "audience");
-  check("caps copy has cards", modulesOf(caps).length > 30, modulesOf(caps).length);
-  const def = courseOf(await A.state(made["template/undefined"]));
-  check("default skill set is speaking", def.skills?.[0]?.id === "audience");
+  check("template cards carry no skill tags", !modulesOf(tmpl).some((m) => m.skills?.length), modulesOf(tmpl).map((m) => m.skills));
+  check("template lessons named Lesson 1..3", tmpl.weeks.map((w) => w.lessons[0].title).join() === "Lesson 1,Lesson 2,Lesson 3", tmpl.weeks.map((w) => w.lessons[0].title));
+  const capsTry = await A.post("/api/courses", { title: `Caps try ${run}`, start: "caps" });
+  const capsTryCourse = courseOf(await A.state(capsTry.id));
+  check("asking for a CaPS copy makes a blank course", modulesOf(capsTryCourse).length === 0, modulesOf(capsTryCourse).length);
+  made["capstry"] = capsTry.id;
   check("empty title refused", (await A.post("/api/courses", { title: "  ", start: "blank" })).ok === false);
   check("anonymous can't create", (await anon.post("/api/courses", { title: "x", start: "blank" })).status === 401);
+  check("demo not in the course list", !(await A.get("/api/courses")).courses.some((c) => c.id === "demo"));
 
   // ---- Listing: own courses + demo, nothing of B's
   const listA = await A.get("/api/courses");
@@ -124,10 +124,12 @@ async function main() {
   const tw = courseOf(await A.state(made["template/writing"]));
   check("template weeks have no paths", !modulesOf(tw).some((m) => m.audience.kind === "branch"), modulesOf(tw).map((m) => m.audience.kind));
   check("template cards carry no merged settings", !modulesOf(tw).some((m) => m.checklist || m.prompts || m.criteria || m.playlist));
-  check("CaPS copy carries no merged settings", !modulesOf(caps).some((m) => m.checklist || m.prompts || m.criteria || m.playlist));
 
   // ---- Skills
   const lv = after.levels;
+  // Skills can't be set in the app any more, but the operation still guards its input.
+  after.skills = [{ id: "mu-pitch", name: "Pitch" }, { id: "mu-ear", name: "Ear" }];
+  check("setSkills works", (await A.op(cid, { op: "setSkills", skills: after.skills, levels: lv })).ok !== false);
   check("setSkills needs 4 levels", (await A.op(cid, { op: "setSkills", skills: after.skills, levels: lv.slice(0, 3) })).ok === false);
   check("setSkills needs a skill", (await A.op(cid, { op: "setSkills", skills: [], levels: lv })).ok === false);
   const withSkill = modulesOf(after)[0];
@@ -256,6 +258,60 @@ async function main() {
   check("course deleted, one file removed", del.ok && del.files === 1, del);
   check("the saved card's file still loads", (await A.get(fa.url)).status !== 404);
   check("the other file is gone", (await A.get(fb.url)).status === 404);
+
+  // ---- Co-teachers: only Google-verified accounts match an invite; only the owner manages people
+  {
+    const share = made["template/writing"];
+    const bEmail = `t-b-${run}@example.test`;
+    const sp = await A.op(share, { op: "setPeople", people: [{ email: bEmail, role: "editor" }, { email: "not-an-email", role: "editor" }, { email: `v-${run}@example.test`, role: "viewer" }] });
+    check("owner shares the course", sp.ok !== false, sp);
+    const sharedState = await A.state(share);
+    check("owner sees the people list", courseOf(sharedState).people?.length === 2, courseOf(sharedState).people);
+    check("owner is told they own it", sharedState.me?.role === "owner", sharedState.me);
+    check("password account with the invited email gets nothing", [401, 403].includes((await B.state(share)).status));
+    check("…and can't write", [401, 403].includes((await B.op(share, { op: "addStudents", names: "X" })).status));
+    check("…and doesn't list it", !(await B.get("/api/courses")).courses.some((c) => c.id === share));
+    check("only the owner changes people", [401, 403].includes((await B.op(share, { op: "setPeople", people: [] })).status));
+    const stu = await S1.state(`${share}?as=${mia.id}`);
+    check("students never get co-teachers or owner", !("people" in courseOf(stu)) && !("ownerId" in courseOf(stu)) && !stu.me, Object.keys(courseOf(stu)));
+    const gt = courseOf(await A.state(share)).access;
+    await A.op(share, { op: "setAccess", access: { joinOpen: true, selfJoin: gt?.selfJoin, guestToken: true } });
+    const tok = courseOf(await A.state(share)).access?.guestToken;
+    const guest = await anon.get(`/api/course/${share}?guest=${tok}`);
+    check("guest view has no co-teachers", guest.course && !("people" in guest.course) && !("ownerId" in guest.course), guest.course && Object.keys(guest.course));
+  }
+
+  // ---- Lesson numbers follow position across the course
+  {
+    const tc = made["template/writing"];
+    const before = courseOf(await A.state(tc));
+    await A.op(tc, { op: "addLesson", weekId: before.weeks[0].id, title: "Lesson 9" });
+    const after2 = courseOf(await A.state(tc));
+    const names = after2.weeks.map((w) => w.lessons.map((l) => l.title).join("+")).join(" | ");
+    check("adding to week 1 makes Lesson 2 and moves the rest up", names === "Lesson 1+Lesson 2 | Lesson 3 | Lesson 4", names);
+    const l2 = after2.weeks[1].lessons[0];
+    await A.op(tc, { op: "saveLesson", lesson: { ...l2, title: "Lesson 2" } });
+    check("a stale save can't put an old number back", courseOf(await A.state(tc)).weeks[1].lessons[0].title === "Lesson 3");
+    await A.op(tc, { op: "saveLesson", lesson: { ...courseOf(await A.state(tc)).weeks[1].lessons[0], title: "Scales" } });
+    await A.op(tc, { op: "addLesson", weekId: after2.weeks[0].id });
+    const names2 = courseOf(await A.state(tc)).weeks.map((w) => w.lessons.map((l) => l.title).join("+")).join(" | ");
+    check("named lessons keep their names", names2 === "Lesson 1+Lesson 2+Lesson 3 | Scales | Lesson 5", names2);
+    const l1 = courseOf(await A.state(tc)).weeks[0].lessons[0];
+    await A.op(tc, { op: "saveLesson", lesson: { ...l1, date: "2030-02-04" } });
+    check("a lesson keeps its date", courseOf(await A.state(tc)).weeks[0].lessons[0].date === "2030-02-04");
+    await A.op(tc, { op: "saveLesson", lesson: { ...l1, date: "next tuesday" } });
+    check("a bad date is dropped", !courseOf(await A.state(tc)).weeks[0].lessons[0].date);
+  }
+
+  // ---- Students added by email
+  {
+    const ec = made["template/writing"];
+    const r1 = await A.op(ec, { op: "addStudentEmails", emails: ["ana.lopez@example.test", "ANA.LOPEZ@example.test", "bad", "kai@example.test"] });
+    check("add students by email", r1.added === 2, r1);
+    const roster = courseOf(await A.state(ec)).students;
+    check("name made from the address", roster.some((x) => x.name === "Ana Lopez" && x.email === "ana.lopez@example.test"), roster.map((x) => [x.name, x.email]));
+    check("emails not sent to classmates", !courseOf(await S1.state(`${ec}?as=${mia.id}`)).students.some((x) => "email" in x));
+  }
 
   // ---- Demo course
   const demo = await anon.state("demo");

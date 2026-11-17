@@ -5,16 +5,20 @@ import type { ConnectorInfo } from "@/lib/connectors/types";
 import { download } from "@/lib/download";
 import { toast } from "@/lib/toast";
 import { DocImport } from "./DocImport";
-import { Joining } from "./Joining";
+import { InviteTeachers } from "./ShareDialog";
+import { useState } from "react";
 import { DeleteCourse } from "./DeleteCourse";
-import { SkillsEditor } from "./SkillsEditor";
-import type { Course } from "@/lib/types";
+import type { Course, CourseState } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { uid } from "@/lib/profile";
 import type { Group } from "@/lib/types";
 
 /** The Settings tab (part "settings") and the Students tab (part "students") share this component and its helpers. */
-export function Settings({ course, onChanged, part = "settings" }: { course: Course; connectors?: ConnectorInfo[]; onChanged: () => void; part?: "settings" | "students" }) {
+export function Settings({ course, onChanged, part = "settings", readOnly = false, onInvite, me }: {
+  course: Course; connectors?: ConnectorInfo[]; onChanged: () => void; part?: "settings" | "students"; readOnly?: boolean; onInvite?: () => void; me?: CourseState["me"];
+}) {
+  const [sharing, setSharing] = useState(false);
+  const owner = me?.role === "owner" || course.id === "demo";
   const info = async (patch: { title?: string; subtitle?: string }) => {
     const r = await op<{ ok?: boolean }>(course.id, { op: "setCourseInfo", title: patch.title ?? course.title, subtitle: patch.subtitle ?? course.subtitle ?? "" });
     onChanged();
@@ -51,81 +55,52 @@ export function Settings({ course, onChanged, part = "settings" }: { course: Cou
       {part === "students" ? (
         <>
       <section className="card p-6">
-        <h3 className="text-[15px] font-medium">Class list</h3>
-        <div className="mt-3">
-          <div className="mb-2 flex items-center gap-2 text-[13px]"><span className="text-ink-2">Students</span><span className="mono">{course.students.length}</span></div>
-          {course.students.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {course.students.map((st) => (
-                <span key={st.id} className="pop inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-1 text-[12.5px]">
-                  <Avatar name={st.name} size={20} />{st.name}
-                  <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(`${st.name} will choose a new PIN next time`, { icon: "lock", tone: "plain" }); }}
-                    title="Reset PIN" aria-label={`Reset ${st.name}’s PIN`} className="press rounded-full p-1 text-ink-3 hover:bg-lane hover:text-ink"><Icon name="lock" size={11} /></button>
-                  <button onClick={() => confirm(`Remove ${st.name} from the class? Their work stays saved.`) && removeStudent(st.id, st.name)} aria-label={`Remove ${st.name}`} className="press rounded-full p-1 text-ink-3 hover:bg-lane hover:text-bad"><Icon name="x" size={11} /></button>
+        <div className="flex items-center gap-2">
+          <h3 className="text-[15px] font-medium">Class list</h3>
+          <span className="mono">{course.students.length}</span>
+          <span className="flex-1" />
+          {!readOnly && onInvite && <button onClick={onInvite} className="btn btn-ghost press h-8"><Icon name="plus" size={13} /> Invite students</button>}
+        </div>
+        {course.students.length > 0 ? (
+          <ul className="mt-3 divide-y divide-line">
+            {course.students.map((st) => (
+              <li key={st.id} className="group flex items-center gap-3 py-2">
+                <Avatar name={st.name} size={34} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px]">{st.name}</span>
+                  <span className="block truncate text-[12.5px] text-ink-3">{st.email ?? "No email · joins by picking their name"}</span>
                 </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[13px] text-ink-3">No students yet. Add names below; students pick their name after entering the class code, then choose a 4-digit PIN.</p>
-          )}
-          <form className="mt-3 flex flex-wrap items-start gap-2" onSubmit={async (e) => {
-            e.preventDefault();
-            const ta = e.currentTarget.elements.namedItem("names") as HTMLTextAreaElement;
-            if (!ta.value.trim()) return;
-            const r = await op<{ added?: number }>(course.id, { op: "addStudents", names: ta.value });
-            ta.value = "";
-            onChanged();
-            toast(`Added ${r.added ?? 0} student${r.added === 1 ? "" : "s"}`, { icon: "users" });
-          }}>
-            <textarea name="names" rows={2} placeholder={"Paste names, one per line\nMia Chen\nLeo Park"} aria-label="Student names" className="field min-w-0 flex-1 resize-y" />
-            <button type="submit" className="btn btn-dark press">Add students</button>
-          </form>
-        </div>
-      </section>
-
-      <Joining course={course} onChanged={onChanged}
-        setSelfJoin={(selfJoin) => setAccess({ selfJoin }, false, selfJoin === "approve" ? "Students not on your list can ask to join" : selfJoin === "open" ? "Anyone with the code can join" : "Only students on your list can join")} />
-
-      <section className="card p-6">
-        <h3 className="text-[15px] font-medium">Class code and guest link</h3>
-        <p className="mt-1 text-[13px] text-ink-3">Turn joining on or off, change the code, add a passcode, or share a read-only link.</p>
-        <div className="mt-4 divide-y divide-line border-t border-line text-[13px]">
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-32 text-ink-2">Class code</span>
-            <span className="font-mono text-[15px] tracking-[0.2em]">{course.joinCode}</span>
-            <button onClick={() => setAccess({}, true, "New class code made. The old one stops working.")} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="reset" size={12} /> New code</button>
-            <span className="flex-1" />
-            <label className="flex items-center gap-2 text-ink-2">
-              <span className={`relative h-[18px] w-8 rounded-full p-[2px] transition-colors duration-300 ${access.joinOpen ? "bg-ok" : "bg-line-strong"}`}>
-                <span className={`block h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-300 ease-[var(--ease-spring)] ${access.joinOpen ? "translate-x-[14px]" : ""}`} />
-              </span>
-              <input type="checkbox" className="sr-only" checked={access.joinOpen} onChange={(e) => setAccess({ joinOpen: e.target.checked }, false, e.target.checked ? "Joining is open" : "Joining is closed")} />
-              Accept new students
-            </label>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-32 text-ink-2">Join passcode</span>
-            <input defaultValue={access.passcode ?? ""} placeholder="None" aria-label="Join passcode" className="field h-8 w-40 py-0"
-              onBlur={(e) => (e.target.value || undefined) !== access.passcode && setAccess({ passcode: e.target.value || undefined }, false, e.target.value ? "Passcode set" : "Passcode removed")} />
-            <span className="text-[12px] text-ink-3">Students enter it after the class code.</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-32 text-ink-2">Guest link</span>
-            {access.guestToken ? (
-              <>
-                <code className="min-w-0 flex-1 truncate rounded-md bg-lane px-2 py-1 font-mono text-[12px] text-ink-2">{guestUrl}</code>
-                <button onClick={() => { navigator.clipboard?.writeText(guestUrl).catch(() => {}); toast("Guest link copied"); }} className="btn btn-ghost press h-8">Copy</button>
-                <a href={guestUrl} target="_blank" rel="noreferrer" className="btn btn-quiet press h-8">Open <Icon name="external" size={11} /></a>
-                <button onClick={() => setAccess({ guestToken: null }, false, "Guest link turned off")} className="btn btn-quiet press h-8 hover:!text-bad">Turn off</button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 text-[12.5px] text-ink-3">Read-only: guests browse the cards but see no students or their work.</span>
-                <button onClick={() => setAccess({ guestToken: true }, false, "Guest link created")} className="btn btn-ghost press h-8"><Icon name="link" size={13} /> Create link</button>
-              </>
-            )}
-          </div>
-        </div>
+                {!readOnly && (
+                  <span className="flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
+                    <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(`${st.name} will choose a new PIN next time`, { icon: "lock", tone: "plain" }); }}
+                      className="btn btn-quiet press h-8 px-2 text-[12px]" aria-label={`Reset ${st.name}’s PIN`}><Icon name="lock" size={12} /> Reset PIN</button>
+                    <button onClick={() => confirm(`Remove ${st.name} from the class? Their work stays saved.`) && removeStudent(st.id, st.name)}
+                      className="btn btn-quiet press h-8 px-2 text-[12px] hover:!text-bad" aria-label={`Remove ${st.name}`}><Icon name="x" size={12} /> Remove</button>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-[13px] text-ink-3">No students yet.</p>
+        )}
+        {!readOnly && (
+          <details className="mt-3 text-[13px]">
+            <summary className="cursor-pointer text-ink-3 hover:text-ink-2">Add students without email</summary>
+            <form className="mt-2 flex flex-wrap items-start gap-2" onSubmit={async (e) => {
+              e.preventDefault();
+              const ta = e.currentTarget.elements.namedItem("names") as HTMLTextAreaElement;
+              if (!ta.value.trim()) return;
+              const r = await op<{ added?: number }>(course.id, { op: "addStudents", names: ta.value });
+              ta.value = "";
+              onChanged();
+              toast(`Added ${r.added ?? 0} student${r.added === 1 ? "" : "s"}`, { icon: "users" });
+            }}>
+              <textarea name="names" rows={2} placeholder={"One name per line\nMia Chen\nLeo Park"} aria-label="Student names" className="field min-w-0 flex-1 resize-y" />
+              <button type="submit" className="btn btn-ghost press">Add</button>
+            </form>
+          </details>
+        )}
       </section>
 
       <section className="card p-6">
@@ -201,7 +176,76 @@ export function Settings({ course, onChanged, part = "settings" }: { course: Cou
         </div>
       </section>
 
-      <SkillsEditor course={course} onChanged={onChanged} />
+      <section className="card p-6">
+        <div className="flex items-center gap-2">
+          <h3 className="flex-1 text-[15px] font-medium">Teachers</h3>
+          <button onClick={() => setSharing(true)} className="btn btn-ghost press h-8"><Icon name="users" size={13} /> {owner ? "Share with teachers" : "See who has access"}</button>
+        </div>
+        <p className="mt-1 text-[13px] text-ink-3">Invite other teachers by email. Editors can change the course; viewers can only look. Students never see this list.</p>
+        <ul className="mt-3 divide-y divide-line">
+          {me?.owner && (
+            <li className="flex items-center gap-3 py-2">
+              {me.owner.picture
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={me.owner.picture} alt="" referrerPolicy="no-referrer" className="h-[34px] w-[34px] rounded-full object-cover" />
+                : <Avatar name={me.owner.name} size={34} />}
+              <span className="min-w-0 flex-1"><span className="block truncate text-[14px]">{me.owner.name}</span><span className="block truncate text-[12.5px] text-ink-3">{me.owner.email}</span></span>
+              <span className="text-[13px] text-ink-3">Owner</span>
+            </li>
+          )}
+          {(course.people ?? []).map((p) => (
+            <li key={p.email} className="flex items-center gap-3 py-2">
+              <Avatar name={p.email} size={34} />
+              <span className="min-w-0 flex-1 truncate text-[14px]">{p.email}</span>
+              <span className="text-[13px] text-ink-3">{p.role === "viewer" ? "Can view" : "Can edit"}</span>
+            </li>
+          ))}
+        </ul>
+        {sharing && <InviteTeachers course={course} me={me} onClose={() => setSharing(false)} onChanged={onChanged} />}
+      </section>
+
+      <section className="card p-6">
+        <h3 className="text-[15px] font-medium">Class code and guest link</h3>
+        <p className="mt-1 text-[13px] text-ink-3">Turn joining on or off, change the code, add a passcode, or share a read-only link.</p>
+        <div className="mt-4 divide-y divide-line border-t border-line text-[13px]">
+          <div className="flex flex-wrap items-center gap-3 py-3">
+            <span className="w-32 text-ink-2">Class code</span>
+            <span className="font-mono text-[15px] tracking-[0.2em]">{course.joinCode}</span>
+            <button onClick={() => setAccess({}, true, "New class code made. The old one stops working.")} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="reset" size={12} /> New code</button>
+            <span className="flex-1" />
+            <label className="flex items-center gap-2 text-ink-2">
+              <span className={`relative h-[18px] w-8 rounded-full p-[2px] transition-colors duration-300 ${access.joinOpen ? "bg-ok" : "bg-line-strong"}`}>
+                <span className={`block h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-300 ease-[var(--ease-spring)] ${access.joinOpen ? "translate-x-[14px]" : ""}`} />
+              </span>
+              <input type="checkbox" className="sr-only" checked={access.joinOpen} onChange={(e) => setAccess({ joinOpen: e.target.checked }, false, e.target.checked ? "Joining is open" : "Joining is closed")} />
+              Accept new students
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 py-3">
+            <span className="w-32 text-ink-2">Join passcode</span>
+            <input defaultValue={access.passcode ?? ""} placeholder="None" aria-label="Join passcode" className="field h-8 w-40 py-0"
+              onBlur={(e) => (e.target.value || undefined) !== access.passcode && setAccess({ passcode: e.target.value || undefined }, false, e.target.value ? "Passcode set" : "Passcode removed")} />
+            <span className="text-[12px] text-ink-3">Students enter it after the class code.</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 py-3">
+            <span className="w-32 text-ink-2">Guest link</span>
+            {access.guestToken ? (
+              <>
+                <code className="min-w-0 flex-1 truncate rounded-md bg-lane px-2 py-1 font-mono text-[12px] text-ink-2">{guestUrl}</code>
+                <button onClick={() => { navigator.clipboard?.writeText(guestUrl).catch(() => {}); toast("Guest link copied"); }} className="btn btn-ghost press h-8">Copy</button>
+                <a href={guestUrl} target="_blank" rel="noreferrer" className="btn btn-quiet press h-8">Open <Icon name="external" size={11} /></a>
+                <button onClick={() => setAccess({ guestToken: null }, false, "Guest link turned off")} className="btn btn-quiet press h-8 hover:!text-bad">Turn off</button>
+              </>
+            ) : (
+              <>
+                <span className="flex-1 text-[12.5px] text-ink-3">Read-only: guests browse the cards but see no students or their work.</span>
+                <button onClick={() => setAccess({ guestToken: true }, false, "Guest link created")} className="btn btn-ghost press h-8"><Icon name="link" size={13} /> Create link</button>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
 
       <section className="card p-6">
         <h3 className="text-[15px] font-medium">Back up and share</h3>
@@ -243,7 +287,7 @@ export function Settings({ course, onChanged, part = "settings" }: { course: Cou
         </div>
       </section>
 
-      {course.id !== "demo" && <DeleteCourse course={course} />}
+      {course.id !== "demo" && owner && <DeleteCourse course={course} />}
         </>
       )}
     </div>

@@ -22,7 +22,7 @@ export interface TableCard {
  */
 export function CardTable({
   cards, layout, size, gap = 18, idle = true, draggable = true, hiddenId, deal = true,
-  onActivate, onLockedTap, onReorder, onPlay, register, after, ariaLabel,
+  onActivate, onLockedTap, onReorder, onPlay, register, after, ariaLabel, onLongPress,
 }: {
   cards: TableCard[];
   layout: "fan" | "grid" | "row";
@@ -40,6 +40,8 @@ export function CardTable({
   /** Something static (like an "add card" tile) placed in the slot after the last card. Grid only. */
   after?: React.ReactNode;
   ariaLabel?: string;
+  /** Pressing and holding a card (without moving it). */
+  onLongPress?: (id: string) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const els = useRef(new Map<string, HTMLElement>());
@@ -156,6 +158,7 @@ export function CardTable({
               }}
               onActivate={(el) => onActivate?.(id, el)}
               onLockedTap={() => onLockedTap?.(id)}
+              onLongPress={onLongPress ? () => onLongPress(id) : undefined}
               onHover={(on) => setHover((cur) => (on ? id : cur === id ? null : cur))}
               onDragStart={() => {
                 setDragging(id);

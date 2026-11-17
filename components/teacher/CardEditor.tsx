@@ -183,8 +183,8 @@ export function CardEditor({
           </Panel>
 
           <Panel n={2} title="What comes back">
-            <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="What comes back">
-              {RESPONSES.map((r) => {
+            <div className={`grid gap-2 ${skills.length || response === "rating" ? "grid-cols-4" : "grid-cols-3"}`} role="radiogroup" aria-label="What comes back">
+              {RESPONSES.filter((r) => r.id !== "rating" || skills.length > 0 || response === "rating").map((r) => {
                 const suit = suitOf(typeFor(r.id, r.id === "answer" ? share : "teacher", m));
                 return (
                   <MiniCard key={r.id} tint={suit.tint} cover={suit.cover} icon={<Icon name={r.icon} size={20} />} title={r.name} sub={r.hint}
@@ -198,7 +198,7 @@ export function CardEditor({
               </div>
             )}
             {response === "rating" && (
-              <p className="mt-3 text-[12.5px] text-ink-3">Students rate themselves on {skills.length ? skills.map((x) => x.name).join(", ") : "the course’s skills"}. Change the skills in Settings.</p>
+              <p className="mt-3 text-[12.5px] text-ink-3">Students rate themselves on {skills.length ? skills.map((x) => x.name).join(", ") : "the course’s skills"}.</p>
             )}
           </Panel>
 

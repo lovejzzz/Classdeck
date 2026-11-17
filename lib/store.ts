@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import path from "path";
 import { publish } from "./bus";
 import { foldWeeks } from "./cardmodel";
+import { todayLessonId } from "./dates";
 import { seedChoices, seedCourse, seedEvents, seedMarks, seedNudges, seedPlans, seedPosts, seedProgress, seedStudio, seedUptake } from "./seed";
 import type { Module, ClassEvent, Course, Feedback, Live, Mark, Nudge, Plan, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
 import type { Manifest } from "./connectors/types";
@@ -248,7 +249,8 @@ export function reset() {
 /** What a teacher wants to know at a glance: today's lesson, work waiting for feedback, students waiting to join. */
 function glance(c: Course, prog: ProgressMap) {
   const lessons = c.weeks.flatMap((w) => w.lessons);
-  const today = lessons.find((l) => l.id === c.currentLessonId) ?? lessons[0];
+  const todayId = todayLessonId(c);
+  const today = lessons.find((l) => l.id === todayId) ?? lessons[0];
   const reviewable = new Set(lessons.flatMap((l) => l.modules).filter((m) => ["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length).map((m) => m.id));
   let toReview = 0;
   for (const st of c.students) for (const [mid, p] of Object.entries(prog[st.id] ?? {})) if (reviewable.has(mid) && p.status === "done" && !p.review) toReview++;

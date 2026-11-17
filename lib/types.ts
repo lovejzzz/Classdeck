@@ -241,6 +241,8 @@ export interface Lesson {
   title: string;
   /** One-line goal shown under the lesson title. */
   goal?: string;
+  /** The day this lesson meets, YYYY-MM-DD. Unset: a week after the lesson in the same place the week before. */
+  date?: string;
   modules: Module[];
   /** Version slots where students pick their own path. lesson.branches then holds the teacher's recommendation. */
   choiceSlots?: string[];
@@ -292,10 +294,18 @@ export interface Group {
   studentIds: string[];
 }
 
+export interface CoTeacher {
+  email: string;
+  role: "editor" | "viewer";
+  at: number;
+}
+
 export interface Course {
   id: string;
   /** The teacher account that owns this course. The demo course has none. */
   ownerId?: string;
+  /** Other teachers invited by email. Editors change the course; viewers only look. Never sent to students. */
+  people?: CoTeacher[];
   title: string;
   subtitle?: string;
   createdAt?: number;
@@ -470,6 +480,8 @@ export interface CourseState {
   plans: Record<string, Plan>;
   /** For students, votes are counts only (plus their own) and hands are their own. */
   live: Live & { myVote?: number; counts?: number[] };
+  /** Teacher views only: this teacher's role, and who owns the course. */
+  me?: { role: "owner" | "editor" | "viewer"; owner?: { name: string; email: string; picture?: string } };
 }
 
 /** Feedback, scores, and links sent to a student's card from an outside tool. */

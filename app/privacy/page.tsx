@@ -16,11 +16,12 @@ export default function Privacy() {
       <ul>
         <li>Your name and email, and either a password (stored only as a salted hash) or your Google account id if you sign in with Google. From Google we receive only your name, email, profile photo, and account id.</li>
         <li>The courses you build, and the feedback you give.</li>
+        <li>Email addresses of other teachers you share a course with. They and the course’s owner can see each other’s name and email; students never see them.</li>
       </ul>
 
       <h2>Students</h2>
       <ul>
-        <li>The name your teacher adds (or you add when you join), a 4-digit PIN stored only as a salted hash, and an email only if your teacher or a class form provides one.</li>
+        <li>The name your teacher adds (or you add when you join), a 4-digit PIN stored only as a salted hash, and an email only if your teacher adds you by email or a class form provides one. Questhand doesn’t send email to students; your teacher shares the class link themselves.</li>
         <li>Your work: answers, writing, recordings, files and links you add, ratings, your plan, and feedback you give and receive.</li>
         <li>Your teacher can see your work in their class. Classmates see only what is shared on purpose, such as wall posts and Collab Studio work in your group. Other students never receive your answers or feedback.</li>
       </ul>

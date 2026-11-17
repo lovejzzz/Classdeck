@@ -15,12 +15,14 @@ import { Shortcuts } from "@/components/ShortcutHelp";
 import { Classroom } from "@/components/teacher/Classroom";
 import { Deck } from "@/components/teacher/Deck";
 import { Settings } from "@/components/teacher/Settings";
+import { InviteStudents } from "@/components/teacher/ShareDialog";
+import { LogoMark } from "@/components/Logo";
 import { op, useConnectors, useCourse } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
 
-const TABS = [["plan", "Deck"], ["class", "Class"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
+const TABS = [["plan", "Deck"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
 type Tab = (typeof TABS)[number][0];
 
 const KIND: Record<ClassEvent["kind"], { icon: string; tint: string }> = {
@@ -47,13 +49,15 @@ export default function TeachPage() {
   const { connectors } = useConnectors();
   // The tab lives in the address, so Back returns to the previous tab and a reload stays put.
   const [tabParam, setTabParam] = useUrlState("tab");
-  const tab: Tab = TABS.some(([id]) => id === tabParam) ? (tabParam as Tab) : "plan";
+  // "class" was its own tab before it joined Students.
+  const tab: Tab = tabParam === "class" ? "students" : TABS.some(([id]) => id === tabParam) ? (tabParam as Tab) : "plan";
   // Every tab change is its own Back step, including going back to the Deck.
   const setTab = (t: Tab) => setTabParam(t === "plan" ? null : t, { push: true, drop: ["card", "run", "qr"] });
   const [picked, setPicked] = useState<string | null>(null);
   const [sel, setSel] = useState<{ sid: string; mid: string } | null>(null);
   const seenKey = `seen-at:teacher:${courseId}`;
   const [seenAt, setSeenAt] = useState(() => (typeof window === "undefined" ? 0 : readSeen(seenKey)));
+  const [inviting, setInviting] = useState(false);
 
   if (needAuth && !state) return <SignInNeeded who="teacher" courseId={courseId} next={`/teach/${courseId}`} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
@@ -66,6 +70,7 @@ export default function TeachPage() {
     );
   }
   const { course } = state;
+  const viewer = state.me?.role === "viewer";
   const lessons = course.weeks.flatMap((w) => w.lessons);
   const lesson = lessons.find((l) => l.id === (picked ?? course.currentLessonId)) ?? lessons[0];
   const studentName = (id: string) => course.students.find((s) => s.id === id)?.name ?? "Student";
@@ -97,7 +102,7 @@ export default function TeachPage() {
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
           <Link href="/" className="flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink">
-            <span className="inline-block h-4 w-4 rounded-[5px] bg-ink" />Questhand
+            <LogoMark size={15} />Questhand
           </Link>
           <span className="text-line-strong">/</span>
           <h1 className="truncate text-[14px] font-medium">{course.title}</h1>
@@ -115,10 +120,9 @@ export default function TeachPage() {
           <Shortcuts
             list={[
               { keys: "1", label: "Deck", run: () => setTab("plan") },
-              { keys: "2", label: "Class", run: () => setTab("class") },
-              { keys: "3", label: "Students", run: () => setTab("students") },
-              { keys: "4", label: "Grades", run: () => setTab("grades") },
-              { keys: "5", label: "Settings", run: () => setTab("settings") },
+              { keys: "2", label: "Students", run: () => setTab("students") },
+              { keys: "3", label: "Grades", run: () => setTab("grades") },
+              ...(viewer ? [] : [{ keys: "4", label: "Settings", run: () => setTab("settings") }]),
             ]}
             extra={tab === "plan" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s Collab Studio" }, { keys: "[", label: "Previous / next week ( [ ] )" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
@@ -142,7 +146,7 @@ export default function TeachPage() {
               const found = ev && moduleOf(ev.moduleId);
               if (!ev || !found) return;
               setPicked(found.l.id);
-              setTab("class");
+              setTab("students");
               setSel({ sid: ev.studentId, mid: ev.moduleId });
             }}
           />
@@ -172,7 +176,7 @@ export default function TeachPage() {
               className="absolute inset-y-0.5 left-0.5 w-20 rounded-md bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-[var(--ease-out)]"
               style={{ transform: `translateX(${TABS.findIndex((t) => t[0] === tab) * 5}rem)` }}
             />
-            {TABS.map(([id, label]) => (
+            {TABS.filter(([id]) => !(viewer && id === "settings")).map(([id, label]) => (
               <button
                 key={id}
                 role="tab"
@@ -188,7 +192,7 @@ export default function TeachPage() {
             ))}
           </div>
 
-          {tab === "class" && lesson && course.students.length > 0 && (
+          {tab === "students" && lesson && course.students.length > 0 && (
             <div className="relative">
               <select
                 value={lesson.id}
@@ -208,39 +212,47 @@ export default function TeachPage() {
               <Icon name="chevron" size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
             </div>
           )}
+          <span className="flex-1" />
+          {/* The Deck puts its undo, redo and save status here, in the row with the tabs. */}
+          <div id="deck-status" className="flex items-center" />
+          {tab === "students" && !viewer && (
+            <button onClick={() => setInviting(true)} className="btn btn-dark press h-8"><Icon name="plus" size={13} /> Invite students</button>
+          )}
         </div>
 
         <main key={tab} className="rise mt-6">
-          {(tab === "plan" || tab === "class" || tab === "grades") && course.students.length === 0 && courseId !== "demo" && (
+          {viewer && (
+            <p className="mb-5 rounded-xl bg-lane px-4 py-2.5 text-[13px] text-ink-2">You can view this course. Only its owner and editors can change it.</p>
+          )}
+          {course.students.length === 0 && courseId !== "demo" && tab !== "settings" && (
             <section aria-label="Getting started" className="card mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 p-5">
               <div className="min-w-[14rem] flex-1">
                 <h2 className="text-[15px] font-medium">{course.waiting?.length ? `${course.waiting.length} student${course.waiting.length === 1 ? " is" : "s are"} waiting to be let in` : "No students yet"}</h2>
-                <p className="mt-1 text-[13px] text-ink-2">
-                  {tab === "plan"
-                    ? "Build your cards below, then bring your class in: show a QR code on the projector, or add names yourself."
-                    : "This page fills in once students join. Show a QR code on the projector, or add names yourself."}
-                </p>
+                <p className="mt-1 text-[13px] text-ink-2">Invite students by email, or share the class link or QR code.</p>
               </div>
-              <button
-                onClick={() => {
-                  setTab("students");
-                  setTimeout(() => document.getElementById("joining")?.scrollIntoView({ behavior: "smooth", block: "start" }), 350);
-                }}
-                className="btn btn-dark press h-9"
-              >
-                <Icon name="plus" size={13} /> {course.waiting?.length ? "Let them in" : "Invite students"}
-              </button>
+              {!viewer && (
+                <button onClick={() => setInviting(true)} className="btn btn-dark press h-9">
+                  <Icon name="plus" size={13} /> {course.waiting?.length ? "Let them in" : "Invite students"}
+                </button>
+              )}
             </section>
           )}
-          {tab === "plan" && <Deck course={course} connectors={connectors} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} />}
-          {/* Class and Grades have nothing to show until someone joins; the card above says how to bring them in. */}
-          {tab === "class" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
+          {course.students.length > 0 && !!course.waiting?.length && tab === "students" && !viewer && (
+            <button onClick={() => setInviting(true)} className="press mb-5 flex w-full items-center gap-2 rounded-xl bg-[#fbf3ee] px-4 py-2.5 text-left text-[13px]">
+              <span className="h-2 w-2 rounded-full bg-[#ae502f]" />
+              <span className="flex-1"><span className="font-medium">{course.waiting.length} waiting to join.</span> Let them in or turn them away.</span>
+              <Icon name="arrow" size={13} />
+            </button>
+          )}
+          {tab === "plan" && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} />}
+          {tab === "students" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
+          {tab === "students" && <div className={course.students.length ? "mt-8" : ""}><Settings part="students" course={course} readOnly={viewer} onInvite={() => setInviting(true)} onChanged={refresh} /></div>}
           {tab === "grades" && (course.students.length > 0 || courseId === "demo") && <Gradebook state={state} />}
-          {tab === "students" && <Settings part="students" course={course} connectors={connectors} onChanged={refresh} />}
-          {tab === "settings" && <Settings course={course} connectors={connectors} onChanged={refresh} />}
+          {tab === "settings" && !viewer && <Settings course={course} me={state.me} onChanged={refresh} />}
         </main>
       </div>
     </div>
+      {inviting && <InviteStudents course={course} onClose={() => setInviting(false)} onChanged={refresh} />}
     </MarksContext.Provider>
   );
 }

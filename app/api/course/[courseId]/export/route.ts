@@ -1,5 +1,5 @@
 import { publicOrigin } from "@/lib/origin";
-import { canTeach, getSession, unauthorized } from "@/lib/auth";
+import { getSession, unauthorized, canSeeTeacher } from "@/lib/auth";
 import { db } from "@/lib/store";
 import { TYPE_META } from "@/lib/ui";
 import { zip } from "@/lib/zip";
@@ -47,7 +47,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
   const { courseId } = await params;
   const course = db().courses[courseId];
   if (!course) return new Response("No such course", { status: 404 });
-  if (!canTeach(getSession(request), course)) return unauthorized("teacher");
+  if (!canSeeTeacher(getSession(request), course)) return unauthorized("teacher");
   const origin = publicOrigin(request);
   const files: { name: string; data: string }[] = [];
   const items: string[] = [];

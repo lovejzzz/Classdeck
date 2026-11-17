@@ -35,6 +35,9 @@ body {
 @keyframes pop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes shimmer { to { background-position: -200% 0; } }
+/* Cards waiting to be deleted wobble, like icons on a phone home screen. */
+@keyframes wiggle { from { transform: rotate(-1.1deg); } to { transform: rotate(1.1deg); } }
+@media (prefers-reduced-motion: reduce) { [class*="animate-[wiggle"] { animation: none !important; } }
 
 @layer components {
   .rise { animation: rise 0.42s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 35ms); }
