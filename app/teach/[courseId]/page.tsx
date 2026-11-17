@@ -49,7 +49,7 @@ export default function TeachPage() {
   const [tabParam, setTabParam] = useUrlState("tab");
   const tab: Tab = TABS.some(([id]) => id === tabParam) ? (tabParam as Tab) : "plan";
   // Every tab change is its own Back step, including going back to the Deck.
-  const setTab = (t: Tab) => setTabParam(t === "plan" ? null : t, { push: true });
+  const setTab = (t: Tab) => setTabParam(t === "plan" ? null : t, { push: true, drop: ["card", "run", "qr"] });
   const [picked, setPicked] = useState<string | null>(null);
   const [sel, setSel] = useState<{ sid: string; mid: string } | null>(null);
   const seenKey = `seen-at:teacher:${courseId}`;

@@ -158,7 +158,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [], 
   async function sendNotes() {
     if (!studioId) return;
     setSending(true);
-    const r = await op<{ ok?: boolean; sent?: number; error?: string }>(course.id, { op: "sessionNotes", moduleId: studioId, notes: Object.fromEntries(members.map((m) => [m.id, notes[m.id] ?? ""])) });
+    const r = await op<{ ok?: boolean; sent?: number; error?: string }>(course.id, { op: "sessionNotes", moduleId: studioId, day: new Date().toLocaleDateString("en-CA"), notes: Object.fromEntries(members.map((m) => [m.id, notes[m.id] ?? ""])) });
     setSending(false);
     if (r.ok === false) return toast(r.error ?? "Couldn’t send the notes", { icon: "x", tone: "bad" });
     toast(`Sent to ${r.sent ?? 0} student${r.sent === 1 ? "" : "s"}. They’ll see it on their Collab Studio card.`, { icon: "message" });

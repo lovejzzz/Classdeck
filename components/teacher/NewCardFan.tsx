@@ -12,10 +12,12 @@ let library: SavedCard[] | null = null;
 const listeners = new Set<(c: SavedCard[]) => void>();
 export async function loadLibrary(force = false) {
   if (library && !force) return library;
-  const r = await fetch("/api/library").then((x) => (x.ok ? x.json() : { cards: [] })).catch(() => ({ cards: [] }));
-  library = r.cards as SavedCard[];
-  listeners.forEach((f) => f(library!));
-  return library;
+  const r = await fetch("/api/library").then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  // A failed load (signed out, offline) isn't remembered, so the next look tries again.
+  const cards = (r?.cards ?? []) as SavedCard[];
+  library = r ? cards : null;
+  listeners.forEach((f) => f(cards));
+  return cards;
 }
 export function useLibrary(active = true) {
   const [cards, setCards] = useState<SavedCard[]>(library ?? []);
@@ -62,28 +64,39 @@ function SuitFace({ id, w, h }: { id: Slot; w: number; h: number }) {
   );
 }
 
+const TILT = 0.15;
+
 /**
- * Lay the four cards on a circular arc around the slot's side, with the same gap between every pair of edges.
- * Positions are relative to the arc's centre, for a card scale k (1 = the deck's full card size).
+ * Lay the four cards down a curve around the slot's side. Each card is measured as it is drawn (tilted), and the cards
+ * are stacked top to bottom with the same gap between every pair of edges, so none overlap. Their sideways position
+ * follows a circle, far enough out that every card clears the slot. Positions are relative to the curve's centre;
+ * k is the card scale (1 = the deck's full card size).
  */
 function arc(k: number, slotW: number) {
-  const H = FULL.h * k, W = FULL.w * k, gap = 18 * k;
+  const H = FULL.h * k, W = FULL.w * k, gap = 14 * k;
   const size = (i: number) => (ORDER[i] === "blank" ? { w: W / 2, h: H / 2 } : { w: W, h: H });
-  const steps = [0, 1, 2].map((i) => size(i).h / 2 + gap + size(i + 1).h / 2);
-  const L = steps.reduce((a, b) => a + b, 0);
-  // The smallest radius at which the end cards still clear the slot's edge.
-  const need = slotW / 2 + W / 2 + 16;
-  let R = 200;
-  while (R * Math.cos(L / (2 * R)) < need && R < 1400) R += 10;
-  let t = -L / (2 * R);
+  // The box a card takes up when turned by deg.
+  const box = (i: number, deg: number) => {
+    const r = (deg * Math.PI) / 180, { w, h } = size(i);
+    return { bw: Math.abs(w * Math.cos(r)) + Math.abs(h * Math.sin(r)), bh: Math.abs(w * Math.sin(r)) + Math.abs(h * Math.cos(r)) };
+  };
+  let degs = ORDER.map(() => 0), ys: number[] = [], R = 0;
+  // Tilt depends on where a card sits and where it sits depends on its tilt, so settle the two over a few rounds.
+  for (let round = 0; round < 4; round++) {
+    const boxes = ORDER.map((_, i) => box(i, degs[i]));
+    const total = boxes.reduce((t, b) => t + b.bh, 0) + gap * (ORDER.length - 1);
+    let y = -total / 2;
+    ys = boxes.map((b) => { const c = y + b.bh / 2; y += b.bh + gap; return c; });
+    R = Math.max(...boxes.map((b, i) => Math.hypot(slotW / 2 + b.bw / 2 + 16, ys[i])));
+    degs = ys.map((yy) => ((Math.asin(Math.max(-1, Math.min(1, yy / R))) * 180) / Math.PI) * TILT);
+  }
   const pos = ORDER.map((_, i) => {
-    const p = { x: R * Math.cos(t), y: R * Math.sin(t), deg: (t * 180) / Math.PI, ...size(i) };
-    if (i < 3) t += steps[i] / R;
-    return p;
+    const b = box(i, degs[i]);
+    return { x: Math.sqrt(R * R - ys[i] * ys[i]), y: ys[i], deg: degs[i], ...size(i), bw: b.bw, bh: b.bh };
   });
-  const top = Math.min(...pos.map((p) => p.y - p.h / 2)), bottom = Math.max(...pos.map((p) => p.y + p.h / 2));
-  const reach = Math.max(...pos.map((p) => p.x + p.w / 2));
-  const near = Math.min(...pos.map((p) => p.x - p.w / 2));
+  const top = Math.min(...pos.map((p) => p.y - p.bh / 2)), bottom = Math.max(...pos.map((p) => p.y + p.bh / 2));
+  const reach = Math.max(...pos.map((p) => p.x + p.bw / 2));
+  const near = Math.min(...pos.map((p) => p.x - p.bw / 2));
   return { pos, top, bottom, reach, near, R };
 }
 
@@ -97,6 +110,7 @@ export function NewCardFan({ onChoose }: { onChoose: (c: NewCardChoice) => void 
   const [landing, setLanding] = useState<Slot | null>(null);
   const [view, setView] = useState({ ox: 0, oy: 0, tx: 0, ty: 0, dir: 1, k: 1, lay: arc(1, FULL.w) });
   const ref = useRef<HTMLDivElement>(null);
+  const closing = useRef<ReturnType<typeof setTimeout>>(undefined);
   useLibrary(open);
 
   function show() {
@@ -105,24 +119,25 @@ export function NewCardFan({ onChoose }: { onChoose: (c: NewCardChoice) => void 
     const tx = b.left + b.width / 2, ty = b.top + b.height / 2;
     // Full size if it fits; otherwise every card shrinks by the same amount.
     let k = 1, lay = arc(1, b.width), dir = 1, ox = tx, fit = false;
-    for (; k >= 0.6; k -= 0.05) {
+    for (; k >= 0.6; k -= 0.01) {
       lay = arc(k, b.width);
       if (lay.bottom - lay.top > vh - 2 * m) continue;
       if (tx + lay.reach <= vw - m) { dir = 1; fit = true; break; }
       if (tx - lay.reach >= m) { dir = -1; fit = true; break; }
     }
     if (!fit) {
-      // A phone: no room beside the slot, so centre the half circle on the screen instead.
+      // A phone: no room beside the slot, so centre the curve on the screen instead (it may cover the slot).
       k = 1;
-      for (; k >= 0.3; k -= 0.05) {
+      for (; k >= 0.3; k -= 0.01) {
         lay = arc(k, 0);
         // Room for the tilt too: a turned card is wider than it stands.
-        if (lay.bottom - lay.top <= vh - 2 * m && lay.reach - lay.near + 60 * k <= vw - 2 * m) break;
+        if (lay.bottom - lay.top <= vh - 2 * m && lay.reach - lay.near <= vw - 2 * m) break;
       }
       dir = 1;
       ox = vw / 2 - (lay.reach + lay.near) / 2;
     }
     const oy = Math.max(m - lay.top, Math.min(ty, vh - m - lay.bottom));
+    clearTimeout(closing.current);
     setView({ ox, oy, tx, ty, dir, k, lay });
     setLanding(null);
     setOpen(true);
@@ -131,7 +146,7 @@ export function NewCardFan({ onChoose }: { onChoose: (c: NewCardChoice) => void 
   }
   function close() {
     setSpread(false);
-    setTimeout(() => setOpen(false), 200);
+    closing.current = setTimeout(() => setOpen(false), 200);
   }
   function pick(id: Slot) {
     if (landing) return;
@@ -183,7 +198,7 @@ export function NewCardFan({ onChoose }: { onChoose: (c: NewCardChoice) => void 
             // Fanned out on the arc; the picked card flies into the slot and grows to the full card size.
             const x = flying || !spread ? tx - ox : dir * p.x;
             const y = flying || !spread ? ty - oy : p.y;
-            const rot = flying || !spread ? 0 : dir * p.deg * 0.22;
+            const rot = flying || !spread ? 0 : dir * p.deg;
             const scale = flying ? FULL.w / p.w : spread ? 1 : 0.4;
             const delay = spread && !landing ? i * 50 : 0;
             const suit = SUITS.find((s) => s.id === id);

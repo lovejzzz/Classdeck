@@ -169,7 +169,7 @@ export function recommend(state: CourseState, studentId: string, now: number): R
       title: `Try the ${pick} path for “${t.m.title.replace(/\s*\((guided|stretch[^)]*)\)/i, "")}”`,
       text: teacherPick
         ? `Your teacher recommends it${suggested && suggested !== teacherPick ? `, though your ${skill ? sk(skill).toLowerCase() : ""} level suggests ${suggested}. Talk it over if you’re unsure.` : "."}`
-        : `Your ${teacher[skill!] ? "teacher’s latest review" : "self-check"} puts ${sk(skill!).toLowerCase()} at “${lv(level)}”.`,
+        : `Your ${teacher[skill!] ? "teacher’s latest review" : "own rating"} puts ${sk(skill!).toLowerCase()} at “${lv(level)}”.`,
       moduleId: t.m.id, lessonId: t.lesson.id,
     });
     if (recs.filter((r) => r.kind === "path").length >= 1) break;

@@ -74,7 +74,7 @@ export function Gradebook({ state }: { state: CourseState }) {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <p className="flex-1 text-[13px] text-ink-3">
-          Skill levels come from your rubric reviews (latest per skill), shown next to each student’s own latest self-check. Click a student for their reviewed work.
+          Skill levels come from your rubric reviews (latest per skill), shown next to each student’s own latest self-rating. Click a student for their reviewed work.
         </p>
         <button onClick={exportCsv} className="btn btn-ghost press h-8"><Icon name="download" size={13} /> Export CSV</button>
       </div>

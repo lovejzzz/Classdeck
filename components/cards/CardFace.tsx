@@ -94,14 +94,15 @@ export function CardFace({
   const meta = TYPE_META[m.type];
   const kinds = [...new Set((m.attachments ?? []).map((a) => a.kind))];
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[14px] border border-line bg-white select-none">
+    <div className="@container relative flex h-full w-full flex-col overflow-hidden rounded-[14px] border border-line bg-white select-none">
       <div className="pointer-events-none absolute inset-[5px] rounded-[10px] border border-line/70" />
       {/* corner index */}
       <div className="relative flex items-center gap-1.5 px-3 pt-2.5" style={{ color: meta.tint }}>
         <Icon name={m.type} size={big ? 14 : 12} strokeWidth={2} />
         <span className={`flex min-w-0 flex-1 items-baseline gap-1 ${big ? "text-[11px]" : "text-[9.5px]"}`}>
           <span className="font-semibold uppercase tracking-[0.1em]">{suitOf(m.type).name}</span>
-          <span className="truncate text-ink-3">{meta.label}</span>
+          {/* The kind's name only where there's room for it beside the time; small cards keep the suit and icon. */}
+          <span className="truncate text-ink-3 @max-[165px]:hidden">{meta.label}</span>
         </span>
         {status === "done" ? <StatusIcon status="done" size={big ? 15 : 13} /> : due && due.tone !== "later" ? (
           <span title={due.label} className={`whitespace-nowrap rounded-full px-1.5 py-[1px] font-mono text-[10px] font-medium ${due.tone === "late" ? "bg-bad/10 text-bad" : "bg-warn/10 text-warn"}`}>

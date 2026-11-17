@@ -175,7 +175,7 @@ export function Journal({ state, studentId }: { state: CourseState; studentId: s
   const { course } = state;
   const mine = state.progress[studentId] ?? {};
   const entries = course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.filter((m) => (m.type === "reflect" || m.type === "selfcheck") && (mine[m.id]?.output || mine[m.id]?.responses?.some(Boolean) || mine[m.id]?.ratings)).map((m) => ({ w, m, p: mine[m.id] }))));
-  if (!entries.length) return <p className="hatch flex h-24 items-center justify-center text-[13px] text-ink-3">Your reflections and self-checks collect here, week by week.</p>;
+  if (!entries.length) return <p className="hatch flex h-24 items-center justify-center text-[13px] text-ink-3">Your reflections and self-ratings collect here, week by week.</p>;
   const skills = course.skills ?? [];
   return (
     <ol className="relative space-y-4 border-l border-line pl-5">

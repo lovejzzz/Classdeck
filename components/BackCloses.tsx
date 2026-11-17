@@ -10,25 +10,35 @@ import { useUrlState } from "@/lib/urlState";
 export function BackCloses({ name, value, onBack }: { name: string; value: string | null; onBack: () => void }) {
   const [param, setParam] = useUrlState(name);
   const shown = useRef<string | null>(null);
+  // Whether opening added a history entry; only then does closing on screen step back (never out of the site).
+  const pushed = useRef(false);
   const back = useRef(onBack);
   useEffect(() => { back.current = onBack; });
+
+  // A value already in the address when the page loads (a reload, a bookmark) isn't open here: clear it quietly.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has(name) && !value) setParam(null, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Opened, switched, or closed on screen: keep the address in step.
   useEffect(() => {
     if (value && value !== shown.current) {
+      if (shown.current === null) pushed.current = new URLSearchParams(window.location.search).get(name) !== value;
       setParam(value, { replace: shown.current !== null });
       shown.current = value;
     } else if (!value && shown.current) {
-      // Closed on screen: step back out of the entry this opened, so Back isn't left with a dead step.
       shown.current = null;
-      setParam(null, { back: true });
+      setParam(null, { back: pushed.current });
+      pushed.current = false;
     }
-  }, [value, setParam]);
+  }, [value, setParam, name]);
 
-  // Back pressed while open: the value left the address, so close the overlay.
+  // Back pressed while open: the value left the address (or changed), so close the overlay.
   useEffect(() => {
-    if (param === null && shown.current) {
+    if (shown.current && param !== shown.current) {
       shown.current = null;
+      pushed.current = false;
       back.current();
     }
   }, [param]);

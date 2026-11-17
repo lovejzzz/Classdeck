@@ -17,7 +17,7 @@ import { CardTable } from "../cards/CardTable";
 import { Icon } from "../Icon";
 import { useShortcuts } from "@/lib/shortcuts";
 import { useUrlState } from "@/lib/urlState";
-import { standardWeek } from "@/lib/templates";
+import { nextNumber, standardWeek } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
 import { SessionRunner } from "./SessionRunner";
 import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
@@ -71,6 +71,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
     };
   }, [course.id]);
 
+  const nextWeek = nextNumber(course.weeks.map((w) => w.title), "Week");
   const lessonOf = (id: string) => drafts[id] ?? course.weeks.flatMap((w) => w.lessons).find((l) => l.id === id)!;
   // The "click to rename" hint shows once, on the first lesson still called "Lesson N".
   const firstUnnamed = course.weeks.flatMap((w) => w.lessons).map((l) => lessonOf(l.id)).find((l) => /^Lesson \d+$/.test(l.title))?.id;
@@ -142,8 +143,8 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
 
   function addCard(l: Lesson, type: ModuleType) {
     const m: Module = {
-      id: uid("m-"), type, title: `New ${TYPE_META[type].name.toLowerCase()} card`, body: "", audience: { kind: "all" }, tools: [], attachments: [],
-      questions: type === "practice" || type === "quiz" ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : undefined,
+      id: uid("m-"), type, title: `New ${suitOf(type).name} card`, body: "", audience: { kind: "all" }, tools: [], attachments: [],
+      questions: type === "quiz" ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : undefined,
     };
     change({ ...l, modules: [...l.modules, m] });
     edit(l.id, m.id);
@@ -173,8 +174,9 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
     toast(`Duplicated ${what}`, { icon: "layers" });
   }
 
-  async function addLesson(weekId: string, n: number) {
-    await op(course.id, { op: "addLesson", weekId, title: `Lesson ${n + 1}` });
+  async function addLesson(weekId: string) {
+    const n = nextNumber(course.weeks.flatMap((w) => w.lessons.map((l) => l.title)), "Lesson");
+    await op(course.id, { op: "addLesson", weekId, title: `Lesson ${n}` });
     onRefresh();
     toast("Added a lesson");
   }
@@ -255,7 +257,7 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                 <button onClick={() => toggleFold(w.id)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">{isFolded(wi, w.id) ? "Show cards" : "Fold"}</button>
               )}
               <More label={`${w.title} actions`} items={[["Duplicate week", () => duplicate("duplicateWeek", w.id, `“${w.title}”`)]]} />
-              <button onClick={() => addLesson(w.id, w.lessons.length)} className="btn btn-quiet press h-7 px-2 text-[12.5px]">
+              <button onClick={() => addLesson(w.id)} className="btn btn-quiet press h-7 px-2 text-[12.5px]">
                 <Icon name="plus" size={12} /> Add a lesson
               </button>
             </div>
@@ -371,14 +373,14 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
           </section>
         ))}
         <div>
-          <NewWeek n={course.weeks.length} courseId={course.id} onImported={onRefresh} onBlank={async () => {
-            await op(course.id, { op: "addWeek", title: `Week ${course.weeks.length}` });
+          <NewWeek n={nextWeek} courseId={course.id} onImported={onRefresh} onBlank={async () => {
+            await op(course.id, { op: "addWeek", title: `Week ${nextWeek}` });
             onRefresh();
             toast("Added a week");
           }} onTemplate={async (theme) => {
-            await op(course.id, { op: "insertWeek", week: standardWeek(theme, course.weeks.length) });
+            await op(course.id, { op: "insertWeek", week: standardWeek(theme, nextWeek) });
             onRefresh();
-            toast(`Added “Week ${course.weeks.length} · ${theme}” from the template`, { icon: "layers" });
+            toast(`Added “Week ${nextWeek} · ${theme}” from the template`, { icon: "layers" });
           }} />
         </div>
       </div>

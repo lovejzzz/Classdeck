@@ -88,7 +88,7 @@ export function SelfCheck({
         }}
         className={`btn btn-dark press mt-3 ${big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}
       >
-        Save my self-check
+        Save my ratings
       </button>
     </div>
   );

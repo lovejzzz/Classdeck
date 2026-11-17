@@ -34,7 +34,7 @@ export function SkillsEditor({ course, onChanged }: { course: Course; onChanged:
   return (
     <section id="skills" className="card scroll-mt-20 p-6">
       <h3 className="text-[15px] font-medium">Skills and levels</h3>
-      <p className="mt-1 text-[13px] text-ink-3">What students practise and get rated on. They show on cards, in self-checks and reviews, on each student’s skill chart, and in Grades.</p>
+      <p className="mt-1 text-[13px] text-ink-3">What students practise and get rated on. They show on cards, when students rate themselves, in your reviews, on each student’s skill chart, and in Grades.</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[12.5px]">
         <span className="mr-1 text-ink-2">Start from</span>

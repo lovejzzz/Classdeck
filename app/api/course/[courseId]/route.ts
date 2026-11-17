@@ -4,7 +4,7 @@ import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
 import { randomCode, safeUrl } from "@/lib/uploads";
-import { isCorrect, quizSet } from "@/lib/grading";
+import { isCorrect, quizSet, asked } from "@/lib/grading";
 import { prcaScore } from "@/lib/onboarding";
 import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate } from "@/lib/hooks";
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
@@ -54,7 +54,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
           ...m,
           audience: { kind: "all" as const },
           personal: m.audience.kind !== "all" && !m.choice && !m.picked,
-          questions: m.questions?.map(publicQuestion),
+          questions: asked(m).length ? asked(m).map(publicQuestion) : undefined,
         })),
       })),
     })),
@@ -76,7 +76,7 @@ export async function GET(request: Request, { params }: Ctx) {
       course: {
         ...course, students: [], groups: [], joinCode: "", access: undefined, waiting: undefined,
         // Cards made for one student stay private; shared and path cards are shown without who they're for.
-        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student").map((m) => ({ ...m, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: m.questions?.map(publicQuestion) })) })) })),
+        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student").map((m) => ({ ...m, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
       },
       progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} }, uptake: {}, nudges: [], plans: {},
     };
@@ -434,9 +434,10 @@ export async function POST(request: Request, { params }: Ctx) {
       // Notes the teacher typed while running a Collab Studio session, sent to each student's studio card.
       // Sending again the same day replaces that day's notes rather than adding more.
       const found = findModule(course, String(body.moduleId ?? ""));
-      if (!found) return fail("This lesson has no Collab Studio card to send notes to");
+      if (!found || found.mod.type !== "studio") return fail("This lesson has no Collab Studio card to send notes to");
       const notes = (body.notes && typeof body.notes === "object" ? body.notes : {}) as Record<string, unknown>;
-      const day = new Date().toISOString().slice(0, 10);
+      // The class's own calendar day (sent by the teacher's browser), so a late class isn't split at midnight UTC.
+      const day = typeof body.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.day) && Math.abs(Date.parse(body.day) - Date.now()) < 2 * 86400_000 ? body.day : new Date().toISOString().slice(0, 10);
       let sent = 0;
       for (const [sid, v] of Object.entries(notes)) {
         const st = course.students.find((x) => x.id === sid);
@@ -822,7 +823,7 @@ export async function POST(request: Request, { params }: Ctx) {
     }
     case "saveSpeech": {
       const mod = findModule(course, body.moduleId)?.mod;
-      if (mod?.type !== "builder") return fail("That isn’t a speech builder card");
+      if (mod?.type !== "builder") return fail("That isn’t a builder card");
       const s = (v: unknown, n = 600) => String(v ?? "").slice(0, n);
       const f = body.fields ?? {};
       const fields = {

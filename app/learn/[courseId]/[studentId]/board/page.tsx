@@ -104,7 +104,7 @@ export default function BoardPage() {
             )}
           </div>
           {!first ? (
-            <p className="mt-3 text-[13px] text-ink-3">Your ratings from self-check cards will show up here.</p>
+            <p className="mt-3 text-[13px] text-ink-3">Your ratings from “Rate yourself” cards will show up here.</p>
           ) : (
             <div className="mt-4 grid items-center gap-6 md:grid-cols-[21rem_1fr]">
             <SkillRadar skills={course.skills ?? []} size={220} series={[

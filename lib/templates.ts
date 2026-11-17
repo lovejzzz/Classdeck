@@ -14,7 +14,7 @@ const base = (m: Partial<Module> & Pick<Module, "type" | "title" | "body">): Omi
 export const CARD_TEMPLATES: CardTemplate[] = [
   {
     id: "goal", name: "Weekly goal", description: "Set the week’s goal and what “done” looks like.",
-    make: () => base({ type: "explore", title: "This week’s goal", body: "Read the goal for this week. Then write, in one or two sentences, what you want to get better at and how you’ll know you did.", minutes: 10, submitTo: "personal", criteria: "A personal goal with a way to check it." }),
+    make: () => base({ type: "reflect", title: "This week’s goal", body: "Read the goal for this week. Then write, in one or two sentences, what you want to get better at and how you’ll know you did.", minutes: 10, submitTo: "personal", criteria: "A personal goal with a way to check it." }),
   },
   {
     id: "example", name: "Watch and observe", description: "A short video or audio example with observation questions.",
@@ -38,7 +38,7 @@ export const CARD_TEMPLATES: CardTemplate[] = [
   },
   {
     id: "self", name: "Rate yourself", description: "Rate each skill on the four-level rubric.",
-    make: () => base({ type: "selfcheck", title: "Self-check", body: "Rate yourself honestly on each skill. You’ll compare against this later.", minutes: 15, submitTo: "personal", criteria: "All skills rated." }),
+    make: () => base({ type: "selfcheck", title: "Rate yourself", body: "Rate yourself honestly on each skill. You’ll compare against this later.", minutes: 15, submitTo: "personal", criteria: "All skills rated." }),
   },
   {
     id: "reflect", name: "Reflect and next goal", description: "What changed, what to keep, what’s next.",
@@ -47,6 +47,13 @@ export const CARD_TEMPLATES: CardTemplate[] = [
 ];
 
 /** A standard CaPS week: six cards, a Guided/Stretch choice, and a 60-minute Collab Studio agenda. */
+/** The next free number for "Week N" or "Lesson N": one past the highest in use, so names never repeat. */
+export function nextNumber(titles: string[], word: "Week" | "Lesson"): number {
+  const re = new RegExp(`^${word} (\\d+)\\b`);
+  const used = titles.map((t) => Number(re.exec(t)?.[1] ?? NaN)).filter((n) => !Number.isNaN(n));
+  return used.length ? Math.max(...used) + 1 : titles.length + 1;
+}
+
 export function standardWeek(theme: string, n: number): Week {
   const t = (id: string, patch: Partial<Module> = {}): Module => {
     const tpl = CARD_TEMPLATES.find((x) => x.id === id)!;

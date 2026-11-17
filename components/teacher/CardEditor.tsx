@@ -61,6 +61,12 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
  */
 function Section({ title, summary, children, aside, start = false }: { title: string; summary?: string; children: React.ReactNode; aside?: React.ReactNode; start?: boolean }) {
   const [open, setOpen] = useState(start);
+  // A section that becomes relevant later (a card turned into a Quiz) opens itself.
+  const [was, setWas] = useState(start);
+  if (start !== was) {
+    setWas(start);
+    if (start) setOpen(true);
+  }
   return (
     <section data-sec={title} className={`rounded-xl border bg-white transition-shadow ${open ? "border-line-strong shadow-[0_8px_24px_-16px_rgba(20,20,18,0.35)]" : "border-line hover:border-line-strong"}`}>
       <div className="flex min-h-11 items-center gap-2 pr-2">
@@ -114,6 +120,8 @@ export function CardEditor({
     { keys: "]", label: "Next card", run: () => onNext?.(), enabled: open && !!onNext },
   ]);
   const steps = [m.checklist?.length && plural(m.checklist.length, "step"), m.playlist?.length && plural(m.playlist.length, "video"), m.prompts?.length && plural(m.prompts.length, "prompt"), m.timer && `${fmtSec(m.timer)} timer`].filter(Boolean).join(" · ");
+  const lessonRef = useRef(lesson);
+  useEffect(() => { lessonRef.current = lesson; });
   const set = (patch: Partial<Module>) => onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? { ...x, ...patch } : x)) });
   const attachments = m.attachments ?? [];
   const addAttachment = (a: Omit<Attachment, "id">) => set({ attachments: [...attachments, { ...a, id: uid("a-") }] });
@@ -154,13 +162,20 @@ export function CardEditor({
       <div className="flex-1 overflow-y-auto bg-[#f7f7f5]">
         {/* The card on the table, and the cards to choose what it is. */}
         <div className="px-5 pb-4 pt-6"><TiltPreview m={m} /></div>
-        <KindDeck m={m} skills={skills} onPick={(t) => set({ type: t, questions: (t === "practice" || t === "quiz") && !m.questions?.length ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : m.questions })}
+        <KindDeck m={m} skills={skills} onPick={(t) => set({ type: t, questions: t === "quiz" && !m.questions?.length ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : m.questions })}
           onApply={(content, name) => {
-            const touched = !!(m.body.trim() || m.attachments?.length || m.questions?.some((q) => q.text.trim()) || m.checklist?.length || m.prompts?.length || !/^(New .+ card|Untitled card)$/.test(m.title));
-            if (touched && !confirm(`Replace what’s on this card with “${name}”? Who it’s for stays the same.`)) return;
+            // Anything the teacher has put on this card beyond a fresh, empty one counts as their work.
+            const touched = !!(m.body.trim() || m.attachments?.length || m.questions?.some((q) => q.text.trim()) || m.checklist?.length || m.prompts?.length
+              || m.playlist?.length || m.timer || m.form || m.tools.length || m.criteria || m.minutes || m.wall || m.skills?.length || !/^(New .+ card|Untitled card)$/.test(m.title));
+            if (touched && !confirm(`Replace what’s on this card with “${name}”? Who it’s for, its due date, and its rules stay the same.`)) return;
             const own = new Set(skills.map((x) => x.id));
-            const next: Module = { ...structuredClone(content), id: m.id, audience: m.audience, skills: content.skills?.filter((x) => own.has(x)) } as Module;
+            const before = m;
+            const next: Module = { ...structuredClone(content), id: m.id, audience: m.audience, due: m.due, gate: m.gate, skills: content.skills?.filter((x) => own.has(x)) } as Module;
             onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? next : x)) });
+            if (touched) toast(`Replaced with “${name}”`, { icon: "layers", tone: "plain", action: { label: "Undo", run: () => {
+              const now = lessonRef.current;
+              onChange({ ...now, modules: now.modules.map((x) => (x.id === before.id ? before : x)) });
+            } } });
           }}
           onSave={onSaveToLibrary} />
 
@@ -308,7 +323,7 @@ export function CardEditor({
         )}
 
         {(m.type === "quiz" || m.type === "practice" || m.type === "read") && (
-          <Section title={m.type === "read" ? "Check for understanding" : "Questions"} start={m.type === "quiz"} summary={m.questions?.filter((q) => q.text.trim()).length ? plural(m.questions.filter((q) => q.text.trim()).length, "question") : "None"} aside={m.type === "quiz" ? (
+          <Section title={m.type === "read" ? "Check for understanding" : "Questions"} start={m.type === "quiz"} summary={m.questions?.filter((q) => q.text.trim()).length ? plural(m.questions.filter((q) => q.text.trim()).length, "question") : m.type === "quiz" ? "None yet: students can’t finish this quiz" : "None"} aside={m.type === "quiz" ? (
             <label className="flex items-center gap-2 text-[12px] text-ink-2">Tries
               <Seg value={String(m.attempts ?? 1)} options={[["1", "1"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ attempts: Number(v) > 1 ? Number(v) : undefined })} />
             </label>

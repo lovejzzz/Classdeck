@@ -40,8 +40,13 @@ export function seededShuffle<T>(list: T[], seedText: string): T[] {
  * The questions one student gets on one try, in the order they see them.
  * With `pick`, a random draw from the bank; with `shuffle`, mixed up. Same on client and server.
  */
+/** The questions students actually get: a question the teacher left blank isn't asked. */
+export function asked(m: Pick<Module, "questions">): Question[] {
+  return (m.questions ?? []).filter((q) => q.text?.trim());
+}
+
 export function quizSet(m: Module, studentId: string, attempt = 1): Question[] {
-  const all = m.questions ?? [];
+  const all = asked(m);
   const key = `${studentId}:${m.id}:${attempt}`;
   let set = all;
   if (m.pick && m.pick < all.length) {
