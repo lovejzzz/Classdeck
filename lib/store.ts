@@ -3,6 +3,7 @@ import { r2Ready, remove as removeBlob } from "./blob";
 import { DatabaseSync } from "node:sqlite";
 import path from "path";
 import { publish } from "./bus";
+import { foldWeeks } from "./cardmodel";
 import { seedChoices, seedCourse, seedEvents, seedMarks, seedNudges, seedPlans, seedPosts, seedProgress, seedStudio, seedUptake } from "./seed";
 import type { Module, ClassEvent, Course, Feedback, Live, Mark, Nudge, Plan, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
 import type { Manifest } from "./connectors/types";
@@ -162,6 +163,8 @@ export function db(): DB {
 
 /** Older saved data may predate newer fields; fill them in so reads never crash. */
 function fill(d: DB): DB {
+  // Cards saved before the simplification: fold merged settings into the instructions (once; idempotent).
+  for (const c of Object.values(d.courses ?? {})) if (c?.weeks) foldWeeks(c.weeks);
   for (const k of [...PER_COURSE, "users", "sessions", "uploads"] as const) (d as unknown as Record<string, unknown>)[k] ??= {};
   d.customConnectors ??= [];
   return d;

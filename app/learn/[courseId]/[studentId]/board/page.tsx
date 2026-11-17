@@ -3,25 +3,22 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { CardFace } from "@/components/cards/CardFace";
 import { MediaView } from "@/components/cards/Media";
 import { SignInNeeded } from "@/components/SignInNeeded";
-import { PlanPanel } from "@/components/student/PlanPanel";
-import { FeedbackInbox, Journal, PracticeLog } from "@/components/student/Progress";
-import { SkillRadar, teacherLevels } from "@/components/SkillRadar";
+import { FeedbackInbox } from "@/components/student/Progress";
 import { Avatar, Icon, StatusIcon } from "@/components/Icon";
 import { useCourse, useQuery } from "@/lib/client";
 import { ago } from "@/lib/time";
 import { TYPE_META } from "@/lib/ui";
 import type { Module, Progress } from "@/lib/types";
 
-/** A student's personal practice board: their growth, their best work, and every week's practice. */
+/** A student's own board: everything they made, and the feedback they got. */
 export default function BoardPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
   const { state, error, needAuth, refresh } = useCourse(courseId, studentId, 8000);
-  const [tab, setTab] = useState<"plan" | "overview" | "practice" | "feedback" | "journal" | "work">(() => {
+  const [tab, setTab] = useState<"work" | "feedback">(() => {
     const h = typeof window === "undefined" ? "" : window.location.hash.slice(1);
-    return (["plan", "overview", "practice", "feedback", "journal", "work"] as const).find((t) => t === h) ?? "plan";
+    return (["work", "feedback"] as const).find((t) => t === h) ?? "work";
   });
   const query = useQuery();
   if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}/board`} />;
@@ -33,23 +30,16 @@ export default function BoardPage() {
   if (!student) return <p className="p-10 text-center text-ink-2">There’s no student with that name in this class.</p>;
   const mine: Record<string, Progress> = state.progress[studentId] ?? {};
   const all = course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.map((m) => ({ w, l, m }))));
-  const checks = all.filter((x) => x.m.type === "selfcheck" && mine[x.m.id]?.ratings && Object.keys(mine[x.m.id].ratings!).length);
-  const first = checks[0];
-  const last = checks.length > 1 ? checks[checks.length - 1] : undefined;
-  const starred = all.filter((x) => mine[x.m.id]?.starred);
   const posts = state.studio.posts.filter((p) => p.studentId === studentId);
   const fbFor = (postId: string) => state.studio.feedback.filter((f) => f.postId === postId);
   const given = state.studio.feedback.filter((f) => f.fromId === studentId).length;
   const name = (id: string) => course.students.find((s) => s.id === id)?.name ?? "Peer";
-  const levels = course.levels ?? [];
   const hasContent = (m: Module) => {
     const p = mine[m.id];
     return !!p && (p.status === "done" || !!p.output || !!p.work?.length || posts.some((x) => x.moduleId === m.id));
   };
   const done = all.filter((x) => mine[x.m.id]?.status === "done").length;
-  // "My plan" comes from the speaking-course questionnaire; a course without that card (or a plan) has no plan tab.
-  const hasPlan = !!state.plans?.[studentId] || all.some((x) => x.m.onboarding);
-  const shown = tab === "plan" && !hasPlan ? "overview" : tab;
+  const shown = tab;
   const takes = all.reduce((n, x) => n + (mine[x.m.id]?.work?.filter((w) => w.kind === "audio" || w.kind === "video").length ?? 0), 0);
 
   return (
@@ -81,82 +71,13 @@ export default function BoardPage() {
         </div>
 
         <div className="no-print mt-6 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Board sections">
-          {([["plan", "My plan"], ["overview", "Skills"], ["practice", "Practice log"], ["feedback", "Feedback"], ["journal", "Reflections"], ["work", "All work"]] as const).filter(([k]) => k !== "plan" || hasPlan).map(([k, label]) => (
+          {([["work", "My work"], ["feedback", "Feedback"]] as const).map(([k, label]) => (
             <button key={k} role="tab" aria-selected={shown === k} onClick={() => { setTab(k); history.replaceState(null, "", `#${k}`); }}
               className={`press -mb-px h-10 flex-none border-b-2 px-3 text-[13.5px] ${shown === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
           ))}
         </div>
 
-        {shown === "plan" && <section className="rise mt-6"><PlanPanel courseId={courseId} studentId={studentId} course={course} plan={state.plans?.[studentId]} onChanged={refresh} /></section>}
-        {shown === "practice" && <section className="rise mt-6"><PracticeLog state={state} studentId={studentId} /></section>}
         {shown === "feedback" && <section className="rise mt-6"><FeedbackInbox state={state} studentId={studentId} onChanged={refresh} /></section>}
-        {shown === "journal" && <section className="rise mt-6"><Journal state={state} studentId={studentId} /></section>}
-
-        {shown === "overview" && <>
-        <section className="rise card mt-6 p-5" style={{ "--i": 2 } as React.CSSProperties}>
-          <div className="flex items-center gap-3">
-            <h2 className="flex-1 text-[15px] font-medium">Your skills</h2>
-            {first && (
-              <span className="flex items-center gap-3 text-[12px] text-ink-3">
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border-2 border-[#367195]" />{first.w.title.split(" · ")[0]}</span>
-                {last && <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-ink" />{last.w.title.split(" · ")[0]}</span>}
-              </span>
-            )}
-          </div>
-          {!first ? (
-            <p className="mt-3 text-[13px] text-ink-3">Your ratings from “Rate yourself” cards will show up here.</p>
-          ) : (
-            <div className="mt-4 grid items-center gap-6 md:grid-cols-[21rem_1fr]">
-            <SkillRadar skills={course.skills ?? []} size={220} series={[
-              { label: first.w.title.split(" · ")[0], values: mine[first.m.id].ratings!, style: "outline", color: "#367195" },
-              ...(last ? [{ label: last.w.title.split(" · ")[0], values: mine[last.m.id].ratings!, style: "fill" as const, color: "#1b1b1a" }] : []),
-              { label: "Teacher", values: teacherLevels(mine), style: "dash", color: "#ae502f" },
-            ]} />
-            <div className="space-y-3">
-              {course.skills?.map((s) => {
-                const a = mine[first.m.id].ratings![s.id];
-                const b = last ? mine[last.m.id].ratings![s.id] : undefined;
-                const pos = (n: number) => `${((n - 1) / 3) * 100}%`;
-                return (
-                  <div key={s.id} className="grid items-center gap-3 sm:grid-cols-[12rem_1fr_3rem]">
-                    <span className="text-[13.5px]">{s.name}</span>
-                    <div className="relative mx-2 h-6">
-                      <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-lane" />
-                      {[1, 2, 3, 4].map((n) => <span key={n} className="absolute top-1/2 h-2 w-px -translate-y-1/2 bg-line-strong" style={{ left: pos(n) }} />)}
-                      {a && b && b !== a && <div className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-ok/60" style={{ left: pos(Math.min(a, b)), width: `${(Math.abs(b - a) / 3) * 100}%` }} />}
-                      {a && <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#367195] bg-white" style={{ left: pos(a) }} title={`${first.w.title}: ${levels[a - 1]?.name}`} />}
-                      {b && <span className="pop absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink" style={{ left: pos(b) }} title={`${last!.w.title}: ${levels[b - 1]?.name}`} />}
-                    </div>
-                    <span className="text-right font-mono text-[12px] text-ink-2">{b ? `${a}→${b}` : a}</span>
-                  </div>
-                );
-              })}
-              <div className="grid gap-3 text-[11px] text-ink-3 sm:grid-cols-[12rem_1fr_3rem]">
-                <span />
-                <div className="mx-2 flex justify-between">{levels.map((l) => <span key={l.n}>{l.name}</span>)}</div>
-              </div>
-            </div>
-            </div>
-          )}
-        </section>
-
-        <section className="rise mt-6" style={{ "--i": 3 } as React.CSSProperties}>
-          <h2 className="mb-3 flex items-center gap-2 text-[15px] font-medium"><Icon name="star" size={15} className="text-[#d39b1f]" /> Selected works <span className="mono">{starred.length}/3</span></h2>
-          {starred.length === 0 ? (
-            <p className="hatch flex h-24 items-center justify-center text-[13px] text-ink-3">Star a card’s work to keep it here. You can keep three.</p>
-          ) : (
-            <div className="flex flex-wrap gap-4">
-              {starred.map(({ m }, i) => (
-                <div key={m.id} className="pop w-[180px]" style={{ "--i": i, rotate: `${(i - 1) * 2}deg` } as React.CSSProperties}>
-                  <div className="h-[252px] shadow-[0_14px_30px_-16px_rgba(20,20,18,0.4)]"><CardFace m={m} status="done" /></div>
-                  {mine[m.id].work?.[0] && <div className="mt-2"><MediaView a={mine[m.id].work![0]} /></div>}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        </>}
 
         {shown === "work" && <section className="mt-6 space-y-6">
           {course.weeks.map((w) => {

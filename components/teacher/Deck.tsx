@@ -8,7 +8,7 @@ import { CARD_SIZE } from "@/lib/cards";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { uid } from "@/lib/profile";
 import { toast } from "@/lib/toast";
-import { TYPE_META, SUITS, suitOf } from "@/lib/ui";
+import { SUITS, suitOf } from "@/lib/ui";
 import type { Course, Lesson, Module, ModuleType, ProgressMap, StudioPost } from "@/lib/types";
 import { HScroll } from "../HScroll";
 import { scrollToWeek, WeekNav } from "../WeekNav";
@@ -25,7 +25,7 @@ import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
 const SIZE = CARD_SIZE.deck;
 
 /** The teacher's whole course as a deck: one row per week, lessons laid out left to right. */
-export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts = [], choices = {}, live }: { course: Course; connectors: ConnectorInfo[]; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode }) {
+export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, live }: { course: Course; connectors?: ConnectorInfo[]; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode }) {
   const [drafts, setDrafts] = useState<Record<string, Lesson>>({});
   const [editing, setEditing] = useState<{ lessonId: string; moduleId: string } | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -331,10 +331,10 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                               setAgendaFor(l.id);
                             }],
                             ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
-                            [l.elective ? "Make required for everyone" : "Make elective (students choose)", () => {
-                              change({ ...l, elective: !l.elective || undefined });
-                              toast(l.elective ? `“${l.title}” is required again` : `“${l.title}” is now an elective`, { icon: "layers" });
-                            }],
+                            ...(l.elective ? [["Make required for everyone", () => {
+                              change({ ...l, elective: undefined });
+                              toast(`“${l.title}” is required again`, { icon: "layers" });
+                            }] as [string, () => void]] : []),
                           ]}
                         />
                       </div>
@@ -395,9 +395,8 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
           lesson={cur}
           module={curModule}
           students={course.students}
-          connectors={connectors}
           skills={course.skills}
-          enabled={course.enabledConnectors}
+          started={course.students.filter((st) => { const p = progress[st.id]?.[curModule.id]; return !!p && (p.status !== "todo" || !!p.output || !!p.work?.length); }).length}
           open={editorOpen}
           onChange={change}
           onClose={() => closeEditor()}
@@ -434,17 +433,6 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
                 },
               },
             });
-          }}
-          onBranchOut={() => {
-            const slot = uid("slot-");
-            const a: Module = { ...curModule, title: `${curModule.title} (guided)`, audience: { kind: "branch", slot, variant: "Guided" } };
-            const b: Module = { ...curModule, id: uid("m-"), title: `${curModule.title} (stretch)`, audience: { kind: "branch", slot, variant: "Stretch" } };
-            const i = cur.modules.findIndex((x) => x.id === curModule.id);
-            const next = [...cur.modules];
-            next.splice(i, 1, a, b);
-            change({ ...cur, modules: next, choiceSlots: [...(cur.choiceSlots ?? []), slot] });
-            setEditing({ lessonId: cur.id, moduleId: b.id });
-            toast("Added a Stretch path. Students choose between Guided and Stretch.", { icon: "split" });
           }}
         />
       )}

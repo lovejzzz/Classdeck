@@ -5,7 +5,7 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CardBack, CardFace } from "@/components/cards/CardFace";
 import { CardTable, type TableCard } from "@/components/cards/CardTable";
 import { Burst } from "@/components/cards/Burst";
@@ -28,10 +28,9 @@ import { Electives } from "@/components/student/Electives";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
 import { useConnectors, useCourse, useQuery } from "@/lib/client";
-import { PRESET_LABELS, fromPreset } from "@/lib/profile";
 import { toast } from "@/lib/toast";
 import { TYPE_META } from "@/lib/ui";
-import type { Lesson, Module, PresetId, Progress, Status } from "@/lib/types";
+import type { Lesson, Module, Profile, Progress, Status } from "@/lib/types";
 
 const narrowQuery = "(max-width: 639px)";
 function useNarrow() {
@@ -62,6 +61,8 @@ interface LiftState {
   completed: boolean;
 }
 
+const FIXED_PROFILE: Profile = { preset: "custom", density: "comfortable", autonomy: "free", horizon: "term", entry: "code" };
+
 export default function LearnPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
   const { state, error, refresh, needAuth } = useCourse(courseId, studentId);
@@ -88,12 +89,9 @@ export default function LearnPage() {
     ...state.course,
     weeks: state.course.weeks.map((w) => ({ ...w, lessons: w.lessons.filter((l) => !l.elective || l.chosen) })).filter((w) => w.lessons.length),
   };
-  const previewPreset = query?.get("preset") as PresetId | null;
   const isPreview = query?.get("preview") === "1";
-  const profile = useMemo(
-    () => (previewPreset && previewPreset in PRESET_LABELS ? fromPreset(previewPreset) : course?.profile),
-    [previewPreset, course?.profile],
-  );
+  // Every course is laid out the same way now: the whole term, comfortable cards, any card open in any order.
+  const profile = course ? FIXED_PROFILE : undefined;
 
   // Bring today's lesson into view in the week rows.
   useEffect(() => {
@@ -128,10 +126,6 @@ export default function LearnPage() {
   const statusOf = (id: string): Status => mine[id]?.status ?? "todo";
   // The teacher asked for another go and the student hasn't finished it again yet.
   const revising = (id: string) => mine[id]?.review?.verdict === "revise" && statusOf(id) !== "done";
-  const lockedIn = (l: Lesson, m: Module) => {
-    const i = l.modules.indexOf(m);
-    return (profile.autonomy === "sequential" || !!m.gate) && l.modules.slice(0, i).some((x) => statusOf(x.id) !== "done");
-  };
   const big = profile.density === "spacious";
   const handMode = profile.horizon === "lesson";
   const size = narrow ? CARD_SIZE.mobile : CARD_SIZE[profile.density];
@@ -150,7 +144,8 @@ export default function LearnPage() {
   }
 
   const toCard = (l: Lesson, m: Module, i: number): TableCard => {
-    const locked = lockedIn(l, m);
+    // Nothing is locked: "today" already says what comes first.
+    const locked = false;
     const status = statusOf(m.id);
     return {
       id: m.id,
@@ -183,7 +178,7 @@ export default function LearnPage() {
   // The next card to play: something already started, else the first open card today, else the next week's first.
   const currentWeek = course.weeks.find((w) => w.lessons.some((l) => l.id === current.id)) ?? course.weeks[0];
   const weeksShown = profile.horizon === "week" ? [currentWeek] : course.weeks;
-  const playable = (l: Lesson) => l.modules.filter((m) => statusOf(m.id) !== "done" && !lockedIn(l, m));
+  const playable = (l: Lesson) => l.modules.filter((m) => statusOf(m.id) !== "done");
   const upNext = (() => {
     const today = playable(current);
     // Revisions first, then what's late, then what's already started.
@@ -195,19 +190,6 @@ export default function LearnPage() {
       if (first) return { lesson: l, m: first };
     }
   })();
-  // Unpicked paths count once: you'll only do one of them.
-  const minutesLeft = (() => {
-    const seen = new Set<string>();
-    return current.modules.reduce((n, m) => {
-      if (statusOf(m.id) === "done") return n;
-      if (m.choice) {
-        if (seen.has(m.choice.slot)) return n;
-        seen.add(m.choice.slot);
-      }
-      return n + (m.minutes ?? 0);
-    }, 0);
-  })();
-
   // A nudge toward this week's Collab Studio when peers are waiting on you.
   const studioNudge = (() => {
     const sm = current.modules.find((m) => m.type === "studio");
@@ -252,13 +234,6 @@ export default function LearnPage() {
         <div className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-line bg-white/85 px-4 py-2 text-[13px] backdrop-blur">
           <Icon name="eye" size={14} className="text-ink-3" />
           <span className="text-ink-2">Previewing as {student.name}</span>
-          <div className="ml-2 flex rounded-lg bg-lane p-0.5">
-            {(Object.keys(PRESET_LABELS) as PresetId[]).map((id) => (
-              <a key={id} href={`?preview=1&preset=${id}`} className={`press rounded-md px-2.5 py-0.5 ${profile.preset === id ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2"}`}>
-                {PRESET_LABELS[id]}
-              </a>
-            ))}
-          </div>
           <Link href={`/teach/${courseId}`} className="ml-auto inline-flex items-center gap-1 text-ink-2 hover:text-ink"><Icon name="back" size={13} /> Teacher view</Link>
         </div>
       )}
@@ -400,7 +375,6 @@ export default function LearnPage() {
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px] text-ink-3">
                   <span><span className="font-mono text-ink">{doneCount(current)}</span> of {countable(current).length} cards done</span>
-                  {minutesLeft > 0 && <span className="flex items-center gap-1"><Icon name="clock" size={12} />about {minutesLeft} min left</span>}
                   {current.session && <span className="flex items-center gap-1"><Icon name="studio" size={12} />Collab Studio · {current.session.minutes} min</span>}
                 </div>
                 {studioNudge && (

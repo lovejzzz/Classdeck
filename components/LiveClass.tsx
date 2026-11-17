@@ -236,13 +236,10 @@ export function StudentLive({ courseId, studentId, state, onChanged }: { courseI
             </div>
           </div>
         )}
-        {hand ? (
+        {/* Raising a hand moved out of the everyday page; a hand still up can be lowered. */}
+        {hand && (
           <button onClick={() => raise(null)} className="btn press h-10 rounded-full bg-ink px-4 text-white shadow-lg">
             <span className="animate-pulse">✋</span> {hand.kind === "stuck" ? "Stuck" : "Hand up"} · Lower
-          </button>
-        ) : (
-          <button onClick={() => setMenu((m) => !m)} aria-expanded={menu} className="btn btn-ghost press h-10 rounded-full bg-white px-4 shadow-[0_8px_24px_-12px_rgba(20,20,18,0.35)]">
-            ✋ Raise hand
           </button>
         )}
       </div>

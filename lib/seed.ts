@@ -1,3 +1,4 @@
+import { foldWeeks } from "./cardmodel";
 import { isoDay } from "./grading";
 import type { AnswerValue, Attachment, ClassEvent, Mark, Nudge, Plan, Course, Feedback, Lesson, Module, Post, ProgressMap, SessionPlan, StudioPost } from "./types";
 
@@ -403,7 +404,7 @@ const weeks: { id: string; title: string; lesson: Lesson }[] = [
 ];
 
 export function seedCourse(): Course {
-  return {
+  const course: Course = {
     id: "demo",
     title: "CaPS",
     subtitle: "Presentation skills · Weeks 0–6",
@@ -439,6 +440,9 @@ export function seedCourse(): Course {
       { id: "wE", title: "Electives", lessons: ELECTIVES },
     ],
   };
+  // Settings merged away in the simplification (video lists, steps, prompts, "Done when") live in the instructions.
+  foldWeeks(course.weeks);
+  return course;
 }
 
 /** Due dates, in days from today, so the demo always looks like "this week". */

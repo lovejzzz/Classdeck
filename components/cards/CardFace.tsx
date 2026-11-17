@@ -77,14 +77,13 @@ function Art({ m, big }: { m: Module; big: boolean }) {
   return <GenArt id={m.id} tint={meta.tint} cover={meta.cover} />;
 }
 
-const KIND_ICON = { image: "image", video: "video", audio: "audio", file: "file", link: "link" } as const;
 
 /**
  * The face of a card, laid out like a playing card:
  * corner index top-left, artwork window, title, content pips, mirrored corner bottom-right.
  */
 export function CardFace({
-  m, status, index, total, personal, badge, big = false, footer, due,
+  m, status, personal, badge, big = false, footer, due,
 }: {
   m: Module; status?: Status; index?: number; total?: number; personal?: boolean; badge?: string; big?: boolean; footer?: React.ReactNode;
   /** Shown in the corner instead of the time when the card is due soon or late. */
@@ -92,29 +91,19 @@ export function CardFace({
 }) {
   const tag = badge ?? (m.choice ? (m.choice.recommended ? "Recommended path" : "Pick a path") : m.picked ? "Your path" : personal ? "For you" : undefined);
   const meta = TYPE_META[m.type];
-  const kinds = [...new Set((m.attachments ?? []).map((a) => a.kind))];
   return (
     <div className="@container relative flex h-full w-full flex-col overflow-hidden rounded-[14px] border border-line bg-white select-none">
       <div className="pointer-events-none absolute inset-[5px] rounded-[10px] border border-line/70" />
-      {/* corner index */}
-      <div className="relative flex items-center gap-1.5 px-3 pt-2.5" style={{ color: meta.tint }}>
-        <Icon name={m.type} size={big ? 14 : 12} strokeWidth={2} />
-        <span className={`flex min-w-0 flex-1 items-baseline gap-1 ${big ? "text-[11px]" : "text-[9.5px]"}`}>
-          <span className="font-semibold uppercase tracking-[0.1em]">{suitOf(m.type).name}</span>
-          {/* The kind's name only where there's room for it beside the time; small cards keep the suit and icon. */}
-          <span className="truncate text-ink-3 @max-[165px]:hidden">{meta.label}</span>
-        </span>
+      {/* corner: the suit, and one status (done, or a due date that's close or past) */}
+      <div className="relative flex min-h-[18px] items-center gap-1.5 px-3 pt-2.5" style={{ color: meta.tint }}>
+        <span className="rounded-full" style={{ background: meta.tint, width: big ? 7 : 6, height: big ? 7 : 6 }} />
+        <span className={`font-semibold uppercase tracking-[0.1em] ${big ? "text-[11px]" : "text-[10px]"}`}>{suitOf(m.type).name}</span>
+        <span className="flex-1" />
         {status === "done" ? <StatusIcon status="done" size={big ? 15 : 13} /> : due && due.tone !== "later" ? (
-          <span title={due.label} className={`whitespace-nowrap rounded-full px-1.5 py-[1px] font-mono text-[10px] font-medium ${due.tone === "late" ? "bg-bad/10 text-bad" : "bg-warn/10 text-warn"}`}>
+          <span title={due.label} className={`whitespace-nowrap rounded-full px-1.5 py-[1px] text-[10px] font-medium ${due.tone === "late" ? "bg-bad/10 text-bad" : "bg-warn/10 text-warn"}`}>
             {due.label.replace("Due ", "").replace(/ days? late/, "d late")}
           </span>
-        ) : m.minutes ? (
-          <span className="flex items-center gap-0.5 rounded-full bg-[#f3f3f1] px-1.5 py-[1px] font-mono text-[10px] text-ink-2" title={`About ${m.minutes} minutes`}>
-            <Icon name="clock" size={10} strokeWidth={2} />{m.minutes}m
-          </span>
-        ) : index !== undefined && (
-          <span className="font-mono text-[10px] text-ink-3">{String(index + 1).padStart(2, "0")}{total ? `/${String(total).padStart(2, "0")}` : ""}</span>
-        )}
+        ) : null}
       </div>
       {/* artwork */}
       <div className={`relative mx-2.5 mt-2 h-[44%] flex-none overflow-hidden rounded-[8px] border border-line/80 transition-[filter] duration-500 ${status === "done" ? "saturate-[0.35]" : ""}`}>
@@ -122,26 +111,9 @@ export function CardFace({
         {tag && <span className="pill absolute left-1.5 top-1.5 h-[18px] max-w-[85%] truncate px-1.5 text-[10px]">{tag}</span>}
       </div>
       {/* title */}
-      <div className={`relative px-3 pt-2.5 font-medium leading-[1.25] ${big ? "text-[15.5px]" : "text-[13px]"} line-clamp-3`}>{m.title}</div>
+      <div className={`relative px-3 pt-2.5 font-medium leading-[1.25] ${big ? "text-[16px]" : "text-[13.5px]"} line-clamp-3`}>{m.title}</div>
       <div className="flex-1" />
-      {/* pips + mirrored corner */}
-      <div className="relative flex items-center gap-1.5 px-3 pb-2.5 text-ink-3">
-        {footer ?? (
-          <>
-            {m.body.trim() && <Icon name="text" size={11} />}
-            {kinds.map((k) => <Icon key={k} name={KIND_ICON[k]} size={11} />)}
-            {m.tools.length > 0 && <span className="flex items-center gap-0.5 font-mono text-[10px]"><Icon name="tool" size={10} />{m.tools.length}</span>}
-            {m.questions?.length ? <span className="font-mono text-[10px]">{m.questions.length}Q</span> : null}
-            {m.submitTo && <Icon name={m.submitTo === "studio" ? "studio" : "board"} size={11} />}
-            {m.checklist?.length ? <span className="flex items-center gap-0.5 font-mono text-[10px]"><Icon name="check" size={10} />{m.checklist.length}</span> : null}
-            {m.timer ? <Icon name="timer" size={11} /> : null}
-            {m.playlist?.length ? <span className="flex items-center gap-0.5 font-mono text-[10px]"><Icon name="video" size={10} />{m.playlist.filter((x) => !x.optional).length}</span> : null}
-            {due?.tone === "later" && status !== "done" && <span className="font-mono text-[10px]">{due.label.replace("Due ", "")}</span>}
-          </>
-        )}
-        <span className="flex-1" />
-        <span className="rotate-180" style={{ color: meta.tint }}><Icon name={m.type} size={big ? 13 : 11} strokeWidth={2} /></span>
-      </div>
+      {footer && <div className="relative flex items-center gap-1.5 px-3 pb-2.5 text-ink-3">{footer}</div>}
     </div>
   );
 }

@@ -14,10 +14,9 @@ import { ReadAloud } from "../ReadAloud";
 import { teacherLevels } from "../SkillRadar";
 import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
-import { Onboarding } from "./Onboarding";
 import { SelfCheck } from "./SelfCheck";
 import { CardForm } from "./CardForm";
-import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, Rehearsal, ReviewNote, UpdatesNote } from "./CardExtras";
+import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, ReviewNote, UpdatesNote } from "./CardExtras";
 import { SpeechBuilder } from "./SpeechBuilder";
 import { SpeechFlow } from "./SpeechFlow";
 import { Studio } from "./Studio";
@@ -178,7 +177,8 @@ export function CardDetail(p: DetailProps) {
   }, [draftText, dirty, retry]);
 
   // Students only see tools that are ready to use; one that still needs a key from the site owner is left out.
-  const tools = m.tools.filter((t) => p.connectors.find((c) => c.id === t.connector)?.configured !== false);
+  // Tools on cards were cut in the simplification; any still saved on a card stay out of sight.
+  const tools: typeof m.tools = [];
 
   return (
     <div className={`grid ${tools.length && !m.choice ? "md:grid-cols-[1fr_20rem]" : ""}`}>
@@ -279,11 +279,6 @@ export function CardDetail(p: DetailProps) {
           <p className="mt-5 flex gap-2 text-[13px] text-ink-2"><Icon name="check" size={14} className="mt-0.5 flex-none text-ok" /><span><span className="font-medium text-ink">Done when: </span>{m.criteria}</span></p>
         )}
 
-        {m.timer && !m.choice && m.type !== "builder" ? (
-          <div className="mt-6">
-            <Rehearsal target={m.timer} takes={p.progress?.rehearsals ?? []} feel={p.progress?.feel} courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onSaved={p.onChanged} big={p.big} />
-          </div>
-        ) : null}
 
         {m.playlist?.length && !m.choice ? (
           <div className="mt-6">
@@ -323,9 +318,7 @@ export function CardDetail(p: DetailProps) {
           );
           return (
             <div className="mt-7">
-              {m.onboarding
-                ? <Onboarding courseId={p.courseId} studentId={p.studentId} plan={p.plan} big={p.big} skills={check} onDone={() => { p.onChanged(); save("done"); }} />
-                : check(() => save("done"))}
+              {check(() => save("done"))}
             </div>
           );
         })()}

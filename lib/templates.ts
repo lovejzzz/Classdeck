@@ -1,3 +1,4 @@
+import { fold } from "./cardmodel";
 import type { Lesson, Module, Week } from "./types";
 
 // Card and week templates drawn from the recurring post types in the CaPS course plan.
@@ -9,7 +10,7 @@ export interface CardTemplate {
   make: () => Omit<Module, "id">;
 }
 
-const base = (m: Partial<Module> & Pick<Module, "type" | "title" | "body">): Omit<Module, "id"> => ({ audience: { kind: "all" }, tools: [], attachments: [], ...m });
+const base = (m: Partial<Module> & Pick<Module, "type" | "title" | "body">): Omit<Module, "id"> => fold({ audience: { kind: "all" }, tools: [], attachments: [], ...m });
 
 export const CARD_TEMPLATES: CardTemplate[] = [
   {
@@ -66,13 +67,11 @@ export function standardWeek(theme: string, n: number): Week {
     // A placeholder name ("Lesson 2") gets no goal, so the goal field invites the teacher to write one.
     goal: /^Lesson \d+$/.test(theme) ? undefined : `Practice ${theme.toLowerCase()} and bring one piece of work to Collab Studio.`,
     branches: {},
-    choiceSlots: ["path"],
     session: { minutes: 60, agenda: [{ label: "Warm-up and example", minutes: 10 }, { label: "Paired practice", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }] },
     modules: [
       t("goal"),
       t("example"),
-      { id: "g", ...practice, title: `${practice.title} (guided)`, body: `${practice.body}\n\nGuided: use the prompts and keep it short, one passage and one change.`, audience: { kind: "branch", slot: "path", variant: "Guided" } },
-      { id: "s", ...practice, title: `${practice.title} (stretch)`, body: `${practice.body}\n\nStretch: try a new audience or context, and explain your choices.`, audience: { kind: "branch", slot: "path", variant: "Stretch" } },
+      { id: "p", ...practice },
       t("studio"),
       t("reflect"),
     ],

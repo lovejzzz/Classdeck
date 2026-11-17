@@ -11,7 +11,6 @@ import { STATUS_LABEL, TYPE_META } from "@/lib/ui";
 import type { CourseState, Lesson, Level, Module, Review, Skill } from "@/lib/types";
 import { download, toCsv } from "@/lib/download";
 import { toast } from "@/lib/toast";
-import { MediaView } from "../cards/Media";
 import { MarkedMedia } from "../Marks";
 import { draftOf } from "../student/SpeechBuilder";
 import { Present } from "../Present";
@@ -419,7 +418,7 @@ export function Classroom({
             )}
             {!selModule.questions?.length && selModule.type !== "wall" && (
               <ReviewBox key={`${sel.sid}-${sel.mid}`} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"}
-                skills={(course.skills ?? []).filter((sk) => selModule.skills?.includes(sk.id))} levels={course.levels ?? []} onNext={() => nextWaiting(sel.sid)} />
+                skills={selModule.skills?.length ? (course.skills ?? []).filter((sk) => selModule.skills!.includes(sk.id)) : course.skills ?? []} rateOpen={!!selModule.skills?.length} levels={course.levels ?? []} onNext={() => nextWaiting(sel.sid)} />
             )}
             </div>
           </aside>,
@@ -563,10 +562,12 @@ function ExportMenu({ items }: { items: [string, () => void][] }) {
 }
 
 /** The teacher's response to one piece of work: a note, and either "looks good" or "revise". */
-function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels, onNext }: { courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean; skills: Skill[]; levels: Level[]; onNext?: () => void }) {
+function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels, onNext, rateOpen = false }: { courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean; skills: Skill[]; rateOpen?: boolean; levels: Level[]; onNext?: () => void }) {
   const [text, setText] = useState(review?.text ?? "");
   const [rubric, setRubric] = useState<Record<string, number>>(review?.levels ?? {});
   const [busy, setBusy] = useState(false);
+  // Rating skills is optional: open when the card names its skills or levels were already given.
+  const [rating, setRating] = useState(rateOpen || Object.keys(review?.levels ?? {}).length > 0);
   async function send(verdict: "good" | "revise" | "clear") {
     setBusy(true);
     const r = await op<{ ok: boolean; error?: string }>(courseId, verdict === "clear" ? { op: "review", studentId, moduleId, clear: true } : { op: "review", studentId, moduleId, verdict, text, levels: rubric });
@@ -587,7 +588,10 @@ function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, 
           </span>
         )}
       </div>
-      {skills.length > 0 && levels.length > 0 && (
+      {skills.length > 0 && levels.length > 0 && !rating && (
+        <button onClick={() => setRating(true)} className="btn btn-quiet press mb-2 h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Rate skills</button>
+      )}
+      {skills.length > 0 && levels.length > 0 && rating && (
         <div className="mb-3 space-y-2" aria-label="Rubric">
           {skills.map((sk) => (
             <div key={sk.id}>

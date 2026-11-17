@@ -110,6 +110,22 @@ async function main() {
   check("add a lesson", add.ok !== false, add);
   check("lesson added", courseOf(await A.state(cid)).weeks[0].lessons.length === 2);
 
+  // ---- Settings merged away fold into the instructions on save
+  {
+    const l0 = courseOf(await A.state(cid)).weeks[0].lessons[0];
+    const legacy = { id: `m-legacy-${run}`, type: "practice", title: "Old card", body: "Do it.", audience: { kind: "all" }, tools: [], attachments: [],
+      checklist: ["Warm up", "Record"], prompts: ["What changed?"], criteria: "Two takes saved", playlist: [{ id: "v1", title: "Clip", url: "https://www.youtube.com/watch?v=abc" }] };
+    await A.op(cid, { op: "saveLesson", lesson: { ...l0, modules: [...l0.modules, legacy] } });
+    const got = modulesOf(courseOf(await A.state(cid))).find((m) => m.id === legacy.id);
+    check("legacy settings removed", got && !got.checklist && !got.prompts && !got.criteria && !got.playlist, got);
+    check("steps, prompts and done-when in the instructions", /1\. Warm up/.test(got?.body) && /What changed\?/.test(got?.body) && /Done when: Two takes saved/.test(got?.body), got?.body);
+    check("video list became media", got?.attachments?.some((x) => x.url.includes("youtube.com")), got?.attachments);
+  }
+  const tw = courseOf(await A.state(made["template/writing"]));
+  check("template weeks have no paths", !modulesOf(tw).some((m) => m.audience.kind === "branch"), modulesOf(tw).map((m) => m.audience.kind));
+  check("template cards carry no merged settings", !modulesOf(tw).some((m) => m.checklist || m.prompts || m.criteria || m.playlist));
+  check("CaPS copy carries no merged settings", !modulesOf(caps).some((m) => m.checklist || m.prompts || m.criteria || m.playlist));
+
   // ---- Skills
   const lv = after.levels;
   check("setSkills needs 4 levels", (await A.op(cid, { op: "setSkills", skills: after.skills, levels: lv.slice(0, 3) })).ok === false);

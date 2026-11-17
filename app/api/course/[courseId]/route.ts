@@ -5,6 +5,7 @@ import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked } from "@/lib/grading";
+import { fold, foldWeeks } from "@/lib/cardmodel";
 import { prcaScore } from "@/lib/onboarding";
 import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate } from "@/lib/hooks";
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Week } from "@/lib/types";
@@ -491,6 +492,7 @@ export async function POST(request: Request, { params }: Ctx) {
       break;
     case "saveLesson": {
       const next = body.lesson as Lesson;
+      if (Array.isArray(next?.modules)) next.modules = next.modules.map((m) => fold(m));
       for (const m of next.modules) {
         if (m.playlist) m.playlist = m.playlist.filter((x) => typeof x.url === "string" && /^https:\/\//.test(x.url)).slice(0, 60);
         m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
@@ -1063,6 +1065,7 @@ export async function POST(request: Request, { params }: Ctx) {
       const src = body.week as Week;
       if (!src?.lessons?.length) return fail("That week has no lessons");
       const copy = cloneWeek(src, String(src.title ?? `Week ${course.weeks.length}`).slice(0, 80));
+      foldWeeks([copy]);
       copy.lessons.forEach((l) => l.modules.forEach((m) => { m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a); }));
       const at = typeof body.index === "number" ? body.index : course.weeks.length;
       course.weeks.splice(at, 0, copy);
@@ -1073,6 +1076,7 @@ export async function POST(request: Request, { params }: Ctx) {
       const w = course.weeks.find((x) => x.id === body.weekId);
       if (!w || !body.lesson) return fail("No such week");
       const copy = cloneLesson(body.lesson as Lesson);
+      foldWeeks([{ lessons: [copy] }]);
       copy.modules.forEach((m) => { m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a); });
       w.lessons.push(copy);
       extra = { lessonId: copy.id };

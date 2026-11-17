@@ -2,6 +2,7 @@ import { getSession, teacherOf, unauthorized } from "@/lib/auth";
 import { uid } from "@/lib/profile";
 import { save, type SavedCard } from "@/lib/store";
 import { TYPE_ORDER } from "@/lib/ui";
+import { fold } from "@/lib/cardmodel";
 import type { Module } from "@/lib/types";
 
 /** A teacher's own saved cards: the "custom" choices under each suit in New card, usable in any of their courses. */
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   // Keep the content; drop what only makes sense in the course it came from.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id, audience, due, choice, picked, personal, ...rest } = m as Module;
-  const card0 = { ...rest, audience: { kind: "all" }, tools: Array.isArray(rest.tools) ? rest.tools : [], attachments: Array.isArray(rest.attachments) ? rest.attachments : [], title: String(rest.title ?? "").slice(0, 120), body: String(rest.body ?? "").slice(0, 8000) } as Omit<Module, "id">;
+  const card0 = fold({ ...rest, audience: { kind: "all" }, tools: Array.isArray(rest.tools) ? rest.tools : [], attachments: Array.isArray(rest.attachments) ? rest.attachments : [], title: String(rest.title ?? "").slice(0, 120), body: String(rest.body ?? "").slice(0, 8000) } as Omit<Module, "id">);
   if (JSON.stringify(card0).length > MAX_BYTES) return Response.json({ ok: false, error: "This card is too big to save" }, { status: 400 });
   const name = String(body.name ?? card0.title ?? "").trim().slice(0, 60) || "My card";
   const cards = (t.cards ??= []);

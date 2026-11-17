@@ -7,7 +7,6 @@ import { visibleModules } from "@/lib/profile";
 import type { CourseState, Module } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { SkillRadar } from "../SkillRadar";
-import { PlanPanel } from "../student/PlanPanel";
 import { FeedbackInbox, Journal } from "../student/Progress";
 
 const WORK = new Set(["explore", "practice", "submit", "reflect"]);
@@ -148,12 +147,6 @@ export function Gradebook({ state }: { state: CourseState }) {
                             </li>
                           ))}
                         </ul>
-                      )}
-                      {(state.plans?.[r.st.id] || state.course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => m.onboarding)))) && (
-                        <details className="group mt-4">
-                          <summary className="cursor-pointer text-[13px] font-medium text-ink-2 hover:text-ink">Plan: goal, objectives, confidence, and nerves check</summary>
-                          <div className="mt-3"><PlanPanel courseId={state.course.id} studentId={r.st.id} course={state.course} plan={state.plans?.[r.st.id]} readOnly /></div>
-                        </details>
                       )}
                       <details className="group mt-3">
                         <summary className="cursor-pointer text-[13px] font-medium text-ink-2 hover:text-ink">Reflections</summary>

@@ -1,22 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CARD_SIZE, formatSize, hostOf } from "@/lib/cards";
-import { CATEGORIES, type ConnectorInfo } from "@/lib/connectors/types";
-import { slotVariants, uid, wallOf } from "@/lib/profile";
+import { uid } from "@/lib/profile";
 import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
-import { fmtSec, isoDay } from "@/lib/grading";
+import { isoDay } from "@/lib/grading";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
-import { TYPE_META, SUITS, suitOf } from "@/lib/ui";
+import { suitOf } from "@/lib/ui";
 import { CARD_TEMPLATES } from "@/lib/templates";
 import { loadLibrary, useLibrary } from "./NewCardFan";
-import type { Attachment, Audience, Lesson, Module, ModuleType, Question, Skill, Student, WallSettings } from "@/lib/types";
+import { RESPONSES, SHARES, clearOlder, fold, olderSettings, responseOf, shareOf, typeFor, withAnswers, type Response, type ShareWith } from "@/lib/cardmodel";
+import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { CardFace } from "../cards/CardFace";
-import { Avatar, CONNECTOR_ICON, Icon } from "../Icon";
+import { Avatar, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
-import { FormEditor, newForm } from "./ActivityForm";
 
 /** A card preview that tilts toward the pointer, so teachers see exactly what students will hold. */
 function TiltPreview({ m }: { m: Module }) {
@@ -55,39 +54,8 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
   );
 }
 
-/**
- * One part of the card's setup, shown as a card on the table: its name and a one-line summary,
- * opening in place to edit. Sections not in use stay closed.
- */
-function Section({ title, summary, children, aside, start = false }: { title: string; summary?: string; children: React.ReactNode; aside?: React.ReactNode; start?: boolean }) {
-  const [open, setOpen] = useState(start);
-  // A section that becomes relevant later (a card turned into a Quiz) opens itself.
-  const [was, setWas] = useState(start);
-  if (start !== was) {
-    setWas(start);
-    if (start) setOpen(true);
-  }
-  return (
-    <section data-sec={title} className={`rounded-xl border bg-white transition-shadow ${open ? "border-line-strong shadow-[0_8px_24px_-16px_rgba(20,20,18,0.35)]" : "border-line hover:border-line-strong"}`}>
-      <div className="flex min-h-11 items-center gap-2 pr-2">
-        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-2 py-2.5 pl-4 text-left">
-          <span className="flex-none text-[13px] font-medium">{title}</span>
-          {!open && summary && <span className="min-w-0 truncate text-[12px] text-ink-3">{summary}</span>}
-        </button>
-        {open && aside}
-        <button onClick={() => setOpen((o) => !o)} aria-label={open ? `Close ${title}` : `Open ${title}`} tabIndex={-1} className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-ink-3 hover:bg-lane">
-          <Icon name="chevron" size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
-        </button>
-      </div>
-      {open && <div className="border-t border-line px-4 py-3.5">{children}</div>}
-    </section>
-  );
-}
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-
 export function CardEditor({
-  lesson, module: m, students, connectors, enabled, open, onChange, onClose, onDelete, onBranchOut, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [],
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [], started = 0,
 }: {
   onDuplicate: () => void;
   /** Keep a copy among the teacher's saved cards, to reuse in any course. */
@@ -96,16 +64,15 @@ export function CardEditor({
   onNext?: () => void;
   position?: { index: number; total: number; lesson: string };
   skills?: Skill[];
+  /** How many students have already worked on this card (changing what comes back doesn't move their work). */
+  started?: number;
   lesson: Lesson;
   module: Module;
   students: Student[];
-  connectors: ConnectorInfo[];
-  enabled: string[];
   open: boolean;
   onChange: (lesson: Lesson) => void;
   onClose: () => void;
   onDelete: () => void;
-  onBranchOut: () => void;
 }) {
 
   useEffect(() => {
@@ -119,23 +86,23 @@ export function CardEditor({
     { keys: "[", label: "Previous card", run: () => onPrev?.(), enabled: open && !!onPrev },
     { keys: "]", label: "Next card", run: () => onNext?.(), enabled: open && !!onNext },
   ]);
-  const steps = [m.checklist?.length && plural(m.checklist.length, "step"), m.playlist?.length && plural(m.playlist.length, "video"), m.prompts?.length && plural(m.prompts.length, "prompt"), m.timer && `${fmtSec(m.timer)} timer`].filter(Boolean).join(" · ");
   const lessonRef = useRef(lesson);
   useEffect(() => { lessonRef.current = lesson; });
   const set = (patch: Partial<Module>) => onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? { ...x, ...patch } : x)) });
   const attachments = m.attachments ?? [];
   const addAttachment = (a: Omit<Attachment, "id">) => set({ attachments: [...attachments, { ...a, id: uid("a-") }] });
-
-  const wall = wallOf(m);
-  const setWall = (patch: Partial<WallSettings>) => set({ wall: { ...wall, ...patch } });
-
-  const available = connectors
-    .filter((c) => enabled.includes(c.id))
-    .sort((x, y) => CATEGORIES.indexOf(x.category) - CATEGORIES.indexOf(y.category))
-    .flatMap((c) => c.actions.filter((a) => !a.teacherOnly).map((a) => ({ c, a })));
   const a = m.audience;
-  const slots = slotVariants(lesson);
-  const variants = a.kind === "branch" ? slots[a.slot] ?? [a.variant] : [];
+  const response = responseOf(m);
+  const share = shareOf(m);
+  const older = olderSettings(m);
+  // A card just put down, still empty: offer the teacher's saved cards and ready-made ones as a starting point.
+  const fresh = !m.body.trim() && !attachments.length && !m.questions?.some((q) => q.text.trim()) && /^(New .+ card|Untitled card)$/.test(m.title);
+
+  function answers(r: Response, sh: ShareWith) {
+    if (r === response && (r !== "answer" || sh === share)) return;
+    if (started > 0 && !confirm(`${started === 1 ? "1 student has" : `${started} students have`} already worked on this card. What they handed in stays where it is and won’t move. Change it anyway?`)) return;
+    set(withAnswers(m, r, sh));
+  }
 
   // Rendered into <body> so no animated ancestor can become its positioning box.
   return createPortal(
@@ -145,7 +112,7 @@ export function CardEditor({
       aria-hidden={!open}
       inert={!open}
     >
-      <div className="flex h-14 flex-none items-center gap-2 border-b border-line px-5">
+      <div className="flex h-14 flex-none items-center gap-1.5 border-b border-line px-4">
         <div className="flex items-center rounded-lg bg-lane p-0.5">
           <button onClick={onPrev} disabled={!onPrev} aria-label="Previous card ([)" title="Previous card ([)" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white disabled:opacity-30"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
           <button onClick={onNext} disabled={!onNext} aria-label="Next card (])" title="Next card (])" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white disabled:opacity-30"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
@@ -154,111 +121,29 @@ export function CardEditor({
           <span className="font-medium">Card {position ? position.index + 1 : ""}</span>
           {position && <span className="text-ink-3"> of {position.total} · {position.lesson}</span>}
         </span>
-        <button onClick={onDuplicate} className="btn btn-quiet press h-8"><Icon name="layers" size={13} /> Duplicate</button>
-        <button onClick={onDelete} className="btn btn-quiet press h-8 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
+        {onSaveToLibrary && <button onClick={onSaveToLibrary} className="btn btn-quiet press h-8 px-2" title="Save a copy to reuse in any of your courses"><Icon name="star" size={13} /> Save</button>}
+        <button onClick={onDuplicate} className="btn btn-quiet press h-8 px-2"><Icon name="layers" size={13} /> Duplicate</button>
+        <button onClick={onDelete} className="btn btn-quiet press h-8 px-2 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
         <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
       </div>
 
       <div className="flex-1 overflow-y-auto bg-[#f7f7f5]">
-        {/* The card on the table, and the cards to choose what it is. */}
+        {/* The card on the table. */}
         <div className="px-5 pb-4 pt-6"><TiltPreview m={m} /></div>
-        <KindDeck m={m} skills={skills} onPick={(t) => set({ type: t, questions: t === "quiz" && !m.questions?.length ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : m.questions })}
-          onApply={(content, name) => {
-            // Anything the teacher has put on this card beyond a fresh, empty one counts as their work.
-            const touched = !!(m.body.trim() || m.attachments?.length || m.questions?.some((q) => q.text.trim()) || m.checklist?.length || m.prompts?.length
-              || m.playlist?.length || m.timer || m.form || m.tools.length || m.criteria || m.minutes || m.wall || m.skills?.length || !/^(New .+ card|Untitled card)$/.test(m.title));
-            if (touched && !confirm(`Replace what’s on this card with “${name}”? Who it’s for, its due date, and its rules stay the same.`)) return;
-            const own = new Set(skills.map((x) => x.id));
-            const before = m;
-            const next: Module = { ...structuredClone(content), id: m.id, audience: m.audience, due: m.due, gate: m.gate, skills: content.skills?.filter((x) => own.has(x)) } as Module;
-            onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? next : x)) });
-            if (touched) toast(`Replaced with “${name}”`, { icon: "layers", tone: "plain", action: { label: "Undo", run: () => {
-              const now = lessonRef.current;
-              onChange({ ...now, modules: now.modules.map((x) => (x.id === before.id ? before : x)) });
-            } } });
-          }}
-          onSave={onSaveToLibrary} />
 
-        <div className="space-y-2 px-4 pb-8">
-        <Section title="Text" summary={m.title} start>
-          <input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" />
-          <textarea value={m.body} onChange={(e) => set({ body: e.target.value })} rows={5} placeholder="What students should read or do" aria-label="Body" className="field mt-2 resize-y leading-relaxed" />
-        </Section>
+        <div className="space-y-2.5 px-4 pb-8">
+          {fresh && (
+            <StartFrom m={m} onApply={(content) => {
+              const own = new Set(skills.map((x) => x.id));
+              const next: Module = { ...fold(structuredClone(content)), id: m.id, audience: m.audience, due: m.due, skills: content.skills?.filter((x) => own.has(x)) } as Module;
+              onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? next : x)) });
+            }} />
+          )}
 
-        <Section title="Time, due date, skills" summary={[m.minutes ? `${m.minutes} min` : "No time set", m.due && `due ${new Date(`${m.due}T12:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, m.skills?.length && plural(m.skills.length, "skill")].filter(Boolean).join(" · ")}>
-          <div className="grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-2.5 text-[13px]">
-            <span className="text-ink-2">Time</span>
-            <label className="flex items-center gap-2">
-              <input type="number" min={1} max={240} value={m.minutes ?? ""} onChange={(e) => set({ minutes: e.target.value ? Math.max(1, Math.min(240, Number(e.target.value))) : undefined })} aria-label="Minutes" className="field h-8 w-20 py-0" />
-              <span className="text-ink-3">minutes, shown on the card</span>
-            </label>
-            <span className="text-ink-2">Hand in to</span>
-            <div className="inline-flex w-fit rounded-lg bg-lane p-0.5">
-              {([[undefined, "Not set"], ["personal", "Personal board"], ["studio", "Collab Studio"]] as const).map(([v, label]) => (
-                <button key={label} onClick={() => set({ submitTo: v })} aria-pressed={m.submitTo === v}
-                  className={`press h-7 rounded-md px-2.5 text-[12.5px] ${m.submitTo === v ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>{label}</button>
-              ))}
-            </div>
-            <span className="text-ink-2">Due</span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="field h-8 w-40 py-0" />
-              {([["Today", 0], ["+3 days", 3], ["+1 week", 7]] as const).map(([label, n]) => (
-                <button key={label} onClick={() => set({ due: isoDay(n) })} className="btn btn-quiet press h-7 px-2 text-[12px]">{label}</button>
-              ))}
-              {m.due && <button onClick={() => set({ due: undefined })} aria-label="Clear due date" className="btn btn-quiet press h-7 w-7 justify-center px-0"><Icon name="x" size={12} /></button>}
-            </div>
-            <span className="self-start pt-1.5 text-ink-2">Done when</span>
-            <textarea value={m.criteria ?? ""} onChange={(e) => set({ criteria: e.target.value || undefined })} rows={2} placeholder="What counts as finished" aria-label="Completion criteria" className="field resize-none" />
-            {skills.length > 0 && (
-              <>
-                <span className="self-start pt-1 text-ink-2">Skills</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {skills.map((sk) => {
-                    const on = m.skills?.includes(sk.id);
-                    return (
-                      <button key={sk.id} onClick={() => set({ skills: on ? m.skills!.filter((x) => x !== sk.id) : [...(m.skills ?? []), sk.id] })} aria-pressed={on}
-                        className={`press h-7 rounded-full border px-2.5 text-[12px] ${on ? "border-[#3d6f91] bg-[#eef3f7] text-[#3d6f91]" : "border-line text-ink-2 hover:border-line-strong"}`}>{sk.name}</button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        </Section>
-
-        {m.type !== "wall" && m.type !== "studio" && m.type !== "quiz" && (
-          <Section title="How students work" summary={steps || "Steps, a video list, prompts, a timer"}>
-            <div className="space-y-4 text-[13px]">
-              <div>
-                <div className="mb-1 flex items-center gap-2"><Icon name="check" size={13} className="text-ok" /><span className="font-medium">Checklist</span><span className="text-ink-3">· one step per line; all must be ticked to finish</span></div>
-                <textarea value={(m.checklist ?? []).join("\n")} rows={Math.max(2, (m.checklist?.length ?? 0) + 1)}
-                  onChange={(e) => set({ checklist: e.target.value ? e.target.value.split("\n") : undefined })}
-                  onBlur={() => { const c = (m.checklist ?? []).map((x) => x.trim()).filter(Boolean); set({ checklist: c.length ? c : undefined }); }}
-                  placeholder={"Record a 60–90 second take\nInclude one example for your audience\nListen back once"} aria-label="Checklist steps" className="field resize-y leading-relaxed" />
-              </div>
-              <PlaylistEditor key={m.id} items={m.playlist ?? []} onChange={(playlist) => set({ playlist: playlist.length ? playlist : undefined })} />
-              {["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && (
-                <div>
-                  <div className="mb-1 flex items-center gap-2"><Icon name="text" size={13} /><span className="font-medium">Guided prompts</span><span className="text-ink-3">· each gets its own answer box</span></div>
-                  <textarea value={(m.prompts ?? []).join("\n")} rows={Math.max(2, (m.prompts?.length ?? 0) + 1)}
-                    onChange={(e) => set({ prompts: e.target.value ? e.target.value.split("\n") : undefined })}
-                    onBlur={() => { const c = (m.prompts ?? []).map((x) => x.trim()).filter(Boolean); set({ prompts: c.length ? c : undefined }); }}
-                    placeholder={"What did you change?\nWhy did you change it?\nWhat will you try next time?"} aria-label="Guided prompts" className="field resize-y leading-relaxed" />
-                </div>
-              )}
-              {(m.type === "practice" || m.type === "explore") && (
-                <div>
-                  <div className="mb-1.5 flex items-center gap-2"><Icon name="timer" size={13} /><span className="font-medium">Timed rehearsal</span><span className="text-ink-3">· a stopwatch with a target</span></div>
-                  <Seg value={String(m.timer ?? 0)} options={[["0", "Off"], ["30", "0:30"], ["60", "1:00"], ["90", "1:30"], ["120", "2:00"], ["180", "3:00"], ["300", "5:00"]]}
-                    onPick={(v) => set({ timer: Number(v) || undefined })} />
-                  {m.timer ? <p className="mt-1.5 text-[12px] text-ink-3">Students see a {fmtSec(m.timer)} target and every run they time.</p> : null}
-                </div>
-              )}
-            </div>
-          </Section>
-        )}
-
-        <Section title="Media" summary={attachments.length ? plural(attachments.length, "item") : "None yet"}>
+          <Panel n={1} title="Title and what to do">
+            <input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" />
+            <textarea value={m.body} onChange={(e) => set({ body: e.target.value })} rows={5} placeholder="What students should read, watch or do" aria-label="Body" className="field mt-2 resize-y leading-relaxed" />
+            <div className="mt-3">
           <div className="space-y-1.5">
             {attachments.map((x, i) => {
               const timed = x.kind === "video" || (x.kind === "link" && !!videoEmbed(x.url));
@@ -294,199 +179,77 @@ export function CardEditor({
           <div className="mt-2">
             <AttachMenu compact onAdd={(a) => { addAttachment(a); toast(`Added ${a.name ?? a.kind}`, { icon: "upload" }); }} />
           </div>
-          <p className="mt-2 text-[12px] text-ink-3">The first item is the card’s artwork. YouTube and Vimeo links play on the card; set a start and end to point students at one segment.</p>
-        </Section>
-
-        {m.type === "wall" && (
-          <Section title="Wall settings" summary={`${wall.posting === "teacher" ? "Only you post" : "Students post"}${wall.approval ? " · approve first" : ""}${wall.anonymous ? " · names hidden" : ""}`}>
-            <div className="grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-2.5 text-[13px]">
-              <span className="text-ink-2">Who posts</span>
-              <Seg value={wall.posting} options={[["students", "Students"], ["teacher", "Only me"]]} onPick={(v) => setWall({ posting: v as WallSettings["posting"] })} />
-              <span className="text-ink-2">Reactions</span>
-              <Seg value={wall.reactions} options={[["likes", "Likes"], ["votes", "Votes"], ["both", "Both"], ["none", "Off"]]} onPick={(v) => setWall({ reactions: v as WallSettings["reactions"] })} />
-              <span className="text-ink-2">Comments</span>
-              <Seg value={wall.comments ? "on" : "off"} options={[["on", "On"], ["off", "Off"]]} onPick={(v) => setWall({ comments: v === "on" })} />
-              <span className="self-start pt-1.5 text-ink-2">Columns</span>
-              <div>
-                <input defaultValue={(wall.sections ?? []).join(", ")} key={m.id}
-                  onBlur={(e) => { const sec = e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 6); setWall({ sections: sec.length > 1 ? sec : undefined }); }}
-                  placeholder="e.g. What worked, Questions, Ideas" aria-label="Wall columns" className="field h-8 py-0" />
-                <p className="mt-1 text-[11.5px] text-ink-3">Two or more names, separated by commas. Leave empty for one stream.</p>
-              </div>
-              <span className="self-start pt-1 text-ink-2">Moderation</span>
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-ink-2"><input type="checkbox" checked={wall.approval} onChange={(e) => setWall({ approval: e.target.checked })} className="accent-[#1b1b1a]" />Approve posts before others see them</label>
-                <label className="flex items-center gap-2 text-ink-2"><input type="checkbox" checked={wall.anonymous} onChange={(e) => setWall({ anonymous: e.target.checked })} className="accent-[#1b1b1a]" />Hide names from classmates (you still see them)</label>
-              </div>
             </div>
-          </Section>
-        )}
+          </Panel>
 
-        {(m.type === "quiz" || m.type === "practice" || m.type === "read") && (
-          <Section title={m.type === "read" ? "Check for understanding" : "Questions"} start={m.type === "quiz"} summary={m.questions?.filter((q) => q.text.trim()).length ? plural(m.questions.filter((q) => q.text.trim()).length, "question") : m.type === "quiz" ? "None yet: students can’t finish this quiz" : "None"} aside={m.type === "quiz" ? (
-            <label className="flex items-center gap-2 text-[12px] text-ink-2">Tries
-              <Seg value={String(m.attempts ?? 1)} options={[["1", "1"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ attempts: Number(v) > 1 ? Number(v) : undefined })} />
-            </label>
-          ) : undefined}>
-            {m.type === "read" && !m.questions?.length && <p className="mb-2 text-[12px] text-ink-3">Optional. Add a question or two; students get instant feedback and the card finishes when they’ve answered.</p>}
-            {m.type === "quiz" && (
-              <div className="mb-3 grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-2 rounded-lg bg-lane/60 p-2.5 text-[12.5px]">
-                <span className="text-ink-2">Time limit</span>
-                <Seg value={String(m.timeLimit ?? 0)} options={[["0", "None"], ["5", "5 min"], ["10", "10 min"], ["15", "15 min"], ["30", "30 min"]]} onPick={(v) => set({ timeLimit: Number(v) || undefined })} />
-                <span className="text-ink-2">Order</span>
-                <Seg value={m.shuffle ? "mix" : "same"} options={[["same", "Same for all"], ["mix", "Shuffle per student"]]} onPick={(v) => set({ shuffle: v === "mix" || undefined })} />
-                {(m.questions?.length ?? 0) > 2 && (
-                  <>
-                    <span className="text-ink-2">Questions</span>
-                    <label className="flex items-center gap-2 text-ink-2">
-                      Draw
-                      <select value={m.pick ?? 0} onChange={(e) => set({ pick: Number(e.target.value) || undefined })} aria-label="Questions per student" className="field h-7 w-auto py-0 text-[12.5px]">
-                        <option value={0}>all {m.questions!.length}</option>
-                        {Array.from({ length: m.questions!.length - 2 }, (_, i) => i + 2).map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                      at random for each student and try
-                    </label>
-                  </>
-                )}
+          <Panel n={2} title="What comes back">
+            <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="What comes back">
+              {RESPONSES.map((r) => {
+                const suit = suitOf(typeFor(r.id, r.id === "answer" ? share : "teacher", m));
+                return (
+                  <MiniCard key={r.id} tint={suit.tint} cover={suit.cover} icon={<Icon name={r.icon} size={20} />} title={r.name} sub={r.hint}
+                    selected={response === r.id} onClick={() => answers(r.id, r.id === "answer" ? share : "teacher")} />
+                );
+              })}
+            </div>
+            {response === "questions" && (
+              <div className="mt-4">
+                <QuestionsEditor questions={m.questions ?? []} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
               </div>
             )}
-            <QuestionsEditor questions={m.questions ?? []} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
-          </Section>
-        )}
+            {response === "rating" && (
+              <p className="mt-3 text-[12.5px] text-ink-3">Students rate themselves on {skills.length ? skills.map((x) => x.name).join(", ") : "the course’s skills"}. Change the skills in Settings.</p>
+            )}
+          </Panel>
 
-        <Section title="Who gets this card" summary={a.kind === "all" ? "Whole class" : a.kind === "branch" ? `Path: ${a.variant}` : students.find((x) => x.id === a.studentId)?.name ?? "One student"}>
-          <div className="inline-flex rounded-lg bg-lane p-0.5">
-            {([["all", "Whole class", "users"], ["branch", "Paths", "split"], ["student", "One student", "user"]] as const).map(([k, label, icon]) => (
-              <button
-                key={k}
-                onClick={() => {
-                  const next: Audience = k === "all" ? { kind: "all" } : k === "branch" ? { kind: "branch", slot: uid("slot-"), variant: "Guided" } : { kind: "student", studentId: students[0]?.id ?? "" };
-                  if (a.kind !== k) set({ audience: next });
-                }}
-                className={`press inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] ${a.kind === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}
-              >
-                <Icon name={icon} size={12} />{label}
-              </button>
-            ))}
-          </div>
-          {a.kind === "all" && (
-            <button onClick={onBranchOut} className="btn btn-quiet press mt-2 h-7 px-2 text-[12.5px]"><Icon name="plus" size={12} /> Add a Stretch path for this card</button>
-          )}
-          {a.kind === "student" && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {students.map((s) => (
-                <button key={s.id} onClick={() => set({ audience: { kind: "student", studentId: s.id } })} aria-pressed={a.studentId === s.id}
-                  className={`press inline-flex h-7 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-[12.5px] ${a.studentId === s.id ? "border-ink" : "border-line hover:border-line-strong"}`}>
-                  <Avatar name={s.name} size={20} />{s.name}
-                </button>
-              ))}
-            </div>
-          )}
-          {a.kind === "branch" && (
-            <div className="mt-3 space-y-2">
-              <label className="flex items-center gap-2 text-[12.5px] text-ink-2">
-                This path is called
-                <input value={a.variant} onChange={(e) => set({ audience: { ...a, variant: e.target.value } })} aria-label="Path name" className="field h-7 w-32 py-0" />
-              </label>
-              <label className="flex items-start gap-2 rounded-lg border border-line px-3 py-2.5 text-[13px]">
-                <input type="checkbox" className="mt-0.5 accent-[#1b1b1a]" checked={!!lesson.choiceSlots?.includes(a.slot)}
-                  onChange={(e) => onChange({ ...lesson, choiceSlots: e.target.checked ? [...(lesson.choiceSlots ?? []), a.slot] : (lesson.choiceSlots ?? []).filter((x) => x !== a.slot) })} />
-                <span><span className="font-medium">Students choose their own path.</span> <span className="text-ink-3">They see every path and pick one. Where you place a student below is shown to them as your recommendation.</span></span>
-              </label>
-              <p className="text-[12px] text-ink-3">{lesson.choiceSlots?.includes(a.slot) ? "Tap a student to change your recommendation." : "Tap a student to move them to the other path. Students can’t see which path they’re on."}</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {variants.map((v) => {
-                  const who = students.filter((s) => (lesson.branches[a.slot]?.[s.id] ?? variants[0]) === v);
-                  return (
-                    <div key={v} className={`rounded-xl p-2.5 ${v === a.variant ? "bg-[#eef0fb]" : "bg-lane"}`}>
-                      <div className="mb-1.5 flex items-center gap-1.5 text-[12px] text-ink-2">{v}<span className="mono">{who.length}</span>{v === a.variant && <span className="text-[11px] text-[#4b56a8]">· this card</span>}</div>
-                      <div className="flex min-h-7 flex-wrap gap-1">
-                        {who.map((s) => (
-                          <button key={s.id}
-                            onClick={() => {
-                              const next = variants[(variants.indexOf(v) + 1) % variants.length];
-                              onChange({ ...lesson, branches: { ...lesson.branches, [a.slot]: { ...lesson.branches[a.slot], [s.id]: next } } });
-                            }}
-                            className="pop press inline-flex h-6 items-center gap-1 rounded-full border border-line bg-white pl-0.5 pr-2 text-[12px] hover:border-line-strong">
-                            <Avatar name={s.name} size={18} />{s.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
+          {response === "answer" && (
+            <Panel n={3} title="Who sees it">
+              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Who sees it">
+                {SHARES.map((x) => {
+                  const suit = suitOf(typeFor("answer", x.id, m));
+                  return <MiniCard key={x.id} short tint={suit.tint} cover={suit.cover} icon={<Icon name={x.icon} size={18} />} title={x.name} sub={x.hint} selected={share === x.id} onClick={() => answers("answer", x.id)} />;
                 })}
               </div>
-            </div>
+            </Panel>
           )}
-        </Section>
 
-        {<Section title="Tools (APIs) on this card" summary={m.tools.length ? m.tools.map((t) => t.label).join(", ") : "None"}>
-          <div className="space-y-1.5">
-            {available.map(({ c, a: act }, k) => {
-              const header = k === 0 || available[k - 1].c.category !== c.category;
-              const idx = m.tools.findIndex((t) => t.connector === c.id && t.action === act.id);
-              const on = idx >= 0;
-              const first = act.inputs[0];
-              return (
-                <div key={`${c.id}.${act.id}`} className="space-y-1.5">
-                  {header && <div className={`text-[11.5px] text-ink-3 ${k ? "pt-2" : ""}`}>{c.category}</div>}
-                  <button
-                    onClick={() => set({ tools: on ? m.tools.filter((_, k) => k !== idx) : [...m.tools, { connector: c.id, action: act.id, label: act.title }] })}
-                    aria-pressed={on}
-                    className={`press flex h-9 w-full items-center gap-2.5 rounded-lg border px-3 text-[13px] ${on ? "border-ink" : "border-line text-ink-2 hover:border-line-strong"}`}
-                  >
-                    <Icon name={CONNECTOR_ICON[c.id] ?? "plug"} size={14} />
-                    <span className="flex-1 text-left">{act.title}<span className="ml-1.5 text-ink-3">· {c.name}</span></span>
-                    {!c.configured && <span className="text-[11.5px] text-warn">needs key</span>}
-                    <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${on ? "border-ink bg-ink text-white" : "border-line-strong"}`}>{on && <Icon name="check" size={10} strokeWidth={3} />}</span>
-                  </button>
-                  {on && first && first.type !== "textarea" && first.type !== "select" && !first.optional && (
-                    <input
-                      value={m.tools[idx].defaults?.[first.name] ?? ""}
-                      onChange={(e) => set({ tools: m.tools.map((t, k) => (k === idx ? { ...t, defaults: { ...t.defaults, [first.name]: e.target.value } } : t)) })}
-                      placeholder={`Prefill ${first.label.toLowerCase()} (optional)`}
-                      aria-label={`Prefill ${first.label}`}
-                      className="field ml-6 h-8 w-[calc(100%-1.5rem)] py-0"
-                    />
-                  )}
-                </div>
-              );
-            })}
-            {available.length === 0 && <p className="text-[13px] text-ink-3">No connectors are on for this course yet. Turn some on in Settings.</p>}
-          </div>
-        </Section>}
-
-        {m.type === "builder" && (
-          <Section title="Builder" summary={m.flow ? "Guided first piece" : "Free builder with templates"}>
-            <Seg value={m.flow ? "flow" : "free"} options={[["flow", "Guided first speech"], ["free", "Free builder with templates"]]} onPick={(v) => set({ flow: v === "flow" || undefined })} />
-            <p className="mt-2 text-[12px] text-ink-3">{m.flow ? "Students choose “Present an idea” or “Tell a story”, answer one question at a time, then arrange their speech as tiles." : "Students lay out their talk part by part with structure templates, versions, and timing."}</p>
-          </Section>
-        )}
-
-        {m.type === "studio" && (
-          <Section title="Peer review" summary={m.freeReview ? "Students choose whom to review" : "Two assigned peers each"}>
-            <label className="flex items-start gap-2 text-[13px] text-ink-2">
-              <input type="checkbox" checked={!m.freeReview} onChange={(e) => set({ freeReview: e.target.checked ? undefined : true })} className="mt-0.5 accent-[#1b1b1a]" />
-              <span>Assign each student two peers to review <span className="block text-[12px] text-ink-3">Pairs rotate every week and everyone gets exactly two reviewers. Turn off to let students choose.</span></span>
-            </label>
-          </Section>
-        )}
-
-        {m.type !== "wall" && (
-          <Section title="Your form for this card" summary={m.form ? m.form.title || "On" : "None"} aside={!m.form ? <button onClick={() => set({ form: newForm(m) })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Add a form</button> : undefined}>
-            {m.form ? <FormEditor key={m.id} form={m.form} onChange={(form) => set({ form })} /> : (
-              <p className="text-[12.5px] leading-relaxed text-ink-3">After a workshop or practice, fill in feedback, skill levels, a score, or your own questions for each student. It replaces an outside form: answers go straight to the student’s card.</p>
+          <Panel n={response === "answer" ? 4 : 3} title="When and for whom">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="field h-8 w-40 py-0" />
+              {([["Today", 0], ["+3 days", 3], ["+1 week", 7]] as const).map(([label, n]) => (
+                <button key={label} onClick={() => set({ due: isoDay(n) })} className="btn btn-quiet press h-7 px-2 text-[12px]">{label}</button>
+              ))}
+              {m.due && <button onClick={() => set({ due: undefined })} aria-label="Clear due date" className="btn btn-quiet press h-7 w-7 justify-center px-0"><Icon name="x" size={12} /></button>}
+            </div>
+            {a.kind === "branch" ? (
+              <p className="mt-3 text-[12.5px] text-ink-2">
+                Only students on the “{a.variant}” path get this card (set up before paths were removed).{" "}
+                <button onClick={() => set({ audience: { kind: "all" } })} className="underline underline-offset-2 hover:text-ink">Give it to everyone</button>
+              </p>
+            ) : (
+              <>
+                <div className="mt-3"><Seg value={a.kind} options={[["all", "Everyone"], ["student", "One student"]]} onPick={(v) => v !== a.kind && set({ audience: v === "all" ? { kind: "all" } : { kind: "student", studentId: students[0]?.id ?? "" } })} /></div>
+                {a.kind === "student" && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {students.map((s) => (
+                      <button key={s.id} onClick={() => set({ audience: { kind: "student", studentId: s.id } })} aria-pressed={a.studentId === s.id}
+                        className={`press inline-flex h-7 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-[12.5px] ${a.studentId === s.id ? "border-ink" : "border-line hover:border-line-strong"}`}>
+                        <Avatar name={s.name} size={20} />{s.name}
+                      </button>
+                    ))}
+                    {!students.length && <span className="text-[12.5px] text-ink-3">No students yet.</span>}
+                  </div>
+                )}
+              </>
             )}
-          </Section>
-        )}
+          </Panel>
 
-        {<Section title="Rules" summary={m.gate ? "Face down until earlier cards are done" : "Open any time"}>
-          <label className="flex items-center gap-2 text-[13px] text-ink-2">
-            <input type="checkbox" checked={!!m.gate} onChange={(e) => set({ gate: e.target.checked })} className="accent-[#1b1b1a]" />
-            Stay face down until the cards before it are done
-          </label>
-        </Section>}
-
+          {older.length > 0 && (
+            <p className="px-1 text-[12px] text-ink-3">
+              Older settings on this card still apply: {older.join(" · ")}.{" "}
+              <button onClick={() => set(clearOlder(m))} className="underline underline-offset-2 hover:text-ink">Clear them</button>
+            </p>
+          )}
         </div>
       </div>
     </aside>,
@@ -494,13 +257,23 @@ export function CardEditor({
   );
 }
 
+/** One of the four parts of a card, numbered in the order a teacher fills them in. */
+function Panel({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <section data-sec={title} className="rounded-xl border border-line bg-white px-4 py-3.5">
+      <h3 className="mb-2.5 flex items-baseline gap-2 text-[13px] font-medium"><span className="font-mono text-[11px] font-normal text-ink-3">{n}</span>{title}</h3>
+      {children}
+    </section>
+  );
+}
+
 /** A small card to choose with: 5 wide by 7 tall, in the suit's colours. */
-function MiniCard({ tint, cover, icon, title, sub, selected, dashed, onClick, onRemove, label }: {
-  tint: string; cover?: string; icon: React.ReactNode; title: string; sub?: string; selected?: boolean; dashed?: boolean; onClick: () => void; onRemove?: () => void; label?: string;
+function MiniCard({ tint, cover, icon, title, sub, selected, dashed, short, onClick, onRemove, label }: {
+  tint: string; cover?: string; icon: React.ReactNode; title: string; sub?: string; selected?: boolean; dashed?: boolean; short?: boolean; onClick: () => void; onRemove?: () => void; label?: string;
 }) {
   return (
-    <div className="group relative aspect-[5/7]">
-      <button onClick={onClick} aria-pressed={selected} aria-label={label ?? title} title={sub}
+    <div className={`group relative ${short ? "min-h-24" : "aspect-[5/7]"}`}>
+      <button onClick={onClick} role={selected !== undefined ? "radio" : undefined} aria-checked={selected} aria-label={label ?? title} title={sub}
         className={`press relative flex h-full w-full flex-col overflow-hidden rounded-[10px] border bg-white text-left transition-transform ${selected ? "-translate-y-1 border-transparent shadow-[0_10px_22px_-12px_rgba(20,20,18,0.45)] ring-2" : dashed ? "border-dashed border-line-strong hover:-translate-y-0.5" : "border-line hover:-translate-y-0.5 hover:shadow-[0_8px_18px_-12px_rgba(20,20,18,0.35)]"}`}
         style={selected ? ({ "--tw-ring-color": tint } as React.CSSProperties) : undefined}>
         {cover && <span className="absolute inset-0 opacity-80" style={{ background: cover }} />}
@@ -520,63 +293,31 @@ function MiniCard({ tint, cover, icon, title, sub, selected, dashed, onClick, on
   );
 }
 
-/**
- * Choosing what the card is, with cards: the suit along the top, then the kinds of that suit, the teacher's
- * own saved cards (and saving this one), and ready-made cards to start from.
- */
-function KindDeck({ m, onPick, onApply, onSave }: {
-  m: Module; skills: Skill[]; onPick: (t: ModuleType) => void; onApply: (content: Omit<Module, "id">, name: string) => void; onSave?: () => void;
-}) {
+/** For a card just put down: start from one of the teacher's saved cards or a ready-made one of this suit. */
+function StartFrom({ m, onApply }: { m: Module; onApply: (content: Omit<Module, "id">) => void }) {
   const suit = suitOf(m.type);
   const saved = useLibrary().filter((c) => suitOf(c.module.type).id === suit.id);
   const temps = CARD_TEMPLATES.filter((t) => suitOf(t.make().type).id === suit.id);
+  if (!saved.length && !temps.length) return null;
   async function forget(id: string, name: string) {
     if (!confirm(`Remove “${name}” from your saved cards? Cards already in your courses stay.`)) return;
     const r = await fetch("/api/library", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) return toast("Couldn’t remove it", { icon: "x", tone: "bad" });
     await loadLibrary(true);
   }
-  const label = (t: string) => <div className="mb-1.5 mt-4 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{t}</div>;
   return (
-    <section data-sec="Card type" aria-label="What this card is" className="px-4 pb-5">
-      <div className="flex gap-1.5" role="radiogroup" aria-label="Suit">
-        {SUITS.map((x) => (
-          <button key={x.id} role="radio" aria-checked={suit.id === x.id} onClick={() => suit.id !== x.id && onPick(x.types[0])}
-            className={`press inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full border text-[12.5px] font-semibold pointer-coarse:h-10 ${suit.id === x.id ? "border-transparent bg-white shadow-[0_2px_8px_-4px_rgba(20,20,18,0.35)]" : "border-line text-ink-3 hover:border-line-strong"}`}
-            style={suit.id === x.id ? { color: x.tint } : undefined}>
-            <span className="h-2 w-2 rounded-full" style={{ background: x.tint }} />{x.name}
-          </button>
-        ))}
-      </div>
-
-      {label(`Kind of ${suit.name} card`)}
-      <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={`Kind of ${suit.name} card`}>
-        {suit.types.map((t) => (
-          <MiniCard key={t} tint={suit.tint} cover={suit.cover} icon={<Icon name={t} size={22} />} title={TYPE_META[t].name} sub={TYPE_META[t].hint}
-            selected={m.type === t} onClick={() => m.type !== t && onPick(t)} />
-        ))}
-      </div>
-
-      {label("Your cards")}
+    <section aria-label="Start from" className="px-1 pb-1">
+      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">Start from</div>
       <div className="grid grid-cols-4 gap-2">
-        {onSave && <MiniCard tint="#1b1b1a" dashed icon={<Icon name="star" size={20} />} title="Save this card" sub="Reuse it in any course" onClick={onSave} label="Save this card to your cards" />}
         {saved.map((c) => (
-          <MiniCard key={c.id} tint={suit.tint} cover={suit.cover} icon={<Icon name={c.module.type} size={20} />} title={c.name} sub={TYPE_META[c.module.type].name}
-            onClick={() => onApply(c.module, c.name)} onRemove={() => forget(c.id, c.name)} label={`Use your saved card ${c.name}`} />
+          <MiniCard key={c.id} tint={suit.tint} cover={suit.cover} icon={<Icon name="star" size={18} />} title={c.name} sub="Your card"
+            onClick={() => onApply(c.module)} onRemove={() => forget(c.id, c.name)} label={`Start from your card ${c.name}`} />
         ))}
+        {temps.map((t) => {
+          const made = t.make();
+          return <MiniCard key={t.id} tint={suit.tint} icon={<Icon name={made.type} size={18} />} title={t.name} sub={t.description} onClick={() => onApply(made)} label={`Start from ${t.name}`} />;
+        })}
       </div>
-
-      {temps.length > 0 && (
-        <>
-          {label("Ready-made")}
-          <div className="grid grid-cols-4 gap-2">
-            {temps.map((t) => {
-              const made = t.make();
-              return <MiniCard key={t.id} tint={suit.tint} icon={<Icon name={made.type} size={20} />} title={t.name} sub={t.description} onClick={() => onApply(made, t.name)} label={`Start from ${t.name}`} />;
-            })}
-          </div>
-        </>
-      )}
     </section>
   );
 }
@@ -647,42 +388,3 @@ function QuestionsEditor({ questions, onChange }: { questions: Question[]; onCha
   );
 }
 
-type PlayItem = NonNullable<Module["playlist"]>[number];
-
-/**
- * A playlist written as plain lines, so teachers can paste a "patchwork" quickly:
- *   ## Section name
- *   Title | https://…        (required, in order)
- *   + Title | https://…      (optional extra)
- */
-function PlaylistEditor({ items, onChange }: { items: PlayItem[]; onChange: (items: PlayItem[]) => void }) {
-  const toText = (xs: PlayItem[]) => {
-    let section: string | undefined;
-    return xs.map((x) => `${x.section && x.section !== section ? `## ${(section = x.section)}\n` : ""}${x.optional ? "+ " : ""}${x.title} | ${x.url}`).join("\n");
-  };
-  const [text, setText] = useState(() => toText(items));
-  function parse(t: string): PlayItem[] {
-    let section: string | undefined;
-    const out: PlayItem[] = [];
-    for (const raw of t.split("\n")) {
-      const line = raw.trim();
-      if (!line) continue;
-      if (line.startsWith("#")) { section = line.replace(/^#+\s*/, "") || undefined; continue; }
-      const optional = line.startsWith("+");
-      const [title, url] = line.replace(/^\+\s*/, "").split("|").map((x) => x.trim());
-      if (!url || !/^https:\/\//.test(url)) continue;
-      const prev = items.find((x) => x.url === url);
-      out.push({ id: prev?.id ?? uid("v-"), title: title || url, url, section, optional: optional || undefined });
-    }
-    return out;
-  }
-  return (
-    <div>
-      <div className="mb-1 flex items-center gap-2"><Icon name="video" size={13} /><span className="font-medium">Video playlist</span><span className="text-ink-3">· a “patchwork” of clips, in order</span></div>
-      <textarea value={text} rows={Math.max(3, text.split("\n").length + 1)} onChange={(e) => setText(e.target.value)} onBlur={() => onChange(parse(text))}
-        placeholder={"## Opening strong\nHooks that work | https://www.linkedin.com/learning/…\nYour first 30 seconds | https://…\n+ More on openings (optional) | https://…"}
-        aria-label="Video playlist" className="field resize-y font-mono text-[12px] leading-relaxed" />
-      <p className="mt-1 text-[11.5px] text-ink-3">One video per line as “Title | link”. “## ” starts a section, “+ ” marks an optional extra. Students must watch the rest before finishing.{items.length ? ` ${items.filter((x) => !x.optional).length} required, ${items.filter((x) => x.optional).length} optional.` : ""}</p>
-    </div>
-  );
-}
