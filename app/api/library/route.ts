@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (!m || typeof m !== "object" || !TYPE_ORDER.includes(m.type as Module["type"])) return Response.json({ ok: false, error: "That didn’t look like a card" }, { status: 400 });
   // Keep the content; drop what only makes sense in the course it came from.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, audience, due, choice, picked, ...rest } = m as Module;
+  const { id, audience, due, choice, picked, personal, ...rest } = m as Module;
   const card0 = { ...rest, audience: { kind: "all" }, tools: Array.isArray(rest.tools) ? rest.tools : [], attachments: Array.isArray(rest.attachments) ? rest.attachments : [], title: String(rest.title ?? "").slice(0, 120), body: String(rest.body ?? "").slice(0, 8000) } as Omit<Module, "id">;
   if (JSON.stringify(card0).length > MAX_BYTES) return Response.json({ ok: false, error: "This card is too big to save" }, { status: 400 });
   const name = String(body.name ?? card0.title ?? "").trim().slice(0, 60) || "My card";

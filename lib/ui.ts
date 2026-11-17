@@ -14,8 +14,8 @@ const COVER = {
 };
 
 export const SUITS: { id: Suit; name: string; tint: string; cover: string; rule: string; types: ModuleType[] }[] = [
-  { id: "learn", name: "Learn", tint: "#3d68a6", cover: COVER.learn, rule: "Read, watch, listen, and check you got it.", types: ["read", "explore", "quiz"] },
-  { id: "do", name: "Do", tint: "#a0561f", cover: COVER.do, rule: "Practice, make, hand in, and look back.", types: ["practice", "builder", "submit", "selfcheck", "reflect"] },
+  { id: "learn", name: "Learn", tint: "#3d68a6", cover: COVER.learn, rule: "Read, watch, and listen.", types: ["read", "explore"] },
+  { id: "do", name: "Do", tint: "#a0561f", cover: COVER.do, rule: "Practice, answer, make, hand in, and look back.", types: ["practice", "quiz", "builder", "submit", "selfcheck", "reflect"] },
   { id: "share", name: "Share", tint: "#9a4a8c", cover: COVER.share, rule: "Show your work and trade feedback.", types: ["studio", "wall"] },
 ];
 

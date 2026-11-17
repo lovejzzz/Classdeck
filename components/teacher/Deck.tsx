@@ -17,7 +17,7 @@ import { CardTable } from "../cards/CardTable";
 import { Icon } from "../Icon";
 import { useShortcuts } from "@/lib/shortcuts";
 import { useUrlState } from "@/lib/urlState";
-import { standardWeek, type CardTemplate } from "@/lib/templates";
+import { standardWeek } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
 import { SessionRunner } from "./SessionRunner";
 import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
@@ -149,35 +149,22 @@ export function Deck({ course, connectors, onRefresh, progress = {}, studioPosts
     edit(l.id, m.id);
   }
 
-  function addFromTemplate(l: Lesson, t: CardTemplate) {
-    const m: Module = { id: uid("m-"), ...t.make() };
-    change({ ...l, modules: [...l.modules, m] });
-    edit(l.id, m.id);
-  }
-
-  /** What the New card fan hands back: a blank card, a kind, a ready-made card, a saved card, or a custom one. */
+  /** A card put down from the New card fan: a suit (its kind is picked in the editor) or a blank card. */
   function addChosen(l: Lesson, c: NewCardChoice) {
-    if (c.kind === "type") return addCard(l, c.type);
-    if (c.kind === "template") return addFromTemplate(l, c.template);
-    let m: Module;
-    if (c.kind === "saved") {
-      const own = new Set((course.skills ?? []).map((x) => x.id));
-      const copy = structuredClone(c.card.module);
-      m = { ...copy, id: uid("m-"), skills: copy.skills?.filter((x) => own.has(x)), audience: { kind: "all" } };
-    } else {
-      const type = c.kind === "custom" ? SUITS.find((x) => x.id === c.suit)!.types[0] : "practice";
-      m = { id: uid("m-"), type, title: c.kind === "custom" ? `My ${SUITS.find((x) => x.id === c.suit)!.name} card` : "Untitled card", body: "", audience: { kind: "all" }, tools: [], attachments: [] };
-    }
+    const suit = c.kind === "suit" ? SUITS.find((x) => x.id === c.suit)! : undefined;
+    const m: Module = {
+      id: uid("m-"), type: suit ? suit.types[0] : "practice", title: suit ? `New ${suit.name} card` : "Untitled card",
+      body: "", audience: { kind: "all" }, tools: [], attachments: [],
+    };
     change({ ...l, modules: [...l.modules, m] });
     edit(l.id, m.id);
-    if (c.kind === "custom") toast("Make it your own, then press “Save to my cards” at the top to reuse it", { icon: "star" });
   }
 
   async function saveToLibrary(m: Module) {
     const r = await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ module: m, name: m.title }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) return toast(r.error ?? "Couldn’t save it", { icon: "x", tone: "bad" });
     await loadLibrary(true);
-    toast(`Saved. It’s under New card → ${suitOf(m.type).name}`, { icon: "star" });
+    toast(`Saved to Your cards. Put down a ${suitOf(m.type).name} card to use it.`, { icon: "star" });
   }
 
   async function duplicate(op_: "duplicateWeek" | "duplicateLesson", id: string, what: string) {

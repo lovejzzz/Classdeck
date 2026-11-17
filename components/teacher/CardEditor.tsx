@@ -10,6 +10,8 @@ import { fmtSec, isoDay } from "@/lib/grading";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
 import { TYPE_META, SUITS, suitOf } from "@/lib/ui";
+import { CARD_TEMPLATES } from "@/lib/templates";
+import { loadLibrary, useLibrary } from "./NewCardFan";
 import type { Attachment, Audience, Lesson, Module, ModuleType, Question, Skill, Student, WallSettings } from "@/lib/types";
 import { CardFace } from "../cards/CardFace";
 import { Avatar, CONNECTOR_ICON, Icon } from "../Icon";
@@ -53,45 +55,36 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
   );
 }
 
-/** Short names for the jump bar at the top of the editor. */
-const SHORT: Record<string, string> = {
-  "Card type": "Type", "Activity details": "Details", "How students work": "Steps", "Wall settings": "Wall", "Check for understanding": "Questions",
-  "Who gets this card": "Who", "Tools (APIs) on this card": "Tools", "Builder": "Builder", "Peer review": "Review", "Your form for this card": "Form",
-};
-
-/** A row of section names that stays at the top of the editor, so a long card doesn't mean a long scroll. */
-function SectionNav({ watch }: { watch: string }) {
-  const ref = useRef<HTMLElement>(null);
-  const [names, setNames] = useState<string[]>([]);
-  useEffect(() => {
-    const box = ref.current?.parentElement;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads which sections this card type shows
-    setNames([...(box?.querySelectorAll<HTMLElement>("section[data-sec]") ?? [])].map((x) => x.dataset.sec!));
-  }, [watch]);
+/**
+ * One part of the card's setup, shown as a card on the table: its name and a one-line summary,
+ * opening in place to edit. Sections not in use stay closed.
+ */
+function Section({ title, summary, children, aside, start = false }: { title: string; summary?: string; children: React.ReactNode; aside?: React.ReactNode; start?: boolean }) {
+  const [open, setOpen] = useState(start);
   return (
-    <nav ref={ref} aria-label="Jump to a section" className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-line bg-white/95 px-4 py-2 backdrop-blur [scrollbar-width:none]">
-      {names.map((n) => (
-        <button key={n} onClick={() => ref.current?.parentElement?.querySelector(`section[data-sec="${n}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          className="press h-7 flex-none rounded-full px-2.5 text-[12px] text-ink-2 hover:bg-lane hover:text-ink">{SHORT[n] ?? n}</button>
-      ))}
-    </nav>
-  );
-}
-
-function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
-  return (
-    <section data-sec={title} className="scroll-mt-11 border-t border-line px-5 py-4">
-      <div className="mb-2.5 flex items-center"><h3 className="flex-1 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{title}</h3>{aside}</div>
-      {children}
+    <section data-sec={title} className={`rounded-xl border bg-white transition-shadow ${open ? "border-line-strong shadow-[0_8px_24px_-16px_rgba(20,20,18,0.35)]" : "border-line hover:border-line-strong"}`}>
+      <div className="flex min-h-11 items-center gap-2 pr-2">
+        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-2 py-2.5 pl-4 text-left">
+          <span className="flex-none text-[13px] font-medium">{title}</span>
+          {!open && summary && <span className="min-w-0 truncate text-[12px] text-ink-3">{summary}</span>}
+        </button>
+        {open && aside}
+        <button onClick={() => setOpen((o) => !o)} aria-label={open ? `Close ${title}` : `Open ${title}`} tabIndex={-1} className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-ink-3 hover:bg-lane">
+          <Icon name="chevron" size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+      {open && <div className="border-t border-line px-4 py-3.5">{children}</div>}
     </section>
   );
 }
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export function CardEditor({
   lesson, module: m, students, connectors, enabled, open, onChange, onClose, onDelete, onBranchOut, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [],
 }: {
   onDuplicate: () => void;
-  /** Keep a copy among the teacher's saved cards, to reuse from New card in any course. */
+  /** Keep a copy among the teacher's saved cards, to reuse in any course. */
   onSaveToLibrary?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
@@ -120,9 +113,7 @@ export function CardEditor({
     { keys: "[", label: "Previous card", run: () => onPrev?.(), enabled: open && !!onPrev },
     { keys: "]", label: "Next card", run: () => onNext?.(), enabled: open && !!onNext },
   ]);
-  // Less-used sections are folded away; a section in use on this card always shows.
-  const [more, setMore] = useState(false);
-  const usesSteps = !!(m.checklist?.length || m.playlist?.length || m.prompts?.length || m.timer);
+  const steps = [m.checklist?.length && plural(m.checklist.length, "step"), m.playlist?.length && plural(m.playlist.length, "video"), m.prompts?.length && plural(m.prompts.length, "prompt"), m.timer && `${fmtSec(m.timer)} timer`].filter(Boolean).join(" · ");
   const set = (patch: Partial<Module>) => onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? { ...x, ...patch } : x)) });
   const attachments = m.attachments ?? [];
   const addAttachment = (a: Omit<Attachment, "id">) => set({ attachments: [...attachments, { ...a, id: uid("a-") }] });
@@ -155,52 +146,31 @@ export function CardEditor({
           <span className="font-medium">Card {position ? position.index + 1 : ""}</span>
           {position && <span className="text-ink-3"> of {position.total} · {position.lesson}</span>}
         </span>
-        {onSaveToLibrary && <button onClick={onSaveToLibrary} className="btn btn-quiet press h-8" title="Save a copy to reuse from New card in any of your courses"><Icon name="star" size={13} /> Save to my cards</button>}
         <button onClick={onDuplicate} className="btn btn-quiet press h-8"><Icon name="layers" size={13} /> Duplicate</button>
         <button onClick={onDelete} className="btn btn-quiet press h-8 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
         <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <SectionNav watch={`${m.id}:${m.type}:${!!m.form}:${more}`} />
-        <div className="bg-[#f7f7f5] px-5 py-7"><TiltPreview m={m} /></div>
+      <div className="flex-1 overflow-y-auto bg-[#f7f7f5]">
+        {/* The card on the table, and the cards to choose what it is. */}
+        <div className="px-5 pb-4 pt-6"><TiltPreview m={m} /></div>
+        <KindDeck m={m} skills={skills} onPick={(t) => set({ type: t, questions: (t === "practice" || t === "quiz") && !m.questions?.length ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : m.questions })}
+          onApply={(content, name) => {
+            const touched = !!(m.body.trim() || m.attachments?.length || m.questions?.some((q) => q.text.trim()) || m.checklist?.length || m.prompts?.length || !/^(New .+ card|Untitled card)$/.test(m.title));
+            if (touched && !confirm(`Replace what’s on this card with “${name}”? Who it’s for stays the same.`)) return;
+            const own = new Set(skills.map((x) => x.id));
+            const next: Module = { ...structuredClone(content), id: m.id, audience: m.audience, skills: content.skills?.filter((x) => own.has(x)) } as Module;
+            onChange({ ...lesson, modules: lesson.modules.map((x) => (x.id === m.id ? next : x)) });
+          }}
+          onSave={onSaveToLibrary} />
 
-        <Section title="Card type">
-          {(() => {
-            const pick = (t: ModuleType) => set({ type: t, questions: (t === "practice" || t === "quiz") && !m.questions?.length ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : m.questions });
-            const suit = suitOf(m.type);
-            return (
-              <>
-                {/* Three suits, like a card game; the variant is the kind of activity inside it. */}
-                <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Suit">
-                  {SUITS.map((x) => (
-                    <button key={x.id} role="radio" aria-checked={suit.id === x.id} onClick={() => suit.id !== x.id && pick(x.types[0])}
-                      className={`press rounded-lg border px-2.5 py-2 text-left ${suit.id === x.id ? "border-ink bg-white" : "border-line hover:border-line-strong"}`}>
-                      <span className="flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: x.tint }}><span className="h-2 w-2 rounded-full" style={{ background: x.tint }} />{x.name}</span>
-                      <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-3">{x.rule}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label={`Kind of ${suit.name} card`}>
-                  {suit.types.map((t) => (
-                    <button key={t} role="radio" aria-checked={m.type === t} onClick={() => m.type !== t && pick(t)} title={TYPE_META[t].hint}
-                      className={`press inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12.5px] pointer-coarse:h-10 ${m.type === t ? "border-ink bg-white text-ink" : "border-line text-ink-2 hover:border-line-strong"}`}>
-                      <span style={{ color: suit.tint }}><Icon name={t} size={13} /></span>{TYPE_META[t].name}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-1.5 text-[12px] text-ink-3">{TYPE_META[m.type].hint}.</p>
-              </>
-            );
-          })()}
-        </Section>
-
-        <Section title="Text">
+        <div className="space-y-2 px-4 pb-8">
+        <Section title="Text" summary={m.title} start>
           <input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" />
           <textarea value={m.body} onChange={(e) => set({ body: e.target.value })} rows={5} placeholder="What students should read or do" aria-label="Body" className="field mt-2 resize-y leading-relaxed" />
         </Section>
 
-        <Section title="Activity details">
+        <Section title="Time, due date, skills" summary={[m.minutes ? `${m.minutes} min` : "No time set", m.due && `due ${new Date(`${m.due}T12:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, m.skills?.length && plural(m.skills.length, "skill")].filter(Boolean).join(" · ")}>
           <div className="grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-2.5 text-[13px]">
             <span className="text-ink-2">Time</span>
             <label className="flex items-center gap-2">
@@ -241,8 +211,8 @@ export function CardEditor({
           </div>
         </Section>
 
-        {m.type !== "wall" && m.type !== "studio" && m.type !== "quiz" && (more || usesSteps) && (
-          <Section title="How students work">
+        {m.type !== "wall" && m.type !== "studio" && m.type !== "quiz" && (
+          <Section title="How students work" summary={steps || "Steps, a video list, prompts, a timer"}>
             <div className="space-y-4 text-[13px]">
               <div>
                 <div className="mb-1 flex items-center gap-2"><Icon name="check" size={13} className="text-ok" /><span className="font-medium">Checklist</span><span className="text-ink-3">· one step per line; all must be ticked to finish</span></div>
@@ -273,7 +243,7 @@ export function CardEditor({
           </Section>
         )}
 
-        <Section title="Media">
+        <Section title="Media" summary={attachments.length ? plural(attachments.length, "item") : "None yet"}>
           <div className="space-y-1.5">
             {attachments.map((x, i) => {
               const timed = x.kind === "video" || (x.kind === "link" && !!videoEmbed(x.url));
@@ -313,7 +283,7 @@ export function CardEditor({
         </Section>
 
         {m.type === "wall" && (
-          <Section title="Wall settings">
+          <Section title="Wall settings" summary={`${wall.posting === "teacher" ? "Only you post" : "Students post"}${wall.approval ? " · approve first" : ""}${wall.anonymous ? " · names hidden" : ""}`}>
             <div className="grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-2.5 text-[13px]">
               <span className="text-ink-2">Who posts</span>
               <Seg value={wall.posting} options={[["students", "Students"], ["teacher", "Only me"]]} onPick={(v) => setWall({ posting: v as WallSettings["posting"] })} />
@@ -337,8 +307,8 @@ export function CardEditor({
           </Section>
         )}
 
-        {(m.type === "quiz" || ((m.type === "practice" || m.type === "read") && (more || !!m.questions?.length))) && (
-          <Section title={m.type === "read" ? "Check for understanding" : "Questions"} aside={m.type === "quiz" ? (
+        {(m.type === "quiz" || m.type === "practice" || m.type === "read") && (
+          <Section title={m.type === "read" ? "Check for understanding" : "Questions"} start={m.type === "quiz"} summary={m.questions?.filter((q) => q.text.trim()).length ? plural(m.questions.filter((q) => q.text.trim()).length, "question") : "None"} aside={m.type === "quiz" ? (
             <label className="flex items-center gap-2 text-[12px] text-ink-2">Tries
               <Seg value={String(m.attempts ?? 1)} options={[["1", "1"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ attempts: Number(v) > 1 ? Number(v) : undefined })} />
             </label>
@@ -369,7 +339,7 @@ export function CardEditor({
           </Section>
         )}
 
-        <Section title="Who gets this card">
+        <Section title="Who gets this card" summary={a.kind === "all" ? "Whole class" : a.kind === "branch" ? `Path: ${a.variant}` : students.find((x) => x.id === a.studentId)?.name ?? "One student"}>
           <div className="inline-flex rounded-lg bg-lane p-0.5">
             {([["all", "Whole class", "users"], ["branch", "Paths", "split"], ["student", "One student", "user"]] as const).map(([k, label, icon]) => (
               <button
@@ -435,7 +405,7 @@ export function CardEditor({
           )}
         </Section>
 
-        {(more || m.tools.length > 0) && <Section title="Tools (APIs) on this card">
+        {<Section title="Tools (APIs) on this card" summary={m.tools.length ? m.tools.map((t) => t.label).join(", ") : "None"}>
           <div className="space-y-1.5">
             {available.map(({ c, a: act }, k) => {
               const header = k === 0 || available[k - 1].c.category !== c.category;
@@ -472,14 +442,14 @@ export function CardEditor({
         </Section>}
 
         {m.type === "builder" && (
-          <Section title="Builder">
+          <Section title="Builder" summary={m.flow ? "Guided first piece" : "Free builder with templates"}>
             <Seg value={m.flow ? "flow" : "free"} options={[["flow", "Guided first speech"], ["free", "Free builder with templates"]]} onPick={(v) => set({ flow: v === "flow" || undefined })} />
             <p className="mt-2 text-[12px] text-ink-3">{m.flow ? "Students choose “Present an idea” or “Tell a story”, answer one question at a time, then arrange their speech as tiles." : "Students lay out their talk part by part with structure templates, versions, and timing."}</p>
           </Section>
         )}
 
         {m.type === "studio" && (
-          <Section title="Peer review">
+          <Section title="Peer review" summary={m.freeReview ? "Students choose whom to review" : "Two assigned peers each"}>
             <label className="flex items-start gap-2 text-[13px] text-ink-2">
               <input type="checkbox" checked={!m.freeReview} onChange={(e) => set({ freeReview: e.target.checked ? undefined : true })} className="mt-0.5 accent-[#1b1b1a]" />
               <span>Assign each student two peers to review <span className="block text-[12px] text-ink-3">Pairs rotate every week and everyone gets exactly two reviewers. Turn off to let students choose.</span></span>
@@ -487,31 +457,112 @@ export function CardEditor({
           </Section>
         )}
 
-        {m.type !== "wall" && (more || !!m.form) && (
-          <Section title="Your form for this card" aside={!m.form ? <button onClick={() => set({ form: newForm(m) })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Add a form</button> : undefined}>
+        {m.type !== "wall" && (
+          <Section title="Your form for this card" summary={m.form ? m.form.title || "On" : "None"} aside={!m.form ? <button onClick={() => set({ form: newForm(m) })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Add a form</button> : undefined}>
             {m.form ? <FormEditor key={m.id} form={m.form} onChange={(form) => set({ form })} /> : (
               <p className="text-[12.5px] leading-relaxed text-ink-3">After a workshop or practice, fill in feedback, skill levels, a score, or your own questions for each student. It replaces an outside form: answers go straight to the student’s card.</p>
             )}
           </Section>
         )}
 
-        {(more || !!m.gate) && <Section title="Rules">
+        {<Section title="Rules" summary={m.gate ? "Face down until earlier cards are done" : "Open any time"}>
           <label className="flex items-center gap-2 text-[13px] text-ink-2">
             <input type="checkbox" checked={!!m.gate} onChange={(e) => set({ gate: e.target.checked })} className="accent-[#1b1b1a]" />
             Stay face down until the cards before it are done
           </label>
         </Section>}
 
-        {/* Less-used options stay folded until they're wanted; any already in use always show. */}
-        <div className="border-t border-line px-5 py-4">
-          <button onClick={() => setMore((x) => !x)} aria-expanded={more} className="btn btn-quiet press h-8 px-2 text-[12.5px]">
-            <Icon name="chevron" size={12} className={`transition-transform ${more ? "rotate-180" : ""}`} />
-            {more ? "Fewer options" : "More options: steps, questions, tools, a form, rules"}
-          </button>
         </div>
       </div>
     </aside>,
     document.body,
+  );
+}
+
+/** A small card to choose with: 5 wide by 7 tall, in the suit's colours. */
+function MiniCard({ tint, cover, icon, title, sub, selected, dashed, onClick, onRemove, label }: {
+  tint: string; cover?: string; icon: React.ReactNode; title: string; sub?: string; selected?: boolean; dashed?: boolean; onClick: () => void; onRemove?: () => void; label?: string;
+}) {
+  return (
+    <div className="group relative aspect-[5/7]">
+      <button onClick={onClick} aria-pressed={selected} aria-label={label ?? title} title={sub}
+        className={`press relative flex h-full w-full flex-col overflow-hidden rounded-[10px] border bg-white text-left transition-transform ${selected ? "-translate-y-1 border-transparent shadow-[0_10px_22px_-12px_rgba(20,20,18,0.45)] ring-2" : dashed ? "border-dashed border-line-strong hover:-translate-y-0.5" : "border-line hover:-translate-y-0.5 hover:shadow-[0_8px_18px_-12px_rgba(20,20,18,0.35)]"}`}
+        style={selected ? ({ "--tw-ring-color": tint } as React.CSSProperties) : undefined}>
+        {cover && <span className="absolute inset-0 opacity-80" style={{ background: cover }} />}
+        <span className="relative flex flex-1 items-center justify-center" style={{ color: tint }}>{icon}</span>
+        <span className="relative px-2 pb-2">
+          <span className="block text-[11.5px] font-semibold leading-tight line-clamp-2">{title}</span>
+          {sub && <span className="mt-0.5 block text-[10px] leading-snug text-ink-2 line-clamp-2">{sub}</span>}
+        </span>
+      </button>
+      {onRemove && (
+        <button onClick={onRemove} aria-label={`Remove ${title} from your saved cards`}
+          className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-white text-ink-3 opacity-0 shadow-sm hover:text-bad focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
+          <Icon name="x" size={10} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Choosing what the card is, with cards: the suit along the top, then the kinds of that suit, the teacher's
+ * own saved cards (and saving this one), and ready-made cards to start from.
+ */
+function KindDeck({ m, onPick, onApply, onSave }: {
+  m: Module; skills: Skill[]; onPick: (t: ModuleType) => void; onApply: (content: Omit<Module, "id">, name: string) => void; onSave?: () => void;
+}) {
+  const suit = suitOf(m.type);
+  const saved = useLibrary().filter((c) => suitOf(c.module.type).id === suit.id);
+  const temps = CARD_TEMPLATES.filter((t) => suitOf(t.make().type).id === suit.id);
+  async function forget(id: string, name: string) {
+    if (!confirm(`Remove “${name}” from your saved cards? Cards already in your courses stay.`)) return;
+    const r = await fetch("/api/library", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+    if (!r.ok) return toast("Couldn’t remove it", { icon: "x", tone: "bad" });
+    await loadLibrary(true);
+  }
+  const label = (t: string) => <div className="mb-1.5 mt-4 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{t}</div>;
+  return (
+    <section data-sec="Card type" aria-label="What this card is" className="px-4 pb-5">
+      <div className="flex gap-1.5" role="radiogroup" aria-label="Suit">
+        {SUITS.map((x) => (
+          <button key={x.id} role="radio" aria-checked={suit.id === x.id} onClick={() => suit.id !== x.id && onPick(x.types[0])}
+            className={`press inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full border text-[12.5px] font-semibold pointer-coarse:h-10 ${suit.id === x.id ? "border-transparent bg-white shadow-[0_2px_8px_-4px_rgba(20,20,18,0.35)]" : "border-line text-ink-3 hover:border-line-strong"}`}
+            style={suit.id === x.id ? { color: x.tint } : undefined}>
+            <span className="h-2 w-2 rounded-full" style={{ background: x.tint }} />{x.name}
+          </button>
+        ))}
+      </div>
+
+      {label(`Kind of ${suit.name} card`)}
+      <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={`Kind of ${suit.name} card`}>
+        {suit.types.map((t) => (
+          <MiniCard key={t} tint={suit.tint} cover={suit.cover} icon={<Icon name={t} size={22} />} title={TYPE_META[t].name} sub={TYPE_META[t].hint}
+            selected={m.type === t} onClick={() => m.type !== t && onPick(t)} />
+        ))}
+      </div>
+
+      {label("Your cards")}
+      <div className="grid grid-cols-4 gap-2">
+        {onSave && <MiniCard tint="#1b1b1a" dashed icon={<Icon name="star" size={20} />} title="Save this card" sub="Reuse it in any course" onClick={onSave} label="Save this card to your cards" />}
+        {saved.map((c) => (
+          <MiniCard key={c.id} tint={suit.tint} cover={suit.cover} icon={<Icon name={c.module.type} size={20} />} title={c.name} sub={TYPE_META[c.module.type].name}
+            onClick={() => onApply(c.module, c.name)} onRemove={() => forget(c.id, c.name)} label={`Use your saved card ${c.name}`} />
+        ))}
+      </div>
+
+      {temps.length > 0 && (
+        <>
+          {label("Ready-made")}
+          <div className="grid grid-cols-4 gap-2">
+            {temps.map((t) => {
+              const made = t.make();
+              return <MiniCard key={t.id} tint={suit.tint} icon={<Icon name={made.type} size={20} />} title={t.name} sub={t.description} onClick={() => onApply(made, t.name)} label={`Start from ${t.name}`} />;
+            })}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 

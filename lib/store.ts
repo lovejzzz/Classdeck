@@ -211,7 +211,9 @@ export function removeCourse(id: string): string[] {
   for (const [k, s] of Object.entries(d.sessions)) if (s.courseId === id) delete d.sessions[k];
   // Only files that belong to this course go: uploaded by its students, or by its teacher and used nowhere else.
   // A link to someone else's file (pasted into a card) is left alone.
-  const elsewhere = (f: string) => PER_COURSE.some((k) => Object.values(d[k] as Record<string, unknown>).some((v) => JSON.stringify(v ?? null).includes(`/api/upload/${f}`)));
+  // Still used by another course, or by a card a teacher saved to reuse.
+  const saved = JSON.stringify(Object.values(d.users).map((u) => u.cards ?? []));
+  const elsewhere = (f: string) => saved.includes(`/api/upload/${f}`) || PER_COURSE.some((k) => Object.values(d[k] as Record<string, unknown>).some((v) => JSON.stringify(v ?? null).includes(`/api/upload/${f}`)));
   const mine = [...files].filter((f) => {
     const by = d.uploads[f]?.by;
     return by?.startsWith(`s:${id}:`) || (!!ownerId && by === `u:${ownerId}` && !elsewhere(f));

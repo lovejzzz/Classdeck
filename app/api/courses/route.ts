@@ -102,9 +102,7 @@ export async function DELETE(request: Request) {
   const c = db().courses[String(body.id ?? "")];
   if (!c || c.id === DEMO || c.ownerId !== t.id) return Response.json({ ok: false, error: "You can only delete your own courses" }, { status: 403 });
   if (String(body.confirm ?? "").trim() !== c.title) return Response.json({ ok: false, error: "Type the course name exactly to confirm" }, { status: 400 });
-  // A file still used by someone's saved card stays.
-  const kept = JSON.stringify(Object.values(db().users).map((u) => u.cards ?? []));
-  const files = removeCourse(c.id).filter((f) => !kept.includes(`/api/upload/${f}`));
+  const files = removeCourse(c.id);
   // Files are removed after the course is gone; a file that fails to delete is only left behind in storage.
   await Promise.all(files.map((f) => (r2Ready() ? remove(f) : fs.unlink(path.join(/*turbopackIgnore: true*/ UPLOAD_DIR, f))).catch(() => {})));
   return Response.json({ ok: true, files: files.length });
