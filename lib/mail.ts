@@ -22,18 +22,73 @@ export function takeAllowance(userId: string, n: number): number {
   return ok;
 }
 
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+/**
+ * The invitation as an email page. Email apps strip most CSS, so it's tables and inline styles only, and the mark
+ * is a PNG (Gmail doesn't show SVG). Colours are the site's: ink, paper, and the three suits.
+ */
+export function inviteHtml(p: { course: string; teacher: string; link: string }): string {
+  const origin = new URL(p.link).origin;
+  const course = esc(p.course), teacher = esc(p.teacher), link = esc(p.link);
+  const font = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
+  const suit = (c: string, corner = "") => `<td width="33%" style="height:6px;background:${c};font-size:0;line-height:0;${corner}">&nbsp;</td>`;
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>You’re invited to ${course}</title></head>
+<body style="margin:0;padding:0;background:#f6f6f4;-webkit-text-size-adjust:100%">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f6f6f4">${teacher} added you to ${course}. Your board is ready: open it with one tap.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f6f4">
+<tr><td align="center" style="padding:40px 16px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px">
+    <tr><td align="center" style="padding:0 0 22px">
+      <a href="${origin}" style="text-decoration:none;color:#1b1b1a;font:600 17px/1 ${font};letter-spacing:-0.01em"><img src="${origin}/email/mark.png" width="40" height="28" alt="" style="display:inline-block;vertical-align:middle;border:0;margin-right:8px">Questhand</a>
+    </td></tr>
+    <tr><td style="background:#ffffff;border:1px solid #e6e6e3;border-radius:18px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${suit("#3d68a6", "border-top-left-radius:17px")}${suit("#a0561f")}${suit("#9a4a8c", "border-top-right-radius:17px")}</tr></table>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr><td style="padding:36px 36px 0;font:600 12px/1.4 ${font};letter-spacing:0.08em;text-transform:uppercase;color:#6b6b66">You’re invited</td></tr>
+        <tr><td style="padding:8px 36px 0;font:600 28px/1.2 ${font};letter-spacing:-0.02em;color:#1b1b1a">${course}</td></tr>
+        <tr><td style="padding:14px 36px 0;font:400 16px/1.6 ${font};color:#3f3f3c"><strong style="color:#1b1b1a;font-weight:600">${teacher}</strong> added you to the class on Questhand. Your board is ready: this week’s cards, what to do, and what comes back from your teacher.</td></tr>
+        <tr><td style="padding:28px 36px 0">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-radius:12px;background:#1b1b1a">
+            <a href="${link}" style="display:inline-block;padding:14px 26px;font:600 16px/1 ${font};color:#ffffff;text-decoration:none;border-radius:12px">Open my board &rarr;</a>
+          </td></tr></table>
+        </td></tr>
+        <tr><td style="padding:24px 36px 0">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#f6f6f4;border-radius:12px;padding:14px 16px;font:400 13.5px/1.55 ${font};color:#5f5f5c">
+            <strong style="color:#1b1b1a;font-weight:600">This link is just for you.</strong> Keep this email: the same link gets you back in on any device for 120 days. No password or PIN to remember.
+          </td></tr></table>
+        </td></tr>
+        <tr><td style="padding:22px 36px 34px;font:400 12.5px/1.5 ${font};color:#6b6b66">Button not working? Copy this into your browser:<br><a href="${link}" style="color:#3d68a6;word-break:break-all;text-decoration:underline">${link}</a></td></tr>
+      </table>
+    </td></tr>
+    <tr><td align="center" style="padding:22px 24px 0;font:400 12.5px/1.6 ${font};color:#6b6b66">Not expecting this? You can ignore it, and nothing happens.<br><a href="${origin}" style="color:#6b6b66;text-decoration:underline">Questhand</a> · cards for learning, made by teachers</td></tr>
+  </table>
+</td></tr>
+</table>
+</body></html>`;
+}
+
 export async function sendInvite(to: string, p: { course: string; teacher: string; link: string }): Promise<boolean> {
   if (!mailReady()) return false;
   // Addresses that can never receive mail (tests use these) are never handed to the provider.
   if (/@(example\.(test|com|org|net)|[^@]+\.(test|invalid|localhost))$/i.test(to)) return false;
   const course = plain(p.course), teacher = plain(p.teacher, 60);
   const subject = `${teacher} invited you to ${course} on Questhand`;
-  const text = `${teacher} added you to ${course} on Questhand.\n\nOpen your board:\n${p.link}\n\nThis link is only for you: keep this email, and use the link again to get back in on another device. If you weren’t expecting this, you can ignore it.`;
-  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-  const html = `<div style="font:15px/1.5 system-ui,sans-serif;color:#1b1b1a;max-width:480px">
-<p><b>${esc(teacher)}</b> added you to <b>${esc(course)}</b> on Questhand.</p>
-<p><a href="${esc(p.link)}" style="display:inline-block;background:#1b1b1a;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none">Open my board</a></p>
-<p style="color:#55544f;font-size:13px">This link is only for you: keep this email, and use the link again to get back in on another device. If you weren’t expecting this, you can ignore it.</p></div>`;
+  const text = [
+    `You're invited to ${course}`,
+    ``,
+    `${teacher} added you to the class on Questhand. Your board is ready: this week's cards, what to do, and what comes back from your teacher.`,
+    ``,
+    `Open your board:`,
+    p.link,
+    ``,
+    `This link is just for you. Keep this email: the same link gets you back in on any device for 120 days.`,
+    ``,
+    `Not expecting this? You can ignore it, and nothing happens.`,
+    `Questhand`,
+  ].join("\n");
+  const html = inviteHtml({ course, teacher, link: p.link });
   try {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",

@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.3",
+    date: "2026-11-18",
+    changes: [
+      "A new look for the invitation email: the Questhand mark, the course name up top, one clear Open my board button, and a note that the same link gets them back in on any device.",
+    ],
+  },
+  {
     version: "0.1.2",
     date: "2026-11-18",
     changes: [
