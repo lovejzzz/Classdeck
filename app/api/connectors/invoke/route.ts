@@ -4,6 +4,7 @@ import { getConnector } from "@/lib/connectors/registry";
 import { ConnectorError } from "@/lib/connectors/types";
 import { findLesson, visibleModules } from "@/lib/profile";
 import { db, logEvent, save } from "@/lib/store";
+import { treeView } from "@/lib/branching";
 
 // 网关：浏览器永远不直接访问外部 API。所有调用都从这里走，在这里做四件事：
 //   1. 这门课启用了这个连接器吗？
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
       if (spec.teacherOnly) throw new ConnectorError("forbidden", "Only teachers can use this tool");
       if (!course.students.some((s) => s.id === studentId)) throw new ConnectorError("forbidden", "Not a student in this course");
       const lesson = findLesson(course, lessonId);
-      const mod = lesson && visibleModules(lesson, studentId, db().choices[courseId]?.[studentId], db().progress[courseId]?.[studentId]).find((m) => m.id === moduleId);
+      const mod = lesson && visibleModules(lesson, studentId, db().choices[courseId]?.[studentId], treeView(course.weeks, db().progress[courseId]?.[studentId])).find((m) => m.id === moduleId);
       if (!mod) throw new ConnectorError("forbidden", "You can't see this card");
       if (!mod.tools.some((t) => t.connector === connectorId && t.action === action)) {
         throw new ConnectorError("forbidden", "This card doesn't have that tool");

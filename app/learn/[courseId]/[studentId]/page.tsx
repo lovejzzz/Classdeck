@@ -93,6 +93,25 @@ export default function LearnPage() {
   // Every course is laid out the same way now: the whole term, comfortable cards, any card open in any order.
   const profile = course ? FIXED_PROFILE : undefined;
 
+  // An answer just dealt a card (maybe in a later lesson): unfold its week, bring it into view, and make it glow.
+  useEffect(() => {
+    const show = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      const wk = state?.course.weeks.find((w) => w.lessons.some((l) => l.modules.some((m) => m.id === id)));
+      if (wk) setOpenWeeks((s) => new Set(s).add(wk.id));
+      setLift((l) => (l ? { ...l, open: false } : l));
+      setTimeout(() => {
+        const el = els.current.get(id);
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        el.classList.add("dealt-glow");
+        setTimeout(() => el.classList.remove("dealt-glow"), 3600);
+      }, 450);
+    };
+    window.addEventListener("questhand:show-card", show);
+    return () => window.removeEventListener("questhand:show-card", show);
+  }, [state]);
+
   // Bring today's lesson into view in the week rows.
   useEffect(() => {
     const el = todayRef.current;
@@ -150,11 +169,12 @@ export default function LearnPage() {
     return {
       id: m.id,
       label: `${m.title}, ${status === "done" ? "done" : locked ? "locked" : status === "doing" ? "in progress" : "not started"}`,
-      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal} big={big && !narrow} due={dueInfo(m.due, now)} badge={revising(m.id) ? "Revise" : undefined} />,
+      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal || m.dealtFor} big={big && !narrow} due={dueInfo(m.due, now)} badge={revising(m.id) ? "Revise" : m.dealtFor && status !== "done" ? "For you" : undefined} />,
       back: <CardBack locked={locked} />,
       faceDown: locked,
       locked,
-      holo: m.personal || m.choice?.recommended,
+      // Cards dealt by the student's own answers shimmer, like the ones made just for them.
+      holo: m.personal || m.choice?.recommended || m.dealtFor,
     };
   };
   const onLockedTap = () => toast("Finish the cards before this one first", { icon: "lock", tone: "plain" });

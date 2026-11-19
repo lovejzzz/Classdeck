@@ -438,10 +438,12 @@ function Questions(p: DetailProps) {
   }, [timed, startedAt, submitted]);
 
   /** Card tree: an answer dealt new cards onto this student's board. */
-  function announceDealt(dealt?: { id: string; title: string }[]) {
+  function announceDealt(dealt?: { id: string; title: string; lesson?: string }[]) {
     if (!dealt?.length) return;
-    const one = dealt.length === 1;
-    setTimeout(() => toast(one ? `New card on your board: “${dealt[0].title}”` : `${dealt.length} new cards on your board`, { icon: "split" }), 900);
+    const first = dealt[0];
+    const text = dealt.length === 1 ? `New card${first.lesson ? ` in ${first.lesson}` : ""}: “${first.title}”` : `${dealt.length} new cards on your board`;
+    const show = () => window.dispatchEvent(new CustomEvent("questhand:show-card", { detail: first.id }));
+    setTimeout(() => toast(text, { icon: "split", action: { label: "Show", run: show } }), 900);
   }
 
   async function answer(qid: string, value: AnswerValue) {
@@ -449,7 +451,7 @@ function Questions(p: DetailProps) {
     const q = set.find((x) => x.id === qid)!;
     setPending((x) => ({ ...x, [qid]: value }));
     const payload = q.kind === "short" ? { text: value } : q.kind === "multi" ? { multi: value } : q.kind === "order" ? { order: value } : { choice: value };
-    const r = await op<{ ok: boolean; error?: string; dealt?: { id: string; title: string }[] }>(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...payload });
+    const r = await op<{ ok: boolean; error?: string; dealt?: { id: string; title: string; lesson?: string }[] }>(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...payload });
     if (!r.ok) toast(r.error ?? "Couldn’t save that answer", { icon: "quiz", tone: "plain" });
     announceDealt(r.dealt);
     await p.onChanged();
@@ -464,7 +466,7 @@ function Questions(p: DetailProps) {
         await op(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid: q.id, text: d.trim() });
       }
     }
-    const r = await op<{ ok?: boolean; score?: number; error?: string; dealt?: { id: string; title: string }[] }>(p.courseId, { op: "submitQuiz", studentId: p.studentId, moduleId: m.id });
+    const r = await op<{ ok?: boolean; score?: number; error?: string; dealt?: { id: string; title: string; lesson?: string }[] }>(p.courseId, { op: "submitQuiz", studentId: p.studentId, moduleId: m.id });
     if (r.ok === false) {
       p.onChanged();
       if (r.error && !/signed out|reach the server|server had a problem/i.test(r.error)) toast(r.error, { icon: "x", tone: "plain" });

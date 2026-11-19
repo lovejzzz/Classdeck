@@ -7,7 +7,7 @@ import { dueAt } from "@/lib/grading";
 import { op } from "@/lib/client";
 import { CARD_SIZE } from "@/lib/cards";
 import type { ConnectorInfo } from "@/lib/connectors/types";
-import { uid } from "@/lib/profile";
+import { uid, visibleModules } from "@/lib/profile";
 import { toast } from "@/lib/toast";
 import { SUITS, suitOf, suitOfCard } from "@/lib/ui";
 import { ask } from "../Confirm";
@@ -23,9 +23,12 @@ import { useUrlState } from "@/lib/urlState";
 import { nextNumber, standardWeek } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
 import { CardTree } from "./CardTree";
-import { branchBelow, unwire, wiresOf } from "@/lib/branching";
+import { bandLabel, branchBelow, treeView, unwire, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
 import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
+
+/** The time, for grouping quick edits into one undo step (only ever called from event handlers). */
+const clock = () => Date.now();
 
 const SIZE = CARD_SIZE.deck;
 
@@ -48,10 +51,17 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   const isFolded = (i: number, id: string) => i < currentWeekIndex && !unfolded.has(id);
   const toggleFold = (id: string) => setUnfolded((u) => { const n = new Set(u); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   /** How much of a week the class has finished, across everyone, for whole-class cards. */
+  // Each student's share of the week: only the cards on their board (follow-ups count once they're dealt).
+  const trees = Object.fromEntries(course.students.map((st) => [st.id, treeView(course.weeks, progress[st.id])]));
   const classDone = (w: Course["weeks"][number]) => {
-    const ms = w.lessons.flatMap((l) => l.modules).filter((m) => m.audience.kind === "all");
-    const total = ms.length * course.students.length;
-    const done = ms.reduce((n, m) => n + course.students.filter((st) => progress[st.id]?.[m.id]?.status === "done").length, 0);
+    let done = 0, total = 0;
+    for (const st of course.students)
+      for (const l of w.lessons)
+        for (const m of visibleModules(l, st.id, choices[st.id], trees[st.id])) {
+          if (m.audience.kind !== "all" || m.choice) continue;
+          total++;
+          if (progress[st.id]?.[m.id]?.status === "done") done++;
+        }
     return { done, total };
   };
   // The session timer is in the address (?run=lesson), so the browser's Back button closes it.
@@ -79,6 +89,9 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
 
   const nextWeek = nextNumber(course.weeks.map((w) => w.title), "Week");
   const lessonOf = (id: string) => drafts[id] ?? course.weeks.flatMap((w) => w.lessons).find((l) => l.id === id)!;
+  // Card trees reach across lessons, so labels and the editor look at every card in the course.
+  const courseCards = course.weeks.flatMap((w) => w.lessons.flatMap((l) => lessonOf(l.id).modules));
+  const courseWires = wiresOf(courseCards);
 
   // Undo and redo cover changes to lessons and their cards (not adding weeks or lessons). Quick edits to the same
   // lesson, like typing, count as one step.
@@ -90,8 +103,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     if (record) {
       const prev = lessonOf(next.id);
       const last = undoStack.current[undoStack.current.length - 1];
-      if (!(last && last.lesson.id === next.id && Date.now() - last.at < 1000)) undoStack.current = [...undoStack.current, { lesson: prev, at: Date.now() }].slice(-100);
-      else last.at = Date.now();
+      if (!(last && last.lesson.id === next.id && clock() - last.at < 1000)) undoStack.current = [...undoStack.current, { lesson: prev, at: clock() }].slice(-100);
+      else last.at = clock();
       redoStack.current = [];
       syncCounts();
     }
@@ -100,21 +113,29 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     const t = timers.current.get(next.id);
     if (t) clearTimeout(t);
     else setSaving((n) => n + 1);
-    timers.current.set(next.id, setTimeout(async () => {
-      timers.current.delete(next.id);
-      const sent = latest.current[next.id];
-      const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent });
-      setSaving((n) => n - 1);
-      if (r.ok === false) {
-        // Keep the edit on screen and say so; the next change tries again.
-        setSaveError(r.error ?? "Couldn’t save");
-        return;
-      }
-      setSaveError(null);
-      await onRefresh();
-      // Once the server has this version, show the server's copy again (so edits made elsewhere appear).
-      setDrafts((d) => (d[next.id] === sent && latest.current[next.id] === sent ? Object.fromEntries(Object.entries(d).filter(([k]) => k !== next.id)) : d));
-    }, 600));
+    timers.current.set(next.id, setTimeout(() => sendNow(next.id), 600));
+  }
+  /** Save a lesson's pending edit now instead of after the pause (a wire from another lesson is about to point at it). */
+  async function flush(id: string) {
+    const t = timers.current.get(id);
+    if (!t) return;
+    clearTimeout(t);
+    await sendNow(id);
+  }
+  async function sendNow(id: string) {
+    timers.current.delete(id);
+    const sent = latest.current[id];
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent });
+    setSaving((n) => n - 1);
+    if (r.ok === false) {
+      // Keep the edit on screen and say so; the next change tries again.
+      setSaveError(r.error ?? "Couldn’t save");
+      return;
+    }
+    setSaveError(null);
+    await onRefresh();
+    // Once the server has this version, show the server's copy again (so edits made elsewhere appear).
+    setDrafts((d) => (d[id] === sent && latest.current[id] === sent ? Object.fromEntries(Object.entries(d).filter(([k]) => k !== id)) : d));
   }
 
   function undo() {
@@ -168,18 +189,35 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       window.removeEventListener("pointerdown", away);
     };
   }, [trashWeek]);
-  /** A lesson without a card and the cards only it deals (they'd otherwise go to everyone). */
-  function without(l: Lesson, id: string): Lesson {
-    const gone = new Set([id, ...branchBelow(l, id)]);
-    let next: Lesson = { ...l, modules: l.modules.filter((x) => !gone.has(x.id)) };
-    for (const g of gone) next = unwire(next, g);
-    return next;
+  /** Every lesson in the course, in order, with unsaved edits. */
+  const allLessons = () => course.weeks.flatMap((w) => w.lessons.map((l) => lessonOf(l.id)));
+  /**
+   * Delete a card and the follow-ups only it deals (they'd otherwise go to everyone), in whichever lessons they are,
+   * and unhook any wires to them. Returns those lessons as they were, to restore.
+   */
+  function deleteCard(id: string): Lesson[] {
+    const ls = allLessons();
+    const gone = new Set([id, ...branchBelow(ls.flatMap((l) => l.modules), id)]);
+    const before: Lesson[] = [];
+    for (const l of ls) {
+      if (!l.modules.some((m) => gone.has(m.id)) && !wiresOf(l).some((w) => gone.has(w.to))) continue;
+      before.push(l);
+      change(unwire({ ...l, modules: l.modules.filter((m) => !gone.has(m.id)) }, gone));
+    }
+    return before;
   }
-  async function removeCard(l: Lesson, m: Module) {
-    const extra = branchBelow(l, m.id).length;
-    if (!(await ask({ title: `Delete “${m.title}”?`, body: extra ? `The ${extra} follow-up card${extra === 1 ? "" : "s"} its answers deal go with it. Students’ work stays saved, and you can undo this.` : "Students’ work on it stays saved, and you can undo this.", confirm: "Delete", danger: true }))) return;
-    change(without(l, m.id));
-    toast(`Deleted “${m.title}”`, { icon: "trash", tone: "plain", action: { label: "Undo", run: undo } });
+  const deletedToast = (title: string, before: Lesson[]) =>
+    toast(`Deleted “${title}”`, { icon: "trash", tone: "plain", action: { label: "Undo", run: () => { before.forEach((l) => change(l)); toast(`Restored “${title}”`); } } });
+  async function removeCard(_l: Lesson, m: Module) {
+    const extra = branchBelow(allLessons().flatMap((l) => l.modules), m.id).length;
+    if (!(await ask({ title: `Delete “${m.title}”?`, body: extra ? `The ${extra} follow-up card${extra === 1 ? "" : "s"} it deals go with it. Students’ work stays saved, and you can undo this.` : "Students’ work on it stays saved, and you can undo this.", confirm: "Delete", danger: true }))) return;
+    deletedToast(m.title, deleteCard(m.id));
+  }
+  /** Add a card to a lesson and save it straight away (a wire from another lesson will point at it). */
+  async function addCardNow(lessonId: string, card: Module) {
+    const l = lessonOf(lessonId);
+    change({ ...l, modules: [...l.modules, card] });
+    await flush(lessonId);
   }
 
   const cardEls = useRef(new Map<string, HTMLElement>());
@@ -376,9 +414,11 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                   const isToday = l.id === course.currentLessonId;
                   const lessonWires = wiresOf(l);
                   const studentsOf = (m: Module) => {
-                    const w = lessonWires.find((x) => x.to === m.id);
+                    const w = courseWires.find((x) => x.to === m.id);
                     if (w) {
-                      const q = l.modules.find((x) => x.id === w.from)?.questions?.find((x) => x.id === w.q);
+                      const src = courseCards.find((x) => x.id === w.from);
+                      if (w.score) return `If score ${bandLabel(w.score)}`;
+                      const q = src?.questions?.find((x) => x.id === w.q);
                       return `If ${String.fromCharCode(65 + w.option)}${q?.options[w.option]?.trim() ? `: ${q.options[w.option].trim().slice(0, 18)}` : ""}`;
                     }
                     return m.audience.kind === "branch" ? m.audience.variant : m.audience.kind === "student" ? course.students.find((s) => s.id === (m.audience as { studentId: string }).studentId)?.name : undefined;
@@ -491,13 +531,16 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
 
       {treeFor && lessonOf(treeFor) && (
         <CardTree
-          lesson={lessonOf(treeFor)}
+          lessons={allLessons()}
+          lessonId={treeFor}
           progress={progress}
           students={course.students}
           readOnly={readOnly}
           busy={editorOpen}
           onChange={change}
-          onEdit={(id) => !readOnly && edit(treeFor, id)}
+          onAddCard={addCardNow}
+          onEdit={(lid, id) => !readOnly && edit(lid, id)}
+          onLesson={setTreeFor}
           onClose={() => setTreeFor(null)}
         />
       )}
@@ -518,6 +561,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           onNext={at >= 0 && at < order.length - 1 ? () => step(1) : undefined}
           onSaveToLibrary={() => saveToLibrary(curModule)}
           onTree={readOnly ? undefined : () => { setTreeFor(cur.id); closeEditor(); }}
+          allCards={courseCards}
           onDuplicate={() => {
             const copy: Module = { ...structuredClone(curModule), id: uid("m-"), title: `${curModule.title} (copy)` };
             const i = cur.modules.findIndex((x) => x.id === curModule.id);
@@ -529,27 +573,9 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           }}
           onDelete={() => {
             const removed = curModule;
-            const at = cur.modules.findIndex((x) => x.id === removed.id);
-            const before = cur;
-            change(without(cur, removed.id));
+            const before = deleteCard(removed.id);
             closeEditor();
-            toast(`Deleted “${removed.title}”`, {
-              icon: "trash",
-              tone: "plain",
-              action: {
-                label: "Undo",
-                run: () => {
-                  // Put it back where it was, in the latest version of that lesson. With a card tree, the whole
-                  // lesson as it was before (the wiring and follow-ups came out with it).
-                  const now = latest.current[cur.id] ?? lessonOf(cur.id);
-                  if (wiresOf(before).some((w) => w.from === removed.id || w.to === removed.id)) { change(before); toast(`Restored “${removed.title}”`); return; }
-                  const modules = [...now.modules];
-                  modules.splice(Math.min(at, modules.length), 0, removed);
-                  change({ ...now, modules });
-                  toast(`Restored “${removed.title}”`);
-                },
-              },
-            });
+            deletedToast(removed.title, before);
           }}
         />
       )}

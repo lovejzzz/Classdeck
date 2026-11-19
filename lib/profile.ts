@@ -1,5 +1,5 @@
-import type { Lesson, Module, PresetId, Profile, Progress } from "./types";
-import { dealtTo, followUps } from "./branching";
+import type { Lesson, Module, PresetId, Profile } from "./types";
+import { followUps, type TreeView } from "./branching";
 
 export const PRESETS: Record<PresetId, Omit<Profile, "preset">> = {
   primary: { density: "spacious", autonomy: "sequential", horizon: "lesson", entry: "code" },
@@ -22,12 +22,13 @@ export function fromPreset(id: PresetId): Profile {
  * Teacher-assigned versions show only the assigned one. In a choice slot the student sees every
  * version until they pick one; after that, only their pick.
  */
-export function visibleModules(lesson: Lesson, studentId: string, chosen: Record<string, string> = {}, prog: Record<string, Progress> = {}): Module[] {
+export function visibleModules(lesson: Lesson, studentId: string, chosen: Record<string, string> = {}, tree?: TreeView): Module[] {
   // An elective's cards are only on the board of students who chose it.
   if (lesson.elective && !chosen[`elective:${lesson.id}`]) return [];
-  // Card trees: a follow-up card is only on the board of a student whose answer dealt it.
-  const hidden = followUps(lesson);
-  const dealt = hidden.size ? dealtTo(lesson, prog) : hidden;
+  // Card trees: a follow-up card is only on the board of a student whose answer dealt it. Callers pass the course's
+  // tree (treeView) so wires from other lessons count; without it, only this lesson's wires are seen.
+  const hidden = tree?.hidden ?? followUps(lesson);
+  const dealt = tree?.dealt ?? new Set<string>();
   const firstVariant: Record<string, string> = {};
   const counts: Record<string, number> = {};
   for (const m of lesson.modules) {

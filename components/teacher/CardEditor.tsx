@@ -60,8 +60,10 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 }
 
 export function CardEditor({
-  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [], started = 0, onTree,
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [], started = 0, onTree, allCards,
 }: {
+  /** Every card in the course (a card tree can deal cards in later lessons). */
+  allCards?: Module[];
   /** Open the lesson's card tree (to wire answers to follow-up cards). */
   onTree?: () => void;
   onDuplicate: () => void;
@@ -259,7 +261,7 @@ export function CardEditor({
             )}
             {response === "questions" && (
               <div className="mt-4">
-                <QuestionsEditor questions={m.questions ?? []} cards={lesson.modules} onTree={onTree} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
+                <QuestionsEditor questions={m.questions ?? []} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
               </div>
             )}
             {response === "rating" && (

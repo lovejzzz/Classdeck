@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   if (!m || typeof m !== "object" || !TYPE_ORDER.includes(m.type as Module["type"])) return Response.json({ ok: false, error: "That didn’t look like a card" }, { status: 400 });
   // Keep the content; drop what only makes sense in the course it came from.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, audience, due, choice, picked, personal, ...rest } = m as Module;
+  const { id, audience, due, choice, picked, personal, bands, dealtFor, ...rest } = m as Module;
   // A card tree's wiring points at cards in that lesson only.
   if (Array.isArray(rest.questions)) rest.questions = rest.questions.map(({ next: _next, ...q }) => q); // eslint-disable-line @typescript-eslint/no-unused-vars
   const card0 = fold({ ...rest, audience: { kind: "all" }, tools: Array.isArray(rest.tools) ? rest.tools : [], attachments: Array.isArray(rest.attachments) ? rest.attachments : [], title: String(rest.title ?? "").slice(0, 120), body: String(rest.body ?? "").slice(0, 8000) } as Omit<Module, "id">);

@@ -6,7 +6,7 @@ import { db, logEvent, reset, save } from "@/lib/store";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
-import { cleanWiring, dealtTo, deals } from "@/lib/branching";
+import { cleanCourseWiring, deals, dealsByScore, SCORE, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate, revokeInvites } from "@/lib/hooks";
@@ -39,8 +39,10 @@ function renumberLessons(course: Course) {
 /** Each student gives feedback to at least this many peers per studio card. */
 const FEEDBACK_GOAL = 2;
 
-/** The cards just dealt to a student, for the "new card" message. */
-const titles = (lesson: Lesson, ids: string[]) => ids.map((id) => lesson.modules.find((m) => m.id === id)).filter((m): m is Module => !!m).map((m) => ({ id: m.id, title: m.title }));
+/** The cards just dealt to a student, for the "new card" message, with the lesson each is in. */
+const titles = (course: Course, ids: string[]) => ids.map((id) => findModule(course, id)).filter((x): x is { lesson: Lesson; mod: Module } => !!x).map((x) => ({ id: x.mod.id, title: x.mod.title, lessonId: x.lesson.id, lesson: x.lesson.title }));
+/** The course's tree as one student sees it. */
+const treeOf = (course: Course, studentId: string) => treeView(course.weeks, db().progress[course.id]?.[studentId]);
 
 function findModule(course: Course, moduleId: string): { lesson: Lesson; mod: Module } | undefined {
   for (const w of course.weeks) for (const lesson of w.lessons) {
@@ -55,6 +57,7 @@ const groupOf = (course: Course, studentId: string) => course.groups?.find((g) =
 function forStudent(course: Course, studentId: string, chosen: Record<string, string>): Course {
   const all = db().choices[course.id] ?? {};
   const taken = (lessonId: string) => Object.entries(all).filter(([sid, c]) => sid !== studentId && c[`elective:${lessonId}`]).length;
+  const tree = treeOf(course, studentId);
   return {
     ...course,
     // Students never receive the class passcode, the tools key, classmates' emails, or the co-teachers.
@@ -70,8 +73,10 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
         // An elective a student hasn't chosen arrives as a catalog entry: its cards stay hidden until they pick it.
         ...(l.elective ? { chosen: !!chosen[`elective:${l.id}`], takenBy: taken(l.id), catalog: { cards: l.modules.filter((m) => m.audience.kind === "all").length, skills: [...new Set(l.modules.flatMap((m) => m.skills ?? []))] } } : {}),
         branches: {},
-        modules: (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, db().progress[course.id]?.[studentId])).map((m) => ({
+        modules: (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree)).map((m) => ({
           ...m,
+          bands: undefined,
+          dealtFor: tree.dealt.has(m.id) || undefined,
           audience: { kind: "all" as const },
           personal: m.audience.kind !== "all" && !m.choice && !m.picked,
           questions: asked(m).length ? asked(m).map(publicQuestion) : undefined,
@@ -96,7 +101,7 @@ export async function GET(request: Request, { params }: Ctx) {
       course: {
         ...course, students: [], groups: [], joinCode: "", access: undefined, waiting: undefined, people: undefined, ownerId: undefined,
         // Cards made for one student stay private; shared and path cards are shown without who they're for.
-        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student").map((m) => ({ ...m, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
+        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student").map((m) => ({ ...m, bands: undefined, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
       },
       progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} }, uptake: {}, nudges: [], plans: {},
     };
@@ -577,7 +582,6 @@ export async function POST(request: Request, { params }: Ctx) {
     case "saveLesson": {
       const next = body.lesson as Lesson;
       if (Array.isArray(next?.modules)) next.modules = next.modules.map((m) => fold(m));
-      if (Array.isArray(next?.modules)) cleanWiring(next);
       for (const m of next.modules) {
         if (m.playlist) m.playlist = m.playlist.filter((x) => typeof x.url === "string" && /^https:\/\//.test(x.url)).slice(0, 60);
         m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
@@ -592,6 +596,8 @@ export async function POST(request: Request, { params }: Ctx) {
         if (AUTO_LESSON.test(next.title ?? "") && AUTO_LESSON.test(w.lessons[i].title)) next.title = w.lessons[i].title;
         w.lessons[i] = next;
       }
+      // Card trees can reach into later lessons, so the wiring is checked across the whole course.
+      cleanCourseWiring(course.weeks);
       break;
     }
     case "addLesson": {
@@ -647,7 +653,7 @@ export async function POST(request: Request, { params }: Ctx) {
       const form = found?.mod.form;
       if (!found || form?.by !== "student") return fail("This card has no form for you to fill in");
       const chosen = d.choices[courseId]?.[body.studentId] ?? {};
-      const theirs = !(found.lesson.elective && !chosen[`elective:${found.lesson.id}`]) && visibleModules(found.lesson, body.studentId, chosen, d.progress[courseId]?.[body.studentId]).some((x) => x.id === found.mod.id);
+      const theirs = !(found.lesson.elective && !chosen[`elective:${found.lesson.id}`]) && visibleModules(found.lesson, body.studentId, chosen, treeOf(course, body.studentId)).some((x) => x.id === found.mod.id);
       if (!theirs) return fail("This card isn’t on your board");
       const a = (body.answers ?? {}) as Record<string, unknown>;
       const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
@@ -769,9 +775,9 @@ export async function POST(request: Request, { params }: Ctx) {
       let dealtNow: string[] = [];
       // A quiz deals when it's submitted, not halfway through.
       if (found.mod.type !== "quiz" && deals(q) && (q.kind === "multi" ? (given as number[]).length > 0 : Number.isInteger(given)) && (p.dealt ??= {})[q.id] === undefined) {
-        const before = dealtTo(found.lesson, d.progress[courseId]?.[body.studentId]);
+        const before = treeOf(course, body.studentId).dealt;
         p.dealt[q.id] = given;
-        dealtNow = [...dealtTo(found.lesson, d.progress[courseId]?.[body.studentId])].filter((id) => !before.has(id));
+        dealtNow = [...treeOf(course, body.studentId).dealt].filter((id) => !before.has(id));
       }
       (p.results ??= {})[q.id] = right;
       if (p.status === "todo") p.status = "doing";
@@ -794,7 +800,7 @@ export async function POST(request: Request, { params }: Ctx) {
       if (instant) {
         p.score = set.filter((x) => p.results![x.id]).length;
         if (answered === total) p.status = "done";
-        extra = { correct: right, explain: right ? q.explain : undefined, dealt: titles(found.lesson, dealtNow) };
+        extra = { correct: right, explain: right ? q.explain : undefined, dealt: titles(course, dealtNow) };
       }
       break;
     }
@@ -803,16 +809,17 @@ export async function POST(request: Request, { params }: Ctx) {
       const quiz = findModule(course, body.moduleId)?.mod;
       const set = quiz ? quizSet(quiz, body.studentId, p.attempt ?? 1) : [];
       p.score = set.filter((x) => p.results?.[x.id]).length;
-      // Card tree: the first submitted answers decide which follow-up cards this student gets.
-      const where = findModule(course, body.moduleId)?.lesson;
+      // Card tree: the first submitted answers, and the first submitted score, decide which follow-ups this student gets.
       let dealtNow: string[] = [];
-      if (where && quiz) {
-        const before = dealtTo(where, d.progress[courseId]?.[body.studentId]);
+      if (quiz) {
+        const before = treeOf(course, body.studentId).dealt;
         for (const q of set) {
           const a = p.answers?.[q.id];
           if (deals(q) && (p.dealt ??= {})[q.id] === undefined && (Array.isArray(a) ? a.length > 0 : Number.isInteger(a))) p.dealt[q.id] = a!;
         }
-        dealtNow = [...dealtTo(where, d.progress[courseId]?.[body.studentId])].filter((id) => !before.has(id));
+        // The score is a percent of the questions this student was given (so a random draw from a bank works too).
+        if (dealsByScore(quiz) && set.length && (p.dealt ??= {})[SCORE] === undefined) p.dealt[SCORE] = Math.round((p.score * 100) / set.length);
+        dealtNow = [...treeOf(course, body.studentId).dealt].filter((id) => !before.has(id));
       }
       if (p.status !== "done") {
         logEvent(courseId, { kind: "quiz", studentId: body.studentId, moduleId: body.moduleId, text: `Submitted “${quiz?.title ?? ""}”: ${p.score}/${set.length}` });
@@ -821,7 +828,7 @@ export async function POST(request: Request, { params }: Ctx) {
       p.attempt ??= 1;
       p.best = Math.max(p.best ?? 0, p.score);
       p.updatedAt = Date.now();
-      extra = { score: p.score, dealt: where ? titles(where, dealtNow) : [] };
+      extra = { score: p.score, dealt: titles(course, dealtNow) };
       break;
     }
     case "startQuiz": {
@@ -1250,7 +1257,11 @@ export async function POST(request: Request, { params }: Ctx) {
       return fail("Unknown operation");
   }
     // After anything that adds or moves lessons, placeholder names follow position: Lesson 1, 2, 3 across the course.
-    if (STRUCTURAL.has(body.op)) renumberLessons(course);
+    if (STRUCTURAL.has(body.op)) {
+      renumberLessons(course);
+      // Card trees span lessons: after lessons are added or copied, check every wire still points forward.
+      cleanCourseWiring(course.weeks);
+    }
   } catch (e) {
     // Malformed input (a null where an object belongs, and so on) is the sender's mistake, not a server crash.
     console.error("op failed", body.op, e instanceof Error ? e.message : e);
@@ -1292,5 +1303,5 @@ function onBoard(course: Course, studentId: string, moduleId: string): boolean {
   if (!found) return false;
   const chosen = db().choices[course.id]?.[studentId] ?? {};
   if (found.lesson.elective && !chosen[`elective:${found.lesson.id}`]) return false;
-  return visibleModules(found.lesson, studentId, chosen, db().progress[course.id]?.[studentId]).some((m) => m.id === moduleId);
+  return visibleModules(found.lesson, studentId, chosen, treeOf(course, studentId)).some((m) => m.id === moduleId);
 }

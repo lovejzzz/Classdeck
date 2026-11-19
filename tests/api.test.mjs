@@ -331,6 +331,81 @@ async function main() {
     await A.del("/api/courses", { id: tid, confirm: `Tree ${run}` });
   }
 
+  // ---- Card trees by score, and across lessons
+  {
+    const tc = await A.post("/api/courses", { title: `Tree2 ${run}`, start: "blank" });
+    const tid = tc.id;
+    const wk = courseOf(await A.state(tid)).weeks[0];
+    await A.op(tid, { op: "addLesson", weekId: wk.id });
+    await A.op(tid, { op: "addStudents", names: "Dee Low\nEve Mid\nFay Top" });
+    const roster = courseOf(await A.state(tid)).students;
+    const sid = (n) => roster.find((s) => s.name === n).id;
+    const links = (await A.op(tid, { op: "setupLinks" })).links;
+    const as = async (name) => {
+      const c = client();
+      await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] });
+      return c;
+    };
+    const S = { Dee: await as("Dee Low"), Eve: await as("Eve Mid"), Fay: await as("Fay Top") };
+    const [L1, L2] = courseOf(await A.state(tid)).weeks[0].lessons;
+    const card = (id, type, title, extra = {}) => ({ id, type, title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
+    const five = [1, 2, 3, 4, 5].map((i) => ({ id: `s${i}`, text: `Q${i}`, options: ["right", "wrong"], answer: 0 }));
+    const quiz = card("m-sq", "quiz", "Score quiz", { attempts: 2, questions: five, bands: [{ min: 0, next: "m-low" }, { min: 60, next: "m-mid" }, { min: 90, next: "m-top" }] });
+    const pickQ = card("m-pq", "quiz", "Pick quiz", { pick: 2, questions: [1, 2, 3, 4].map((i) => ({ id: `p${i}`, text: `P${i}`, options: ["right", "wrong"], answer: 0 })), bands: [{ min: 0, next: null }, { min: 100, next: "m-ptop" }] });
+    const choose = card("m-ch", "practice", "Pick a path", { questions: [{ id: "c1", text: "Which?", options: ["Next lesson card", "Nothing"], answer: 0, next: ["m-l2x", null] }] });
+    const l1 = { ...L1, modules: [quiz, card("m-low", "read", "Low"), card("m-mid", "read", "Mid"), card("m-top", "read", "Top"), pickQ, card("m-ptop", "read", "Pick top"), choose] };
+    const l2 = { ...L2, modules: [card("m-l2a", "read", "Lesson 2 for all"), card("m-l2x", "practice", "Dealt from lesson 1"),
+      card("m-back", "practice", "Backward", { questions: [{ id: "b1", text: "Back?", options: ["a", "b"], answer: 0, next: ["m-low", null] }] })] };
+    await A.op(tid, { op: "saveLesson", lesson: l2 });
+    await A.op(tid, { op: "saveLesson", lesson: l1 });
+    const saved = courseOf(await A.state(tid)).weeks[0].lessons;
+    check("score bands are kept", saved[0].modules.find((m) => m.id === "m-sq").bands?.length === 3, saved[0].modules.find((m) => m.id === "m-sq").bands);
+    check("a lesson-1 answer can deal a lesson-2 card", saved[0].modules.find((m) => m.id === "m-ch").questions[0].next?.[0] === "m-l2x");
+    check("a wire back to an earlier lesson is dropped", !saved[1].modules.find((m) => m.id === "m-back").questions[0].next);
+    const ids = async (who) => modulesOf(courseOf(await S[who].state(`${tid}?as=${sid(`${who} ${{ Dee: "Low", Eve: "Mid", Fay: "Top" }[who]}`)}`))).map((m) => m.id);
+    const view = JSON.stringify(courseOf(await S.Dee.state(`${tid}?as=${sid("Dee Low")}`)));
+    check("students never get score bands", !view.includes("\"bands\"") && !view.includes("\"next\""));
+    const before = await ids("Dee");
+    check("score and cross-lesson follow-ups start hidden", !["m-low", "m-mid", "m-top", "m-l2x"].some((x) => before.includes(x)) && before.includes("m-l2a"), before);
+    const take = async (who, rightCount) => {
+      const c = S[who], id = sid(`${who} ${{ Dee: "Low", Eve: "Mid", Fay: "Top" }[who]}`);
+      for (const [i, q] of five.entries()) await c.op(tid, { op: "answer", studentId: id, moduleId: "m-sq", qid: q.id, choice: i < rightCount ? 0 : 1 });
+      return c.op(tid, { op: "submitQuiz", studentId: id, moduleId: "m-sq" });
+    };
+    const dee = await take("Dee", 2); // 40%
+    const eve = await take("Eve", 3); // exactly 60%: the higher band
+    await take("Fay", 5); // 100%
+    check("40% deals the low card", dee.dealt?.[0]?.id === "m-low" && (await ids("Dee")).includes("m-low"), dee);
+    const e = await ids("Eve");
+    check("a score on a threshold goes to the higher band", eve.dealt?.[0]?.id === "m-mid" && e.includes("m-mid") && !e.includes("m-low"), [eve, e]);
+    const f = await ids("Fay");
+    check("100% deals the top card only", f.includes("m-top") && !f.includes("m-mid") && !f.includes("m-low"), f);
+    // A retake with a better score doesn't change the path.
+    await S.Dee.op(tid, { op: "retakeQuiz", studentId: sid("Dee Low"), moduleId: "m-sq" });
+    await take("Dee", 5);
+    const d2 = await ids("Dee");
+    check("the first submitted score decides (a retake doesn't change it)", d2.includes("m-low") && !d2.includes("m-top"), d2);
+    // A drawn quiz scores against the questions this student got.
+    const pq = modulesOf(courseOf(await S.Fay.state(`${tid}?as=${sid("Fay Top")}`))).find((m) => m.id === "m-pq");
+    for (const q of pq.questions) await S.Fay.op(tid, { op: "answer", studentId: sid("Fay Top"), moduleId: "m-pq", qid: q.id, choice: 0 });
+    await S.Fay.op(tid, { op: "submitQuiz", studentId: sid("Fay Top"), moduleId: "m-pq" });
+    check("a drawn quiz routes by its own score (2 of 2 drawn = 100%)", (await ids("Fay")).includes("m-ptop"));
+    // Across lessons.
+    const r = await S.Eve.op(tid, { op: "answer", studentId: sid("Eve Mid"), moduleId: "m-ch", qid: "c1", choice: 0 });
+    check("the deal names the later lesson", r.dealt?.[0]?.id === "m-l2x" && r.dealt[0].lesson === L2.title, r);
+    check("the lesson-2 card reaches only that student", (await ids("Eve")).includes("m-l2x") && !(await ids("Dee")).includes("m-l2x"));
+    check("others can't act on it", /isn’t on your board/.test((await S.Dee.op(tid, { op: "setProgress", studentId: sid("Dee Low"), moduleId: "m-l2x", status: "done" })).error ?? ""));
+    // Duplicating the week keeps the cross-lesson wire, on the copies.
+    await A.op(tid, { op: "duplicateWeek", weekId: wk.id });
+    const copyWeek = courseOf(await A.state(tid)).weeks[1];
+    const cch = copyWeek.lessons[0].modules.find((m) => m.title === "Pick a path");
+    const target = copyWeek.lessons[1].modules.find((m) => m.title === "Dealt from lesson 1");
+    check("a copied week keeps lesson-to-lesson wires on the copies", !!cch && !!target && cch.questions[0].next?.[0] === target.id, cch?.questions?.[0]);
+    const cq = copyWeek.lessons[0].modules.find((m) => m.title === "Score quiz");
+    check("a copied quiz's bands point at the copies", (cq?.bands ?? []).every((b) => !b.next || copyWeek.lessons[0].modules.some((m) => m.id === b.next)) && cq.bands.some((b) => b.next), cq?.bands);
+    await A.del("/api/courses", { id: tid, confirm: `Tree2 ${run}` });
+  }
+
   // ---- Uploads used by a saved card survive deleting a course
   const png = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
   const up = async (n) => { const f = new FormData(); f.append("file", new File([png], n, { type: "image/png" })); return A.post("/api/upload", f); };

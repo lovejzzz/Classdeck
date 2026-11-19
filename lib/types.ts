@@ -152,6 +152,9 @@ export interface Nudge {
 
 export type AnswerValue = number | string | number[] | string[];
 
+/** Card tree, quiz cards: students whose first submitted score is at least `min` percent (and below the next band) get `next`. */
+export interface ScoreBand { min: number; next: string | null }
+
 export type Audience =
   | { kind: "all" }
   | { kind: "branch"; slot: string; variant: string }
@@ -213,6 +216,10 @@ export interface Module {
   shuffle?: boolean;
   /** Draw this many questions at random from the bank, per student and per try. */
   pick?: number;
+  /** Card tree (quiz cards): deal a card by score band. Teacher only. */
+  bands?: ScoreBand[];
+  /** Set only for students: this card was dealt to them by one of their answers or scores. */
+  dealtFor?: boolean;
 }
 
 export type FormPart = "feedback" | "next" | "levels" | "score" | "links" | "status";
