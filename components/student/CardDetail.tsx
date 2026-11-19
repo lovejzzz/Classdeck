@@ -437,13 +437,21 @@ function Questions(p: DetailProps) {
     return () => clearInterval(t);
   }, [timed, startedAt, submitted]);
 
+  /** Card tree: an answer dealt new cards onto this student's board. */
+  function announceDealt(dealt?: { id: string; title: string }[]) {
+    if (!dealt?.length) return;
+    const one = dealt.length === 1;
+    setTimeout(() => toast(one ? `New card on your board: “${dealt[0].title}”` : `${dealt.length} new cards on your board`, { icon: "split" }), 900);
+  }
+
   async function answer(qid: string, value: AnswerValue) {
     if (submitted) return;
     const q = set.find((x) => x.id === qid)!;
     setPending((x) => ({ ...x, [qid]: value }));
     const payload = q.kind === "short" ? { text: value } : q.kind === "multi" ? { multi: value } : q.kind === "order" ? { order: value } : { choice: value };
-    const r = await op<{ ok: boolean; error?: string }>(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...payload });
+    const r = await op<{ ok: boolean; error?: string; dealt?: { id: string; title: string }[] }>(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...payload });
     if (!r.ok) toast(r.error ?? "Couldn’t save that answer", { icon: "quiz", tone: "plain" });
+    announceDealt(r.dealt);
     await p.onChanged();
     setPending((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== qid)));
   }
@@ -456,7 +464,7 @@ function Questions(p: DetailProps) {
         await op(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid: q.id, text: d.trim() });
       }
     }
-    const r = await op<{ ok?: boolean; score?: number; error?: string }>(p.courseId, { op: "submitQuiz", studentId: p.studentId, moduleId: m.id });
+    const r = await op<{ ok?: boolean; score?: number; error?: string; dealt?: { id: string; title: string }[] }>(p.courseId, { op: "submitQuiz", studentId: p.studentId, moduleId: m.id });
     if (r.ok === false) {
       p.onChanged();
       if (r.error && !/signed out|reach the server|server had a problem/i.test(r.error)) toast(r.error, { icon: "x", tone: "plain" });
@@ -465,6 +473,7 @@ function Questions(p: DetailProps) {
     p.optimistic({ status: "done" });
     p.onChanged();
     toast(`${auto ? "Time’s up. " : ""}Submitted. Score: ${r.score ?? 0}/${total}`, { icon: "quiz" });
+    announceDealt(r.dealt);
   }
 
   // When the clock runs out, hand in whatever is answered.

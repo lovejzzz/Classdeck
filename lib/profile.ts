@@ -1,4 +1,5 @@
-import type { Lesson, Module, PresetId, Profile } from "./types";
+import type { Lesson, Module, PresetId, Profile, Progress } from "./types";
+import { dealtTo, followUps } from "./branching";
 
 export const PRESETS: Record<PresetId, Omit<Profile, "preset">> = {
   primary: { density: "spacious", autonomy: "sequential", horizon: "lesson", entry: "code" },
@@ -21,9 +22,12 @@ export function fromPreset(id: PresetId): Profile {
  * Teacher-assigned versions show only the assigned one. In a choice slot the student sees every
  * version until they pick one; after that, only their pick.
  */
-export function visibleModules(lesson: Lesson, studentId: string, chosen: Record<string, string> = {}): Module[] {
+export function visibleModules(lesson: Lesson, studentId: string, chosen: Record<string, string> = {}, prog: Record<string, Progress> = {}): Module[] {
   // An elective's cards are only on the board of students who chose it.
   if (lesson.elective && !chosen[`elective:${lesson.id}`]) return [];
+  // Card trees: a follow-up card is only on the board of a student whose answer dealt it.
+  const hidden = followUps(lesson);
+  const dealt = hidden.size ? dealtTo(lesson, prog) : hidden;
   const firstVariant: Record<string, string> = {};
   const counts: Record<string, number> = {};
   for (const m of lesson.modules) {
@@ -34,6 +38,7 @@ export function visibleModules(lesson: Lesson, studentId: string, chosen: Record
   const out: Module[] = [];
   for (const m of lesson.modules) {
     const a = m.audience;
+    if (hidden.has(m.id) && !dealt.has(m.id)) continue;
     if (a.kind === "all") out.push(m);
     else if (a.kind === "student") {
       if (a.studentId === studentId) out.push(m);

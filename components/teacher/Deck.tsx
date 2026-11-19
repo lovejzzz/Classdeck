@@ -22,6 +22,8 @@ import { useShortcuts } from "@/lib/shortcuts";
 import { useUrlState } from "@/lib/urlState";
 import { nextNumber, standardWeek } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
+import { CardTree } from "./CardTree";
+import { branchBelow, unwire, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
 import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
 
@@ -31,6 +33,7 @@ const SIZE = CARD_SIZE.deck;
 export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, live, readOnly = false }: { course: Course; connectors?: ConnectorInfo[]; readOnly?: boolean; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode }) {
   const [drafts, setDrafts] = useState<Record<string, Lesson>>({});
   const [editing, setEditing] = useState<{ lessonId: string; moduleId: string } | null>(null);
+  const [treeFor, setTreeFor] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -165,9 +168,17 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       window.removeEventListener("pointerdown", away);
     };
   }, [trashWeek]);
+  /** A lesson without a card and the cards only it deals (they'd otherwise go to everyone). */
+  function without(l: Lesson, id: string): Lesson {
+    const gone = new Set([id, ...branchBelow(l, id)]);
+    let next: Lesson = { ...l, modules: l.modules.filter((x) => !gone.has(x.id)) };
+    for (const g of gone) next = unwire(next, g);
+    return next;
+  }
   async function removeCard(l: Lesson, m: Module) {
-    if (!(await ask({ title: `Delete “${m.title}”?`, body: "Students’ work on it stays saved, and you can undo this.", confirm: "Delete", danger: true }))) return;
-    change({ ...l, modules: l.modules.filter((x) => x.id !== m.id) });
+    const extra = branchBelow(l, m.id).length;
+    if (!(await ask({ title: `Delete “${m.title}”?`, body: extra ? `The ${extra} follow-up card${extra === 1 ? "" : "s"} its answers deal go with it. Students’ work stays saved, and you can undo this.` : "Students’ work on it stays saved, and you can undo this.", confirm: "Delete", danger: true }))) return;
+    change(without(l, m.id));
     toast(`Deleted “${m.title}”`, { icon: "trash", tone: "plain", action: { label: "Undo", run: undo } });
   }
 
@@ -363,8 +374,15 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                 {w.lessons.map((ls) => {
                   const l = lessonOf(ls.id);
                   const isToday = l.id === course.currentLessonId;
-                  const studentsOf = (m: Module) =>
-                    m.audience.kind === "branch" ? m.audience.variant : m.audience.kind === "student" ? course.students.find((s) => s.id === (m.audience as { studentId: string }).studentId)?.name : undefined;
+                  const lessonWires = wiresOf(l);
+                  const studentsOf = (m: Module) => {
+                    const w = lessonWires.find((x) => x.to === m.id);
+                    if (w) {
+                      const q = l.modules.find((x) => x.id === w.from)?.questions?.find((x) => x.id === w.q);
+                      return `If ${String.fromCharCode(65 + w.option)}${q?.options[w.option]?.trim() ? `: ${q.options[w.option].trim().slice(0, 18)}` : ""}`;
+                    }
+                    return m.audience.kind === "branch" ? m.audience.variant : m.audience.kind === "student" ? course.students.find((s) => s.id === (m.audience as { studentId: string }).studentId)?.name : undefined;
+                  };
                   return (
                     <div key={l.id}>
                       <div className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ maxWidth: `min(${Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 360)}px, calc(100vw - 2rem))` }}>
@@ -395,6 +413,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                               }
                               setAgendaFor(l.id);
                             }],
+                            [lessonWires.length ? `Card tree (${lessonWires.length} branch${lessonWires.length === 1 ? "" : "es"})` : "Card tree", () => setTreeFor(l.id)],
                             ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
                             ...(l.elective ? [["Make required for everyone", () => {
                               change({ ...l, elective: undefined });
@@ -470,6 +489,19 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
         <SessionRunner course={course} lesson={lessonOf(running.lessonId)} weekTitle={running.weekTitle} posts={studioPosts} onClose={() => setRunning(null)} live={live} />
       )}
 
+      {treeFor && lessonOf(treeFor) && (
+        <CardTree
+          lesson={lessonOf(treeFor)}
+          progress={progress}
+          students={course.students}
+          readOnly={readOnly}
+          busy={editorOpen}
+          onChange={change}
+          onEdit={(id) => !readOnly && edit(treeFor, id)}
+          onClose={() => setTreeFor(null)}
+        />
+      )}
+
       {cur && curModule && (
         <CardEditor
           key={curModule.id}
@@ -485,6 +517,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           onPrev={at > 0 ? () => step(-1) : undefined}
           onNext={at >= 0 && at < order.length - 1 ? () => step(1) : undefined}
           onSaveToLibrary={() => saveToLibrary(curModule)}
+          onTree={readOnly ? undefined : () => { setTreeFor(cur.id); closeEditor(); }}
           onDuplicate={() => {
             const copy: Module = { ...structuredClone(curModule), id: uid("m-"), title: `${curModule.title} (copy)` };
             const i = cur.modules.findIndex((x) => x.id === curModule.id);
@@ -497,7 +530,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           onDelete={() => {
             const removed = curModule;
             const at = cur.modules.findIndex((x) => x.id === removed.id);
-            change({ ...cur, modules: cur.modules.filter((x) => x.id !== removed.id) });
+            const before = cur;
+            change(without(cur, removed.id));
             closeEditor();
             toast(`Deleted “${removed.title}”`, {
               icon: "trash",
@@ -505,8 +539,10 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
               action: {
                 label: "Undo",
                 run: () => {
-                  // Put it back where it was, in the latest version of that lesson.
+                  // Put it back where it was, in the latest version of that lesson. With a card tree, the whole
+                  // lesson as it was before (the wiring and follow-ups came out with it).
                   const now = latest.current[cur.id] ?? lessonOf(cur.id);
+                  if (wiresOf(before).some((w) => w.from === removed.id || w.to === removed.id)) { change(before); toast(`Restored “${removed.title}”`); return; }
                   const modules = [...now.modules];
                   modules.splice(Math.min(at, modules.length), 0, removed);
                   change({ ...now, modules });

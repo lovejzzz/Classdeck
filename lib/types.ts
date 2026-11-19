@@ -87,6 +87,8 @@ export interface Question {
   accept?: string[];
   /** Why the answer is right. Shown once the student has answered correctly, or after a quiz is submitted. */
   explain?: string;
+  /** Card tree: next[i] is the id of the card (in the same lesson) dealt to a student who picks option i. Teacher only. */
+  next?: (string | null)[];
 }
 
 /** A comment pinned to a moment in a recording: “0:12 — you paused here”. */
@@ -343,6 +345,8 @@ export interface Progress {
   /** Option index (choice), indexes (multi), text (short), or option texts in order (order). */
   answers?: Record<string, AnswerValue>;
   results?: Record<string, boolean>;
+  /** Card tree: the first answer to each question that deals cards. It decides which follow-ups this student gets. */
+  dealt?: Record<string, AnswerValue>;
   score?: number;
   /** Recordings, files, and links the student added as their work. */
   work?: Attachment[];

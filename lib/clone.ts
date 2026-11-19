@@ -11,9 +11,12 @@ export function cloneLesson(src: Lesson, title?: string): Lesson {
   const slot = (s: string) => slotMap.get(s) ?? (slotMap.set(s, uid("slot-")), slotMap.get(s)!);
   l.id = uid("l-");
   if (title) l.title = title;
+  const ids = new Map(l.modules.map((m) => [m.id, uid("m-")]));
   l.modules = l.modules.map((m): Module => ({
     ...m,
-    id: uid("m-"),
+    id: ids.get(m.id)!,
+    // Card trees: the copy's questions deal the copy's cards.
+    questions: m.questions?.map((q) => (q.next ? { ...q, next: q.next.map((x) => (x ? (ids.get(x) ?? null) : null)) } : q)),
     // A copy starts without a due date; the old date would make every copied card overdue at once.
     due: undefined,
     attachments: m.attachments?.map((a) => ({ ...a, id: uid("a-") })),

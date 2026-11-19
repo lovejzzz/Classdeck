@@ -25,7 +25,7 @@ export function Classroom({
   sel: { sid: string; mid: string } | null; setSel: (s: { sid: string; mid: string } | null) => void;
 }) {
   const { course, progress, toolUse } = state;
-  const visible = Object.fromEntries(course.students.map((s) => [s.id, new Set(visibleModules(lesson, s.id, state.choices[s.id]).map((m) => m.id))]));
+  const visible = Object.fromEntries(course.students.map((s) => [s.id, new Set(visibleModules(lesson, s.id, state.choices[s.id], progress[s.id]).map((m) => m.id))]));
   const studioIds = new Set(lesson.modules.filter((m) => m.type === "studio").map((m) => m.id));
   const lessonPosts = state.studio.posts.filter((p) => studioIds.has(p.moduleId));
   // Same rule as the server: peers' posts given feedback (each post counted once), against a goal of 2,
@@ -41,7 +41,7 @@ export function Classroom({
   const [now] = useState(() => Date.now());
   // A student's cards for this lesson; while they haven't picked a path, the versions count once.
   const statusIn = (sid: string) => {
-    const mine = visibleModules(lesson, sid, state.choices[sid]);
+    const mine = visibleModules(lesson, sid, state.choices[sid], progress[sid]);
     const seen = new Set<string>();
     return mine
       .filter((m) => !m.choice || (!seen.has(m.choice.slot) && (seen.add(m.choice.slot), true)))

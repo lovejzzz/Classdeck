@@ -28,7 +28,7 @@ export function Gradebook({ state }: { state: CourseState }) {
     const cards: { m: Module; week: string }[] = [];
     for (const { w, l } of all) {
       const seen = new Set<string>();
-      for (const m of visibleModules(l, st.id, state.choices[st.id])) {
+      for (const m of visibleModules(l, st.id, state.choices[st.id], mine)) {
         if (m.choice) {
           if (seen.has(m.choice.slot)) continue;
           seen.add(m.choice.slot);

@@ -259,6 +259,78 @@ async function main() {
     check("joining refused when only listed names may join", (await client().post("/api/auth", { action: "join", courseId: offState.id, code: offState.joinCode, name: "Ann Lee", pin: "1234" })).ok === false);
   } else check("setAccess turned self-join off", false, offState.access);
 
+  // ---- Card trees: each answer deals its own follow-up card
+  {
+    const tc = await A.post("/api/courses", { title: `Tree ${run}`, start: "blank" });
+    const tid = tc.id;
+    await A.op(tid, { op: "addStudents", names: "Ana One\nBen Two\nCal Three" });
+    const roster = courseOf(await A.state(tid)).students;
+    const sid = (n) => roster.find((s) => s.name === n).id;
+    const links = (await A.op(tid, { op: "setupLinks" })).links;
+    const as = async (name) => {
+      const c = client();
+      await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] });
+      return c;
+    };
+    const [SA, SB, SC] = [await as("Ana One"), await as("Ben Two"), await as("Cal Three")];
+    const base = courseOf(await A.state(tid)).weeks[0].lessons[0];
+    const card = (id, type, title, extra = {}) => ({ id, type, title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
+    const Q = card("m-tq", "practice", "Which feels harder?", { questions: [{ id: "q1", text: "Which feels harder?", options: ["Rhythm", "Pitch"], answer: 0, next: ["m-tx", "m-ty"] }] });
+    const X = card("m-tx", "practice", "Rhythm drills");
+    const Y = card("m-ty", "read", "Pitch guide", { questions: [{ id: "q2", text: "Ready?", options: ["Yes", "Not yet"], answer: 0, next: [null, "m-tz"] }] });
+    const Z = card("m-tz", "read", "Pitch basics");
+    const Wl = card("m-tw", "wall", "Class wall");
+    const QZ = card("m-quiz", "quiz", "Check", { questions: [{ id: "q3", text: "2+2", options: ["4", "5"], answer: 0, next: ["m-tq2", null] }] });
+    const QX = card("m-tq2", "read", "After the quiz");
+    const lesson = { ...base, modules: [Q, X, Y, Z, Wl, QZ, QX] };
+    check("save a lesson with a card tree", (await A.op(tid, { op: "saveLesson", lesson })).ok !== false);
+    const saved = courseOf(await A.state(tid)).weeks[0].lessons[0];
+    check("teacher keeps the wiring", JSON.stringify(saved.modules.find((m) => m.id === "m-tq").questions[0].next) === JSON.stringify(["m-tx", "m-ty"]));
+    const ids = async (c, who) => modulesOf(courseOf(await c.state(`${tid}?as=${sid(who)}`))).map((m) => m.id);
+    const a0 = await ids(SA, "Ana One");
+    check("follow-ups hidden before answering", a0.includes("m-tq") && !a0.includes("m-tx") && !a0.includes("m-ty") && !a0.includes("m-tz"), a0);
+    const sView = JSON.stringify(courseOf(await SA.state(`${tid}?as=${sid("Ana One")}`)));
+    check("students never get the wiring", !sView.includes("\"next\""));
+    const r1 = await SA.op(tid, { op: "answer", studentId: sid("Ana One"), moduleId: "m-tq", qid: "q1", choice: 0 });
+    check("answer reports the dealt card", r1.dealt?.length === 1 && r1.dealt[0].id === "m-tx", r1);
+    const a1 = await ids(SA, "Ana One");
+    check("answer A deals X, not Y", a1.includes("m-tx") && !a1.includes("m-ty"), a1);
+    await SA.op(tid, { op: "answer", studentId: sid("Ana One"), moduleId: "m-tq", qid: "q1", choice: 1 });
+    const a2 = await ids(SA, "Ana One");
+    check("first answer decides (changing it deals nothing new)", a2.includes("m-tx") && !a2.includes("m-ty"), a2);
+    await SB.op(tid, { op: "answer", studentId: sid("Ben Two"), moduleId: "m-tq", qid: "q1", choice: 1 });
+    const b1 = await ids(SB, "Ben Two");
+    check("answer B deals Y", b1.includes("m-ty") && !b1.includes("m-tx") && !b1.includes("m-tz"), b1);
+    await SB.op(tid, { op: "answer", studentId: sid("Ben Two"), moduleId: "m-ty", qid: "q2", choice: 1 });
+    check("a follow-up's own answer deals the next step", (await ids(SB, "Ben Two")).includes("m-tz"));
+    check("no answer, no follow-ups", !(await ids(SC, "Cal Three")).some((x) => ["m-tx", "m-ty", "m-tz"].includes(x)));
+    check("can't work on a card not dealt to you", /not on your board|isn’t on your board/.test((await SC.op(tid, { op: "setProgress", studentId: sid("Cal Three"), moduleId: "m-tx", status: "done" })).error ?? ""));
+    check("can't answer a card not dealt to you", /isn’t on your board/.test((await SA.op(tid, { op: "answer", studentId: sid("Ana One"), moduleId: "m-ty", qid: "q2", choice: 1 })).error ?? ""));
+    // A quiz deals when it's submitted.
+    await SC.op(tid, { op: "answer", studentId: sid("Cal Three"), moduleId: "m-quiz", qid: "q3", choice: 0 });
+    check("a quiz doesn't deal mid-way", !(await ids(SC, "Cal Three")).includes("m-tq2"));
+    const sub = await SC.op(tid, { op: "submitQuiz", studentId: sid("Cal Three"), moduleId: "m-quiz" });
+    check("a quiz deals on submit", sub.dealt?.[0]?.id === "m-tq2" && (await ids(SC, "Cal Three")).includes("m-tq2"), sub);
+    // The server cleans bad wiring.
+    const bad = structuredClone(saved);
+    const bq = bad.modules.find((m) => m.id === "m-tq").questions[0];
+    bq.next = ["m-tq", "m-nope", "m-tw"];
+    bad.modules.find((m) => m.id === "m-tz").questions = [{ id: "q4", text: "Loop?", options: ["a", "b"], answer: 0, next: ["m-ty", null] }];
+    await A.op(tid, { op: "saveLesson", lesson: bad });
+    const cleaned = courseOf(await A.state(tid)).weeks[0].lessons[0];
+    check("self, missing and class-wide targets are dropped", !cleaned.modules.find((m) => m.id === "m-tq").questions[0].next, cleaned.modules.find((m) => m.id === "m-tq").questions[0]);
+    const loop = [cleaned.modules.find((m) => m.id === "m-ty").questions[0].next, cleaned.modules.find((m) => m.id === "m-tz").questions?.[0]?.next];
+    check("a loop is cut", !(loop[0]?.[1] === "m-tz" && loop[1]?.[0] === "m-ty"), loop);
+    // Duplicating keeps the tree, pointing at the copies.
+    await A.op(tid, { op: "saveLesson", lesson });
+    await A.op(tid, { op: "duplicateLesson", lessonId: base.id });
+    const copy = courseOf(await A.state(tid)).weeks[0].lessons.find((l) => l.id !== base.id);
+    const cq = copy?.modules.find((m) => m.title === "Which feels harder?");
+    const targets = cq?.questions?.[0]?.next ?? [];
+    check("a copied lesson keeps its tree on the copied cards", targets.length === 2 && targets.every((t) => copy.modules.some((m) => m.id === t) && !["m-tx", "m-ty"].includes(t)), targets);
+    await A.del("/api/courses", { id: tid, confirm: `Tree ${run}` });
+  }
+
   // ---- Uploads used by a saved card survive deleting a course
   const png = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
   const up = async (n) => { const f = new FormData(); f.append("file", new File([png], n, { type: "image/png" })); return A.post("/api/upload", f); };

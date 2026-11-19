@@ -60,8 +60,10 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 }
 
 export function CardEditor({
-  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [], started = 0,
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [], started = 0, onTree,
 }: {
+  /** Open the lesson's card tree (to wire answers to follow-up cards). */
+  onTree?: () => void;
   onDuplicate: () => void;
   /** Keep a copy among the teacher's saved cards, to reuse in any course. */
   onSaveToLibrary?: () => void;
@@ -257,7 +259,7 @@ export function CardEditor({
             )}
             {response === "questions" && (
               <div className="mt-4">
-                <QuestionsEditor questions={m.questions ?? []} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
+                <QuestionsEditor questions={m.questions ?? []} cards={lesson.modules} onTree={onTree} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
               </div>
             )}
             {response === "rating" && (
@@ -388,7 +390,8 @@ function StartFrom({ m, onApply }: { m: Module; onApply: (content: Omit<Module, 
   );
 }
 
-function QuestionsEditor({ questions, onChange }: { questions: Question[]; onChange: (q: Question[]) => void }) {
+function QuestionsEditor({ questions, onChange, cards = [], onTree }: { questions: Question[]; onChange: (q: Question[]) => void; cards?: Module[]; onTree?: () => void }) {
+  const titleOf = (id: string) => cards.find((c) => c.id === id)?.title || "Untitled card";
   const set = (id: string, patch: Partial<Question>) => onChange(questions.map((q) => (q.id === id ? { ...q, ...patch } : q)));
   return (
     <div className="space-y-2.5">
@@ -407,9 +410,9 @@ function QuestionsEditor({ questions, onChange }: { questions: Question[]; onCha
             <div className="mt-2 pl-7">
               <Seg value={q.kind ?? "choice"} options={[["choice", "One answer"], ["multi", "Several"], ["order", "Order"], ["short", "Short answer"]]}
                 onPick={(v) => set(q.id,
-                  v === "short" ? { kind: "short", accept: q.accept?.length ? q.accept : [""] }
+                  v === "short" ? { kind: "short", accept: q.accept?.length ? q.accept : [""], next: undefined }
                   : v === "multi" ? { kind: "multi", options: q.options.length ? q.options : ["", ""], answerSet: q.answerSet ?? (q.answer !== undefined ? [q.answer] : []) }
-                  : v === "order" ? { kind: "order", options: q.options.length >= 3 ? q.options : [...q.options, "", "", ""].slice(0, 3) }
+                  : v === "order" ? { kind: "order", options: q.options.length >= 3 ? q.options : [...q.options, "", "", ""].slice(0, 3), next: undefined }
                   : { kind: undefined, options: q.options.length ? q.options : ["", ""], answer: q.answer ?? 0 })} />
             </div>
             {short ? (
@@ -430,16 +433,28 @@ function QuestionsEditor({ questions, onChange }: { questions: Question[]; onCha
                           : multi ? <input type="checkbox" checked={!!correct} onChange={() => set(q.id, { answerSet: correct ? (q.answerSet ?? []).filter((x) => x !== oi) : [...(q.answerSet ?? []), oi] })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />
                           : <input type="radio" name={`ans-${q.id}`} checked={q.answer === oi} onChange={() => set(q.id, { answer: oi })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />}
                         <input value={opt} onChange={(e) => set(q.id, { options: q.options.map((o, k) => (k === oi ? e.target.value : o)) })} placeholder={ordered ? `Step ${oi + 1}` : `Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className={`field h-8 py-0 ${correct ? "border-ok/50" : ""}`} />
+                        {!ordered && q.next?.[oi] && (
+                          <button onClick={onTree} title="Students who pick this get this card. Change it in the card tree." className="chip h-6 max-w-[40%] flex-none gap-1 truncate bg-[#eef0fb] px-2 text-[11px] text-[#4b56a8]">
+                            <Icon name="split" size={11} /> <span className="truncate">{titleOf(q.next[oi]!)}</span>
+                          </button>
+                        )}
                         {q.options.length > 2 && (
-                          <button onClick={() => set(q.id, { options: q.options.filter((_, k) => k !== oi), answer: q.answer !== undefined && q.answer > oi ? q.answer - 1 : q.answer === oi ? 0 : q.answer, answerSet: q.answerSet?.filter((x) => x !== oi).map((x) => (x > oi ? x - 1 : x)) })} aria-label={`Remove option ${oi + 1}`} className="text-ink-3 hover:text-bad"><Icon name="x" size={12} /></button>
+                          <button onClick={() => set(q.id, { options: q.options.filter((_, k) => k !== oi), answer: q.answer !== undefined && q.answer > oi ? q.answer - 1 : q.answer === oi ? 0 : q.answer, answerSet: q.answerSet?.filter((x) => x !== oi).map((x) => (x > oi ? x - 1 : x)), next: q.next?.filter((_, k) => k !== oi) })} aria-label={`Remove option ${oi + 1}`} className="text-ink-3 hover:text-bad"><Icon name="x" size={12} /></button>
                         )}
                       </label>
                     );
                   })}
                 </div>
-                {q.options.length < 6 && (
-                  <button onClick={() => set(q.id, { options: [...q.options, ""] })} className="btn btn-quiet press ml-6 mt-1 h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>
-                )}
+                <div className="ml-6 mt-1 flex flex-wrap gap-1">
+                  {q.options.length < 6 && (
+                    <button onClick={() => set(q.id, { options: [...q.options, ""] })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>
+                  )}
+                  {!ordered && onTree && (
+                    <button onClick={onTree} className="btn btn-quiet press h-7 px-2 text-[12px] text-[#4b56a8]" title="Deal a different card for each answer">
+                      <Icon name="split" size={12} /> {q.next?.some(Boolean) ? "Edit the card tree" : "A card for each answer"}
+                    </button>
+                  )}
+                </div>
               </>
             )}
             <div className="mt-2 pl-7">
