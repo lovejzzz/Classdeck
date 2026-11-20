@@ -14,7 +14,7 @@ import { Clearable } from "../Clearable";
 import { CARD_TEMPLATES } from "@/lib/templates";
 import { loadLibrary, useLibrary } from "./NewCardFan";
 import { clearOlder, fold, olderSettings } from "@/lib/cardmodel";
-import { asKind, kindMeta, kindOf, type CardKind } from "@/lib/kinds";
+import { PICKABLE, addToGroup, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { CardFace } from "../cards/CardFace";
 import { Avatar, Icon } from "../Icon";
@@ -256,9 +256,9 @@ export function CardEditor({
                 return (
                   <div key={id} className="flex items-center gap-2 rounded-lg border border-line bg-white px-2.5 py-1.5">
                     <span className="mono w-4">{i + 1}</span>
-                    <span style={{ color: suitOfCard(c).tint }}><Icon name={kindMeta(kindOf(c)).icon} size={13} /></span>
+                    <span style={{ color: suitOfCard(c).tint }}><Icon name={faceMeta(c).icon} size={13} /></span>
                     <span className="min-w-0 flex-1 truncate text-[13px]">{c.title || "Untitled card"}</span>
-                    <span className="text-[11px] text-ink-3">{kindMeta(kindOf(c)).name}</span>
+                    <span className="text-[11px] text-ink-3">{faceMeta(c).name}</span>
                     <button onClick={() => move(-1)} disabled={i === 0} aria-label="Move up" className="btn btn-quiet press h-7 w-7 justify-center px-0 disabled:opacity-30">↑</button>
                     <button onClick={() => move(1)} disabled={i === arr.length - 1} aria-label="Move down" className="btn btn-quiet press h-7 w-7 justify-center px-0 disabled:opacity-30">↓</button>
                     <button onClick={() => set({ members: arr.filter((x) => x !== id) })} aria-label={`Take ${c.title} out of the group`} title="Take it out of the group" className="btn btn-quiet press h-7 w-7 justify-center px-0 hover:!text-bad"><Icon name="x" size={12} /></button>
@@ -266,8 +266,10 @@ export function CardEditor({
                 );
               })}
             </div>
+            <button onClick={() => { const { lesson: next, card } = addToGroup(lessonRef.current, m.id); onChange(next); toast(`Added “${card.title}” to the group`, { icon: "plus" }); }}
+              className="btn btn-ghost press mt-2 h-8 w-full justify-center border-dashed text-[12.5px]"><Icon name="plus" size={12} /> Add a question</button>
             <p className="mt-2.5 text-[12px] text-ink-3">
-              Students see these cards together. The group’s score counts its Multiple choice cards (first answers); once they’re all answered, it can deal a card by score: set the ranges on the map. A group of fewer than two cards comes apart.
+              Students see these cards together. The group’s score counts its Choice cards with a right answer (first answers); once they’re all answered, it can deal a card by score: set the ranges on the map. A group of fewer than two cards comes apart.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {onTree && <button onClick={onTree} className="btn btn-ghost press h-8 px-3 text-[12.5px] text-[#4b56a8]"><Icon name="split" size={12} /> Branch by score on the map</button>}
@@ -276,32 +278,33 @@ export function CardEditor({
           </Panel>
           ) : (
           <Panel n={2} title="What kind of card">
-            {SUITS.map((fam) => (
-              <div key={fam.id} className="mb-2.5 last:mb-0">
-                <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: fam.tint }}>
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: fam.tint }} />{fam.name}
-                </div>
-                <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={`${fam.name} cards`}>
-                  {fam.kinds.map((k) => (
-                    <MiniCard key={k} short tint={fam.tint} cover={fam.cover} icon={<Icon name={kindMeta(k).icon} size={18} />} title={kindMeta(k).name} sub={kindMeta(k).hint}
-                      selected={kind === k} onClick={() => toKind(k)} />
-                  ))}
-                </div>
-              </div>
-            ))}
+            <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Kind of card">
+              {PICKABLE.map((k) => {
+                const fam = SUITS.find((x) => x.id === familyOf(k.id))!;
+                return <MiniCard key={k.id} short tint={fam.tint} cover={fam.cover} icon={<Icon name={k.icon} size={18} />} title={k.name} sub={k.hint} selected={kind === k.id} onClick={() => toKind(k.id)} />;
+              })}
+            </div>
             <div className="mt-3 border-t border-line pt-3">
-              {kind === "text" && <p className="text-[12.5px] text-ink-3">Write it in the box above. Students read it and mark it done.</p>}
-              {kind === "image" && <p className="text-[12.5px] text-ink-3">Add the image above: <b>Upload</b>, <b>Link</b> to one, or <b>Draw</b>.</p>}
-              {kind === "link" && <p className="text-[12.5px] text-ink-3">Add a video, audio or page link above with <b>Link</b>. A video link plays right on the card.</p>}
-              {kind === "recording" && <p className="text-[12.5px] text-ink-3">Record it above: <b>More</b> → audio, video or your screen.</p>}
+              {kind === "content" && (
+                <p className="text-[12.5px] text-ink-3">
+                  Write in the box above and add any media: <b>Upload</b> a picture or file, <b>Link</b> a video, audio or page, or <b>More</b> → record audio, video or your screen. The card’s face follows its first piece of media; now it shows as <b className="text-ink-2">{faceMeta(m).name}</b>.
+                </p>
+              )}
               {kind === "answer" && <p className="text-[12.5px] text-ink-3">Any kind of homework: students can type an answer, record audio or video, or upload files and links. You give feedback on what they hand in.</p>}
-              {kind === "choice" && (
+              {kind === "choice" && m.type !== "quiz" && (
+                <div className="mb-3 flex flex-wrap items-center gap-2 text-[12.5px]">
+                  <span className="text-ink-2">Right answer</span>
+                  <Seg value={isPoll(m) ? "poll" : "right"} options={[["right", "One is right"], ["poll", "None (a poll)"]]}
+                    onPick={(v) => { if ((v === "poll") !== isPoll(m)) set(asKind(m, "choice", v === "poll")); }} />
+                </div>
+              )}
+              {kind === "choice" && !isPoll(m) && (
                 <>
                   <QuestionsEditor single questions={m.questions ?? []} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
-                  <p className="mt-2 text-[12px] text-ink-3">One question per card. To ask several and branch by the total score, put Multiple choice cards together in a card group.</p>
+                  <p className="mt-2 text-[12px] text-ink-3">One question per card. To ask several and branch by the total score, put Choice cards together in a card group.</p>
                 </>
               )}
-              {kind === "poll" && <PollEditor question={m.questions?.[0]} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(q) => set({ questions: [q] })} />}
+              {isPoll(m) && <PollEditor question={m.questions?.[0]} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(q) => set({ questions: [q] })} />}
               {kind === "discussion" && (
                 <div className="space-y-2.5 text-[12.5px]">
                   <div className="flex flex-wrap items-center gap-2">

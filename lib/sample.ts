@@ -28,7 +28,7 @@ export function sampleWeeks(): Week[] {
             card("q3", { type: "practice", kind: "choice", title: "Amen", body: "", questions: [{ id: "q3q", text: "The “Amen” at the end of a hymn is usually…", options: ["Plagal (IV to I)", "Perfect (V to I)"], answer: 0 }] }),
             card("basics", { type: "read", title: "Cadence basics, step by step", minutes: 8, body: "Start with home: chord I. A perfect cadence comes home from V. A half cadence stops on V, away from home. Hum a tune you know and stop on its last note but one: that’s the half-cadence feeling." }),
             card("way", {
-              type: "practice", kind: "poll", poll: true, title: "Pick your way in", minutes: 2, body: "There’s no wrong answer. Pick the one that sounds like you.",
+              type: "practice", kind: "choice", poll: true, title: "Pick your way in", minutes: 2, body: "There’s no wrong answer. Pick the one that sounds like you.",
               questions: [{ id: "w", text: "How do you like to learn a new piece?", options: ["By ear", "From the score"], next: ["ear", "score"] }],
             }),
             card("ear", { type: "practice", title: "Ear first: sing the bass line", minutes: 10, body: "Play any recording of a song you like. Sing just the lowest notes of the last line. Does it end on the home note (perfect) or hang in the air (half)?" }),

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { suitOfCard, suitOf } from "@/lib/ui";
-import { kindMeta, kindOf } from "@/lib/kinds";
+import { faceMeta } from "@/lib/kinds";
 import type { Lesson, Module, Status } from "@/lib/types";
 import { Icon } from "../Icon";
 
@@ -176,7 +176,7 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
             >
               <span className="block h-1.5 rounded-t-[16px]" style={{ background: suit.tint }} />
               <span className={`flex items-center gap-1.5 px-3.5 text-[10.5px] font-medium uppercase tracking-[0.06em] ${n.inDeck ? "pt-1.5" : "pt-2"}`} style={{ color: suit.tint }}>
-                {kindMeta(kindOf(m)).name}
+                {faceMeta(m).name}
                 {m.dealtFor && <span className="rounded-full bg-[#eef0fb] px-1.5 normal-case tracking-normal text-[#4b56a8]">For you</span>}
                 <span className="flex-1" />
                 {s === "done" && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-ok text-white"><Icon name="check" size={10} strokeWidth={3} /></span>}

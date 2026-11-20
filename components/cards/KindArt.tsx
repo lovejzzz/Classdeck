@@ -1,5 +1,5 @@
 import { hash } from "@/lib/cards";
-import type { CardKind } from "@/lib/kinds";
+import type { Face } from "@/lib/kinds";
 
 /** A small seeded generator, so a card's picture is the same every time and no two cards are exactly alike. */
 function rng(seed: number) {
@@ -14,10 +14,10 @@ function rng(seed: number) {
 
 /**
  * The picture on a card with no media of its own: a drawing of what the card is (a page of text, a framed picture,
- * a player, a microphone; a page and pencil, ticked options, a bar chart, speech bubbles, a stack of cards), in its
+ * a player, a web page, a microphone; a page and pencil, ticked options, a bar chart, speech bubbles, a stack of cards), in its
  * family's colours, with small seeded variations so every card is its own.
  */
-export function KindArt({ id, kind, tint, cover }: { id: string; kind: CardKind; tint: string; cover: string }) {
+export function KindArt({ id, face, tint, cover }: { id: string; face: Face; tint: string; cover: string }) {
   const r = rng(hash(id) + 0.0007);
   const j = (n: number) => (r() - 0.5) * n; // jitter
   const ink = "#1b1b1a";
@@ -25,7 +25,7 @@ export function KindArt({ id, kind, tint, cover }: { id: string; kind: CardKind;
   const mid = `${tint}88`;
   let art: React.ReactNode = null;
 
-  switch (kind) {
+  switch (face) {
     case "text": {
       const lines = [0, 1, 2, 3, 4].map((i) => 30 + r() * 40 - (i === 4 ? 20 : 0));
       art = (
@@ -51,6 +51,23 @@ export function KindArt({ id, kind, tint, cover }: { id: string; kind: CardKind;
       break;
     }
     case "link": {
+      const rows = [0, 1, 2].map(() => 26 + r() * 30);
+      art = (
+        <g>
+          <rect x="26" y="16" width="88" height="68" rx="7" fill="#fff" stroke={mid} />
+          <path d="M26 23a7 7 0 0 1 7 -7h74a7 7 0 0 1 7 7v7H26z" fill={soft} />
+          {[0, 1, 2].map((i) => <circle key={i} cx={34 + i * 6} cy="23" r="1.8" fill={mid} />)}
+          <rect x="56" y="20" width="50" height="6" rx="3" fill="#fff" />
+          {rows.map((w, i) => <rect key={i} x="34" y={40 + i * 9} width={w} height="4" rx="2" fill={soft} />)}
+          <g transform={`translate(${86 + j(4)} ${62 + j(3)}) rotate(-40)`} fill="none" stroke={tint} strokeWidth="3.2" strokeLinecap="round">
+            <rect x="-13" y="-5" width="14" height="10" rx="5" />
+            <rect x="-1" y="-5" width="14" height="10" rx="5" />
+          </g>
+        </g>
+      );
+      break;
+    }
+    case "video": {
       art = (
         <g>
           <rect x="24" y="22" width="92" height="56" rx="8" fill={ink} opacity="0.88" />

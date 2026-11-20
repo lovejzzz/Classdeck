@@ -302,7 +302,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   /** A card put down from the New card fan: Content or a Question (its kind is picked in the editor), or a blank card. */
   function addChosen(l: Lesson, c: NewCardChoice) {
     const fam = c.kind === "suit" ? SUITS.find((x) => x.id === c.suit)! : undefined;
-    const m = newCard(fam ? fam.kinds[0] : "text", fam ? `New ${fam.name} card` : "Untitled card");
+    const m = newCard(fam ? fam.kinds[0] : "content", fam ? `New ${fam.name} card` : "Untitled card");
     change({ ...l, modules: [...l.modules, m] });
     edit(l.id, m.id);
   }
@@ -338,7 +338,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     scrollToWeek(next);
   };
   useShortcuts([
-    { keys: "n", label: "New card", run: () => today && addCard(lessonOf(today.id), "text"), enabled: !!today && !editorOpen && !running },
+    { keys: "n", label: "New card", run: () => today && addCard(lessonOf(today.id), "content"), enabled: !!today && !editorOpen && !running },
     { keys: "r", label: "Run Collab Studio", run: () => today?.session && setRunning({ lessonId: today.id, weekTitle: course.weeks.find((w) => w.lessons.includes(today))?.title ?? "" }), enabled: !!today?.session && !running },
     { keys: "[", label: "Previous week", run: () => weekStep(-1), enabled: !editorOpen && !running },
     { keys: "]", label: "Next week", run: () => weekStep(1), enabled: !editorOpen && !running },

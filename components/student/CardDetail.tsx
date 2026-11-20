@@ -7,7 +7,7 @@ import { useShortcuts } from "@/lib/shortcuts";
 import { dueInfo, optionOrder, quizSet } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META, suitOfCard } from "@/lib/ui";
-import { familyOf, kindMeta, kindOf } from "@/lib/kinds";
+import { faceMeta, familyOf, isPoll, kindOf } from "@/lib/kinds";
 import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Plan, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
@@ -68,9 +68,9 @@ export function CardDetail(p: DetailProps) {
   const review = p.progress?.review;
   const kind = kindOf(m);
   // Content cards are to take in, and a poll is just a vote: no notes box under either.
-  const hasOutput = !!meta.outputLabel && m.type !== "selfcheck" && familyOf(kind) !== "content" && kind !== "poll";
+  const hasOutput = !!meta.outputLabel && m.type !== "selfcheck" && familyOf(kind) !== "content" && !isPoll(m);
   // A vote or a multiple-choice answer is the whole response: no recording or file box under it.
-  const showWork = WORK_TYPES.has(m.type) && !m.choice && kindOf(m) !== "poll" && kindOf(m) !== "choice";
+  const showWork = WORK_TYPES.has(m.type) && !m.choice && kind !== "choice";
   const skills = (m.skills ?? []).map((id) => p.course.skills?.find((s) => s.id === id)?.name).filter(Boolean);
   // The earliest other self-check with ratings, for showing progress.
   const earlier = (() => {
@@ -190,7 +190,7 @@ export function CardDetail(p: DetailProps) {
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: suitOfCard(m).tint }}>
-              <Icon name={kindMeta(kind).icon} size={13} strokeWidth={2} /> {suitOfCard(m).name}<span className="font-normal normal-case tracking-normal text-ink-3">· {kindMeta(kind).name}</span>
+              <Icon name={faceMeta(m).icon} size={13} strokeWidth={2} /> {suitOfCard(m).name}<span className="font-normal normal-case tracking-normal text-ink-3">· {faceMeta(m).name}</span>
               {m.personal && <span className="chip ml-1 h-5 normal-case tracking-normal">For you</span>}
             </div>
             <h2 className={`mt-2 font-semibold tracking-tight ${p.big ? "text-[28px]" : "text-[22px]"}`}>{m.title}</h2>

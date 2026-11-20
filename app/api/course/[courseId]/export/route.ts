@@ -4,7 +4,7 @@ import { db } from "@/lib/store";
 
 import { zip } from "@/lib/zip";
 import type { Attachment, Lesson, Module, Week } from "@/lib/types";
-import { kindMeta, kindOf } from "@/lib/kinds";
+import { faceMeta } from "@/lib/kinds";
 
 // Export a course as an IMS Common Cartridge (1.1): one web page per lesson, organised into
 // one module per week. Canvas, Moodle, Blackboard, Brightspace, and Schoology import these.
@@ -19,7 +19,7 @@ function mediaHtml(a: Attachment, origin: string) {
 }
 
 function cardHtml(m: Module, origin: string) {
-  const parts = [`<h2>${esc(m.title)} <small style="color:#777">· ${kindMeta(kindOf(m)).name}${m.minutes ? ` · ${m.minutes} min` : ""}</small></h2>`];
+  const parts = [`<h2>${esc(m.title)} <small style="color:#777">· ${faceMeta(m).name}${m.minutes ? ` · ${m.minutes} min` : ""}</small></h2>`];
   if (m.audience.kind === "branch") parts.push(`<p><em>Path: ${esc(m.audience.variant)}</em></p>`);
   if (m.body) parts.push(...m.body.split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`));
   for (const a of m.attachments ?? []) parts.push(mediaHtml(a, origin));

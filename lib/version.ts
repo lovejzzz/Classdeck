@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.11",
+    date: "2026-11-20",
+    changes: [
+      "Fewer kinds of card: Content, Q&A, Choice and Discussion (plus card groups). Existing cards were moved over and keep everything they had.",
+      "One Content card for words, pictures, videos, links and recordings. Its face follows its first piece of media, so a card with a video looks like a video, and a card with only words looks like a page.",
+      "Choice cards cover quiz questions and polls: set Right answer to “One is right” or “None (a poll)”. Switching keeps the choices and their branches.",
+      "Card groups have an Add a question button: it adds the next Choice card to the end of the group, so a quiz can be built one question at a time.",
+    ],
+  },
+  {
     version: "0.1.10",
     date: "2026-11-20",
     changes: [

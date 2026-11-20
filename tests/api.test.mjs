@@ -105,11 +105,11 @@ async function main() {
   const sv = await A.op(cid, { op: "saveLesson", lesson: { ...lesson, modules: mods } });
   check("save a lesson with all ten kinds", sv.ok !== false && sv.status === 200, sv);
   const after = courseOf(await A.state(cid));
-  // Older types become the eight kinds: Text, Image, Link, Recording (content); Q&A, Multiple choice, Poll, Discussion.
-  const kinds = ["text", "text", "answer", "choice", "answer", "answer", "poll", "answer", "discussion", "discussion"];
+  // Older types become the four kinds: Content; Q&A, Choice (a poll is a Choice card with no right answer), Discussion.
+  const kinds = ["content", "content", "answer", "choice", "answer", "answer", "choice", "answer", "discussion", "discussion"];
   check("older types come back as kinds", modulesOf(after).map((m) => m.kind).join() === kinds.join(), modulesOf(after).map((m) => m.kind));
   check("each kind runs on its type (a quiz stays a quiz, a group discussion stays a studio)", modulesOf(after).map((m) => m.type).join() === "read,read,submit,quiz,submit,submit,practice,submit,studio,wall", modulesOf(after).map((m) => m.type));
-  check("a rating card becomes a poll with choices and no right answer", (() => { const p = modulesOf(after).find((m) => m.kind === "poll"); return p?.poll === true && p.questions?.[0]?.options?.length === 4 && p.questions[0].answer === undefined; })());
+  check("a rating card becomes a poll with choices and no right answer", (() => { const p = modulesOf(after).find((m) => m.poll); return p?.kind === "choice" && p.questions?.[0]?.options?.length === 4 && p.questions[0].answer === undefined; })());
   const add = await A.op(cid, { op: "addLesson", weekId: after.weeks[0].id, title: "Lesson 2" });
   check("add a lesson", add.ok !== false, add);
   check("lesson added", courseOf(await A.state(cid)).weeks[0].lessons.length === 2);
@@ -478,8 +478,10 @@ async function main() {
     const l = courseOf(await A.state(tid)).weeks[0].lessons[0];
     const card = (id, kind, title, extra = {}) => ({ id, kind, type: "read", title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
     await A.op(tid, { op: "saveLesson", lesson: { ...l, modules: [card("m-poll", "poll", "Which do you prefer?", { questions: [{ id: "p", text: "Prefer?", options: ["Ear", "Score"], answer: 1, next: ["m-ear", null] }] }), card("m-ear", "text", "Ear path")] } });
-    const saved = courseOf(await A.state(tid)).weeks[0].lessons[0].modules.find((m) => m.id === "m-poll");
-    check("a poll saves as a poll: no right answer, its wiring kept", saved.kind === "poll" && saved.poll === true && saved.type === "practice" && saved.questions[0].answer === undefined && saved.questions[0].next?.[0] === "m-ear", saved);
+    const savedMods = courseOf(await A.state(tid)).weeks[0].lessons[0].modules;
+    const saved = savedMods.find((m) => m.id === "m-poll");
+    check("an old Text card comes back as Content", savedMods.find((m) => m.id === "m-ear")?.kind === "content", savedMods.find((m) => m.id === "m-ear")?.kind);
+    check("an old Poll card becomes a Choice card with no right answer, its wiring kept", saved.kind === "choice" && saved.poll === true && saved.type === "practice" && saved.questions[0].answer === undefined && saved.questions[0].next?.[0] === "m-ear", saved);
     const links = (await A.op(tid, { op: "setupLinks" })).links;
     const as = async (name) => { const c = client(); const r = await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] }); return { c, id: r.studentId }; };
     const h = await as("Hal One"), i = await as("Ivy Two");
@@ -563,7 +565,7 @@ async function main() {
     }
     check("full marks on the sample's card group deal the challenge in lesson 2", deck?.members?.length === 3 && sub.dealt?.some((d) => /Challenge/.test(d.title) && d.lesson === "Using cadences"), sub);
     const way = modulesOf(sv).find((m) => m.title === "Pick your way in");
-    check("the sample's “pick your way in” is a poll", way?.kind === "poll" && way.poll === true, way?.kind);
+    check("the sample's “pick your way in” is a poll", way?.kind === "choice" && way.poll === true, way?.kind);
     check("nobody can edit a sample copy", [401, 403].includes((await V.op(r.courseId, { op: "addStudents", names: "Intruder" })).status) && [401, 403].includes((await A.op(r.courseId, { op: "addStudents", names: "Intruder" })).status));
     check("sample copies never show in a teacher's courses", !(await A.get("/api/courses")).courses.some((c) => c.id === r.courseId));
     check("two visitors get two separate copies", (await client().post("/api/try", {})).courseId !== r.courseId);

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { bandLabel, bandsOf, branchBelow, canBranch, DEFAULT_BANDS, SCORE, SHARED_ONLY, wiresOf, type Wire } from "@/lib/branching";
 import { suitOfCard, suitOfKind } from "@/lib/ui";
-import { PICKABLE, kindMeta, kindOf, newCard as makeCard, type CardKind } from "@/lib/kinds";
+import { PICKABLE, faceMeta, kindMeta, kindOf, newCard as makeCard, type CardKind } from "@/lib/kinds";
 import type { AnswerValue, Lesson, Module, ProgressMap } from "@/lib/types";
 import { Icon } from "../Icon";
 import { toast } from "@/lib/toast";
@@ -33,7 +33,7 @@ const levelOf = (z: number): Level => (z < 0.55 ? "far" : z >= 1.2 ? "near" : "m
 const branchQs = (m: Module) => (m.questions ?? []).filter((q) => canBranch(q));
 /** Cards that branch by score: a quiz, and a card group. */
 const isQuiz = (m: Module) => m.type === "quiz" || m.type === "group";
-const wantsQuestion = (m: Module) => (kindOf(m) === "choice" || kindOf(m) === "poll") && !branchQs(m).length && m.type !== "quiz";
+const wantsQuestion = (m: Module) => kindOf(m) === "choice" && !branchQs(m).length && m.type !== "quiz";
 /** Whether a card's node has anything under its head: answers, score ranges, its group's cards, or that invitation. */
 const hasBody = (m: Module) => branchQs(m).length > 0 || isQuiz(m) || wantsQuestion(m);
 const letter = (i: number) => String.fromCharCode(65 + i);
@@ -391,7 +391,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     if (why) { toast(why, { icon: "layers", tone: "plain" }); return; }
     const l = lessonWith(ids[0])!;
     const ordered = l.modules.filter((m) => ids.includes(m.id)).map((m) => m.id);
-    const g: Module = { ...makeCard("text", "Card group"), type: "group", kind: "group", suit: "question", members: ordered };
+    const g: Module = { ...makeCard("content", "Card group"), type: "group", kind: "group", suit: "question", members: ordered };
     // The group goes where its first card was, its cards right after it in their order.
     const before = l.modules.slice(0, l.modules.findIndex((m) => m.id === ordered[0])).filter((m) => !ordered.includes(m.id));
     const after = l.modules.filter((m) => !ordered.includes(m.id) && !before.includes(m));
@@ -746,7 +746,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     ) : (
                       <>
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
-                          <Icon name={kindMeta(kindOf(m)).icon} size={11} />{kindMeta(kindOf(m)).name}
+                          <Icon name={faceMeta(m).icon} size={11} />{faceMeta(m).name}
                           <span className="truncate normal-case tracking-normal text-ink-3">
                             · {fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : "everyone"}
                           </span>
@@ -772,9 +772,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       {nd.members?.map((c) => (
                         <div key={c.id}>
                           <button onClick={() => onEdit(nd.lessonId, c.id)} className="flex w-full items-center gap-2 px-3.5 text-left hover:bg-lane" style={{ height: SEC }} title="Edit this card">
-                            <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md" style={{ color: suitOfCard(c).tint, background: "rgba(0,0,0,0.035)" }}><Icon name={kindMeta(kindOf(c)).icon} size={11} /></span>
+                            <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md" style={{ color: suitOfCard(c).tint, background: "rgba(0,0,0,0.035)" }}><Icon name={faceMeta(c).icon} size={11} /></span>
                             <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{c.title || "Untitled card"}</span>
-                            <span className="text-[10.5px] text-ink-3">{kindMeta(kindOf(c)).name}</span>
+                            <span className="text-[10.5px] text-ink-3">{faceMeta(c).name}</span>
                           </button>
                           {branchQs(c).map((q) => q.options.map((o, oi) => {
                             const to = q.next?.[oi];

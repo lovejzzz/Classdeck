@@ -4,7 +4,7 @@ import { suitOfCard } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
 import { Icon, StatusIcon } from "../Icon";
 import { KindArt } from "./KindArt";
-import { kindMeta, kindOf } from "@/lib/kinds";
+import { faceMeta, faceOf } from "@/lib/kinds";
 
 /** The artwork window: shows the card's main media, or a soft gradient with the type glyph. */
 function Art({ m, big }: { m: Module; big: boolean }) {
@@ -75,7 +75,7 @@ function Art({ m, big }: { m: Module; big: boolean }) {
       </div>
     );
   }
-  return <KindArt id={m.id} kind={kindOf(m)} tint={meta.tint} cover={meta.cover} />;
+  return <KindArt id={m.id} face={faceOf(m)} tint={meta.tint} cover={meta.cover} />;
 }
 
 
@@ -92,7 +92,7 @@ export function CardFace({
 }) {
   const tag = badge ?? (m.choice ? (m.choice.recommended ? "Recommended path" : "Pick a path") : m.picked ? "Your path" : personal ? "For you" : undefined);
   const meta = suitOfCard(m);
-  const kind = kindMeta(kindOf(m));
+  const kind = faceMeta(m);
   const question = meta.id === "question";
   // One shell per family: Content cards a clean double frame; Question cards a dashed inner frame and a coloured foot.
   return (
