@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.14",
+    date: "2026-11-20",
+    changes: [
+      "Two kinds of card: Content and Question. A Question card is answered with choices (a right answer, or a poll), an open answer, or a discussion; pick which under “How students answer”.",
+      "Swap a card between Content and Question with the button beside it at the top of the editor. “Start from” and the kind picker are gone.",
+      "Cards on the course map are playing-card shaped, with their picture or drawing on the face.",
+      "Hold a card on the map to delete cards, like apps on a phone: they jiggle and each gets a − button. Tap Done or an empty spot to stop.",
+      "Who’s working on a card is off on the map until you turn on “Where students are”, and sits at the card’s lower left so it doesn’t look like a close button.",
+    ],
+  },
+  {
     version: "0.1.13",
     date: "2026-11-20",
     changes: [

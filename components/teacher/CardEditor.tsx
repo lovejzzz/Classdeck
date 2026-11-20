@@ -8,13 +8,11 @@ import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { isoDay } from "@/lib/grading";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
-import { SUITS, suitOf, suitOfCard } from "@/lib/ui";
+import { suitOfCard } from "@/lib/ui";
 import { ask } from "../Confirm";
 import { Clearable } from "../Clearable";
-import { CARD_TEMPLATES } from "@/lib/templates";
-import { loadLibrary, useLibrary } from "./NewCardFan";
-import { clearOlder, fold, olderSettings } from "@/lib/cardmodel";
-import { PICKABLE, addToGroup, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
+import { clearOlder, olderSettings } from "@/lib/cardmodel";
+import { ANSWER_FORMS, FAMILIES, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { CardFace } from "../cards/CardFace";
 import { Avatar, Icon } from "../Icon";
@@ -61,7 +59,7 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 }
 
 export function CardEditor({
-  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [], started = 0, onTree, allCards, neighbors,
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, allCards, neighbors,
 }: {
   /** Shown at the top of the panel: where this card sits in the course's card tree. */
   neighbors?: React.ReactNode;
@@ -154,16 +152,20 @@ export function CardEditor({
   const a = m.audience;
   const kind = kindOf(m);
   const older = olderSettings(m);
-  // A card just put down, still empty: offer the teacher's saved cards and ready-made ones as a starting point.
-  const fresh = !m.body.trim() && !attachments.length && !m.questions?.some((q) => q.text.trim()) && /^(New .+ card|Untitled card)$/.test(m.title);
 
-  /** Turn the card into another kind. Its words and media stay; what only the old kind used goes. */
+  /** Turn the card into another kind or answer form. Its words and media stay; what only the old one used goes. */
   async function toKind(k: CardKind) {
     if (k === kind) return;
-    if (started > 0 && !(await ask({ title: "Change the kind of card?", body: `${started === 1 ? "1 student has" : `${started} students have`} already worked on this card. What they handed in stays where it is and won’t move.`, confirm: "Change it" }))) return;
+    const losing = (m.questions ?? []).filter((q) => q.text.trim() || q.options.some((o) => o.trim()));
+    const deals = losing.reduce((n, q) => n + (q.next ?? []).filter(Boolean).length, 0);
+    const parts: string[] = [];
+    if (k !== "choice" && losing.length) parts.push(`Its question and choices go${deals ? `, and the ${deals === 1 ? "card an answer deals goes" : `${deals} cards its answers deal go`} to everyone` : ""}.`);
+    if (started > 0) parts.push(`${started === 1 ? "1 student has" : `${started} students have`} already worked on this card. What they handed in stays where it is and won’t move.`);
+    if (parts.length && !(await ask({ title: familyOf(k) === familyOf(kind) ? `Answer with ${kindMeta(k).name.toLowerCase()} instead?` : `Make it a ${FAMILIES.find((f) => f.id === familyOf(k))!.name} card?`, body: parts.join(" "), confirm: "Change it" }))) return;
     set(asKind(m, k));
   }
-  const suit = suitOfCard(m);
+  const family = familyOf(kind);
+  const other = FAMILIES.find((f) => f.id !== family)!;
 
   // Rendered into <body> so no animated ancestor can become its positioning box.
   return createPortal(
@@ -192,18 +194,18 @@ export function CardEditor({
       <div className="flex-1 overflow-y-auto bg-[#f7f7f5]">
         {neighbors && <div key={m.id} className="rise px-4 pt-4">{neighbors}</div>}
         {/* The card on the table. */}
-        <div className="px-5 pb-4 pt-6"><TiltPreview m={m} /></div>
+        <div className="relative px-5 pb-4 pt-6">
+          <TiltPreview m={m} />
+          {kind !== "group" && (
+            <button onClick={() => toKind(other.start)} title={`Make it a ${other.name} card`} aria-label={`Make it a ${other.name} card`}
+              className="press absolute right-5 top-1/2 flex w-[4.5rem] -translate-y-1/2 flex-col items-center gap-1.5 text-[11.5px] leading-tight text-ink-2 hover:text-ink">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white shadow-sm"><Icon name="swap" size={16} /></span>
+              {other.name}
+            </button>
+          )}
+        </div>
 
         <div className="space-y-2.5 px-4 pb-8">
-          {fresh && (
-            <StartFrom m={m} onApply={(content) => {
-              const own = new Set(skills.map((x) => x.id));
-              const next: Module = { ...fold(structuredClone(content)), id: m.id, audience: m.audience, due: m.due, suit: suit.id, skills: content.skills?.filter((x) => own.has(x)) } as Module;
-              record(m);
-              put(next);
-            }} />
-          )}
-
           <Panel n={1} title="Title and what to do">
             <Clearable><input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" /></Clearable>
             <Clearable multiline className="mt-2"><textarea value={m.body} onChange={(e) => set({ body: e.target.value })} rows={5} placeholder="What students should read, watch or do" aria-label="Body" className="field resize-y leading-relaxed" /></Clearable>
@@ -246,7 +248,7 @@ export function CardEditor({
             </div>
           </Panel>
 
-          {kind === "group" ? (
+          {kind === "content" ? null : kind === "group" ? (
           <Panel n={2} title="Cards in this group">
             <div className="space-y-1.5">
               {(m.members ?? []).map((id, i, arr) => {
@@ -277,20 +279,17 @@ export function CardEditor({
             </div>
           </Panel>
           ) : (
-          <Panel n={2} title="What kind of card">
-            <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Kind of card">
-              {PICKABLE.map((k) => {
-                const fam = SUITS.find((x) => x.id === familyOf(k.id))!;
-                return <MiniCard key={k.id} short tint={fam.tint} cover={fam.cover} icon={<Icon name={k.icon} size={18} />} title={k.name} sub={k.hint} selected={kind === k.id} onClick={() => toKind(k.id)} />;
-              })}
+          <Panel n={2} title="How students answer">
+            <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="How students answer">
+              {ANSWER_FORMS.map((k) => (
+                <button key={k.id} role="radio" aria-checked={kind === k.id} onClick={() => toKind(k.id)}
+                  className={`press flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-[12.5px] transition-colors ${kind === k.id ? "border-[#a0561f] bg-[#a0561f]/[0.06] font-medium text-ink" : "border-line bg-white text-ink-2 hover:border-line-strong"}`}>
+                  <Icon name={k.icon} size={16} />{k.name}
+                </button>
+              ))}
             </div>
             <div className="mt-3 border-t border-line pt-3">
-              {kind === "content" && (
-                <p className="text-[12.5px] text-ink-3">
-                  Write in the box above and add any media: <b>Upload</b> a picture or file, <b>Link</b> a video, audio or page, or <b>More</b> → record audio, video or your screen. The card’s face follows its first piece of media; now it shows as <b className="text-ink-2">{faceMeta(m).name}</b>.
-                </p>
-              )}
-              {kind === "answer" && <p className="text-[12.5px] text-ink-3">Any kind of homework: students can type an answer, record audio or video, or upload files and links. You give feedback on what they hand in.</p>}
+              {kind === "answer" && <p className="text-[12.5px] text-ink-3">Students type an answer, record audio or video, or upload files and links. Only you see it, and you give feedback.</p>}
               {kind === "choice" && m.type !== "quiz" && (
                 <div className="mb-3 flex flex-wrap items-center gap-2 text-[12.5px]">
                   <span className="text-ink-2">Right answer</span>
@@ -329,7 +328,7 @@ export function CardEditor({
           </Panel>
           )}
 
-          <Panel n={3} title="When and for whom">
+          <Panel n={kind === "content" ? 2 : 3} title="When and for whom">
             <div className="flex flex-wrap items-center gap-1.5">
               <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="field h-8 w-40 py-0" />
               {([["Today", 0], ["+3 days", 3], ["+1 week", 7]] as const).map(([label, n]) => (
@@ -393,61 +392,6 @@ function Panel({ n, title, children }: { n: number; title: string; children: Rea
     <section data-sec={title} className="rounded-xl border border-line bg-white px-4 py-3.5">
       <h3 className="mb-2.5 flex items-baseline gap-2 text-[13px] font-medium"><span className="font-mono text-[11px] font-normal text-ink-3">{n}</span>{title}</h3>
       {children}
-    </section>
-  );
-}
-
-/** A small card to choose with: 5 wide by 7 tall, in the suit's colours. */
-function MiniCard({ tint, cover, icon, title, sub, selected, dashed, short, onClick, onRemove, label }: {
-  tint: string; cover?: string; icon: React.ReactNode; title: string; sub?: string; selected?: boolean; dashed?: boolean; short?: boolean; onClick: () => void; onRemove?: () => void; label?: string;
-}) {
-  return (
-    <div className={`group relative ${short ? "min-h-24" : "aspect-[5/7]"}`}>
-      <button onClick={onClick} role={selected !== undefined ? "radio" : undefined} aria-checked={selected} aria-label={label ?? title} title={sub}
-        className={`press relative flex h-full w-full flex-col overflow-hidden rounded-[10px] border bg-white text-left transition-transform ${selected ? "-translate-y-1 border-transparent shadow-[0_10px_22px_-12px_rgba(20,20,18,0.45)] ring-2" : dashed ? "border-dashed border-line-strong hover:-translate-y-0.5" : "border-line hover:-translate-y-0.5 hover:shadow-[0_8px_18px_-12px_rgba(20,20,18,0.35)]"}`}
-        style={selected ? ({ "--tw-ring-color": tint } as React.CSSProperties) : undefined}>
-        {cover && <span className="absolute inset-0 opacity-80" style={{ background: cover }} />}
-        <span className="relative flex flex-1 items-center justify-center" style={{ color: tint }}>{icon}</span>
-        <span className="relative px-2 pb-2">
-          <span className="block text-[11.5px] font-semibold leading-tight line-clamp-2">{title}</span>
-          {sub && <span className="mt-0.5 block text-[10px] leading-snug text-ink-2 line-clamp-2">{sub}</span>}
-        </span>
-      </button>
-      {onRemove && (
-        <button onClick={onRemove} aria-label={`Remove ${title} from your saved cards`}
-          className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-white text-ink-3 opacity-0 shadow-sm hover:text-bad focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
-          <Icon name="x" size={10} />
-        </button>
-      )}
-    </div>
-  );
-}
-
-/** For a card just put down: start from one of the teacher's saved cards or a ready-made one of this suit. */
-function StartFrom({ m, onApply }: { m: Module; onApply: (content: Omit<Module, "id">) => void }) {
-  const suit = suitOfCard(m);
-  const saved = useLibrary().filter((c) => suitOfCard(c.module).id === suit.id);
-  const temps = CARD_TEMPLATES.filter((t) => suitOf(t.make().type).id === suit.id);
-  if (!saved.length && !temps.length) return null;
-  async function forget(id: string, name: string) {
-    if (!(await ask({ title: `Remove “${name}” from your saved cards?`, body: "Cards already in your courses stay.", confirm: "Remove", danger: true }))) return;
-    const r = await fetch("/api/library", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).then((x) => x.json()).catch(() => ({ ok: false }));
-    if (!r.ok) return toast("Couldn’t remove it", { icon: "x", tone: "bad" });
-    await loadLibrary(true);
-  }
-  return (
-    <section aria-label="Start from" className="px-1 pb-1">
-      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">Start from</div>
-      <div className="grid grid-cols-4 gap-2">
-        {saved.map((c) => (
-          <MiniCard key={c.id} tint={suit.tint} cover={suit.cover} icon={<Icon name="star" size={18} />} title={c.name} sub="Your card"
-            onClick={() => onApply(c.module)} onRemove={() => forget(c.id, c.name)} label={`Start from your card ${c.name}`} />
-        ))}
-        {temps.map((t) => {
-          const made = t.make();
-          return <MiniCard key={t.id} tint={suit.tint} icon={<Icon name={made.type} size={18} />} title={t.name} sub={t.description} onClick={() => onApply(made)} label={`Start from ${t.name}`} />;
-        })}
-      </div>
     </section>
   );
 }

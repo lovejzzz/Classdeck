@@ -391,6 +391,12 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             onChangeMany={changeMany}
             onEdit={(lid, id) => { if (!readOnly) edit(lid, id); }}
             onAddLesson={course.weeks.length ? () => addLesson(course.weeks[course.weeks.length - 1].id) : undefined}
+            onDelete={readOnly ? undefined : async (m) => {
+              if (m.type === "group") {
+                if (!(await ask({ title: `Delete “${m.title}” and its ${m.members?.length ?? 0} cards?`, body: "To keep the cards, open the group and use Ungroup instead. You can undo this.", confirm: "Delete all", danger: true }))) return;
+                deletedToast(m.title, deleteCard(m.id));
+              } else removeCard(allLessons().find((l) => l.modules.some((x) => x.id === m.id))!, m);
+            }}
           />
         </div>
       ) : (

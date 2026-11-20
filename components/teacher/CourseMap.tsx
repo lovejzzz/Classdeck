@@ -3,16 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, SCORE, SHARED_ONLY, wiresOf, type Wire } from "@/lib/branching";
 import { bandTone, pathColor, suitOfCard, suitOfKind } from "@/lib/ui";
-import { PICKABLE, faceMeta, kindMeta, kindOf, newCard as makeCard, unfinished, type CardKind } from "@/lib/kinds";
+import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, type CardKind } from "@/lib/kinds";
+import { KindArt } from "../cards/KindArt";
 import type { AnswerValue, Lesson, Module, ProgressMap } from "@/lib/types";
 import { Icon } from "../Icon";
 import { toast } from "@/lib/toast";
 
 // Fixed sizes, so ports and wires are placed from numbers, not by measuring the page.
-const W = 256;
+// A card on the map is a playing card: 5 wide by 7 tall. Only a card group (a stack) can grow taller.
+const W = 230;
+const CARD_H = Math.round((W * 7) / 5);
 const HEAD = 72;
-const FAR_H = 52; // a card zoomed out: its colour and title
-const PREVIEW = 46; // zoomed in: two lines of what to do
+const FAR_H = 96; // a card zoomed out: its colour and a big title
 const SEC = 28; // a question's (or the score's) title row
 const ROW = 30; // one answer or one score band
 const PAD = 10;
@@ -20,9 +22,9 @@ const COL = 120; // gap between columns inside a lesson
 const GAP = 22; // gap between cards in a column
 const REGION_GAP = 104; // gap between lessons
 const TOP = 92; // room for each lesson's header
-// Kinds a branch can deal (not a discussion, which the whole class or group shares), and every kind.
-const NEW_KINDS: CardKind[] = PICKABLE.map((k) => k.id).filter((k) => k !== "discussion");
-const ALL_KINDS: CardKind[] = PICKABLE.map((k) => k.id);
+// The two kinds of card you put down: Content, or a Question (it starts with choices; its form is set in the editor).
+const NEW_KINDS: CardKind[] = FAMILIES.map((f) => f.start);
+const familyName = (k: CardKind) => FAMILIES.find((f) => f.start === k)!.name;
 const INK = "#4b56a8";
 const DAY = 86400000;
 
@@ -43,8 +45,8 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
 /** The rows on a card at a zoom level: its head, (zoomed in) a preview, then each question's answers and the score bands. */
 function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = []) {
   const ports = new Map<string, number>();
-  if (level === "far") return { h: m.type === "group" ? FAR_H + members.length * 22 : FAR_H, ports };
-  let y = HEAD + (level === "near" && m.type !== "group" ? PREVIEW : 0);
+  if (level === "far") return { h: Math.max(CARD_H, m.type === "group" ? FAR_H + members.length * 26 + PAD : 0), ports };
+  let y = HEAD;
   // A card group: a row per card, with that card's answers (their ports keyed by the card), then the group's score.
   if (m.type === "group")
     for (const c of members) {
@@ -63,7 +65,7 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
   }
   // Only a Multiple choice or Poll card without its question yet gets a line inviting one; other kinds don't branch.
   if (wantsQuestion(m)) y += 34;
-  return { h: y + PAD, ports };
+  return { h: Math.max(CARD_H, y + PAD), ports };
 }
 
 interface Node { m: Module; lessonId: string; li: number; x: number; y: number; h: number; ports: Map<string, number>; parent?: string; members?: Module[] }
@@ -177,7 +179,7 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new" } | { add: 
  * lesson or into a later one). Zoomed out, cards shrink to their titles; zoomed in, they show what to do. Drag from a
  * port onto a card to deal it, or into empty space for a new card. Click a card to edit it in the panel.
  */
-export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson }: {
+export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete }: {
   /** Every lesson in the course, in order (with unsaved edits). */
   lessons: Lesson[];
   /** Lesson id → its week's title. */
@@ -196,6 +198,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   onChangeMany: (ls: Lesson[]) => Promise<void>;
   onEdit: (lessonId: string, moduleId: string) => void;
   onAddLesson?: () => void;
+  /** Delete a card (it asks first, and offers Undo). Hold a card to show the delete buttons. */
+  onDelete?: (m: Module) => void;
 }) {
   const all = useMemo(() => lessons.flatMap((l, i) => l.modules.map((m) => ({ m, lessonId: l.id, at: i }))), [lessons]);
   const wires = useMemo(() => wiresOf(all.map((x) => x.m)), [all]);
@@ -216,7 +220,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   // Cards picked to put in a card group: shift-click a card, or shift-drag a box around several.
   const [picks, setPicks] = useState<Set<string>>(new Set());
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
-  const [live, setLive] = useState(true);
+  const [live, setLive] = useState(false);
+  // Hold a card (like an app on a phone's home screen): the cards jiggle and each shows a button to delete it.
+  const [jiggle, setJiggle] = useState(false);
   const [now] = useState(() => Date.now());
   const [born] = useState(() => new Map<string, { x: number; y: number }>());
 
@@ -238,10 +244,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key === "Escape" && menu && !busy && !document.querySelector("[data-confirm]")) setMenu(null);
+      if (e.key === "Escape" && jiggle && !busy && !document.querySelector("[data-confirm]")) setJiggle(false);
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  }, [menu, busy]);
+  }, [menu, busy, jiggle]);
   useEffect(() => {
     if (!fresh) return;
     const t = setTimeout(() => setFresh(null), 1600);
@@ -340,7 +347,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const lesson = lessonWith(port.from);
     const src = lesson.modules.find((m) => m.id === port.from)!;
     const what = port.q === SCORE ? `Score ${bandLabel(bandsOf(src)[port.option])}` : src.questions?.find((x) => x.id === port.q)?.options[port.option]?.trim();
-    const card = blank(type, what ? `If “${what.slice(0, 40)}”` : `New ${kindMeta(type).name} card`);
+    const card = blank(type, what ? `If “${what.slice(0, 40)}”` : `New ${familyName(type)} card`);
     const p = portPos(port);
     born.set(card.id, { x: p.x + 40, y: p.y - HEAD / 2 });
     setMenu(null);
@@ -362,7 +369,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   }
   function addCard(lessonId: string, type: CardKind) {
     const l = lessons.find((x) => x.id === lessonId)!;
-    const card = blank(type, `New ${kindMeta(type).name} card`);
+    const card = blank(type, `New ${familyName(type)} card`);
     const r = regions.find((x) => x.lesson.id === lessonId);
     if (r) born.set(card.id, { x: r.x, y: TOP - 40 });
     setMenu(null);
@@ -469,8 +476,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     if (readOnly || e.button !== 0 || typing) return;
     const start = { x: e.clientX, y: e.clientY };
     let on = false;
+    // Held still for a moment: show the delete buttons (and don't open the card on release).
+    let held = false;
+    const hold = onDelete ? window.setTimeout(() => { held = true; setJiggle(true); navigator.vibrate?.(10); }, 520) : 0;
     const move = (ev: PointerEvent) => {
       if (!on && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return;
+      clearTimeout(hold);
       on = true;
       const p = toCanvas(ev.clientX, ev.clientY);
       setMoving({ id, x: p.x, y: p.y, to: regionAt(p.x) });
@@ -479,7 +490,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
+      clearTimeout(hold);
       setMoving(null);
+      if (held && !on) { setDragged(true); setTimeout(() => setDragged(false), 0); return; }
       if (!on) return;
       setDragged(true);
       setTimeout(() => setDragged(false), 0);
@@ -571,6 +584,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 
   return (
     <div className="relative">
+      {jiggle && (
+        <div className="pop absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-line bg-white py-1.5 pl-4 pr-1.5 text-[13px] shadow-[0_16px_40px_-16px_rgba(20,20,18,0.4)]">
+          <span className="text-ink-2">Tap <span className="inline-flex h-4 w-4 translate-y-[3px] items-center justify-center rounded-full bg-[#6f6f6c]"><span className="block h-[2px] w-2 rounded-full bg-white" /></span> to delete a card</span>
+          <button onClick={() => setJiggle(false)} className="btn btn-dark press h-8 px-4 text-[12.5px]">Done</button>
+        </div>
+      )}
       {picks.size > 0 && (
         <div className="pop absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 text-[13px] shadow-[0_16px_40px_-16px_rgba(20,20,18,0.4)]">
           <Icon name="layers" size={14} className="text-[#4b56a8]" />
@@ -611,6 +630,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         onPointerDown={(e) => {
           if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.canvas) return;
           setMenu(null);
+          if (jiggle) setJiggle(false);
           if (e.shiftKey && !readOnly) {
             // Shift-drag: a box that picks every card it touches.
             const a = toCanvas(e.clientX, e.clientY);
@@ -746,9 +766,15 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                   data-node={m.id}
                   onPointerEnter={() => setHot(m.id)}
                   onPointerLeave={() => setHot((h) => (h === m.id ? null : h))}
-                  className={`tree-node absolute rounded-[18px] border bg-white ${m.type === "group" ? "isolate" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
-                  style={{ left: p.x, top: p.y, width: W, animationDelay: `${Math.min(i, 14) * 25}ms` }}
+                  className={`tree-node absolute flex flex-col rounded-[18px] border bg-white ${m.type === "group" ? "isolate" : ""} ${jiggle ? "tree-jiggle" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
+                  style={{ left: p.x, top: p.y, width: W, height: nd.h, animationDelay: jiggle ? `${-(i % 5) * 70}ms` : `${Math.min(i, 14) * 25}ms` }}
                 >
+                  {jiggle && onDelete && (
+                    <button onClick={(e) => { e.stopPropagation(); onDelete(m); }} onPointerDown={(e) => e.stopPropagation()} aria-label={`Delete ${m.title || "this card"}`}
+                      className="pop absolute -left-2.5 -top-2.5 z-30 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#6f6f6c] text-white shadow-md hover:bg-bad">
+                      <span className="block h-[2.5px] w-3 rounded-full bg-white" />
+                    </button>
+                  )}
                   {m.type === "group" && (
                     // A card group looks like a small stack of cards.
                     <>
@@ -758,7 +784,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                   )}
                   {inbound.length > 0 && <span className={`absolute -left-[6px] rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(255,255,255,0.6)] ${level === "far" ? "top-[20px] h-3.5 w-3.5" : "top-[30px] h-3 w-3"}`} style={{ background: colorOf(inbound[0]) }} />}
                   {here.length > 0 && (
-                    <span className="absolute -top-3 right-3 flex -space-x-1.5" title={`${here.map((s) => s.name).join(", ")} ${here.length === 1 ? "is" : "are"} working on this${stuck ? ` (${stuck} for over 2 days)` : ""}`}>
+                    <span className="absolute -bottom-3 left-3 z-10 flex -space-x-1.5" title={`${here.map((s) => s.name).join(", ")} ${here.length === 1 ? "is" : "are"} working on this${stuck ? ` (${stuck} for over 2 days)` : ""}`}>
                       {here.slice(0, 4).map((s) => (
                         <span key={s.id} className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-white text-[9.5px] font-semibold text-white ${s.stuck ? "bg-[#d08a4a]" : "bg-[#4b56a8]"}`}>{initials(s.name)}</span>
                       ))}
@@ -766,13 +792,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     </span>
                   )}
                   <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onClick={(e: React.MouseEvent) => {
-                    if (dragged || typing) return;
+                    if (dragged || typing || jiggle) return;
                     if (e.shiftKey && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
                     onEdit(nd.lessonId, m.id);
-                  }} className={`tree-head block w-full rounded-t-[18px] text-left ${readOnly ? "" : "cursor-grab active:cursor-grabbing"} ${moving?.id === m.id ? "opacity-40" : ""}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
+                  }} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none rounded-t-[18px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"} ${moving?.id === m.id ? "opacity-40" : ""}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
                     <span className="tree-bar block h-[5px] rounded-t-[18px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
                     {level === "far" ? (
-                      <span className="block truncate px-3.5 pt-2.5 text-[17px] font-semibold text-ink">{m.title || "Untitled card"}</span>
+                      <span className="line-clamp-2 px-4 pt-3 text-[26px] font-semibold leading-[1.15] text-ink">{m.title || "Untitled card"}</span>
                     ) : (
                       <>
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
@@ -787,18 +813,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       </>
                     )}
                   </Head>
-                  {level === "near" && (
-                    <div className="line-clamp-2 border-t border-line px-3.5 pt-2 text-[12px] leading-[1.45] text-ink-2" style={{ height: PREVIEW }}>
-                      {m.body.trim() || <span className="text-ink-3">No instructions yet</span>}
-                    </div>
-                  )}
                   {level === "far" && nd.members && (
-                    <div className="border-t border-line px-3.5 pb-1.5 pt-1">
-                      {nd.members.map((c) => <div key={c.id} className="truncate text-[13px] leading-[22px] text-ink-2">{c.title || "Untitled card"}</div>)}
+                    <div className="border-t border-line px-4 pb-1.5 pt-1">
+                      {nd.members.map((c) => <div key={c.id} className="truncate text-[17px] leading-[26px] text-ink-2">{c.title || "Untitled card"}</div>)}
                     </div>
                   )}
                   {level !== "far" && (hasBody(m) || nd.members) && (
-                    <div className="border-t border-line pb-[10px]">
+                    <div className="flex-none border-t border-line pb-[10px]">
                       {nd.members?.map((c) => (
                         <div key={c.id}>
                           <button onClick={() => onEdit(nd.lessonId, c.id)} className="flex w-full items-center gap-2 px-3.5 text-left hover:bg-lane" style={{ height: SEC }} title="Edit this card">
@@ -890,6 +911,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       )}
                     </div>
                   )}
+                  {!nd.members && <CardRest m={m} far={level === "far"} art={level === "far" || !hasBody(m)} tint={suit.tint} cover={suit.cover} />}
                 </div>
               );
             })}
@@ -916,9 +938,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               <div className="pop absolute z-20 w-64 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
                 <div className="px-2 pb-1.5 pt-0.5 text-[12px] font-medium text-ink">New card for everyone in {lessons.find((l) => l.id === menu.add)?.title}</div>
                 <div className="grid grid-cols-2 gap-0.5">
-                  {ALL_KINDS.map((t) => (
+                  {NEW_KINDS.map((t) => (
                     <button key={t} onClick={() => addCard(menu.add, t)} className="press flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
-                      <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{kindMeta(t).name}
+                      <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{familyName(t)}
                     </button>
                   ))}
                 </div>
@@ -953,7 +975,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                   <div className="grid grid-cols-2 gap-0.5">
                     {NEW_KINDS.map((t) => (
                       <button key={t} onClick={() => newCard(menu.port, t, into)} className="press flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
-                        <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{kindMeta(t).name}
+                        <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{familyName(t)}
                       </button>
                     ))}
                   </div>
@@ -992,6 +1014,26 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** The rest of a card below its head and answers: its picture (or drawing) and the start of what to do, like a playing card's face. */
+function CardRest({ m, far, art, tint, cover }: { m: Module; far: boolean; art: boolean; tint: string; cover: string }) {
+  const first = m.attachments?.[0];
+  const body = m.body.trim();
+  return (
+    <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-hidden ${far ? "px-4 pb-4 pt-1" : "px-3.5 pb-3.5 pt-1.5"}`}>
+      {art && (
+        <div className="relative min-h-[3rem] flex-1 overflow-hidden rounded-[12px]" style={{ background: cover }}>
+          {first?.kind === "image"
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={first.url} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" />
+            : <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />}
+        </div>
+      )}
+      {!far && body && <p className={`flex-none text-[12px] leading-[1.45] text-ink-2 ${art ? "line-clamp-3" : "line-clamp-[8]"}`}>{body}</p>}
+      {!far && !body && !art && <p className="flex-none text-[12px] text-ink-3">No instructions yet</p>}
     </div>
   );
 }

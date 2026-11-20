@@ -1,27 +1,41 @@
-// What a card is, as teachers and students see it: two families, four kinds (plus card groups, made by merging cards).
+// What a card is, as teachers and students see it: two kinds of card (plus card groups, made by merging cards).
 //   Content cards (something to take in): words, a picture, a video or audio link, or a recording. Its face follows its media.
-//   Question cards (something to answer): Q&A, Choice (with right answers, or a poll with none), Discussion.
+//   Question cards (something to answer), in one of three forms: choices (a right answer, or a poll with none), an open
+//   answer, or a discussion.
 // Each kind runs on one of the stored types underneath (read, submit, quiz, practice, wall, studio), which the rest of
 // the site already knows how to show and grade. Question cards are where card trees branch: each choice of a Choice
 // card (quiz question or poll), and each score range of a quiz or a card group, can deal a card.
 import type { Module, ModuleType, Question } from "./types";
 
 export type Family = "content" | "question";
-/** The kinds a teacher picks from: Content; Q&A, Choice, Discussion. A card group is made by merging cards. */
+/**
+ * What a teacher picks: a Content card or a Question card. A Question card asks something; how students answer is its
+ * form (CardKind): with choices (a quiz question or a poll), an open answer, or a discussion everyone takes part in.
+ * A card group is made by merging cards.
+ */
 export type CardKind = "content" | "answer" | "choice" | "discussion" | "group";
-/** How a card looks: its picture and name. A Content card looks like its media; a Choice card like a quiz or a poll. */
+/** How a card looks: its picture and name. A Content card looks like its media; a Question card like how it's answered. */
 export type Face = "text" | "image" | "video" | "link" | "recording" | "answer" | "choice" | "poll" | "discussion" | "group";
+
+/** The two kinds of card a teacher puts down, and what each starts as. */
+export const FAMILIES: { id: Family; name: string; hint: string; start: CardKind }[] = [
+  { id: "content", name: "Content", hint: "Words, a picture, a video, a link or a recording", start: "content" },
+  { id: "question", name: "Question", hint: "Students answer: with choices, in their own words, or in a discussion", start: "choice" },
+];
+export const familyMeta = (f: Family) => FAMILIES.find((x) => x.id === f)!;
 
 export const KINDS: { id: CardKind; family: Family; name: string; hint: string; icon: string; done: string }[] = [
   { id: "content", family: "content", name: "Content", hint: "Words, a picture, a video, a link or a recording", icon: "read", done: "Done" },
-  { id: "answer", family: "question", name: "Q&A", hint: "Students write, record or upload", icon: "message", done: "Hand in" },
-  { id: "choice", family: "question", name: "Choice", hint: "Pick an answer: a quiz question or a poll", icon: "quiz", done: "Submit" },
+  { id: "choice", family: "question", name: "Choices", hint: "Pick an answer: a quiz question, or a poll with no right answer", icon: "quiz", done: "Submit" },
+  { id: "answer", family: "question", name: "Open answer", hint: "Students write, record or upload; you give feedback", icon: "message", done: "Hand in" },
   { id: "discussion", family: "question", name: "Discussion", hint: "Everyone posts and replies", icon: "wall", done: "Done" },
   // Not a kind you pick: made by selecting cards and merging them. Listed so its name and icon are known.
   { id: "group", family: "question", name: "Card group", hint: "Cards that go together", icon: "layers", done: "Done" },
 ];
-/** The kinds a card can be picked as (a card group is made from cards, not picked). */
+/** The forms a card can take (a card group is made from cards, not picked). */
 export const PICKABLE = KINDS.filter((k) => k.id !== "group");
+/** How a Question card can be answered. */
+export const ANSWER_FORMS = PICKABLE.filter((k) => k.family === "question");
 export const kindMeta = (k: CardKind) => KINDS.find((x) => x.id === k)!;
 export const familyOf = (k: CardKind): Family => kindMeta(k).family;
 
@@ -31,7 +45,7 @@ export const FACES: Record<Face, { name: string; icon: string }> = {
   video: { name: "Video", icon: "video" },
   link: { name: "Link", icon: "link" },
   recording: { name: "Recording", icon: "mic" },
-  answer: { name: "Q&A", icon: "message" },
+  answer: { name: "Open answer", icon: "message" },
   choice: { name: "Multiple choice", icon: "quiz" },
   poll: { name: "Poll", icon: "chart" },
   discussion: { name: "Discussion", icon: "wall" },
@@ -150,7 +164,7 @@ export function kindWeeks(weeks: { lessons: { modules: Module[] }[] }[]): number
 
 /** A new, empty card of a kind (a poll: a Choice card with `poll`). */
 export function newCard(k: CardKind, title?: string, poll?: boolean): Module {
-  const blank: Module = { id: `m-${Math.random().toString(36).slice(2, 9)}`, type: "read", title: title ?? `New ${poll ? "Poll" : kindMeta(k).name} card`, body: "", audience: { kind: "all" }, tools: [], attachments: [] };
+  const blank: Module = { id: `m-${Math.random().toString(36).slice(2, 9)}`, type: "read", title: title ?? `New ${poll ? "Poll" : familyMeta(familyOf(k)).name} card`, body: "", audience: { kind: "all" }, tools: [], attachments: [] };
   return asKind(blank, k, poll);
 }
 

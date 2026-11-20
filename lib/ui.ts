@@ -15,7 +15,7 @@ const COVER = {
 
 export const SUITS: { id: Suit; name: string; tint: string; cover: string; rule: string; types: ModuleType[]; kinds: CardKind[] }[] = [
   { id: "content", name: "Content", tint: "#3d68a6", cover: COVER.content, rule: "Words, pictures, videos, links and recordings to take in.", types: ["read", "explore"], kinds: PICKABLE.filter((k) => k.family === "content").map((k) => k.id) },
-  { id: "question", name: "Question", tint: "#a0561f", cover: COVER.question, rule: "Q&A, choices (quiz questions and polls) and discussions.", types: ["quiz", "practice", "submit", "reflect", "builder", "selfcheck", "wall", "studio", "group"], kinds: PICKABLE.filter((k) => k.family === "question").map((k) => k.id) },
+  { id: "question", name: "Question", tint: "#a0561f", cover: COVER.question, rule: "A question, answered with choices (a quiz question or a poll), in students’ own words, or in a discussion.", types: ["quiz", "practice", "submit", "reflect", "builder", "selfcheck", "wall", "studio", "group"], kinds: PICKABLE.filter((k) => k.family === "question").map((k) => k.id) },
 ];
 
 export const suitOf = (t: ModuleType): (typeof SUITS)[number] => SUITS.find((s) => s.types.includes(t)) ?? SUITS[1];

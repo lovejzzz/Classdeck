@@ -1,5 +1,5 @@
 // Card kinds and faces, checked without a server: npx tsx tests/kinds.test.ts
-import { addToGroup, asKind, faceOf, isPoll, kindOf, newCard, withKind } from "../lib/kinds";
+import { ANSWER_FORMS, FAMILIES, addToGroup, asKind, faceOf, familyOf, isPoll, kindOf, newCard, withKind } from "../lib/kinds";
 import type { Attachment, Module } from "../lib/types";
 
 const card = (extra: Partial<Module> = {}): Module => ({ id: "m", type: "read", title: "t", body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
@@ -38,6 +38,13 @@ check("the new question goes right after the group's last card", l2.modules.map(
 check("and joins the group", l2.modules.find((m) => m.id === "g")?.members?.join() === `a,b,${added.id}`);
 check("it is a Choice card with a right answer, named in order", added.kind === "choice" && !added.poll && added.title === "Question 3" && added.questions?.[0].answer === 0);
 check("a new poll card", isPoll(newCard("choice", undefined, true)) && newCard("choice", undefined, true).title === "New Poll card");
+
+// Two kinds of card: Content and Question. A Question card is answered with choices, an open answer or a discussion.
+check("two kinds of card: Content and Question", FAMILIES.map((f) => f.name).join() === "Content,Question");
+check("a Question card starts with choices", FAMILIES[1].start === "choice" && newCard(FAMILIES[1].start).title === "New Question card");
+check("three ways to answer a Question card", ANSWER_FORMS.map((k) => k.id).join() === "choice,answer,discussion" && ANSWER_FORMS.every((k) => familyOf(k.id) === "question"));
+const swapped = asKind(asKind(card({ title: "Look", body: "words" }), "choice"), "content");
+check("a card swapped to Question and back keeps its words, and has no question left", swapped.title === "Look" && swapped.body === "words" && kindOf(swapped) === "content" && !swapped.questions);
 
 const failed = rows.filter(([, ok]) => !ok);
 for (const [n] of failed) console.log("  ✗", n);
