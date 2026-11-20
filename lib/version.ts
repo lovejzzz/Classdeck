@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.10",
+    date: "2026-11-20",
+    changes: [
+      "A new week now starts with a lesson, so you can add cards to it right away.",
+      "Polls and Multiple choice cards no longer show the hand-in box (recording, file or link) to students.",
+      "Fixed a student’s map failing to open when a card group had paths they hadn’t taken.",
+    ],
+  },
+  {
     version: "0.1.9",
     date: "2026-11-20",
     changes: [

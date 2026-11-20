@@ -62,7 +62,9 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
       for (const m of l.modules) addPaths(m.id, unit(m.id), m.paths);
       for (const d of decks) addPaths(`deck:${d.id}`, `deck:${d.id}`, d.paths);
       const frameH = (d: Deck) => FRAME_TOP + d.members.length * (MH + 8) + 4;
-      const sizeOf = (id: string) => (id.startsWith("deck:") ? frameH(decks.find((d) => `deck:${d.id}` === id)!) : H);
+      // A group's own key, exactly (a card back dealt by a group's score has an id that starts the same way).
+      const deckByKey = new Map<string, Deck>(decks.map((d) => [`deck:${d.id}`, d]));
+      const sizeOf = (id: string) => (deckByKey.has(id) ? frameH(deckByKey.get(id)!) : H);
       const span = new Map<string, number>(), depth = new Map<string, number>();
       const measure = (id: string, dd: number): number => {
         depth.set(id, dd);
@@ -76,8 +78,8 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
         const sp = span.get(id)!, h = sizeOf(id);
         const below = k.reduce((n, c) => n + span.get(c)!, 0) + Math.max(0, k.length - 1) * GAP;
         const nx = x + depth.get(id)! * (W + COL), ny = y0 + (sp - h) / 2;
-        if (id.startsWith("deck:")) {
-          const d = decks.find((v) => `deck:${v.id}` === id)!;
+        if (deckByKey.has(id)) {
+          const d = deckByKey.get(id)!;
           nodes.set(id, { id, lessonId: l.id, x: nx, y: ny, w: W, h, deck: d });
           d.members.forEach((mid, i) => {
             const m = l.modules.find((v) => v.id === mid);

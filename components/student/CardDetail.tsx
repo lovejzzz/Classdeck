@@ -69,7 +69,8 @@ export function CardDetail(p: DetailProps) {
   const kind = kindOf(m);
   // Content cards are to take in, and a poll is just a vote: no notes box under either.
   const hasOutput = !!meta.outputLabel && m.type !== "selfcheck" && familyOf(kind) !== "content" && kind !== "poll";
-  const showWork = WORK_TYPES.has(m.type) && !m.choice;
+  // A vote or a multiple-choice answer is the whole response: no recording or file box under it.
+  const showWork = WORK_TYPES.has(m.type) && !m.choice && kindOf(m) !== "poll" && kindOf(m) !== "choice";
   const skills = (m.skills ?? []).map((id) => p.course.skills?.find((s) => s.id === id)?.name).filter(Boolean);
   // The earliest other self-check with ratings, for showing progress.
   const earlier = (() => {

@@ -645,7 +645,8 @@ export async function POST(request: Request, { params }: Ctx) {
       break;
     }
     case "addWeek":
-      course.weeks.push({ id: uid("w-"), title: body.title || `Week ${course.weeks.length}`, lessons: [] });
+      // A new week comes with its first lesson (named by its place after renumbering), ready for cards.
+      course.weeks.push({ id: uid("w-"), title: body.title || `Week ${course.weeks.length}`, lessons: [{ id: uid("l-"), title: "Lesson 0", modules: [], branches: {} }] });
       break;
 
     // —— student ——
