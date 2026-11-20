@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { suitOfCard, suitOf } from "@/lib/ui";
+import { pathColor, suitOfCard, suitOf } from "@/lib/ui";
 import { faceMeta } from "@/lib/kinds";
 import type { Lesson, Module, Status } from "@/lib/types";
 import { Icon } from "../Icon";
@@ -34,7 +34,7 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
   const box = useRef<HTMLDivElement>(null);
   const { nodes, edges, regions, width, height } = useMemo(() => {
     const nodes = new Map<string, N>();
-    const edges: { from: string; to: string; fog: boolean }[] = [];
+    const edges: { from: string; to: string; fog: boolean; i: number }[] = [];
     const regions: { lesson: Lesson; x: number; w: number }[] = [];
     const whyOf = new Map<string, string>();
     for (const l of lessons) {
@@ -53,9 +53,9 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
       const addPaths = (from: string, at: string, paths: Module["paths"]) => {
         const list = kids.get(at) ?? [];
         (paths ?? []).forEach((p, i) => {
-          if (p.to && local.has(p.to)) { if (!list.includes(p.to)) list.push(p.to); dealtHere.add(p.to); edges.push({ from, to: p.to, fog: false }); }
-          else if (p.to) edges.push({ from, to: p.to, fog: false });
-          else { const id = `${from}~${i}`; stubs.set(id, { id, ...p }); list.push(id); edges.push({ from, to: id, fog: true }); }
+          if (p.to && local.has(p.to)) { if (!list.includes(p.to)) list.push(p.to); dealtHere.add(p.to); edges.push({ from, to: p.to, fog: false, i }); }
+          else if (p.to) edges.push({ from, to: p.to, fog: false, i });
+          else { const id = `${from}~${i}`; stubs.set(id, { id, ...p }); list.push(id); edges.push({ from, to: id, fog: true, i }); }
         });
         kids.set(at, list);
       };
@@ -119,8 +119,9 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
     <div ref={box} className="tree-canvas relative mx-auto max-w-6xl overflow-auto rounded-2xl border border-line" style={{ height: Math.min(height + 24, 640), backgroundSize: "22px 22px" }} aria-label="Your map">
       <div className="relative" style={{ width, height }}>
         {regions.map((r) => (
-          <div key={r.lesson.id} className={`absolute rounded-[24px] ${r.lesson.id === todayId ? "bg-ok/[0.05]" : "bg-black/[0.018]"}`} style={{ left: r.x - 16, top: 12, width: r.w + 32, height: height - 24 }}>
+          <div key={r.lesson.id} className={`absolute rounded-[24px] ${r.lesson.id === todayId ? "tree-lesson-today" : "tree-lesson"}`} style={{ left: r.x - 16, top: 12, width: r.w + 32, height: height - 24 }}>
             <div className="flex items-center gap-2 px-4 pt-3 text-[12.5px]">
+              <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[10.5px] font-semibold text-white ${r.lesson.id === todayId ? "bg-ok" : "bg-ink"}`}>{regions.indexOf(r) + 1}</span>
               <span className="font-semibold text-ink">{r.lesson.title}</span>
               {weekOf[r.lesson.id] && <span className="text-ink-3">{weekOf[r.lesson.id]}</span>}
               {r.lesson.id === todayId && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
@@ -141,7 +142,17 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
           {edges.map((e) => {
             const a = nodes.get(e.from)!, b = nodes.get(e.to)!;
             const cross = a.lessonId !== b.lessonId;
-            return <path key={`${e.from}-${e.to}`} d={curve(a, b)} fill="none" stroke={e.fog ? "#c9ccdf" : "#4b56a8"} strokeWidth={e.fog ? 1.6 : 2.2} strokeDasharray={e.fog || cross ? "6 5" : undefined} pathLength={e.fog || cross ? undefined : 1} className={e.fog || cross ? "" : "tree-wire"} />;
+            const d = curve(a, b);
+            if (e.fog) return <path key={`${e.from}-${e.to}`} d={d} fill="none" stroke="#c9ccdf" strokeWidth={1.6} strokeDasharray="5 6" strokeLinecap="round" />;
+            const c = pathColor(e.i);
+            // A path this student took: a soft halo, the line, and a slow flow along it.
+            return (
+              <g key={`${e.from}-${e.to}`}>
+                <path d={d} fill="none" stroke={c} strokeOpacity={0.12} strokeWidth={9} strokeLinecap="round" />
+                <path d={d} fill="none" stroke={c} strokeWidth={2.2} strokeLinecap="round" strokeDasharray={cross ? "7 6" : undefined} pathLength={cross ? undefined : 1} className={cross ? "" : "tree-wire"} />
+                <path d={d} fill="none" stroke="#fff" strokeOpacity={0.9} strokeWidth={1.4} strokeLinecap="round" className="tree-flow" />
+              </g>
+            );
           })}
         </svg>
         {[...nodes.values()].filter((n) => !n.deck).map((n, i) => {
@@ -165,25 +176,28 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
           }
           const m = n.m!;
           const s = statusOf(m.id);
+          const into = edges.find((e) => e.to === n.id && !e.fog);
+          const tone = into ? pathColor(into.i) : "#4b56a8";
           const suit = suitOfCard(m);
           return (
             <button
               key={n.id}
               onClick={(e) => onOpen(n.lessonId, m.id, e.currentTarget)}
-              className={`tree-node press absolute rounded-[16px] border bg-white text-left ${m.dealtFor ? "border-[#4b56a8]/50" : "border-line"} ${s === "done" ? "opacity-80" : ""}`}
-              style={{ left: n.x, top: n.y, width: n.w, height: n.h, animationDelay: `${Math.min(i, 14) * 25}ms` }}
+              className={`tree-node press absolute rounded-[16px] border border-line bg-white text-left ${s === "done" ? "opacity-80" : ""}`}
+              style={{ left: n.x, top: n.y, width: n.w, height: n.h, animationDelay: `${Math.min(i, 14) * 25}ms`, borderColor: m.dealtFor ? `${tone}80` : undefined }}
               aria-label={`${m.title}${s === "done" ? ", done" : ""}`}
             >
-              <span className="block h-1.5 rounded-t-[16px]" style={{ background: suit.tint }} />
+              {into && <span className="absolute -left-[6px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-white" style={{ background: tone }} />}
+              <span className="tree-bar block h-[5px] rounded-t-[16px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
               <span className={`flex items-center gap-1.5 px-3.5 text-[10.5px] font-medium uppercase tracking-[0.06em] ${n.inDeck ? "pt-1.5" : "pt-2"}`} style={{ color: suit.tint }}>
                 {faceMeta(m).name}
-                {m.dealtFor && <span className="rounded-full bg-[#eef0fb] px-1.5 normal-case tracking-normal text-[#4b56a8]">For you</span>}
+                {m.dealtFor && <span className="rounded-full px-1.5 normal-case tracking-normal" style={{ background: `${tone}14`, color: tone }}>For you</span>}
                 <span className="flex-1" />
                 {s === "done" && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-ok text-white"><Icon name="check" size={10} strokeWidth={3} /></span>}
                 {s === "doing" && <span className="h-2 w-2 rounded-full bg-warn" />}
               </span>
               <span className="block truncate px-3.5 pt-0.5 text-[13.5px] font-semibold text-ink">{m.title || "Untitled card"}</span>
-              {n.why && !n.inDeck && <span className="block truncate px-3.5 pt-0.5 text-[11px] text-[#4b56a8]">{n.why}</span>}
+              {n.why && !n.inDeck && <span className="block truncate px-3.5 pt-0.5 text-[11px]" style={{ color: tone }}>{n.why}</span>}
             </button>
           );
         })}

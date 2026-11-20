@@ -179,15 +179,23 @@ button:disabled { cursor: not-allowed; }
 @keyframes panel-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* —— Card tree —— */
-.tree-canvas { background-image: radial-gradient(rgba(27, 27, 26, 0.09) 1px, transparent 1px); }
+.tree-canvas {
+  background-color: #f4f4f2;
+  background-image: radial-gradient(rgba(27, 27, 26, 0.085) 1px, transparent 1.2px);
+}
 .tree-zoom { transition: transform 0.22s var(--ease-out); }
 @keyframes tree-in { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: none; } }
 .tree-node {
-  box-shadow: 0 1px 0 rgba(20, 20, 18, 0.03), 0 12px 32px -20px rgba(20, 20, 18, 0.45);
+  box-shadow: 0 1px 1px rgba(20, 20, 18, 0.04), 0 2px 6px -2px rgba(20, 20, 18, 0.06), 0 14px 32px -18px rgba(20, 20, 18, 0.38);
   animation: tree-in 0.42s var(--ease-out) backwards;
   transition: box-shadow 0.25s var(--ease-out), border-color 0.2s, opacity 0.2s, transform 0.25s var(--ease-out);
 }
-.tree-node:hover { box-shadow: 0 1px 0 rgba(20, 20, 18, 0.03), 0 18px 40px -20px rgba(20, 20, 18, 0.55); }
+.tree-node:hover { transform: translateY(-1px); box-shadow: 0 1px 1px rgba(20, 20, 18, 0.04), 0 4px 10px -4px rgba(20, 20, 18, 0.08), 0 22px 44px -20px rgba(20, 20, 18, 0.5); }
+/* The coloured bar on a card's head: its family's colour, fading off to the right. */
+.tree-bar { background-color: var(--bar); -webkit-mask-image: linear-gradient(90deg, #000 40%, rgba(0, 0, 0, 0.35)); mask-image: linear-gradient(90deg, #000 40%, rgba(0, 0, 0, 0.35)); }
+/* Each lesson's band: a soft panel with a light top edge. */
+.tree-lesson { background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.18) 140px, rgba(255, 255, 255, 0.1)); box-shadow: inset 0 0 0 1px rgba(20, 20, 18, 0.045); }
+.tree-lesson-today { background: linear-gradient(180deg, rgba(47, 138, 85, 0.09), rgba(47, 138, 85, 0.035) 160px, rgba(47, 138, 85, 0.025)); box-shadow: inset 0 0 0 1px rgba(47, 138, 85, 0.14); }
 .tree-head { transition: background-color 0.15s; }
 .tree-head:hover { background-color: rgba(20, 20, 18, 0.025); }
 .tree-target { transform: scale(1.025); box-shadow: 0 0 0 5px rgba(75, 86, 168, 0.16), 0 22px 44px -18px rgba(75, 86, 168, 0.55); }
@@ -200,7 +208,7 @@ button:disabled { cursor: not-allowed; }
 @keyframes tree-dash { to { stroke-dashoffset: -24; } }
 .tree-dash { animation: tree-dash 0.6s linear infinite; }
 .tree-port { transition: transform 0.18s var(--ease-spring), box-shadow 0.2s, background-color 0.2s, border-color 0.2s; }
-.tree-port:not(:disabled):hover { transform: translateY(-50%) scale(1.3); box-shadow: 0 0 0 5px rgba(75, 86, 168, 0.15); }
+.tree-port:not(:disabled):hover { transform: translateY(-50%) scale(1.3); border-color: var(--port) !important; }
 
 /* A card an answer just dealt onto a student's board. */
 @keyframes dealt-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(75, 86, 168, 0); } 50% { box-shadow: 0 0 0 8px rgba(75, 86, 168, 0.22); } }

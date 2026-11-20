@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { bandLabel, bandsOf, branchBelow, canBranch, DEFAULT_BANDS, SCORE, SHARED_ONLY, wiresOf, type Wire } from "@/lib/branching";
-import { suitOfCard, suitOfKind } from "@/lib/ui";
+import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, SCORE, SHARED_ONLY, wiresOf, type Wire } from "@/lib/branching";
+import { bandTone, pathColor, suitOfCard, suitOfKind } from "@/lib/ui";
 import { PICKABLE, faceMeta, kindMeta, kindOf, newCard as makeCard, unfinished, type CardKind } from "@/lib/kinds";
 import type { AnswerValue, Lesson, Module, ProgressMap } from "@/lib/types";
 import { Icon } from "../Icon";
@@ -24,7 +24,6 @@ const TOP = 92; // room for each lesson's header
 const NEW_KINDS: CardKind[] = PICKABLE.map((k) => k.id).filter((k) => k !== "discussion");
 const ALL_KINDS: CardKind[] = PICKABLE.map((k) => k.id);
 const INK = "#4b56a8";
-const SOFT = "#a3a8cf";
 const DAY = 86400000;
 
 export type Level = "far" | "mid" | "near";
@@ -552,6 +551,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const dx = Math.max(48, Math.abs(b.x - a.x) / 2);
     return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
   };
+  /** A wire's colour: its answer's (A, B, C…), or its score range's (low rose to high green). */
+  const colorOf = (w: { from: string; q: string; option: number }) => {
+    if (w.q !== SCORE) return pathColor(w.option);
+    const src = all.find((x) => x.m.id === w.from)?.m;
+    return bandTone(w.option, src ? bandsOf(src).length : 3);
+  };
+  /** What a wire is for, in a few words: the answer's text, or the score range. */
+  const whyOf = (w: Wire) => {
+    const src = all.find((x) => x.m.id === w.from)?.m;
+    if (!src) return "";
+    if (w.q === SCORE) { const b = bandsOf(src)[w.option]; return b ? `Score ${bandLabel(b)}` : "Score"; }
+    const o = src.questions?.find((q) => q.id === w.q)?.options[w.option]?.trim();
+    return `${letter(w.option)} · ${o || `Option ${w.option + 1}`}`;
+  };
   const drawn = wires.filter((w) => nodes.has(nodeOf(w.from)) && nodes.has(w.to));
   const snap = drag?.over && canTarget(drag.port, drag.over) ? inPos(drag.over) : null;
   const nothing = !all.length;
@@ -639,8 +652,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               const today = r.lesson.id === todayId;
               const branches = wiresOf(r.lesson).length;
               return (
-                <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "bg-ok/[0.045]" : "bg-black/[0.018]"}`} style={{ left: r.x - 20, top: 16, width: r.w + 40, height: height - 32 }}>
+                <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "tree-lesson-today" : "tree-lesson"}`} style={{ left: r.x - 20, top: 16, width: r.w + 40, height: height - 32 }}>
                   <div className="flex min-w-0 items-center gap-2 px-5 pt-3.5" style={{ fontSize: level === "far" ? 22 : 13 }}>
+                    <span className={`flex flex-none items-center justify-center rounded-full font-semibold ${today ? "bg-ok text-white" : "bg-ink text-white"} ${level === "far" ? "h-9 w-9 text-[17px]" : "h-[22px] w-[22px] text-[11px]"}`}>{regions.indexOf(r) + 1}</span>
                     <span className="min-w-0 truncate font-semibold text-ink">{r.lesson.title}</span>
                     {weekOf[r.lesson.id] && <span className="flex-none text-ink-3">{weekOf[r.lesson.id]}</span>}
                     {today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
@@ -670,18 +684,25 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                 <marker id="map-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={INK} /></marker>
               </defs>
               {drawn.map((w) => {
-                const d = curve(portPos(w), inPos(w.to));
+                const a = portPos(w), b = inPos(w.to);
+                const d = curve(a, b);
                 const on = hot === w.from || hot === w.to || selected === w.from || selected === w.to;
+                const dim = !!(hot || selected) && !on;
                 const n = took(w);
                 const cross = nodes.get(nodeOf(w.from))!.li !== nodes.get(w.to)!.li;
+                const c = colorOf(w);
+                const k = level === "far" ? 2 : 1;
                 return (
-                  <g key={`${w.from}-${w.q}-${w.option}-${w.to}`}>
-                    <path d={d} fill="none" stroke={on ? INK : SOFT} strokeWidth={(on ? 2.6 : 2) * (level === "far" ? 2 : 1)} strokeDasharray={cross ? "7 5" : undefined} pathLength={cross ? undefined : 1} className={cross ? "" : "tree-wire"} />
-                    {n > 0 && live && <path d={d} fill="none" stroke={INK} strokeWidth={2.4 * (level === "far" ? 2 : 1)} strokeLinecap="round" className="tree-flow" />}
+                  <g key={`${w.from}-${w.q}-${w.option}-${w.to}`} style={{ opacity: dim ? 0.22 : 1, transition: "opacity 0.25s" }}>
+                    {/* A soft halo under the line, so paths read as paths on the dotted canvas. */}
+                    <path d={d} fill="none" stroke={c} strokeOpacity={on ? 0.2 : 0.09} strokeWidth={(on ? 11 : 8) * k} strokeLinecap="round" style={{ transition: "stroke-opacity 0.25s, stroke-width 0.25s" }} />
+                    <path d={d} fill="none" stroke={c} strokeWidth={(on ? 2.6 : 1.9) * k} strokeLinecap="round" strokeDasharray={cross ? "7 6" : undefined} pathLength={cross ? undefined : 1} className={cross ? "" : "tree-wire"} />
+                    <circle cx={a.x} cy={a.y} r={2.2 * k} fill="#fff" />
+                    {n > 0 && live && <path d={d} fill="none" stroke={c} strokeWidth={2.6 * k} strokeLinecap="round" className="tree-flow" />}
                   </g>
                 );
               })}
-              {drag && <path d={curve(portPos(drag.port), snap ?? drag)} fill="none" stroke={INK} strokeWidth={2.2} strokeDasharray={snap ? undefined : "6 6"} markerEnd="url(#map-arrow)" className={snap ? "" : "tree-dash"} />}
+              {drag && <path d={curve(portPos(drag.port), snap ?? drag)} fill="none" stroke={colorOf(drag.port)} strokeWidth={2.2} strokeDasharray={snap ? undefined : "6 6"} markerEnd="url(#map-arrow)" className={snap ? "" : "tree-dash"} />}
               {menu && "port" in menu && menu.mode === "new" && <path d={curve(portPos(menu.port), menu)} fill="none" stroke={INK} strokeWidth={2.2} strokeDasharray="6 6" markerEnd="url(#map-arrow)" className="tree-dash" />}
             </svg>
 
@@ -692,6 +713,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               return (
                 <span key={`n-${w.from}-${w.q}-${w.option}`} className="chip pop absolute h-5 -translate-y-1/2 bg-[#4b56a8] px-1.5 text-[10.5px] text-white shadow-[0_4px_10px_-4px_rgba(75,86,168,0.8)]" style={{ left: a.x + 16, top: a.y - 13 }}
                   title={`${n} student${n === 1 ? "" : "s"} went this way`}>{n}</span>
+              );
+            })}
+
+            {level !== "far" && !drag && drawn.filter((w) => hot === w.from || hot === w.to || selected === w.from || selected === w.to).map((w) => {
+              const a = portPos(w), b = inPos(w.to);
+              return (
+                <span key={`why-${w.from}-${w.q}-${w.option}`} className="pop pointer-events-none absolute z-20 max-w-[180px] -translate-x-1/2 -translate-y-1/2 truncate rounded-full border bg-white px-2.5 py-[3px] text-[11px] font-medium shadow-[0_6px_16px_-8px_rgba(20,20,18,0.45)]"
+                  style={{ left: (a.x + b.x) / 2, top: (a.y + b.y) / 2, color: colorOf(w), borderColor: `${colorOf(w)}55` }}>{whyOf(w)}</span>
               );
             })}
 
@@ -707,6 +736,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               const here = live ? onCard.get(m.id) ?? [] : [];
               const stuck = here.filter((s) => s.stuck).length;
               const bands = isQuiz(m) ? bandsOf(m) : [];
+              const nQ = isQuiz(m) ? scoreCount(m, lessons.find((l) => l.id === nd.lessonId)?.modules ?? []) : 0;
               const isSel = selected === m.id;
               // While its title is being typed, the head isn't a button (a text box can't sit inside one).
               const Head = typing?.id === m.id && typing.field === "title" ? "div" : "button";
@@ -726,7 +756,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       <span aria-hidden="true" className="absolute inset-0 -z-20 translate-x-[12px] translate-y-[12px] rounded-[18px] border border-line bg-white" />
                     </>
                   )}
-                  {inbound.length > 0 && <span className={`absolute -left-[5px] rounded-full border-2 border-white bg-[#4b56a8] ${level === "far" ? "top-[21px] h-3 w-3" : "top-[31px] h-2.5 w-2.5"}`} />}
+                  {inbound.length > 0 && <span className={`absolute -left-[6px] rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(255,255,255,0.6)] ${level === "far" ? "top-[20px] h-3.5 w-3.5" : "top-[30px] h-3 w-3"}`} style={{ background: colorOf(inbound[0]) }} />}
                   {here.length > 0 && (
                     <span className="absolute -top-3 right-3 flex -space-x-1.5" title={`${here.map((s) => s.name).join(", ")} ${here.length === 1 ? "is" : "are"} working on this${stuck ? ` (${stuck} for over 2 days)` : ""}`}>
                       {here.slice(0, 4).map((s) => (
@@ -740,13 +770,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     if (e.shiftKey && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
                     onEdit(nd.lessonId, m.id);
                   }} className={`tree-head block w-full rounded-t-[18px] text-left ${readOnly ? "" : "cursor-grab active:cursor-grabbing"} ${moving?.id === m.id ? "opacity-40" : ""}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
-                    <span className="block h-1.5 rounded-t-[18px]" style={{ background: suit.tint }} />
+                    <span className="tree-bar block h-[5px] rounded-t-[18px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
                     {level === "far" ? (
                       <span className="block truncate px-3.5 pt-2.5 text-[17px] font-semibold text-ink">{m.title || "Untitled card"}</span>
                     ) : (
                       <>
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
-                          <Icon name={faceMeta(m).icon} size={11} />{faceMeta(m).name}
+                          <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[6px]" style={{ background: `${suit.tint}16` }}><Icon name={faceMeta(m).icon} size={11} /></span>{faceMeta(m).name}
                           <span className="truncate normal-case tracking-normal text-ink-3">
                             · {unfinished(m) ? <span className="text-[#a0561f]">hidden until it has a question</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : "everyone"}
                           </span>
@@ -780,9 +810,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                             const to = q.next?.[oi];
                             return (
                               <div key={`${q.id}-${oi}`} className="relative flex items-center gap-2 pl-9 pr-3.5" style={{ height: ROW }}>
-                                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "bg-[#4b56a8] text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`}>{letter(oi)}</span>
+                                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined}>{letter(oi)}</span>
                                 <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">{o.trim() || `Option ${oi + 1}`}</span>
-                                <PortDot wired={!!to} readOnly={readOnly} label={to ? `${c.title}: answer ${letter(oi)} deals a card. Change it` : `${c.title}: deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: c.id, q: q.id, option: oi })} />
+                                <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `${c.title}: answer ${letter(oi)} deals a card. Change it` : `${c.title}: deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: c.id, q: q.id, option: oi })} />
                               </div>
                             );
                           }))}
@@ -797,11 +827,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                             const to = q.next?.[oi];
                             return (
                               <div key={oi} className="relative flex items-center gap-2 px-3.5" style={{ height: ROW }}>
-                                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "bg-[#4b56a8] text-white" : "bg-lane text-ink-3"}`}>{letter(oi)}</span>
+                                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined} title={q.answer === oi && !m.poll ? "The right answer" : undefined}>{letter(oi)}</span>
                                 {typing?.id === m.id && typing.field === `o:${q.id}:${oi}`
                                   ? <span className="min-w-0 flex-1 pr-3">{typeBox("h-6 text-[12.5px]")}</span>
                                   : <span onDoubleClick={startTyping(m.id, `o:${q.id}:${oi}`, o)} className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2" title={readOnly ? undefined : "Double-click to edit"}>{o.trim() || `Option ${oi + 1}`}</span>}
-                                <PortDot wired={!!to} readOnly={readOnly} label={to ? `Answer ${letter(oi)} deals a card. Change it` : `Deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: q.id, option: oi })} />
+                                <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `Answer ${letter(oi)} deals a card. Change it` : `Deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: q.id, option: oi })} />
                               </div>
                             );
                           })}
@@ -822,7 +852,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                           </div>
                           {bands.map((b, bi) => (
                             <div key={bi} className="relative flex items-center gap-2 px-3.5" style={{ height: ROW }}>
-                              <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md transition-colors ${b.next ? "bg-[#4b56a8] text-white" : "bg-lane text-ink-3"}`}><Icon name="quiz" size={11} /></span>
+                              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md text-white transition-colors" style={{ background: bandTone(bi, bands.length), opacity: b.next ? 1 : 0.55 }}><Icon name="quiz" size={11} /></span>
                               {bi === 0 || readOnly ? (
                                 <span className="min-w-0 flex-1 text-[12.5px] text-ink-2">{bandLabel(b)}</span>
                               ) : (
@@ -837,10 +867,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                                     aria-label="Lowest score in this range"
                                     className="h-6 w-12 rounded-md border border-line bg-white px-1 text-center text-[12px] focus:border-line-strong focus:outline-none"
                                   />
-                                  <span>{b.max > 100 ? "–100%" : `–${b.max - 1}%`}</span>
+                                  <span>{b.max > 100 ? (b.min >= 100 ? "%" : "–100%") : `–${b.max - 1}%`}</span>
                                 </span>
                               )}
-                              <PortDot wired={!!b.next} readOnly={readOnly} label={b.next ? `Score ${bandLabel(b)} deals a card. Change it` : `Deal a card for score ${bandLabel(b)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: SCORE, option: bi })} />
+                              {nQ > 0 && (() => { const r = bandRight(b, nQ); return <span className={`mono mr-2 flex-none text-[10.5px] ${r ? "" : "text-bad"}`} title={r ? undefined : "No score falls in this range"}>{r ?? "never"}</span>; })()}
+                              <PortDot color={bandTone(bi, bands.length)} wired={!!b.next} readOnly={readOnly} label={b.next ? `Score ${bandLabel(b)} deals a card. Change it` : `Deal a card for score ${bandLabel(b)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: SCORE, option: bi })} />
                             </div>
                           ))}
                           {!bands.length && !readOnly && (
@@ -965,13 +996,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   );
 }
 
-function PortDot({ wired, readOnly, label, onPointerDown }: { wired: boolean; readOnly?: boolean; label: string; onPointerDown: (e: React.PointerEvent) => void }) {
+function PortDot({ wired, readOnly, label, color = "#4b56a8", onPointerDown }: { wired: boolean; readOnly?: boolean; label: string; color?: string; onPointerDown: (e: React.PointerEvent) => void }) {
   return (
     <button
       onPointerDown={onPointerDown}
       disabled={readOnly}
       aria-label={label}
-      className={`tree-port absolute -right-[10px] top-1/2 z-10 flex h-[20px] w-[20px] -translate-y-1/2 touch-none items-center justify-center rounded-full border-2 ${wired ? "border-[#4b56a8] bg-[#4b56a8]" : "border-[#a3a8cf] bg-white"} ${readOnly ? "cursor-default" : "cursor-crosshair"}`}
+      className={`tree-port absolute -right-[10px] top-1/2 z-10 flex h-[20px] w-[20px] -translate-y-1/2 touch-none items-center justify-center rounded-full border-2 ${wired ? "" : "bg-white"} ${readOnly ? "cursor-default" : "cursor-crosshair"}`}
+      style={{ borderColor: wired ? color : "#c4c6d0", background: wired ? color : undefined, boxShadow: wired ? `0 0 0 4px ${color}1f` : undefined, ["--port" as string]: color }}
     >
       {wired && <span className="block h-1.5 w-1.5 rounded-full bg-white" />}
     </button>

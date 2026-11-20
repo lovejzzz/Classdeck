@@ -530,7 +530,7 @@ export default function LearnPage() {
               />
             </div>
           )}
-          <div className={`mt-6 space-y-8 pb-16 ${layoutMode === "map" ? "hidden" : ""}`}>
+          <div className={`mt-6 space-y-4 pb-16 sm:space-y-8 ${layoutMode === "map" ? "hidden" : ""}`}>
             {weeksShown.map((week) => {
               const ms = week.lessons.flatMap((l) => l.modules);
               const finished = ms.length > 0 && ms.every((m) => statusOf(m.id) === "done");
@@ -571,7 +571,7 @@ export default function LearnPage() {
                     </div>
                   ) : (
                     <HScroll className="mt-1">
-                      <div className="flex w-max gap-10 pb-6 pt-4" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
+                      <div className="flex w-max gap-10 pb-1 pt-2 sm:pb-6 sm:pt-4" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
                         {week.lessons.map((l) => {
                           const isToday = l.id === current.id;
                           const rowWidth = Math.max(l.modules.length, 1) * (size.w + 14) - 14;

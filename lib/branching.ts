@@ -188,7 +188,44 @@ export function branchBelow(scope: HasModules | Module[], id: string): string[] 
 export const DEFAULT_BANDS: ScoreBand[] = [{ min: 0, next: null }, { min: 60, next: null }, { min: 90, next: null }];
 
 /** "0–59%", "60–89%", "90–100%". */
-export const bandLabel = (b: { min: number; max: number }) => (b.max > 100 ? `${b.min}–100%` : `${b.min}–${b.max - 1}%`);
+export const bandLabel = (b: { min: number; max: number }) => (b.max > 100 ? (b.min >= 100 ? "100%" : `${b.min}–100%`) : b.min === b.max - 1 ? `${b.min}%` : `${b.min}–${b.max - 1}%`);
+
+/** How many questions count towards a score: a group's Choice cards with a right answer and words; a quiz's questions. */
+export function scoreCount(m: Module, cards: Module[]): number {
+  const asked = (c: Module) => (c.questions ?? []).filter((q) => q.text?.trim()).length;
+  if (m.type === "quiz") return m.pick && m.pick > 0 ? Math.min(m.pick, asked(m)) : asked(m);
+  if (m.type !== "group") return 0;
+  return (m.members ?? []).map((id) => cards.find((c) => c.id === id)).filter((c): c is Module => !!c && !c.poll && (c.type === "practice" || c.type === "quiz")).reduce((n, c) => n + asked(c), 0);
+}
+
+/** The scores a student can get with n questions, as a percent rounded the way scores are (2 of 3 is 67%). */
+const reachable = (n: number) => Array.from({ length: n + 1 }, (_, k) => Math.round((k * 100) / n));
+
+/** The questions right that a score range covers out of n: "3 of 4 right", "2–3 of 4 right", or null if no score lands in it. */
+export function bandRight(b: { min: number; max: number }, n: number): string | null {
+  if (n <= 0) return "";
+  const ks = reachable(n).map((v, k) => [v, k] as const).filter(([v]) => v >= b.min && v < b.max).map(([, k]) => k);
+  if (!ks.length) return null;
+  const lo = ks[0], hi = ks[ks.length - 1];
+  return `${lo === hi ? lo : `${lo}–${hi}`} of ${n} right`;
+}
+
+/**
+ * Score ranges moved onto scores that can happen with n questions (each range starts at the lowest score a student can
+ * really get in it), so a group that gains or loses a question keeps ranges that mean something. Ranges that end up
+ * starting at the same score are merged, keeping the first card one of them deals.
+ */
+export function snapBands(bands: ScoreBand[], n: number): ScoreBand[] {
+  if (n <= 0 || !bands.length) return bands;
+  const out: ScoreBand[] = [];
+  for (const b of [...bands].sort((x, y) => x.min - y.min)) {
+    const min = b.min <= 0 ? 0 : (reachable(n).find((v) => v >= b.min) ?? 100);
+    const same = out.find((x) => x.min === min);
+    if (same) same.next ??= b.next;
+    else out.push({ min, next: b.next });
+  }
+  return out;
+}
 
 /**
  * Delete a card from a course, with the follow-ups only it deals (wherever they are; left behind they'd go to
@@ -271,6 +308,8 @@ export function cleanGroups(weeks: { lessons: Lesson[] }[]): void {
       for (const g of l.modules.filter((m) => m.type === "group")) {
         g.members = [...new Set(g.members ?? [])].filter((id) => { const m = byId.get(id); return m && m.type !== "group" && !taken.has(id); });
         g.members.forEach((id) => taken.add(id));
+        // Its score ranges follow how many questions it now has.
+        if (g.bands?.length) g.bands = snapBands(g.bands, scoreCount(g, l.modules));
       }
       const gone = new Set(l.modules.filter((m) => m.type === "group" && (m.members?.length ?? 0) < 2).map((m) => m.id));
       const mods = l.modules.filter((m) => !gone.has(m.id));

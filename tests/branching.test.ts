@@ -1,5 +1,5 @@
 // Card-tree rules, checked without a server: npx tsx tests/branching.test.ts
-import { cleanCourseWiring, dealtTo, deleteCardIn, orphansOf, treeView, wiresOf, SCORE } from "../lib/branching";
+import { bandRight, bandsOf, cleanGroups, snapBands, scoreCount, cleanCourseWiring, dealtTo, deleteCardIn, orphansOf, treeView, wiresOf, SCORE } from "../lib/branching";
 import { cloneWeek } from "../lib/clone";
 import type { Lesson, Module, Progress, Week } from "../lib/types";
 
@@ -104,6 +104,24 @@ const course = () => [
   const src = cm.find((m) => m.title === "src")!;
   const y = cm.find((m) => m.title === "Y")!;
   check("a copied week's Lesson 1 answer deals the copied Lesson 2 card", src.questions![0].next![1] === y.id && y.id !== "Y");
+}
+
+
+// Score ranges follow the number of questions.
+{
+  const three = [{ min: 0, next: "lo" }, { min: 67, next: null }, { min: 100, next: "hi" }];
+  check("3 questions: 67% and 100% stay", JSON.stringify(snapBands(three, 3).map((b) => b.min)) === "[0,67,100]");
+  check("4 questions: 67% becomes 75% (3 of 4)", JSON.stringify(snapBands(three, 4).map((b) => b.min)) === "[0,75,100]");
+  check("2 questions: 60% and 90% become 100%, merged, keeping a dealt card", (() => { const b = snapBands([{ min: 0, next: null }, { min: 60, next: null }, { min: 90, next: "x" }], 2); return JSON.stringify(b) === JSON.stringify([{ min: 0, next: null }, { min: 100, next: "x" }]); })());
+  const g = card("g", { type: "group", members: ["a", "b", "c", "d"], bands: three });
+  const mc = (id: string) => card(id, { type: "practice", kind: "choice", questions: [ask(`${id}q`, [null, null])] });
+  const ls = [lesson("L", [g, mc("a"), mc("b"), mc("c"), mc("d")])];
+  check("a group counts its questions", scoreCount(g, ls[0].modules) === 4);
+  cleanGroups([{ lessons: ls }]);
+  const bs = bandsOf(ls[0].modules[0]);
+  check("cleaning a group snaps its ranges", JSON.stringify(bs.map((b) => b.min)) === "[0,75,100]");
+  check("ranges read as questions right", bandRight(bs[0], 4) === "0–2 of 4 right" && bandRight(bs[1], 4) === "3 of 4 right" && bandRight(bs[2], 4) === "4 of 4 right");
+  check("a range no score lands in says so", bandRight({ min: 80, max: 90 }, 3) === null);
 }
 
 const failed = rows.filter(([, ok]) => !ok);

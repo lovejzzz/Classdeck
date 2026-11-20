@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.13",
+    date: "2026-11-20",
+    changes: [
+      "The course map is easier to read: each answer has its own colour (A, B, C…) on its letter, its port and its wire, and score ranges go from rose (low) to green (high). Wires have a soft halo, and hovering a card fades the other paths and labels its own.",
+      "Cards on the map have a cleaner shadow and a colour bar on top; each lesson is a soft panel with its number.",
+      "Score ranges say how many questions they mean (“3 of 4 right”), and a range no score can land in is marked “never”. When a card group gains or loses a question, its ranges move to scores that can happen.",
+      "Students’ maps use the same colours for the paths they took, with a gentle flow along them.",
+      "On phones, less empty space between weeks.",
+    ],
+  },
+  {
     version: "0.1.12",
     date: "2026-11-20",
     changes: [

@@ -64,3 +64,13 @@ export function resultToText(r: ToolResult): string {
       return r.items.map((i) => `${i.title}${i.credit ? ` (${i.credit})` : ""}${i.url ? `: ${i.url}` : ""}`).join("\n");
   }
 }
+
+/** Colours for a card tree's paths: answer A, B, C… each have their own, used on the letter, the port and the wire. */
+export const PATHS = ["#4b56a8", "#1f8a7a", "#c27a1e", "#b4466a", "#7552b8", "#2f7fb5"];
+export const pathColor = (option: number) => PATHS[option % PATHS.length];
+/** A score range's colour, from low (rose) through amber to high (green). */
+export function bandTone(i: number, count: number): string {
+  const tones = ["#c0485f", "#c27a1e", "#8a9a2a", "#2f8a55"];
+  if (count <= 1) return tones[3];
+  return tones[Math.round((i / (count - 1)) * (tones.length - 1))];
+}
