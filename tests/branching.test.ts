@@ -1,0 +1,102 @@
+// Card-tree rules, checked without a server: npx tsx tests/branching.test.ts
+import { cleanCourseWiring, dealtTo, deleteCardIn, treeView, wiresOf, SCORE } from "../lib/branching";
+import { cloneWeek } from "../lib/clone";
+import type { Lesson, Module, Progress, Week } from "../lib/types";
+
+const card = (id: string, extra: Partial<Module> = {}): Module => ({ id, type: "read", title: id, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
+const ask = (id: string, next: (string | null)[]) => ({ id, text: id, options: next.map((_, i) => `o${i}`), answer: 0, next });
+const lesson = (id: string, modules: Module[]): Lesson => ({ id, title: id, modules, branches: {} });
+const prog = (dealt: Record<string, Record<string, number | number[]>>): Record<string, Progress> =>
+  Object.fromEntries(Object.entries(dealt).map(([m, d]) => [m, { status: "done", dealt: d, updatedAt: 0 } as Progress]));
+
+const rows: [string, boolean][] = [];
+const check = (name: string, ok: boolean) => rows.push([name, ok]);
+const ids = (ls: Lesson[]) => ls.flatMap((l) => l.modules.map((m) => m.id));
+
+// A course: Lesson 1 has a question (src) dealing X here and Y in Lesson 2; Y deals Z (Lesson 2).
+// S (Lesson 2) is dealt by src AND by other, so it isn't src's alone. A card everyone gets (all) sits in each lesson.
+const course = () => [
+  lesson("L1", [card("all1"), card("src", { type: "practice", questions: [ask("q", ["X", "Y", "S"])] }), card("X"), card("other", { type: "practice", questions: [ask("q2", ["S", null])] })]),
+  lesson("L2", [card("all2"), card("Y", { type: "practice", questions: [ask("qy", ["Z", null])] }), card("Z"), card("S")]),
+];
+
+{
+  const ls = course();
+  const { before, after, gone } = deleteCardIn(ls, "src");
+  const left = ids(after.map((a) => a).concat(ls.filter((l) => !after.some((a) => a.id === l.id))));
+  check("deleting a source takes its follow-up in the same lesson", !left.includes("X"));
+  check("…and its follow-up in a later lesson", !left.includes("Y"));
+  check("…and that follow-up's own follow-up (a chain)", !left.includes("Z"));
+  check("a follow-up another card also deals stays", left.includes("S"));
+  check("cards everyone gets stay", left.includes("all1") && left.includes("all2") && left.includes("other"));
+  check("gone lists exactly what was removed", [...gone].sort().join() === ["X", "Y", "Z", "src"].join());
+  check("both lessons change, and Undo has both as they were", before.length === 2 && after.length === 2 && ids(before).includes("Y") && ids(before).includes("src"));
+  const rest = after.flatMap((l) => l.modules);
+  check("no wire is left pointing at a deleted card", wiresOf(rest).every((w) => !gone.has(w.to)));
+  // The point of all this: nothing that was hidden becomes visible to everyone.
+  const nextCourse = ls.map((l) => after.find((a) => a.id === l.id) ?? l);
+  const view = treeView([{ lessons: nextCourse }], {});
+  check("S is still hidden after the delete (other still deals it)", view.hidden.has("S"));
+}
+
+{
+  const ls = course();
+  const { after, gone } = deleteCardIn(ls, "X");
+  check("deleting a follow-up removes only it", [...gone].join() === "X");
+  const src = after.flatMap((l) => l.modules).find((m) => m.id === "src")!;
+  check("…and unhooks the answer that dealt it", src.questions![0].next![0] === null && src.questions![0].next![1] === "Y");
+}
+
+{
+  const ls = course();
+  const { before, after } = deleteCardIn(ls, "all2");
+  check("deleting a card nobody wires touches one lesson", before.length === 1 && after.length === 1 && after[0].id === "L2");
+}
+
+// Dealing across lessons and by score.
+{
+  const ls = course();
+  const all = ls.flatMap((l) => l.modules);
+  check("nothing is dealt before any answer", dealtTo(all, {}).size === 0);
+  const d = dealtTo(all, prog({ src: { q: 1 } }));
+  check("answer B deals the Lesson 2 card", d.has("Y") && !d.has("X"));
+  check("a chain waits for the next answer", !d.has("Z"));
+  check("…and continues once given", dealtTo(all, prog({ src: { q: 1 }, Y: { qy: 0 } })).has("Z"));
+  check("a card can't be dealt from a card the student doesn't have", !dealtTo(all, prog({ Y: { qy: 0 } })).has("Z"));
+  const quiz = card("qz", { type: "quiz", questions: [ask("a", [null, null])], bands: [{ min: 0, next: "lo" }, { min: 60, next: "mid" }, { min: 90, next: "hi" }] });
+  const pool = [quiz, card("lo"), card("mid"), card("hi")];
+  const at = (pct: number) => [...dealtTo(pool, prog({ qz: { [SCORE]: pct } }))].join();
+  check("59% is the low band", at(59) === "lo");
+  check("60% (on the line) is the middle band", at(60) === "mid");
+  check("89% is the middle band", at(89) === "mid");
+  check("90% and 100% are the top band", at(90) === "hi" && at(100) === "hi");
+}
+
+// Cleaning: forward only, no loops, no class-wide targets, bands tidied.
+{
+  const weeks: Week[] = [{ id: "w", title: "w", lessons: [
+    lesson("L1", [card("a", { type: "practice", questions: [ask("q", ["b", "wall", "a"])] }), card("wall", { type: "wall" })]),
+    lesson("L2", [card("b", { type: "practice", questions: [ask("q", ["a", "c"])] }), card("c", { type: "quiz", questions: [ask("x", [null, null])], bands: [{ min: 50, next: "c" }, { min: 50, next: null }, { min: 120, next: "b" }] })]),
+  ] }];
+  cleanCourseWiring(weeks);
+  const [a, , b, c] = weeks[0].lessons.flatMap((l) => l.modules);
+  check("a forward wire stays", a.questions![0].next![0] === "b");
+  check("a class-wide target and a self-wire are dropped", a.questions![0].next![1] === null && a.questions![0].next![2] === null);
+  check("a wire back to an earlier lesson is dropped", b.questions![0].next![0] === null && b.questions![0].next![1] === "c");
+  check("bands: start at 0, no duplicates, capped at 100, no self or backward targets", JSON.stringify(c.bands) === JSON.stringify([{ min: 0, next: null }, { min: 100, next: null }]));
+}
+
+// Copying a week keeps wires between its lessons on the copies.
+{
+  const w: Week = { id: "w", title: "Week", lessons: course() };
+  const copy = cloneWeek(w);
+  const cm = copy.lessons.flatMap((l) => l.modules);
+  const src = cm.find((m) => m.title === "src")!;
+  const y = cm.find((m) => m.title === "Y")!;
+  check("a copied week's Lesson 1 answer deals the copied Lesson 2 card", src.questions![0].next![1] === y.id && y.id !== "Y");
+}
+
+const failed = rows.filter(([, ok]) => !ok);
+for (const [n] of failed) console.log("  ✗", n);
+console.log(`${rows.length - failed.length} passed, ${failed.length} failed`);
+process.exit(failed.length ? 1 : 0);

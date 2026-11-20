@@ -141,7 +141,7 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new" };
  * can also branch by score. Drag a port onto a card to deal that card, or into empty space for a new one (in this
  * lesson or a later one). Click a card to edit it.
  */
-export function CardTree({ lessons, lessonId, progress, students, readOnly, busy, onChange, onAddCard, onEdit, onLesson, onClose }: {
+export function CardTree({ lessons, lessonId, progress, students, readOnly, busy, onChange, onChangeMany, onEdit, onLesson, onClose }: {
   /** Every lesson in the course, in order (with unsaved edits). */
   lessons: Lesson[];
   lessonId: string;
@@ -149,8 +149,8 @@ export function CardTree({ lessons, lessonId, progress, students, readOnly, busy
   /** Something is open over the tree (the card editor): leave Escape to it. */
   busy?: boolean;
   onChange: (l: Lesson) => void;
-  /** Put a new card in a lesson and save it right away (so a wire from another lesson can point at it). */
-  onAddCard: (lessonId: string, card: Module) => Promise<void>;
+  /** Change several lessons and save them together (a new card in a later lesson, wired from this one). */
+  onChangeMany: (ls: Lesson[]) => Promise<void>;
   onEdit: (lessonId: string, moduleId: string) => void;
   onLesson: (lessonId: string) => void;
   onClose: () => void;
@@ -267,9 +267,9 @@ export function CardTree({ lessons, lessonId, progress, students, readOnly, busy
       modules.splice(i + 1, 0, card);
       onChange(withWire({ ...lesson, modules }, port, card.id));
     } else {
-      // The card goes in the other lesson first (saved), then the wire that points at it.
-      await onAddCard(into, card);
-      onChange(withWire(lesson, port, card.id));
+      // The card in the other lesson and the wire that points at it are saved together.
+      const target = lessons.find((l) => l.id === into)!;
+      await onChangeMany([{ ...target, modules: [...target.modules, card] }, withWire(lesson, port, card.id)]);
     }
     setFresh(card.id);
     onEdit(into, card.id);

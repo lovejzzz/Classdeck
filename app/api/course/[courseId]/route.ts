@@ -579,22 +579,29 @@ export async function POST(request: Request, { params }: Ctx) {
         id: g.id, name: String(g.name).slice(0, 40), studentIds: g.studentIds.filter((id) => course.students.some((s) => s.id === id)),
       }));
       break;
-    case "saveLesson": {
-      const next = body.lesson as Lesson;
-      if (Array.isArray(next?.modules)) next.modules = next.modules.map((m) => fold(m));
-      for (const m of next.modules) {
-        if (m.playlist) m.playlist = m.playlist.filter((x) => typeof x.url === "string" && /^https:\/\//.test(x.url)).slice(0, 60);
-        m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
-        m.form = cleanForm(m.form);
-      }
-      if (next.date !== undefined && !(typeof next.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(next.date))) next.date = undefined;
-      for (const m of next.modules ?? []) if (m.suit !== undefined && !["learn", "do", "share"].includes(m.suit)) m.suit = undefined;
-      for (const w of course.weeks) {
-        const i = w.lessons.findIndex((l) => l.id === next.id);
-        if (i < 0) continue;
-        // "Lesson N" names belong to the server (they follow position); a stale copy can't put an old number back.
-        if (AUTO_LESSON.test(next.title ?? "") && AUTO_LESSON.test(w.lessons[i].title)) next.title = w.lessons[i].title;
-        w.lessons[i] = next;
+    case "saveLesson":
+    case "saveLessons": {
+      // One lesson, or several at once (an edit that spans lessons, like deleting a card along with its follow-ups in
+      // a later lesson, or undoing that). Several go together so the wiring between them is checked only once
+      // they're all in place.
+      const list = (body.op === "saveLessons" ? (Array.isArray(body.lessons) ? body.lessons : []) : [body.lesson]) as Lesson[];
+      if (!list.length || list.length > 80 || list.some((l) => !l || !Array.isArray(l.modules))) return fail("Nothing to save");
+      for (const next of list) {
+        next.modules = next.modules.map((m) => fold(m));
+        for (const m of next.modules) {
+          if (m.playlist) m.playlist = m.playlist.filter((x) => typeof x.url === "string" && /^https:\/\//.test(x.url)).slice(0, 60);
+          m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
+          m.form = cleanForm(m.form);
+          if (m.suit !== undefined && !["learn", "do", "share"].includes(m.suit)) m.suit = undefined;
+        }
+        if (next.date !== undefined && !(typeof next.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(next.date))) next.date = undefined;
+        for (const w of course.weeks) {
+          const i = w.lessons.findIndex((l) => l.id === next.id);
+          if (i < 0) continue;
+          // "Lesson N" names belong to the server (they follow position); a stale copy can't put an old number back.
+          if (AUTO_LESSON.test(next.title ?? "") && AUTO_LESSON.test(w.lessons[i].title)) next.title = w.lessons[i].title;
+          w.lessons[i] = next;
+        }
       }
       // Card trees can reach into later lessons, so the wiring is checked across the whole course.
       cleanCourseWiring(course.weeks);

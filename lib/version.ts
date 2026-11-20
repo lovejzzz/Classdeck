@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.6",
+    date: "2026-11-20",
+    changes: [
+      "Fixed: undoing the delete of a card whose follow-ups were in a later lesson could lose its wiring, and the follow-ups would then show for everyone. Changes that span lessons are now saved together.",
+      "Fixed: Undo and Redo at the top of the deck (and ⌘Z) now undo a change across several lessons as one step.",
+      "Making a card in a later lesson from the card tree saves the card and its wire together.",
+    ],
+  },
+  {
     version: "0.1.5",
     date: "2026-11-19",
     changes: [

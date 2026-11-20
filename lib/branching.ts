@@ -177,3 +177,20 @@ export const DEFAULT_BANDS: ScoreBand[] = [{ min: 0, next: null }, { min: 60, ne
 
 /** "0–59%", "60–89%", "90–100%". */
 export const bandLabel = (b: { min: number; max: number }) => (b.max > 100 ? `${b.min}–100%` : `${b.min}–${b.max - 1}%`);
+
+/**
+ * Delete a card from a course, with the follow-ups only it deals (wherever they are; left behind they'd go to
+ * everyone), and unhook every wire that pointed at them. Returns just the lessons that change, as they were and as
+ * they become, so the caller can save the new ones and keep the old ones for Undo.
+ */
+export function deleteCardIn(lessons: Lesson[], id: string): { before: Lesson[]; after: Lesson[]; gone: Set<string> } {
+  const gone = new Set([id, ...branchBelow(lessons.flatMap((l) => l.modules), id)]);
+  const before: Lesson[] = [];
+  const after: Lesson[] = [];
+  for (const l of lessons) {
+    if (!l.modules.some((m) => gone.has(m.id)) && !wiresOf(l).some((w) => gone.has(w.to))) continue;
+    before.push(l);
+    after.push(unwire({ ...l, modules: l.modules.filter((m) => !gone.has(m.id)) }, gone));
+  }
+  return { before, after, gone };
+}

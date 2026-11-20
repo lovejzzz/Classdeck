@@ -403,6 +403,17 @@ async function main() {
     check("a copied week keeps lesson-to-lesson wires on the copies", !!cch && !!target && cch.questions[0].next?.[0] === target.id, cch?.questions?.[0]);
     const cq = copyWeek.lessons[0].modules.find((m) => m.title === "Score quiz");
     check("a copied quiz's bands point at the copies", (cq?.bands ?? []).every((b) => !b.next || copyWeek.lessons[0].modules.some((m) => m.id === b.next)) && cq.bands.some((b) => b.next), cq?.bands);
+    // Several lessons saved together: a wire to a card that only exists in the other lesson's new version survives.
+    {
+      const now = courseOf(await A.state(tid)).weeks[0].lessons;
+      const a = { ...now[0], modules: [...now[0].modules, card("m-new-src", "practice", "New source", { questions: [{ id: "n1", text: "Go?", options: ["yes", "no"], answer: 0, next: ["m-new-target", null] }] })] };
+      const b = { ...now[1], modules: [...now[1].modules, card("m-new-target", "read", "New target")] };
+      const r = await A.op(tid, { op: "saveLessons", lessons: [a, b] });
+      const after = courseOf(await A.state(tid)).weeks[0].lessons;
+      check("saveLessons keeps a wire into the other lesson saved with it", r.ok !== false && after[0].modules.find((m) => m.id === "m-new-src")?.questions?.[0]?.next?.[0] === "m-new-target", r);
+      check("saveLessons refuses an empty list", (await A.op(tid, { op: "saveLessons", lessons: [] })).ok === false);
+      check("students can't save lessons", [401, 403].includes((await S.Dee.op(tid, { op: "saveLessons", lessons: [a] })).status));
+    }
     await A.del("/api/courses", { id: tid, confirm: `Tree2 ${run}` });
   }
 

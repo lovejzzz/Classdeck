@@ -23,7 +23,7 @@ import { useUrlState } from "@/lib/urlState";
 import { nextNumber, standardWeek } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
 import { CardTree } from "./CardTree";
-import { bandLabel, branchBelow, treeView, unwire, wiresOf } from "@/lib/branching";
+import { bandLabel, branchBelow, deleteCardIn, treeView, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
 import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
 
@@ -95,19 +95,29 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
 
   // Undo and redo cover changes to lessons and their cards (not adding weeks or lessons). Quick edits to the same
   // lesson, like typing, count as one step.
-  const undoStack = useRef<{ lesson: Lesson; at: number }[]>([]);
-  const redoStack = useRef<Lesson[]>([]);
+  // Each step holds every lesson it changed: an edit that spans lessons (a card and its follow-ups) undoes as one.
+  const undoStack = useRef<{ lessons: Lesson[]; at: number }[]>([]);
+  const redoStack = useRef<Lesson[][]>([]);
   const [counts, setCounts] = useState({ undo: 0, redo: 0 });
   const syncCounts = () => setCounts({ undo: undoStack.current.length, redo: redoStack.current.length });
+  /** Remember a lesson as it was, for Undo. Quick edits to the same lesson count as one step. */
+  function remember(next: Lesson) {
+    const prev = lessonOf(next.id);
+    const last = undoStack.current[undoStack.current.length - 1];
+    if (!(last && last.lessons.length === 1 && last.lessons[0].id === next.id && clock() - last.at < 1000)) undoStack.current = [...undoStack.current, { lessons: [prev], at: clock() }].slice(-100);
+    else last.at = clock();
+    redoStack.current = [];
+    syncCounts();
+  }
+  function rememberAll(list: Lesson[]) {
+    undoStack.current = [...undoStack.current, { lessons: list.map((l) => lessonOf(l.id)), at: 0 }].slice(-100);
+    redoStack.current = [];
+    syncCounts();
+  }
+  /** Put lessons back to a saved state without recording it (Undo and Redo). */
+  const restore = (list: Lesson[]) => (list.length === 1 ? change(list[0], false) : changeMany(list, false));
   function change(next: Lesson, record = true) {
-    if (record) {
-      const prev = lessonOf(next.id);
-      const last = undoStack.current[undoStack.current.length - 1];
-      if (!(last && last.lesson.id === next.id && clock() - last.at < 1000)) undoStack.current = [...undoStack.current, { lesson: prev, at: clock() }].slice(-100);
-      else last.at = clock();
-      redoStack.current = [];
-      syncCounts();
-    }
+    if (record) remember(next);
     latest.current[next.id] = next;
     setDrafts((d) => ({ ...d, [next.id]: next }));
     const t = timers.current.get(next.id);
@@ -115,12 +125,33 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     else setSaving((n) => n + 1);
     timers.current.set(next.id, setTimeout(() => sendNow(next.id), 600));
   }
-  /** Save a lesson's pending edit now instead of after the pause (a wire from another lesson is about to point at it). */
-  async function flush(id: string) {
-    const t = timers.current.get(id);
-    if (!t) return;
-    clearTimeout(t);
-    await sendNow(id);
+  /**
+   * Change several lessons at once and save them in one go (deleting a card with its follow-ups in a later lesson,
+   * undoing that, or a new card in one lesson wired from another). Saved separately, the server could see a wire to
+   * a card that isn't there yet and drop it.
+   */
+  async function changeMany(list: Lesson[], record = true) {
+    if (!list.length) return;
+    if (record) rememberAll(list);
+    for (const l of list) latest.current[l.id] = l;
+    setDrafts((d) => ({ ...d, ...Object.fromEntries(list.map((l) => [l.id, l])) }));
+    let waiting = 0;
+    for (const l of list) {
+      const t = timers.current.get(l.id);
+      if (t) { clearTimeout(t); timers.current.delete(l.id); waiting++; }
+    }
+    setSaving((n) => n - waiting + 1);
+    const sent = list.map((l) => latest.current[l.id]);
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent });
+    setSaving((n) => n - 1);
+    if (r.ok === false) { setSaveError(r.error ?? "Couldn’t save"); return; }
+    setSaveError(null);
+    await onRefresh();
+    setDrafts((d) => {
+      const n = { ...d };
+      for (const l of sent) if (n[l.id] === l && latest.current[l.id] === l) delete n[l.id];
+      return n;
+    });
   }
   async function sendNow(id: string) {
     timers.current.delete(id);
@@ -141,15 +172,15 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   function undo() {
     const u = undoStack.current.pop();
     if (!u) return;
-    redoStack.current.push(lessonOf(u.lesson.id));
-    change(u.lesson, false);
+    redoStack.current.push(u.lessons.map((l) => lessonOf(l.id)));
+    restore(u.lessons);
     syncCounts();
   }
   function redo() {
     const r = redoStack.current.pop();
     if (!r) return;
-    undoStack.current.push({ lesson: lessonOf(r.id), at: 0 });
-    change(r, false);
+    undoStack.current.push({ lessons: r.map((l) => lessonOf(l.id)), at: 0 });
+    restore(r);
     syncCounts();
   }
   useEffect(() => {
@@ -196,29 +227,19 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
    * and unhook any wires to them. Returns those lessons as they were, to restore.
    */
   function deleteCard(id: string): Lesson[] {
-    const ls = allLessons();
-    const gone = new Set([id, ...branchBelow(ls.flatMap((l) => l.modules), id)]);
-    const before: Lesson[] = [];
-    for (const l of ls) {
-      if (!l.modules.some((m) => gone.has(m.id)) && !wiresOf(l).some((w) => gone.has(w.to))) continue;
-      before.push(l);
-      change(unwire({ ...l, modules: l.modules.filter((m) => !gone.has(m.id)) }, gone));
-    }
+    const { before, after } = deleteCardIn(allLessons(), id);
+    if (after.length === 1) change(after[0]);
+    else changeMany(after);
     return before;
   }
   const deletedToast = (title: string, before: Lesson[]) =>
-    toast(`Deleted “${title}”`, { icon: "trash", tone: "plain", action: { label: "Undo", run: () => { before.forEach((l) => change(l)); toast(`Restored “${title}”`); } } });
+    toast(`Deleted “${title}”`, { icon: "trash", tone: "plain", action: { label: "Undo", run: () => { if (before.length === 1) change(before[0]); else changeMany(before); toast(`Restored “${title}”`); } } });
   async function removeCard(_l: Lesson, m: Module) {
     const extra = branchBelow(allLessons().flatMap((l) => l.modules), m.id).length;
     if (!(await ask({ title: `Delete “${m.title}”?`, body: extra ? `The ${extra} follow-up card${extra === 1 ? "" : "s"} it deals go with it. Students’ work stays saved, and you can undo this.` : "Students’ work on it stays saved, and you can undo this.", confirm: "Delete", danger: true }))) return;
     deletedToast(m.title, deleteCard(m.id));
   }
-  /** Add a card to a lesson and save it straight away (a wire from another lesson will point at it). */
-  async function addCardNow(lessonId: string, card: Module) {
-    const l = lessonOf(lessonId);
-    change({ ...l, modules: [...l.modules, card] });
-    await flush(lessonId);
-  }
+
 
   const cardEls = useRef(new Map<string, HTMLElement>());
   /** Scroll so the card being edited sits in view, to the left of the editor panel. */
@@ -538,7 +559,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           readOnly={readOnly}
           busy={editorOpen}
           onChange={change}
-          onAddCard={addCardNow}
+          onChangeMany={changeMany}
           onEdit={(lid, id) => !readOnly && edit(lid, id)}
           onLesson={setTreeFor}
           onClose={() => setTreeFor(null)}
