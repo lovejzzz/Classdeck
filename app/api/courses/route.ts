@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       return role ? [{ ...c, role }] : [];
     }) : [],
     // Courses made before accounts existed have no owner yet; only the site owner can claim them.
-    unclaimed: t && isAdmin(session) ? all.filter((c) => c.id !== DEMO && !c.ownerId).map((c) => ({ id: c.id, title: c.title, students: c.students })) : [],
+    unclaimed: t && isAdmin(session) ? all.filter((c) => c.id !== DEMO && !c.ownerId && !c.sample).map((c) => ({ id: c.id, title: c.title, students: c.students })) : [],
   });
 }
 
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (body.claim) {
     if (!isAdmin(session)) return Response.json({ ok: false, error: "Only the site owner can claim older courses" }, { status: 403 });
     const c = db().courses[String(body.claim)];
-    if (!c || c.id === DEMO || c.ownerId) return Response.json({ ok: false, error: "That course can’t be claimed" }, { status: 400 });
+    if (!c || c.id === DEMO || c.ownerId || c.sample) return Response.json({ ok: false, error: "That course can’t be claimed" }, { status: 400 });
     c.ownerId = t.id;
     save();
     return Response.json({ ok: true, id: c.id });

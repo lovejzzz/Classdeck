@@ -6,6 +6,7 @@ import { uid } from "@/lib/profile";
 import { SUITS, suitOf, suitOfCard, TYPE_META } from "@/lib/ui";
 import type { AnswerValue, Lesson, Module, ModuleType, ProgressMap } from "@/lib/types";
 import { Icon } from "../Icon";
+import { toast } from "@/lib/toast";
 
 // Fixed sizes, so ports and wires are placed from numbers, not by measuring the page.
 const W = 256;
@@ -191,6 +192,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const [menuLesson, setMenuLesson] = useState<string | null>(null);
   const [hot, setHot] = useState<string | null>(null);
   const [fresh, setFresh] = useState<string | null>(null);
+  // Words edited in place on a card (double-click a title, a question or an answer).
+  const [typing, setTyping] = useState<{ id: string; field: string; value: string } | null>(null);
+  // A card being dragged to another lesson, and where the pointer is.
+  const [moving, setMoving] = useState<{ id: string; x: number; y: number; to?: string } | null>(null);
+  const [dragged, setDragged] = useState(false);
   const [live, setLive] = useState(true);
   const [now] = useState(() => Date.now());
   const [born] = useState(() => new Map<string, { x: number; y: number }>());
@@ -345,6 +351,96 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     onEdit(lessonId, card.id);
   }
 
+  /** Save words typed in place: a card's title, a question, or one answer. */
+  function commitTyping() {
+    if (!typing) return;
+    const { id, field, value } = typing;
+    setTyping(null);
+    const l = lessonWith(id);
+    const m = l?.modules.find((x) => x.id === id);
+    if (!l || !m) return;
+    let next: Module = m;
+    if (field === "title") next = { ...m, title: value.trim().slice(0, 120) || m.title };
+    else {
+      const [kind, qid, oi] = field.split(":");
+      next = { ...m, questions: m.questions?.map((q) => {
+        if (q.id !== qid) return q;
+        if (kind === "q") return { ...q, text: value.slice(0, 300) };
+        return { ...q, options: q.options.map((o, k) => (k === Number(oi) ? value.slice(0, 200) : o)) };
+      }) };
+    }
+    if (JSON.stringify(next) !== JSON.stringify(m)) onChange({ ...l, modules: l.modules.map((x) => (x.id === id ? next : x)) });
+  }
+  const typeBox = (cls: string) => typing && (
+    <input
+      autoFocus
+      value={typing.value}
+      onChange={(e) => setTyping({ ...typing, value: e.target.value })}
+      onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") commitTyping(); if (e.key === "Escape") setTyping(null); }}
+      onBlur={commitTyping}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      aria-label="Edit text"
+      className={`w-full rounded-md border border-[#4b56a8]/50 bg-white px-1.5 outline-none ring-2 ring-[#4b56a8]/15 ${cls}`}
+    />
+  );
+  const startTyping = (id: string, field: string, value: string) => (e: React.MouseEvent) => {
+    if (readOnly) return;
+    e.stopPropagation();
+    setTyping({ id, field, value });
+  };
+
+  /** Which lesson's region a point on the canvas is over. */
+  const regionAt = (x: number) => regions.find((r) => x >= r.x - REGION_GAP / 2 && x <= r.x + r.w + REGION_GAP / 2)?.lesson.id;
+
+  /** Why a card can't go to a lesson: wires only run forward, so it can't go before a card that deals it, or after one it deals. */
+  function whyNot(id: string, to: string): string | null {
+    const ti = lessonIndex(to);
+    const before = wires.filter((w) => w.to === id).find((w) => lessonIndex(lessonWith(w.from).id) > ti);
+    if (before) return `It’s dealt by “${all.find((x) => x.m.id === before.from)?.m.title}” in ${lessonWith(before.from).title}, so it can’t come before that lesson.`;
+    const after = wires.filter((w) => w.from === id).find((w) => lessonIndex(lessonWith(w.to).id) < ti);
+    if (after) return `It deals “${all.find((x) => x.m.id === after.to)?.m.title}” in ${lessonWith(after.to).title}, so it can’t come after that lesson.`;
+    return null;
+  }
+  async function moveCard(id: string, to: string) {
+    const from = lessonWith(id);
+    if (!from || from.id === to) return;
+    const why = whyNot(id, to);
+    if (why) { toast(`Can’t move it there. ${why}`, { icon: "split", tone: "plain" }); return; }
+    const m = from.modules.find((x) => x.id === id)!;
+    const target = lessons.find((l) => l.id === to)!;
+    born.delete(id);
+    await onChangeMany([{ ...from, modules: from.modules.filter((x) => x.id !== id) }, { ...target, modules: [...target.modules, m] }]);
+    setFresh(id);
+    toast(`Moved “${m.title}” to ${target.title}`, { icon: "layers" });
+  }
+  /** Press on a card's head and move: drag it to another lesson. A press without moving is a click (opens it). */
+  function startMove(e: React.PointerEvent, id: string) {
+    if (readOnly || e.button !== 0 || typing) return;
+    const start = { x: e.clientX, y: e.clientY };
+    let on = false;
+    const move = (ev: PointerEvent) => {
+      if (!on && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return;
+      on = true;
+      const p = toCanvas(ev.clientX, ev.clientY);
+      setMoving({ id, x: p.x, y: p.y, to: regionAt(p.x) });
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      setMoving(null);
+      if (!on) return;
+      setDragged(true);
+      setTimeout(() => setDragged(false), 0);
+      const to = regionAt(toCanvas(ev.clientX, ev.clientY).x);
+      if (to && ev.type === "pointerup") moveCard(id, to);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  }
+
   function startDrag(e: React.PointerEvent, port: Port) {
     if (readOnly) return;
     e.preventDefault();
@@ -465,7 +561,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               const today = r.lesson.id === todayId;
               const branches = wiresOf(r.lesson).length;
               return (
-                <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] ${today ? "bg-ok/[0.045]" : "bg-black/[0.018]"}`} style={{ left: r.x - 20, top: 16, width: r.w + 40, height: height - 32 }}>
+                <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "bg-ok/[0.045]" : "bg-black/[0.018]"}`} style={{ left: r.x - 20, top: 16, width: r.w + 40, height: height - 32 }}>
                   <div className="flex items-center gap-2 px-5 pt-4" style={{ fontSize: level === "far" ? 22 : 13 }}>
                     <span className="truncate font-semibold text-ink">{r.lesson.title}</span>
                     {weekOf[r.lesson.id] && <span className="truncate text-ink-3">{weekOf[r.lesson.id]}</span>}
@@ -532,6 +628,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               const stuck = here.filter((s) => s.stuck).length;
               const bands = isQuiz(m) ? bandsOf(m) : [];
               const isSel = selected === m.id;
+              // While its title is being typed, the head isn't a button (a text box can't sit inside one).
+              const Head = typing?.id === m.id && typing.field === "title" ? "div" : "button";
               return (
                 <div
                   key={m.id}
@@ -550,7 +648,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       {here.length > 4 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[9.5px] font-semibold text-white">+{here.length - 4}</span>}
                     </span>
                   )}
-                  <button onClick={() => onEdit(nd.lessonId, m.id)} className="tree-head block w-full rounded-t-[18px] text-left" style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`}>
+                  <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onClick={() => { if (!dragged && !typing) onEdit(nd.lessonId, m.id); }} className={`tree-head block w-full rounded-t-[18px] text-left ${readOnly ? "" : "cursor-grab active:cursor-grabbing"} ${moving?.id === m.id ? "opacity-40" : ""}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
                     <span className="block h-1.5 rounded-t-[18px]" style={{ background: suit.tint }} />
                     {level === "far" ? (
                       <span className="block truncate px-3.5 pt-2.5 text-[17px] font-semibold text-ink">{m.title || "Untitled card"}</span>
@@ -562,10 +660,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                             · {fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : "everyone"}
                           </span>
                         </span>
-                        <span className="block truncate px-3.5 pt-1 text-[14px] font-semibold leading-snug text-ink">{m.title || "Untitled card"}</span>
+                        {typing?.id === m.id && typing.field === "title"
+                          ? <span className="block px-2 pt-0.5">{typeBox("h-7 text-[14px] font-semibold")}</span>
+                          : <span onDoubleClick={startTyping(m.id, "title", m.title)} className="block truncate px-3.5 pt-1 text-[14px] font-semibold leading-snug text-ink">{m.title || "Untitled card"}</span>}
                       </>
                     )}
-                  </button>
+                  </Head>
                   {level === "near" && (
                     <div className="line-clamp-2 border-t border-line px-3.5 pt-2 text-[12px] leading-[1.45] text-ink-2" style={{ height: PREVIEW }}>
                       {m.body.trim() || <span className="text-ink-3">No instructions yet</span>}
@@ -575,13 +675,17 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     <div className="border-t border-line pb-[10px]">
                       {qs.map((q) => (
                         <div key={q.id}>
-                          <div className="truncate px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }}>{q.text.trim() || "Question"}</div>
+                          {typing?.id === m.id && typing.field === `q:${q.id}`
+                            ? <div className="flex items-center px-2" style={{ height: SEC }}>{typeBox("h-6 text-[11.5px]")}</div>
+                            : <div onDoubleClick={startTyping(m.id, `q:${q.id}`, q.text)} className="truncate px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }} title={readOnly ? undefined : "Double-click to edit"}>{q.text.trim() || "Question"}</div>}
                           {q.options.map((o, oi) => {
                             const to = q.next?.[oi];
                             return (
                               <div key={oi} className="relative flex items-center gap-2 px-3.5" style={{ height: ROW }}>
                                 <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "bg-[#4b56a8] text-white" : "bg-lane text-ink-3"}`}>{letter(oi)}</span>
-                                <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2">{o.trim() || `Option ${oi + 1}`}</span>
+                                {typing?.id === m.id && typing.field === `o:${q.id}:${oi}`
+                                  ? <span className="min-w-0 flex-1 pr-3">{typeBox("h-6 text-[12.5px]")}</span>
+                                  : <span onDoubleClick={startTyping(m.id, `o:${q.id}:${oi}`, o)} className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2" title={readOnly ? undefined : "Double-click to edit"}>{o.trim() || `Option ${oi + 1}`}</span>}
                                 <PortDot wired={!!to} readOnly={readOnly} label={to ? `Answer ${letter(oi)} deals a card. Change it` : `Deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: q.id, option: oi })} />
                               </div>
                             );
@@ -644,6 +748,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               );
             })}
 
+            {moving && (() => {
+              const m = all.find((x) => x.m.id === moving.id)?.m;
+              if (!m) return null;
+              const bad = moving.to && moving.to !== lessonWith(moving.id)?.id ? whyNot(moving.id, moving.to) : null;
+              return (
+                <div className="pointer-events-none absolute z-30 rotate-[2deg] rounded-[18px] border border-[#4b56a8] bg-white shadow-[0_24px_50px_-18px_rgba(20,20,18,0.55)]" style={{ left: moving.x - W / 2, top: moving.y - 20, width: W }}>
+                  <span className="block h-1.5 rounded-t-[18px]" style={{ background: suitOfCard(m).tint }} />
+                  <span className="block truncate px-3.5 pb-3 pt-2 text-[14px] font-semibold text-ink">{m.title || "Untitled card"}</span>
+                  {moving.to && moving.to !== lessonWith(moving.id)?.id && (
+                    <span className={`block border-t border-line px-3.5 py-1.5 text-[11.5px] ${bad ? "text-bad" : "text-[#4b56a8]"}`}>{bad ? "Can’t go here" : `Move to ${lessons.find((l) => l.id === moving.to)?.title}`}</span>
+                  )}
+                </div>
+              );
+            })()}
             {menu && "add" in menu && (
               <div className="pop absolute z-20 w-64 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
                 <div className="px-2 pb-1.5 pt-0.5 text-[12px] font-medium text-ink">New card for everyone in {lessons.find((l) => l.id === menu.add)?.title}</div>

@@ -264,6 +264,7 @@ export function listCourses() {
   return Object.values(d.courses).map((c) => ({
     id: c.id,
     ownerId: c.ownerId,
+    sample: c.sample,
     title: c.title,
     subtitle: c.subtitle,
     students: c.students.length,

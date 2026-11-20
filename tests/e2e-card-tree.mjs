@@ -145,6 +145,46 @@ const made = now.src?.questions?.[0]?.next?.[0];
 check("tree: a new Lesson 2 card wired from a Lesson 1 answer is saved, wire and all", !!made && now.l2.includes(made) && now.l2.length === 4, now);
 check("tree: the new card is hidden from the student until dealt", !(await studentSees()).includes(made));
 
+// 5) On the map: rename a card and an answer in place (double-click), then drag cards between lessons.
+const titleOnMap = page.locator('[data-node="m-all1"] span', { hasText: "Lesson 1 for everyone" }).first();
+await titleOnMap.dblclick();
+const box1 = page.getByRole("textbox", { name: "Edit text" });
+await box1.fill("Warm-up for everyone");
+await box1.press("Enter");
+await settle();
+let c1 = (await T.get(`/api/course/${cid}`)).course;
+check("map: a title edited in place is saved", c1.weeks[0].lessons[0].modules.find((m) => m.id === "m-all1")?.title === "Warm-up for everyone");
+await page.locator('[data-node="m-src"] span', { hasText: "Option 2" }).first().dblclick();
+const box2 = page.getByRole("textbox", { name: "Edit text" });
+await box2.fill("Go to lesson two");
+await box2.press("Enter");
+await settle();
+c1 = (await T.get(`/api/course/${cid}`)).course;
+check("map: an answer edited in place is saved, its wire kept", c1.weeks[0].lessons[0].modules.find((m) => m.id === "m-src")?.questions?.[0]?.options?.[1] === "Go to lesson two" && c1.weeks[0].lessons[0].modules.find((m) => m.id === "m-src")?.questions?.[0]?.next?.[1] === "m-y");
+// Drag "Lesson 2 for everyone" (wired to nothing) into Lesson 1: allowed.
+const dragTo = async (id, toLessonTitle) => {
+  const head = page.locator(`[data-node="${id}"] button[aria-label^="Edit"]`).first();
+  const hb = await head.boundingBox();
+  const region = page.locator("span.font-semibold", { hasText: new RegExp(`^${toLessonTitle}$`) }).first();
+  const rb = await region.boundingBox();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2 + 30, hb.y + 40, { steps: 5 });
+  await page.mouse.move(rb.x + 40, rb.y + 260, { steps: 15 });
+  await settle(300);
+  await page.mouse.up();
+  await settle();
+};
+const l1Title = c1.weeks[0].lessons[0].title, l2Title = c1.weeks[0].lessons[1].title;
+await dragTo("m-all2", l1Title);
+c1 = (await T.get(`/api/course/${cid}`)).course;
+check("map: a card dragged to another lesson moves there", c1.weeks[0].lessons[0].modules.some((m) => m.id === "m-all2") && !c1.weeks[0].lessons[1].modules.some((m) => m.id === "m-all2"));
+// "Follow-up of the follow-up" is dealt by a Lesson 2 card, so it can't move back to Lesson 1 (wires only run forward).
+await dragTo("m-z", l1Title);
+c1 = (await T.get(`/api/course/${cid}`)).course;
+check("map: a card can't move before the card that deals it", c1.weeks[0].lessons[1].modules.some((m) => m.id === "m-z") && !c1.weeks[0].lessons[0].modules.some((m) => m.id === "m-z"));
+check("map: the refusal says why", await page.getByText(/Can’t move it there/).first().isVisible());
+
 check("no errors in the page", errors.length === 0, errors);
 await browser.close();
 const failed = results.filter(([, ok]) => !ok).length;

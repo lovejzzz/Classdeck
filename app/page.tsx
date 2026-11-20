@@ -37,6 +37,17 @@ export default function Home() {
     else setError(r.error ?? "Google sign-in didn’t work. Try again.");
   }
 
+  // A private copy of the sample course, signed in as its one student.
+  const [trying, setTrying] = useState(false);
+  const [tryError, setTryError] = useState("");
+  async function trySample() {
+    setTrying(true);
+    setTryError("");
+    const r = await fetch("/api/try", { method: "POST" }).then((x) => x.json()).catch(() => ({ ok: false, error: "Couldn’t reach Questhand. Check your connection." }));
+    if (!r.ok) { setTrying(false); setTryError(r.error ?? "Couldn’t start the sample"); return; }
+    router.push(`/learn/${r.courseId}/${r.studentId}`);
+  }
+
   async function join() {
     if (!code.trim()) return;
     setError("");
@@ -115,6 +126,15 @@ export default function Home() {
         Build a course as a map of cards. Students who struggle get help, students who fly get a challenge, and you see every path.
       </p>
       <div className="rise mt-8 w-full max-w-[600px]" style={{ "--i": 3 } as React.CSSProperties}><HeroTree /></div>
+      {me?.kind !== "teacher" && (
+        <div className="rise mt-6 flex flex-col items-center gap-1.5" style={{ "--i": 3 } as React.CSSProperties}>
+          <button onClick={trySample} disabled={trying} className="btn press h-10 gap-2 rounded-full border border-[#4b56a8]/25 bg-[#eef0fb] px-5 text-[14px] font-medium text-[#4b56a8] hover:bg-[#e3e6f8]">
+            <Icon name="play" size={14} /> {trying ? "Dealing your cards…" : "Try a sample course as a student"}
+          </button>
+          <span className="text-[12px] text-ink-3">No sign-up. Your own copy, gone after a day.</span>
+          {tryError && <span className="text-[12.5px] text-bad" role="alert">{tryError}</span>}
+        </div>
+      )}
 
       <div className="rise mt-10 grid w-full max-w-md gap-6" style={{ "--i": 4 } as React.CSSProperties}>
         {me?.kind === "student" && (

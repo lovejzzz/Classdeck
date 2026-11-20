@@ -10,7 +10,7 @@ const put = (k, v) => db.prepare("UPDATE kv SET v = ? WHERE k = ?").run(JSON.str
 
 const users = get("users") ?? {};
 const ids = Object.keys(users).filter((k) => /@example\.test$/.test(users[k].email));
-const courses = db.prepare("SELECT v FROM kv WHERE k LIKE 'courses:%'").all().map((r) => JSON.parse(r.v)).filter((c) => ids.includes(c.ownerId)).map((c) => c.id);
+const courses = db.prepare("SELECT v FROM kv WHERE k LIKE 'courses:%'").all().map((r) => JSON.parse(r.v)).filter((c) => ids.includes(c.ownerId) || c.sample).map((c) => c.id); // test teachers' courses, and sample copies
 for (const k of ids) delete users[k];
 put("users", users);
 

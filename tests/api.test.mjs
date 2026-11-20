@@ -466,6 +466,23 @@ async function main() {
     await A.del("/api/courses", { id: tpl.id, confirm: `Tpl ${run}` });
   }
 
+  // ---- The public sample: anyone gets a private copy as its one student
+  {
+    const V = client();
+    const r = await V.post("/api/try", {});
+    check("a visitor gets their own sample copy, signed in as its student", r.ok && r.courseId?.startsWith("sample-") && !!V.cookie, r);
+    const sv = courseOf(await V.state(`${r.courseId}?as=${r.studentId}`));
+    check("the copy has the sample lessons and only this student", sv.weeks?.[0]?.lessons?.length === 2 && sv.students?.length === 1 && !!sv.sample, sv.title);
+    const quiz = modulesOf(sv).find((m) => m.type === "quiz");
+    for (const q of quiz.questions) await V.op(r.courseId, { op: "answer", studentId: r.studentId, moduleId: quiz.id, qid: q.id, choice: q.options.findIndex((o) => /Half|Perfect|Plagal \(IV/.test(o)) === -1 ? 0 : { q1: 1, q2: 0, q3: 0 }[q.id] });
+    const sub = await V.op(r.courseId, { op: "submitQuiz", studentId: r.studentId, moduleId: quiz.id });
+    check("full marks in the sample deal the challenge in lesson 2", sub.score === 3 && sub.dealt?.some((d) => /Challenge/.test(d.title) && d.lesson === "Using cadences"), sub);
+    check("nobody can edit a sample copy", [401, 403].includes((await V.op(r.courseId, { op: "addStudents", names: "Intruder" })).status) && [401, 403].includes((await A.op(r.courseId, { op: "addStudents", names: "Intruder" })).status));
+    check("sample copies never show in a teacher's courses", !(await A.get("/api/courses")).courses.some((c) => c.id === r.courseId));
+    check("two visitors get two separate copies", (await client().post("/api/try", {})).courseId !== r.courseId);
+    check("a signed-in teacher is asked to sign out first", (await A.post("/api/try", {})).status === 409);
+  }
+
   // ---- Uploads used by a saved card survive deleting a course
   const png = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
   const up = async (n) => { const f = new FormData(); f.append("file", new File([png], n, { type: "image/png" })); return A.post("/api/upload", f); };

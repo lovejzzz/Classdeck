@@ -117,7 +117,7 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
                     {n.stub.why && <span className="mt-0.5 truncate text-[11px] text-ink-3">{n.stub.why}</span>}
                   </>
                 ) : (
-                  <span className="flex items-center gap-2 text-[12.5px] font-medium text-[#7b80a8]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/80 text-[14px]">?</span>A path you didn’t take</span>
+                  <span className="flex items-center gap-2 text-[12.5px] font-medium text-[#7b80a8]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/80 text-[14px]">?</span>{statusOf(n.id.split("~")[0]) === "done" ? "A path you didn’t take" : "Answer to see where this leads"}</span>
                 )}
               </div>
             );

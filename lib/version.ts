@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.8",
+    date: "2026-11-20",
+    changes: [
+      "On the map, double-click a card’s title, a question or an answer to change it right there. Enter saves, Escape cancels.",
+      "Drag a card by its head to another lesson. The map says if a move would break a branch (a card can’t go before the card that deals it, or after one it deals).",
+      "Try a sample course: anyone can open their own copy of a small course as a student from the home page, no sign-up. It opens on the map and is gone after a day.",
+      "On a student’s map, paths from a card they haven’t answered yet say “Answer to see where this leads”.",
+    ],
+  },
+  {
     version: "0.1.7",
     date: "2026-11-20",
     changes: [

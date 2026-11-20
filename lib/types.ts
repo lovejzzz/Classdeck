@@ -349,6 +349,8 @@ export interface Course {
   enabledConnectors: string[];
   /** How many electives each student should take. */
   electiveMin?: number;
+  /** A visitor's copy of the public sample course: when it expires (ms). Nobody owns it; it is never listed or claimed. */
+  sample?: number;
 }
 
 export type Status = "todo" | "doing" | "done";
