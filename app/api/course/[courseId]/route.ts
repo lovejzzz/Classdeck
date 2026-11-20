@@ -6,7 +6,8 @@ import { db, logEvent, reset, save } from "@/lib/store";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
-import { cardsOf, cleanCourseWiring, deals, dealsByScore, orphansOf, pathsFor, SCORE, treeView } from "@/lib/branching";
+import { kindWeeks, withKind } from "@/lib/kinds";
+import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, orphansOf, pathsFor, SCORE, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate, revokeInvites } from "@/lib/hooks";
@@ -41,6 +42,17 @@ const FEEDBACK_GOAL = 2;
 
 /** The cards just dealt to a student, for the "new card" message, with the lesson each is in. */
 const titles = (course: Course, ids: string[]) => ids.map((id) => findModule(course, id)).filter((x): x is { lesson: Lesson; mod: Module } => !!x).map((x) => ({ id: x.mod.id, title: x.mod.title, lessonId: x.lesson.id, lesson: x.lesson.title }));
+/** A poll's votes: how many students picked each choice of its question (their first vote, as it stands). */
+const tallyOf = (course: Course, m: Module): number[] | undefined => {
+  const q = m.questions?.[0];
+  if (!q) return undefined;
+  const counts = q.options.map(() => 0);
+  for (const st of course.students) {
+    const v = db().progress[course.id]?.[st.id]?.[m.id]?.answers?.[q.id];
+    for (const i of Array.isArray(v) ? (v as number[]) : typeof v === "number" ? [v] : []) if (i >= 0 && i < counts.length) counts[i]++;
+  }
+  return counts;
+};
 /** The course's tree as one student sees it. */
 const treeOf = (course: Course, studentId: string) => treeView(course.weeks, db().progress[course.id]?.[studentId]);
 
@@ -59,7 +71,10 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
   const taken = (lessonId: string) => Object.entries(all).filter(([sid, c]) => sid !== studentId && c[`elective:${lessonId}`]).length;
   const tree = treeOf(course, studentId);
   const visible = new Set(course.weeks.flatMap((w) => w.lessons.flatMap((l) => (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree)).map((m) => m.id))));
-  const paths = pathsFor(course.weeks, db().progress[course.id]?.[studentId] ?? {}, tree, visible);
+  // A card group is on the board when its cards are (it has paths out by score, like a card).
+  for (const w of course.weeks) for (const l of w.lessons) for (const g of l.modules) if (g.type === "group" && g.members?.some((id) => visible.has(id))) visible.add(g.id);
+  const prog = db().progress[course.id]?.[studentId] ?? {};
+  const paths = pathsFor(course.weeks, prog, tree, visible);
   return {
     ...course,
     // Students never receive the class passcode, the tools key, classmates' emails, or the co-teachers.
@@ -75,10 +90,16 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
         // An elective a student hasn't chosen arrives as a catalog entry: its cards stay hidden until they pick it.
         ...(l.elective ? { chosen: !!chosen[`elective:${l.id}`], takenBy: taken(l.id), catalog: { cards: l.modules.filter((m) => m.audience.kind === "all").length, skills: [...new Set(l.modules.flatMap((m) => m.skills ?? []))] } } : {}),
         branches: {},
+        decks: l.modules.filter((g) => g.type === "group" && visible.has(g.id)).map((g) => ({
+          id: g.id, title: g.title, members: (g.members ?? []).filter((id) => visible.has(id)),
+          done: prog[g.id]?.status === "done" || undefined, score: typeof prog[g.id]?.dealt?.[SCORE] === "number" ? (prog[g.id]!.dealt![SCORE] as number) : undefined,
+          paths: paths.get(g.id),
+        })),
         modules: (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree)).map((m) => ({
           ...m,
           bands: undefined,
           dealtFor: tree.dealt.has(m.id) || undefined,
+          tally: m.poll ? tallyOf(course, m) : undefined,
           paths: paths.get(m.id),
           audience: { kind: "all" as const },
           personal: m.audience.kind !== "all" && !m.choice && !m.picked,
@@ -591,7 +612,7 @@ export async function POST(request: Request, { params }: Ctx) {
       if (!list.length || list.length > 80 || list.some((l) => !l || !Array.isArray(l.modules))) return fail("Nothing to save");
       const cardsBefore = cardsOf(course.weeks).map((c) => c.m);
       for (const next of list) {
-        next.modules = next.modules.map((m) => fold(m));
+        next.modules = next.modules.map((m) => withKind(fold(m)));
         for (const m of next.modules) {
           if (m.playlist) m.playlist = m.playlist.filter((x) => typeof x.url === "string" && /^https:\/\//.test(x.url)).slice(0, 60);
           m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
@@ -785,14 +806,30 @@ export async function POST(request: Request, { params }: Ctx) {
         : q.kind === "multi" ? [...new Set((Array.isArray(body.multi) ? body.multi : []).map(Number).filter((i: number) => Number.isInteger(i) && i >= 0 && i < q.options.length))] as number[]
         : q.kind === "order" ? (Array.isArray(body.order) ? body.order : []).map(String).filter((x: string) => q.options.includes(x)).slice(0, q.options.length)
         : Number(body.choice);
-      const right = isCorrect(q, given);
+      // A poll has no right answer: every vote counts.
+      const right = found.mod.poll ? true : isCorrect(q, given);
       (p.answers ??= {})[q.id] = given;
       // Card tree: the first answer decides which follow-up cards this student gets; later answers don't change it.
       let dealtNow: string[] = [];
+      const answeredNow = q.kind === "multi" ? (given as number[]).length > 0 : q.kind === "short" || q.kind === "order" ? true : Number.isInteger(given);
+      const firstTime = answeredNow && (p.first ??= {})[q.id] === undefined;
       // A quiz deals when it's submitted, not halfway through.
-      if (found.mod.type !== "quiz" && deals(q) && (q.kind === "multi" ? (given as number[]).length > 0 : Number.isInteger(given)) && (p.dealt ??= {})[q.id] === undefined) {
+      if (found.mod.type !== "quiz" && answeredNow && (firstTime || (deals(q) && p.dealt?.[q.id] === undefined))) {
         const before = treeOf(course, body.studentId).dealt;
-        p.dealt[q.id] = given;
+        if (firstTime) p.first![q.id] = right;
+        if (deals(q) && (p.dealt ??= {})[q.id] === undefined) p.dealt[q.id] = given;
+        // A card group scores once every Multiple choice card in it has a first answer.
+        const group = found.lesson.modules.find((g) => g.type === "group" && g.members?.includes(found.mod.id));
+        if (group) {
+          const gp = mine(body.studentId, group.id);
+          const sc = groupScore(group, found.lesson.modules, d.progress[courseId]?.[body.studentId] ?? {});
+          if (sc.done && gp.dealt?.[SCORE] === undefined) {
+            (gp.dealt ??= {})[SCORE] = sc.pct!;
+            gp.score = sc.right;
+            gp.status = "done";
+            gp.updatedAt = Date.now();
+          }
+        }
         dealtNow = [...treeOf(course, body.studentId).dealt].filter((id) => !before.has(id));
       }
       (p.results ??= {})[q.id] = right;
@@ -801,7 +838,7 @@ export async function POST(request: Request, { params }: Ctx) {
       const total = set.length;
       const answered = set.filter((x) => p.answers![x.id] !== undefined).length;
       const instant = found.mod.type !== "quiz";
-      if (instant && !right) {
+      if (instant && !right && !found.mod.poll) {
         logEvent(courseId, {
           kind: "wrong", studentId: body.studentId, moduleId: body.moduleId,
           text: q.kind === "short"
@@ -1201,6 +1238,7 @@ export async function POST(request: Request, { params }: Ctx) {
       if (!src?.lessons?.length) return fail("That week has no lessons");
       const copy = cloneWeek(src, String(src.title ?? `Week ${course.weeks.length}`).slice(0, 80));
       foldWeeks([copy]);
+      kindWeeks([copy]);
       copy.lessons.forEach((l) => l.modules.forEach((m) => { m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a); }));
       const at = typeof body.index === "number" ? body.index : course.weeks.length;
       course.weeks.splice(at, 0, copy);
@@ -1212,6 +1250,7 @@ export async function POST(request: Request, { params }: Ctx) {
       if (!w || !body.lesson) return fail("No such week");
       const copy = cloneLesson(body.lesson as Lesson);
       foldWeeks([{ lessons: [copy] }]);
+      kindWeeks([{ lessons: [copy] }]);
       copy.modules.forEach((m) => { m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a); });
       w.lessons.push(copy);
       extra = { lessonId: copy.id };

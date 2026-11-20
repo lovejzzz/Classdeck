@@ -5,6 +5,7 @@ import { r2Ready, remove } from "@/lib/blob";
 import { clientIp } from "@/lib/origin";
 import { fromPreset, uid } from "@/lib/profile";
 import { SAMPLE_HOURS, SAMPLE_TITLE, sampleWeeks } from "@/lib/sample";
+import { kindWeeks } from "@/lib/kinds";
 import { db, removeCourse, save } from "@/lib/store";
 import { randomCode, UPLOAD_DIR } from "@/lib/uploads";
 import type { Course } from "@/lib/types";
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
   let code = "";
   do code = randomCode(6); while (codes.has(code));
   const weeks = sampleWeeks();
+  kindWeeks(weeks);
   const you = { id: uid("s-"), name: "You", joinedAt: now };
   const course: Course = {
     id,

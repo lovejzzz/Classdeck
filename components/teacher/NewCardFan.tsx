@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { CARD_SIZE } from "@/lib/cards";
 import type { SavedCard } from "@/lib/store";
 import { SUITS, type Suit } from "@/lib/ui";
+import { kindMeta } from "@/lib/kinds";
 import { Icon } from "../Icon";
 
 /** The teacher's saved cards, shared by the editor's kind cards and every New card slot on the page. */
@@ -33,7 +34,7 @@ export function useLibrary(active = true) {
 export type NewCardChoice = { kind: "suit"; suit: Suit } | { kind: "blank" };
 
 type Slot = Suit | "blank";
-const ORDER: Slot[] = ["learn", "do", "share", "blank"];
+const ORDER: Slot[] = ["content", "question", "blank"];
 const FULL = CARD_SIZE.deck;
 
 /** A suit card at any size: the suit's colour, the icons of its kinds, and its name. */
@@ -56,7 +57,7 @@ function SuitFace({ id, w, h }: { id: Slot; w: number; h: number }) {
         <span className="rounded-full" style={{ background: s.tint, width: 6 * k, height: 6 * k }} />{s.name}
       </span>
       <span className="relative flex flex-1 flex-wrap content-center items-center justify-center px-4" style={{ color: s.tint, gap: 10 * k }}>
-        {s.types.map((t) => <Icon key={t} name={t} size={Math.round(19 * k)} />)}
+        {s.kinds.map((t) => <Icon key={t} name={kindMeta(t).icon} size={Math.round(19 * k)} />)}
       </span>
       <span className="relative px-3 text-center font-medium leading-snug" style={{ color: s.tint, fontSize: 11 * k, opacity: 0.85 }}>{s.rule}</span>
       <span className="relative pb-3 pt-1 text-center font-semibold tracking-tight" style={{ color: s.tint, fontSize: 26 * k }}>{s.name}</span>
@@ -101,7 +102,7 @@ function arc(k: number, slotW: number) {
 }
 
 /**
- * The New card slot. Clicking it fans the three suits (full-size cards) and a small blank card out in a half circle
+ * The New card slot. Clicking it fans the two families, Content and Question (full-size cards), and a small blank card out in a half circle
  * around it. Picking one flies it into the slot at full size; the editor then opens to choose the kind.
  */
 export function NewCardFan({ onChoose }: { onChoose: (c: NewCardChoice) => void }) {

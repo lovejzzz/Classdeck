@@ -37,13 +37,16 @@ export function bandsOf(m: Module): (ScoreBand & { max: number })[] {
   return b.map((x, i) => ({ ...x, max: i + 1 < b.length ? b[i + 1].min : 101 }));
 }
 
+/** Cards that can branch by score: a quiz, and a card group (its Multiple choice cards' score). */
+export const scored = (m: Pick<Module, "type">) => m.type === "quiz" || m.type === "group";
+
 export function wiresOf(scope: HasModules | Module[]): Wire[] {
   const modules = Array.isArray(scope) ? scope : scope.modules;
   const out: Wire[] = [];
   for (const m of modules) {
     for (const q of m.questions ?? [])
       if (canBranch(q)) (q.next ?? []).forEach((to, option) => { if (to && option < q.options.length) out.push({ from: m.id, q: q.id, option, to }); });
-    if (m.type === "quiz") bandsOf(m).forEach((b, option) => { if (b.next) out.push({ from: m.id, q: SCORE, option, to: b.next, score: { min: b.min, max: b.max } }); });
+    if (scored(m)) bandsOf(m).forEach((b, option) => { if (b.next) out.push({ from: m.id, q: SCORE, option, to: b.next, score: { min: b.min, max: b.max } }); });
   }
   return out;
 }
@@ -62,8 +65,13 @@ export function dealtTo(scope: HasModules | Module[], prog: Record<string, Progr
   const modules = Array.isArray(scope) ? scope : scope.modules;
   const wires = wiresOf(modules);
   const hidden = new Set(wires.map((w) => w.to));
-  const on = new Set(modules.filter((m) => !hidden.has(m.id)).map((m) => m.id));
+  // A card in a group is on the board when its group is.
+  const groupOf = new Map<string, string>();
+  for (const m of modules) if (m.type === "group") for (const id of m.members ?? []) groupOf.set(id, m.id);
+  const onAtStart = (m: Module) => !hidden.has(m.id) && !(groupOf.has(m.id) && hidden.has(groupOf.get(m.id)!));
+  const on = new Set(modules.filter(onAtStart).map((m) => m.id));
   const dealt = new Set<string>();
+  const byId = new Map(modules.map((m) => [m.id, m]));
   for (let grew = true; grew; ) {
     grew = false;
     for (const w of wires) {
@@ -71,6 +79,7 @@ export function dealtTo(scope: HasModules | Module[], prog: Record<string, Progr
       if (picked(prog[w.from]?.dealt?.[w.q], w)) {
         dealt.add(w.to);
         on.add(w.to);
+        for (const id of byId.get(w.to)?.members ?? []) on.add(id);
         grew = true;
       }
     }
@@ -89,18 +98,21 @@ export function treeView(weeks: { lessons: Lesson[] }[], prog: Record<string, Pr
 /** Whether this question deals any card (so its first answer should be kept). */
 export const deals = (q: Question) => canBranch(q) && (q.next ?? []).some(Boolean);
 /** Whether this quiz deals cards by score. */
-export const dealsByScore = (m: Module) => m.type === "quiz" && (m.bands ?? []).some((b) => b.next);
+export const dealsByScore = (m: Module) => scored(m) && (m.bands ?? []).some((b) => b.next);
 
 /**
  * Clean the wiring across a course: a target must be another card in the same or a later lesson, not a class-wide
  * activity, with no loops. Bands are kept in order, on quiz cards only. Anything else is dropped.
  */
 export function cleanCourseWiring(weeks: Week[]): void {
+  cleanGroups(weeks);
   const cards = cardsOf(weeks);
+  const inGroup = new Set(cards.flatMap((c) => (c.m.type === "group" ? c.m.members ?? [] : [])));
   const where = new Map(cards.map((c) => [c.m.id, c]));
   const ok = (from: { m: Module; at: number }, to: unknown) => {
     const t = typeof to === "string" ? where.get(to) : undefined;
-    return t && t.m.id !== from.m.id && !SHARED_ONLY.has(t.m.type) && t.at >= from.at ? t.m.id : null;
+    // Not a card inside a group (deal the group instead), not a class-wide activity, never backwards.
+    return t && t.m.id !== from.m.id && !SHARED_ONLY.has(t.m.type) && !inGroup.has(t.m.id) && t.at >= from.at ? t.m.id : null;
   };
   for (const c of cards) {
     const m = c.m;
@@ -109,7 +121,7 @@ export function cleanCourseWiring(weeks: Week[]): void {
       q.next = q.next.slice(0, q.options.length).map((to) => ok(c, to));
       if (!q.next.some(Boolean)) delete q.next;
     }
-    if (m.type !== "quiz" || !Array.isArray(m.bands)) { delete m.bands; continue; }
+    if (!scored(m) || !Array.isArray(m.bands)) { delete m.bands; continue; }
     const seen = new Set<number>();
     const bands = m.bands
       .map((b) => ({ min: Math.max(0, Math.min(100, Math.round(Number(b?.min) || 0))), next: ok(c, b?.next) }))
@@ -184,13 +196,18 @@ export const bandLabel = (b: { min: number; max: number }) => (b.max > 100 ? `${
  * they become, so the caller can save the new ones and keep the old ones for Undo.
  */
 export function deleteCardIn(lessons: Lesson[], id: string): { before: Lesson[]; after: Lesson[]; gone: Set<string> } {
-  const gone = new Set([id, ...branchBelow(lessons.flatMap((l) => l.modules), id)]);
+  const all = lessons.flatMap((l) => l.modules);
+  const gone = new Set([id, ...branchBelow(all, id)]);
+  // A card group goes with its cards (and theirs).
+  for (const g of all.filter((m) => gone.has(m.id) && m.type === "group")) for (const x of g.members ?? []) { gone.add(x); branchBelow(all, x).forEach((y) => gone.add(y)); }
   const before: Lesson[] = [];
   const after: Lesson[] = [];
   for (const l of lessons) {
-    if (!l.modules.some((m) => gone.has(m.id)) && !wiresOf(l).some((w) => gone.has(w.to))) continue;
+    if (!l.modules.some((m) => gone.has(m.id) || (m.type === "group" && m.members?.some((x) => gone.has(x)))) && !wiresOf(l).some((w) => gone.has(w.to))) continue;
     before.push(l);
-    after.push(unwire({ ...l, modules: l.modules.filter((m) => !gone.has(m.id)) }, gone));
+    // Gone from any group that held it, too.
+    const kept = l.modules.filter((m) => !gone.has(m.id)).map((m) => (m.type === "group" && m.members?.some((x) => gone.has(x)) ? { ...m, members: m.members.filter((x) => !gone.has(x)) } : m));
+    after.push(unwire({ ...l, modules: kept }, gone));
   }
   return { before, after, gone };
 }
@@ -240,4 +257,46 @@ export function pathsFor(weeks: { lessons: Lesson[] }[], prog: Record<string, Pr
     list.push(src.lesson.openPaths ? { title: dst.m.title, type: dst.m.type, why: w.score ? cond : `If you choose ${cond}` } : {});
   }
   return out;
+}
+
+/**
+ * Keep card groups sound: members are other cards of the same lesson, each in one group only, never a group; the
+ * members sit right after their group, in its order; a group left with fewer than two cards is dissolved.
+ */
+export function cleanGroups(weeks: { lessons: Lesson[] }[]): void {
+  for (const w of weeks)
+    for (const l of w.lessons) {
+      const byId = new Map(l.modules.map((m) => [m.id, m]));
+      const taken = new Set<string>();
+      for (const g of l.modules.filter((m) => m.type === "group")) {
+        g.members = [...new Set(g.members ?? [])].filter((id) => { const m = byId.get(id); return m && m.type !== "group" && !taken.has(id); });
+        g.members.forEach((id) => taken.add(id));
+      }
+      const gone = new Set(l.modules.filter((m) => m.type === "group" && (m.members?.length ?? 0) < 2).map((m) => m.id));
+      const mods = l.modules.filter((m) => !gone.has(m.id));
+      const members = new Set(mods.flatMap((m) => (m.type === "group" ? m.members! : [])));
+      const out: Module[] = [];
+      for (const m of mods) {
+        if (members.has(m.id)) continue;
+        out.push(m);
+        if (m.type === "group") for (const id of m.members!) out.push(byId.get(id)!);
+      }
+      l.modules = out;
+    }
+}
+
+/** A card group's score so far, from the first answers to its Multiple choice cards: done once all are answered. */
+export function groupScore(group: Module, cards: Module[], prog: Record<string, Progress>): { done: boolean; right: number; total: number; pct?: number } {
+  let right = 0, total = 0, done = true;
+  for (const id of group.members ?? []) {
+    const m = cards.find((c) => c.id === id);
+    if (!m || m.poll || !(m.type === "practice" || m.type === "quiz")) continue;
+    for (const q of (m.questions ?? []).filter((x) => x.text?.trim())) {
+      total++;
+      const f = prog[m.id]?.first?.[q.id];
+      if (f === undefined) done = false;
+      else if (f) right++;
+    }
+  }
+  return { done: done && total > 0, right, total, pct: done && total ? Math.round((right * 100) / total) : undefined };
 }

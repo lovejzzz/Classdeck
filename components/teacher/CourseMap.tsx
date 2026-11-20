@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { bandLabel, bandsOf, branchBelow, canBranch, DEFAULT_BANDS, SCORE, SHARED_ONLY, wiresOf, type Wire } from "@/lib/branching";
-import { uid } from "@/lib/profile";
-import { SUITS, suitOf, suitOfCard, TYPE_META } from "@/lib/ui";
-import type { AnswerValue, Lesson, Module, ModuleType, ProgressMap } from "@/lib/types";
+import { suitOfCard, suitOfKind } from "@/lib/ui";
+import { PICKABLE, kindMeta, kindOf, newCard as makeCard, type CardKind } from "@/lib/kinds";
+import type { AnswerValue, Lesson, Module, ProgressMap } from "@/lib/types";
 import { Icon } from "../Icon";
 import { toast } from "@/lib/toast";
 
@@ -20,8 +20,9 @@ const COL = 120; // gap between columns inside a lesson
 const GAP = 22; // gap between cards in a column
 const REGION_GAP = 104; // gap between lessons
 const TOP = 92; // room for each lesson's header
-const NEW_TYPES: ModuleType[] = SUITS.flatMap((s) => s.types).filter((t) => !SHARED_ONLY.has(t));
-const ALL_TYPES: ModuleType[] = SUITS.flatMap((s) => s.types);
+// Kinds a branch can deal (not a discussion, which the whole class or group shares), and every kind.
+const NEW_KINDS: CardKind[] = PICKABLE.map((k) => k.id).filter((k) => k !== "discussion");
+const ALL_KINDS: CardKind[] = PICKABLE.map((k) => k.id);
 const INK = "#4b56a8";
 const SOFT = "#a3a8cf";
 const DAY = 86400000;
@@ -30,18 +31,28 @@ export type Level = "far" | "mid" | "near";
 const levelOf = (z: number): Level => (z < 0.55 ? "far" : z >= 1.2 ? "near" : "mid");
 
 const branchQs = (m: Module) => (m.questions ?? []).filter((q) => canBranch(q));
-const isQuiz = (m: Module) => m.type === "quiz";
+/** Cards that branch by score: a quiz, and a card group. */
+const isQuiz = (m: Module) => m.type === "quiz" || m.type === "group";
+const wantsQuestion = (m: Module) => (kindOf(m) === "choice" || kindOf(m) === "poll") && !branchQs(m).length && m.type !== "quiz";
+/** Whether a card's node has anything under its head: answers, score ranges, its group's cards, or that invitation. */
+const hasBody = (m: Module) => branchQs(m).length > 0 || isQuiz(m) || wantsQuestion(m);
 const letter = (i: number) => String.fromCharCode(65 + i);
 const picked = (v: AnswerValue | undefined, w: Wire) =>
   w.score ? typeof v === "number" && v >= w.score.min && v < w.score.max : Array.isArray(v) ? (v as number[]).includes(w.option) : v === w.option;
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 /** The rows on a card at a zoom level: its head, (zoomed in) a preview, then each question's answers and the score bands. */
-function rowsOf(m: Module, level: Level, readOnly: boolean) {
+function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = []) {
   const ports = new Map<string, number>();
-  if (level === "far") return { h: FAR_H, ports };
-  let y = HEAD + (level === "near" ? PREVIEW : 0);
-  for (const q of branchQs(m)) {
+  if (level === "far") return { h: m.type === "group" ? FAR_H + members.length * 22 : FAR_H, ports };
+  let y = HEAD + (level === "near" && m.type !== "group" ? PREVIEW : 0);
+  // A card group: a row per card, with that card's answers (their ports keyed by the card), then the group's score.
+  if (m.type === "group")
+    for (const c of members) {
+      y += SEC;
+      for (const q of branchQs(c)) q.options.forEach((_, i) => { ports.set(`${c.id}|${q.id}:${i}`, y + ROW / 2); y += ROW; });
+    }
+  for (const q of m.type === "group" ? [] : branchQs(m)) {
     y += SEC;
     q.options.forEach((_, i) => { ports.set(`${q.id}:${i}`, y + ROW / 2); y += ROW; });
   }
@@ -51,11 +62,12 @@ function rowsOf(m: Module, level: Level, readOnly: boolean) {
     bands.forEach((_, i) => { ports.set(`${SCORE}:${i}`, y + ROW / 2); y += ROW; });
     if (!bands.length && !readOnly) y += ROW;
   }
-  if (!branchQs(m).length && !isQuiz(m)) y += 34;
+  // Only a Multiple choice or Poll card without its question yet gets a line inviting one; other kinds don't branch.
+  if (wantsQuestion(m)) y += 34;
   return { h: y + PAD, ports };
 }
 
-interface Node { m: Module; lessonId: string; li: number; x: number; y: number; h: number; ports: Map<string, number>; parent?: string }
+interface Node { m: Module; lessonId: string; li: number; x: number; y: number; h: number; ports: Map<string, number>; parent?: string; members?: Module[] }
 interface Region { lesson: Lesson; li: number; x: number; w: number }
 
 /**
@@ -68,10 +80,14 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
   const regions: Region[] = [];
   let x = 40, height = 0;
   lessons.forEach((lesson, li) => {
+    // Cards in a group are drawn inside their group's node; a wire from one of them leaves from the group.
+    const groupOf = new Map<string, string>();
+    for (const g of lesson.modules) if (g.type === "group") for (const id of g.members ?? []) groupOf.set(id, g.id);
+    const eff = (id: string) => groupOf.get(id) ?? id;
     const local = new Set(lesson.modules.map((m) => m.id));
-    const localWires = wires.filter((w) => local.has(w.from) && local.has(w.to));
+    const localWires = wires.filter((w) => local.has(w.from) && local.has(w.to) && !groupOf.has(w.to)).map((w) => ({ ...w, from: eff(w.from) }));
     const dealtHere = new Set(localWires.map((w) => w.to));
-    const roots = lesson.modules.filter((m) => !dealtHere.has(m.id));
+    const roots = lesson.modules.filter((m) => !dealtHere.has(m.id) && !groupOf.has(m.id));
     const kids = new Map<string, string[]>();
     const parent = new Map<string, string>();
     const seen = new Set<string>();
@@ -88,10 +104,11 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
       list.forEach(walk);
     };
     roots.forEach((r) => walk(r.id));
-    const loose = lesson.modules.filter((m) => !seen.has(m.id));
+    const loose = lesson.modules.filter((m) => !seen.has(m.id) && !groupOf.has(m.id));
     loose.forEach((m) => walk(m.id));
     const byId = new Map(lesson.modules.map((m) => [m.id, m]));
-    const size = (id: string) => rowsOf(byId.get(id)!, level, readOnly);
+    const membersOf = (id: string) => (byId.get(id)?.members ?? []).map((x) => byId.get(x)).filter((x): x is Module => !!x);
+    const size = (id: string) => rowsOf(byId.get(id)!, level, readOnly, membersOf(id));
     const span = new Map<string, number>();
     const depthOf = new Map<string, number>();
     const measure = (id: string, d: number): number => {
@@ -107,7 +124,7 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
       const s = span.get(id)!;
       const k = kids.get(id) ?? [];
       const below = k.reduce((n, c) => n + span.get(c)!, 0) + Math.max(0, k.length - 1) * GAP;
-      nodes.set(id, { m: byId.get(id)!, lessonId: lesson.id, li, x: x + depthOf.get(id)! * (W + COL), y: top + (s - h) / 2, h, ports, parent: parent.get(id) });
+      nodes.set(id, { m: byId.get(id)!, lessonId: lesson.id, li, x: x + depthOf.get(id)! * (W + COL), y: top + (s - h) / 2, h, ports, parent: parent.get(id), members: byId.get(id)!.type === "group" ? membersOf(id) : undefined });
       let y = top + (s - below) / 2;
       for (const c of k) { place(c, y); y += span.get(c)! + GAP; }
     };
@@ -197,6 +214,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   // A card being dragged to another lesson, and where the pointer is.
   const [moving, setMoving] = useState<{ id: string; x: number; y: number; to?: string } | null>(null);
   const [dragged, setDragged] = useState(false);
+  // Cards picked to put in a card group: shift-click a card, or shift-drag a box around several.
+  const [picks, setPicks] = useState<Set<string>>(new Set());
+  const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const [live, setLive] = useState(true);
   const [now] = useState(() => Date.now());
   const [born] = useState(() => new Map<string, { x: number; y: number }>());
@@ -266,9 +286,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const r = scroller.current!.getBoundingClientRect();
     return { x: (cx - r.left + scroller.current!.scrollLeft) / zoom, y: (cy - r.top + scroller.current!.scrollTop) / zoom };
   };
+  // A card inside a group has its ports on the group's node.
+  const groupOf = useMemo(() => new Map(all.flatMap((x) => (x.m.type === "group" ? (x.m.members ?? []).map((id) => [id, x.m.id] as const) : []))), [all]);
+  const nodeOf = (id: string) => groupOf.get(id) ?? id;
   const portPos = (port: Port) => {
-    const n = nodes.get(port.from)!, p = at(port.from);
-    return { x: p.x + W, y: p.y + (n.ports.get(`${port.q}:${port.option}`) ?? n.h / 2) };
+    const nid = nodeOf(port.from), n = nodes.get(nid)!, p = at(nid);
+    const key = nid !== port.from ? `${port.from}|${port.q}:${port.option}` : `${port.q}:${port.option}`;
+    return { x: p.x + W, y: p.y + (n.ports.get(key) ?? n.h / 2) };
   };
   const inPos = (id: string) => { const p = at(id); return { x: p.x, y: p.y + (level === "far" ? FAR_H / 2 : HEAD / 2) }; };
 
@@ -311,16 +335,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     onChange({ ...l, modules: l.modules.map((x) => (x.id === m.id ? { ...x, bands } : x)) });
   };
 
-  const blank = (type: ModuleType, title: string): Module => ({
-    id: uid("m-"), type, suit: suitOf(type).id, title, body: "", audience: { kind: "all" }, tools: [], attachments: [],
-    questions: type === "quiz" ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : undefined,
-  });
+  const blank = (k: CardKind, title: string): Module => makeCard(k, title);
 
-  async function newCard(port: Port, type: ModuleType, into: string) {
+  async function newCard(port: Port, type: CardKind, into: string) {
     const lesson = lessonWith(port.from);
     const src = lesson.modules.find((m) => m.id === port.from)!;
     const what = port.q === SCORE ? `Score ${bandLabel(bandsOf(src)[port.option])}` : src.questions?.find((x) => x.id === port.q)?.options[port.option]?.trim();
-    const card = blank(type, what ? `If “${what.slice(0, 40)}”` : `New ${TYPE_META[type].name} card`);
+    const card = blank(type, what ? `If “${what.slice(0, 40)}”` : `New ${kindMeta(type).name} card`);
     const p = portPos(port);
     born.set(card.id, { x: p.x + 40, y: p.y - HEAD / 2 });
     setMenu(null);
@@ -340,15 +361,45 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     setFresh(card.id);
     onEdit(into, card.id);
   }
-  function addCard(lessonId: string, type: ModuleType) {
+  function addCard(lessonId: string, type: CardKind) {
     const l = lessons.find((x) => x.id === lessonId)!;
-    const card = blank(type, `New ${suitOf(type).name} card`);
+    const card = blank(type, `New ${kindMeta(type).name} card`);
     const r = regions.find((x) => x.lesson.id === lessonId);
     if (r) born.set(card.id, { x: r.x, y: TOP - 40 });
     setMenu(null);
     onChange({ ...l, modules: [...l.modules, card] });
     setFresh(card.id);
     onEdit(lessonId, card.id);
+  }
+
+  /** Why the picked cards can't become a card group, or null if they can. */
+  function whyNoGroup(ids: string[]): string | null {
+    if (ids.length < 2) return "Pick at least two cards (shift-click them, or shift-drag a box).";
+    const ls = new Set(ids.map((id) => lessonWith(id)?.id));
+    if (ls.size > 1) return "A card group’s cards all come from one lesson.";
+    const ms = ids.map((id) => all.find((x) => x.m.id === id)!.m);
+    if (ms.some((m) => m.type === "group")) return "A card group can’t go inside another one.";
+    if (ms.some((m) => groupOf.has(m.id))) return "One of these cards is already in a card group.";
+    const dealt = ms.find((m) => wires.some((w) => w.to === m.id));
+    if (dealt) return `“${dealt.title}” is dealt by an answer. Group the cards first, then deal the group.`;
+    return null;
+  }
+  /** Put the picked cards in a new card group, where the first of them was. */
+  function makeGroup() {
+    const ids = [...picks];
+    const why = whyNoGroup(ids);
+    if (why) { toast(why, { icon: "layers", tone: "plain" }); return; }
+    const l = lessonWith(ids[0])!;
+    const ordered = l.modules.filter((m) => ids.includes(m.id)).map((m) => m.id);
+    const g: Module = { ...makeCard("text", "Card group"), type: "group", kind: "group", suit: "question", members: ordered };
+    // The group goes where its first card was, its cards right after it in their order.
+    const before = l.modules.slice(0, l.modules.findIndex((m) => m.id === ordered[0])).filter((m) => !ordered.includes(m.id));
+    const after = l.modules.filter((m) => !ordered.includes(m.id) && !before.includes(m));
+    onChange({ ...l, modules: [...before, g, ...ordered.map((id) => l.modules.find((m) => m.id === id)!), ...after] });
+    setPicks(new Set());
+    setFresh(g.id);
+    onEdit(l.id, g.id);
+    toast(`Made a card group of ${ordered.length} cards`, { icon: "layers" });
   }
 
   /** Save words typed in place: a card's title, a question, or one answer. */
@@ -501,12 +552,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const dx = Math.max(48, Math.abs(b.x - a.x) / 2);
     return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
   };
-  const drawn = wires.filter((w) => nodes.has(w.from) && nodes.has(w.to));
+  const drawn = wires.filter((w) => nodes.has(nodeOf(w.from)) && nodes.has(w.to));
   const snap = drag?.over && canTarget(drag.port, drag.over) ? inPos(drag.over) : null;
   const nothing = !all.length;
 
   return (
     <div className="relative">
+      {picks.size > 0 && (
+        <div className="pop absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 text-[13px] shadow-[0_16px_40px_-16px_rgba(20,20,18,0.4)]">
+          <Icon name="layers" size={14} className="text-[#4b56a8]" />
+          <span>{picks.size} card{picks.size === 1 ? "" : "s"} picked</span>
+          <button onClick={makeGroup} disabled={!!whyNoGroup([...picks])} title={whyNoGroup([...picks]) ?? "Put these cards in a card group"} className="btn btn-dark press h-8 px-3 text-[12.5px] disabled:opacity-40">Make a card group</button>
+          <button onClick={() => setPicks(new Set())} className="btn btn-quiet press h-8 px-2 text-[12.5px]">Clear</button>
+        </div>
+      )}
       <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex flex-wrap items-center gap-2">
         <div className="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-line bg-white/95 p-0.5 shadow-sm backdrop-blur">
           <button onClick={() => zoomTo(zoom - 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom out">−</button>
@@ -539,6 +598,25 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         onPointerDown={(e) => {
           if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.canvas) return;
           setMenu(null);
+          if (e.shiftKey && !readOnly) {
+            // Shift-drag: a box that picks every card it touches.
+            const a = toCanvas(e.clientX, e.clientY);
+            setBox({ x0: a.x, y0: a.y, x1: a.x, y1: a.y });
+            const mv = (ev: PointerEvent) => { const b = toCanvas(ev.clientX, ev.clientY); setBox({ x0: a.x, y0: a.y, x1: b.x, y1: b.y }); };
+            const done = (ev: PointerEvent) => {
+              window.removeEventListener("pointermove", mv);
+              window.removeEventListener("pointerup", done);
+              const b = toCanvas(ev.clientX, ev.clientY);
+              const [l, r, t, bt] = [Math.min(a.x, b.x), Math.max(a.x, b.x), Math.min(a.y, b.y), Math.max(a.y, b.y)];
+              const hit = [...nodes.values()].filter((n) => n.x < r && n.x + W > l && n.y < bt && n.y + n.h > t).map((n) => n.m.id);
+              setPicks((s) => new Set([...s, ...hit]));
+              setBox(null);
+            };
+            window.addEventListener("pointermove", mv);
+            window.addEventListener("pointerup", done);
+            return;
+          }
+          if (picks.size) setPicks(new Set());
           // Drag the background to move around.
           const el = scroller.current!;
           const s = { x: e.clientX, y: e.clientY, l: el.scrollLeft, t: el.scrollTop };
@@ -562,11 +640,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               const branches = wiresOf(r.lesson).length;
               return (
                 <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "bg-ok/[0.045]" : "bg-black/[0.018]"}`} style={{ left: r.x - 20, top: 16, width: r.w + 40, height: height - 32 }}>
-                  <div className="flex items-center gap-2 px-5 pt-4" style={{ fontSize: level === "far" ? 22 : 13 }}>
-                    <span className="truncate font-semibold text-ink">{r.lesson.title}</span>
-                    {weekOf[r.lesson.id] && <span className="truncate text-ink-3">{weekOf[r.lesson.id]}</span>}
-                    {today && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
-                    {level !== "far" && <span className="mono">{r.lesson.modules.length} cards{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
+                  <div className="flex min-w-0 items-center gap-2 px-5 pt-3.5" style={{ fontSize: level === "far" ? 22 : 13 }}>
+                    <span className="min-w-0 truncate font-semibold text-ink">{r.lesson.title}</span>
+                    {weekOf[r.lesson.id] && <span className="flex-none text-ink-3">{weekOf[r.lesson.id]}</span>}
+                    {today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
+                  </div>
+                  <div className="flex items-center gap-2 px-5 pt-1.5">
+                    {level !== "far" && <span className="mono">{r.lesson.modules.filter((m) => m.type !== "group").length} cards{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
                     <span className="flex-1" />
                     {!readOnly && level !== "far" && (
                       <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.left, b.bottom); setMenu({ add: r.lesson.id, x: p.x - 200, y: p.y + 4 }); }}
@@ -593,7 +673,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                 const d = curve(portPos(w), inPos(w.to));
                 const on = hot === w.from || hot === w.to || selected === w.from || selected === w.to;
                 const n = took(w);
-                const cross = nodes.get(w.from)!.li !== nodes.get(w.to)!.li;
+                const cross = nodes.get(nodeOf(w.from))!.li !== nodes.get(w.to)!.li;
                 return (
                   <g key={`${w.from}-${w.q}-${w.option}-${w.to}`}>
                     <path d={d} fill="none" stroke={on ? INK : SOFT} strokeWidth={(on ? 2.6 : 2) * (level === "far" ? 2 : 1)} strokeDasharray={cross ? "7 5" : undefined} pathLength={cross ? undefined : 1} className={cross ? "" : "tree-wire"} />
@@ -636,9 +716,16 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                   data-node={m.id}
                   onPointerEnter={() => setHot(m.id)}
                   onPointerLeave={() => setHot((h) => (h === m.id ? null : h))}
-                  className={`tree-node absolute rounded-[18px] border bg-white ${fresh === m.id ? "tree-fresh" : ""} ${isSel ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
+                  className={`tree-node absolute rounded-[18px] border bg-white ${m.type === "group" ? "isolate" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
                   style={{ left: p.x, top: p.y, width: W, animationDelay: `${Math.min(i, 14) * 25}ms` }}
                 >
+                  {m.type === "group" && (
+                    // A card group looks like a small stack of cards.
+                    <>
+                      <span aria-hidden="true" className="absolute inset-0 -z-10 translate-x-[6px] translate-y-[6px] rounded-[18px] border border-line bg-white" />
+                      <span aria-hidden="true" className="absolute inset-0 -z-20 translate-x-[12px] translate-y-[12px] rounded-[18px] border border-line bg-white" />
+                    </>
+                  )}
                   {inbound.length > 0 && <span className={`absolute -left-[5px] rounded-full border-2 border-white bg-[#4b56a8] ${level === "far" ? "top-[21px] h-3 w-3" : "top-[31px] h-2.5 w-2.5"}`} />}
                   {here.length > 0 && (
                     <span className="absolute -top-3 right-3 flex -space-x-1.5" title={`${here.map((s) => s.name).join(", ")} ${here.length === 1 ? "is" : "are"} working on this${stuck ? ` (${stuck} for over 2 days)` : ""}`}>
@@ -648,14 +735,18 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       {here.length > 4 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[9.5px] font-semibold text-white">+{here.length - 4}</span>}
                     </span>
                   )}
-                  <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onClick={() => { if (!dragged && !typing) onEdit(nd.lessonId, m.id); }} className={`tree-head block w-full rounded-t-[18px] text-left ${readOnly ? "" : "cursor-grab active:cursor-grabbing"} ${moving?.id === m.id ? "opacity-40" : ""}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
+                  <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onClick={(e: React.MouseEvent) => {
+                    if (dragged || typing) return;
+                    if (e.shiftKey && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
+                    onEdit(nd.lessonId, m.id);
+                  }} className={`tree-head block w-full rounded-t-[18px] text-left ${readOnly ? "" : "cursor-grab active:cursor-grabbing"} ${moving?.id === m.id ? "opacity-40" : ""}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
                     <span className="block h-1.5 rounded-t-[18px]" style={{ background: suit.tint }} />
                     {level === "far" ? (
                       <span className="block truncate px-3.5 pt-2.5 text-[17px] font-semibold text-ink">{m.title || "Untitled card"}</span>
                     ) : (
                       <>
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
-                          {TYPE_META[m.type].label}
+                          <Icon name={kindMeta(kindOf(m)).icon} size={11} />{kindMeta(kindOf(m)).name}
                           <span className="truncate normal-case tracking-normal text-ink-3">
                             · {fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : "everyone"}
                           </span>
@@ -671,8 +762,32 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       {m.body.trim() || <span className="text-ink-3">No instructions yet</span>}
                     </div>
                   )}
-                  {level !== "far" && (
+                  {level === "far" && nd.members && (
+                    <div className="border-t border-line px-3.5 pb-1.5 pt-1">
+                      {nd.members.map((c) => <div key={c.id} className="truncate text-[13px] leading-[22px] text-ink-2">{c.title || "Untitled card"}</div>)}
+                    </div>
+                  )}
+                  {level !== "far" && (hasBody(m) || nd.members) && (
                     <div className="border-t border-line pb-[10px]">
+                      {nd.members?.map((c) => (
+                        <div key={c.id}>
+                          <button onClick={() => onEdit(nd.lessonId, c.id)} className="flex w-full items-center gap-2 px-3.5 text-left hover:bg-lane" style={{ height: SEC }} title="Edit this card">
+                            <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md" style={{ color: suitOfCard(c).tint, background: "rgba(0,0,0,0.035)" }}><Icon name={kindMeta(kindOf(c)).icon} size={11} /></span>
+                            <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{c.title || "Untitled card"}</span>
+                            <span className="text-[10.5px] text-ink-3">{kindMeta(kindOf(c)).name}</span>
+                          </button>
+                          {branchQs(c).map((q) => q.options.map((o, oi) => {
+                            const to = q.next?.[oi];
+                            return (
+                              <div key={`${q.id}-${oi}`} className="relative flex items-center gap-2 pl-9 pr-3.5" style={{ height: ROW }}>
+                                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "bg-[#4b56a8] text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`}>{letter(oi)}</span>
+                                <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">{o.trim() || `Option ${oi + 1}`}</span>
+                                <PortDot wired={!!to} readOnly={readOnly} label={to ? `${c.title}: answer ${letter(oi)} deals a card. Change it` : `${c.title}: deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: c.id, q: q.id, option: oi })} />
+                              </div>
+                            );
+                          }))}
+                        </div>
+                      ))}
                       {qs.map((q) => (
                         <div key={q.id}>
                           {typing?.id === m.id && typing.field === `q:${q.id}`
@@ -737,9 +852,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                           )}
                         </div>
                       )}
-                      {!qs.length && !isQuiz(m) && (
+                      {wantsQuestion(m) && (
                         <div className="px-3.5 text-[11.5px] leading-[34px] text-ink-3">
-                          {readOnly ? "No questions" : <button onClick={() => onEdit(nd.lessonId, m.id)} className="hover:text-ink">Add a question to branch from here</button>}
+                          {readOnly ? "No question yet" : <button onClick={() => onEdit(nd.lessonId, m.id)} className="hover:text-ink">Add its question to branch from the answers</button>}
                         </div>
                       )}
                     </div>
@@ -748,6 +863,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               );
             })}
 
+            {box && (
+              <div className="pointer-events-none absolute z-30 rounded-lg border-2 border-dashed border-[#4b56a8] bg-[#4b56a8]/[0.06]"
+                style={{ left: Math.min(box.x0, box.x1), top: Math.min(box.y0, box.y1), width: Math.abs(box.x1 - box.x0), height: Math.abs(box.y1 - box.y0) }} />
+            )}
             {moving && (() => {
               const m = all.find((x) => x.m.id === moving.id)?.m;
               if (!m) return null;
@@ -766,9 +885,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               <div className="pop absolute z-20 w-64 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
                 <div className="px-2 pb-1.5 pt-0.5 text-[12px] font-medium text-ink">New card for everyone in {lessons.find((l) => l.id === menu.add)?.title}</div>
                 <div className="grid grid-cols-2 gap-0.5">
-                  {ALL_TYPES.map((t) => (
+                  {ALL_KINDS.map((t) => (
                     <button key={t} onClick={() => addCard(menu.add, t)} className="press flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
-                      <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOf(t).tint }} />{TYPE_META[t].name}
+                      <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{kindMeta(t).name}
                     </button>
                   ))}
                 </div>
@@ -801,9 +920,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     ))}
                   </div>
                   <div className="grid grid-cols-2 gap-0.5">
-                    {NEW_TYPES.map((t) => (
+                    {NEW_KINDS.map((t) => (
                       <button key={t} onClick={() => newCard(menu.port, t, into)} className="press flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
-                        <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOf(t).tint }} />{TYPE_META[t].name}
+                        <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{kindMeta(t).name}
                       </button>
                     ))}
                   </div>

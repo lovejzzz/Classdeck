@@ -24,7 +24,8 @@ export type ModuleType =
   | "reflect"
   | "selfcheck"
   | "studio"
-  | "builder";
+  | "builder"
+  | "group";
 
 /** 挂在模块上的一个工具：指向某个连接器的某个动作。 */
 export interface ToolRef {
@@ -175,7 +176,15 @@ export interface Module {
   /** 只在发给学生时设置：这张卡片不是全班共有的（分支或个人模块）。 */
   personal?: boolean;
   /** The suit the teacher put the card down as. Unset: worked out from its type. */
-  suit?: "learn" | "do" | "share";
+  suit?: "content" | "question" | "learn" | "do" | "share";
+  /** What the card is (lib/kinds.ts): Text, Image, Link, Recording, Q&A, Multiple choice, Poll or Discussion. */
+  kind?: import("./kinds").CardKind;
+  /** A Poll card: one question with no right answer; students see how the class voted. */
+  poll?: boolean;
+  /** A card group: the cards in it (same lesson, in order). Its score counts the Multiple choice cards in it. */
+  members?: string[];
+  /** Set only for students, on a Poll: how many classmates picked each choice (shown once they've voted). */
+  tally?: number[];
   /** Suggested time in minutes, shown on the card like a cost. */
   minutes?: number;
   /** Where students hand in work from this card. */
@@ -268,6 +277,8 @@ export interface Lesson {
   elective?: boolean;
   /** Card trees: students see every path out of this lesson's cards (titles and the answers that deal them), not card backs. */
   openPaths?: boolean;
+  /** Sent to students only: the card groups in this lesson, with their cards (shown framed together) and paths out. */
+  decks?: { id: string; title: string; members: string[]; done?: boolean; score?: number; paths?: { to?: string; title?: string; type?: ModuleType; why?: string }[] }[];
   /** Sent to students only: whether they've chosen this elective, and how many classmates have. */
   chosen?: boolean;
   takenBy?: number;
@@ -363,6 +374,8 @@ export interface Progress {
   results?: Record<string, boolean>;
   /** Card tree: the first answer to each question that deals cards. It decides which follow-ups this student gets. */
   dealt?: Record<string, AnswerValue>;
+  /** Whether the first answer to each question was right (a card group's score counts these). */
+  first?: Record<string, boolean>;
   score?: number;
   /** Recordings, files, and links the student added as their work. */
   work?: Attachment[];

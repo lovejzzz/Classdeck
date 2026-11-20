@@ -186,6 +186,18 @@ export default function LearnPage() {
     };
   };
   const onLockedTap = () => toast("Finish the cards before this one first", { icon: "lock", tone: "plain" });
+  /** A lesson's cards in runs: loose cards, and each card group's cards together (in lesson order). */
+  const segmentsOf = (l: Lesson) => {
+    const deckOf = new Map((l.decks ?? []).flatMap((d) => d.members.map((id) => [id, d] as const)));
+    const out: { key: string; deck?: NonNullable<Lesson["decks"]>[number]; cards: Module[] }[] = [];
+    for (const m of l.modules) {
+      const d = deckOf.get(m.id);
+      const last = out[out.length - 1];
+      if (last && last.deck === d) last.cards.push(m);
+      else out.push({ key: d ? d.id : `loose-${m.id}`, deck: d, cards: [m] });
+    }
+    return out;
+  };
 
   // —— hand mode: today's lesson as a hand of cards plus the done pile ——
   const handKey = `order:${courseId}:${studentId}:${current.id}`;
@@ -573,19 +585,38 @@ export default function LearnPage() {
                               </div>
                               {l.goal && !isToday && <p className="mt-1 text-[12.5px] text-ink-3" style={{ maxWidth: Math.min(Math.max(rowWidth, 280), 576) }}>{l.goal}</p>}
                               {l.modules.length ? (
-                                <CardTable
-                                  cards={l.modules.map((m, i) => toCard(l, m, i))}
-                                  layout="row"
-                                  size={size}
-                                  gap={14}
-                                  idle={false}
-                                  draggable={false}
-                                  hiddenId={lift?.id}
-                                  register={(id, el) => (el ? els.current.set(id, el) : els.current.delete(id))}
-                                  onActivate={(id, el) => open(l.id, id, el)}
-                                  onLockedTap={onLockedTap}
-                                  ariaLabel={l.title}
-                                />
+                                // Cards in a card group sit together in a frame with the group's name (and score, once done).
+                                <div className="flex items-start gap-4">
+                                  {segmentsOf(l).map((seg) => {
+                                    const table = (
+                                      <CardTable
+                                        cards={seg.cards.map((m) => toCard(l, m, l.modules.indexOf(m)))}
+                                        layout="row"
+                                        size={size}
+                                        gap={14}
+                                        idle={false}
+                                        draggable={false}
+                                        hiddenId={lift?.id}
+                                        register={(id, el) => (el ? els.current.set(id, el) : els.current.delete(id))}
+                                        onActivate={(id, el) => open(l.id, id, el)}
+                                        onLockedTap={onLockedTap}
+                                        ariaLabel={seg.deck ? `${l.title}: ${seg.deck.title}` : l.title}
+                                      />
+                                    );
+                                    if (!seg.deck) return <div key={seg.key}>{table}</div>;
+                                    return (
+                                      <div key={seg.key} className="rounded-[22px] border border-[#4b56a8]/25 bg-[#eef0fb]/60 px-3 pb-0.5 pt-2.5">
+                                        <div className="flex items-center gap-2 px-1 text-[12px]">
+                                          <Icon name="layers" size={12} className="text-[#4b56a8]" />
+                                          <span className="font-medium text-ink">{seg.deck.title}</span>
+                                          <span className="text-ink-3">{seg.cards.length} cards</span>
+                                          {seg.deck.done && seg.deck.score !== undefined && <span className="chip h-5 bg-white text-[11px] text-[#4b56a8]">Score {seg.deck.score}%</span>}
+                                        </div>
+                                        {table}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               ) : (
                                 <div className="hatch mt-5 flex items-center justify-center text-[12.5px] text-ink-3" style={{ width: size.w, height: size.h }}>No cards yet</div>
                               )}

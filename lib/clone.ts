@@ -21,6 +21,7 @@ export function cloneLesson(src: Lesson, title?: string, ids?: Map<string, strin
     id: map.get(m.id)!,
     questions: m.questions?.map((q) => (q.next ? { ...q, next: q.next.map(to) } : q)),
     bands: m.bands?.map((b) => ({ ...b, next: to(b.next) })),
+    members: m.members?.map((id) => map.get(id) ?? id),
     // A copy starts without a due date; the old date would make every copied card overdue at once.
     due: undefined,
     attachments: m.attachments?.map((a) => ({ ...a, id: uid("a-") })),

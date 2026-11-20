@@ -3,6 +3,19 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.9",
+    date: "2026-11-20",
+    changes: [
+      "Cards come in two families. Content: Text, Image, Link and Recording. Questions: Q&A, Multiple choice, Poll and Discussion. Pick the kind in the card’s panel; older cards were given theirs.",
+      "Each family has its own shell (Content a clean frame, Questions a dashed frame and a coloured foot), and each kind its own picture, with the kind named in the card’s corner.",
+      "Polls: no right answer; students vote and then see how the class voted. Each choice can deal its own card.",
+      "Multiple choice cards hold one question and answer right away. To ask several, put them in a card group.",
+      "Card groups: on the map, shift-click cards (or shift-drag a box around them) and choose Make a card group. A group shows as one node listing its cards; its score counts the first answers to its Multiple choice cards and can deal a card by range. Students see its cards together in a frame, with the score once done. Ungroup keeps the cards.",
+      "Q&A takes any kind of homework: typed answers, audio, video, files and links. A Discussion is for the whole class or for each group (the old Collab Studio).",
+      "Content cards no longer ask for notes, and on the map only cards that can branch offer to add a question. New courses and the sample course use card groups and a poll.",
+    ],
+  },
+  {
     version: "0.1.8",
     date: "2026-11-20",
     changes: [

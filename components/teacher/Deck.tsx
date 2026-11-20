@@ -9,10 +9,10 @@ import { CARD_SIZE } from "@/lib/cards";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { uid, visibleModules } from "@/lib/profile";
 import { toast } from "@/lib/toast";
-import { SUITS, suitOf, suitOfCard } from "@/lib/ui";
+import { SUITS, suitOfCard } from "@/lib/ui";
 import { ask } from "../Confirm";
 import { Clearable } from "../Clearable";
-import type { Course, Lesson, Module, ModuleType, ProgressMap, StudioPost } from "@/lib/types";
+import type { Course, Lesson, Module, ProgressMap, StudioPost } from "@/lib/types";
 import { HScroll } from "../HScroll";
 import { scrollToWeek, WeekNav } from "../WeekNav";
 import { CardFace } from "../cards/CardFace";
@@ -23,6 +23,7 @@ import { useUrlState } from "@/lib/urlState";
 import { nextNumber, standardWeek } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
 import { CourseMap } from "./CourseMap";
+import { newCard, type CardKind } from "@/lib/kinds";
 import { NeighborGraph } from "./NeighborGraph";
 import { bandLabel, branchBelow, deleteCardIn, treeView, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
@@ -292,22 +293,16 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardParam]);
 
-  function addCard(l: Lesson, type: ModuleType) {
-    const m: Module = {
-      id: uid("m-"), type, suit: suitOf(type).id, title: `New ${suitOf(type).name} card`, body: "", audience: { kind: "all" }, tools: [], attachments: [],
-      questions: type === "quiz" ? [{ id: uid("q-"), text: "", options: ["", ""], answer: 0 }] : undefined,
-    };
+  function addCard(l: Lesson, kind: CardKind) {
+    const m = newCard(kind);
     change({ ...l, modules: [...l.modules, m] });
     edit(l.id, m.id);
   }
 
-  /** A card put down from the New card fan: a suit (its kind is picked in the editor) or a blank card. */
+  /** A card put down from the New card fan: Content or a Question (its kind is picked in the editor), or a blank card. */
   function addChosen(l: Lesson, c: NewCardChoice) {
-    const suit = c.kind === "suit" ? SUITS.find((x) => x.id === c.suit)! : undefined;
-    const m: Module = {
-      id: uid("m-"), type: suit ? suit.types[0] : "practice", suit: suit?.id ?? "do", title: suit ? `New ${suit.name} card` : "Untitled card",
-      body: "", audience: { kind: "all" }, tools: [], attachments: [],
-    };
+    const fam = c.kind === "suit" ? SUITS.find((x) => x.id === c.suit)! : undefined;
+    const m = newCard(fam ? fam.kinds[0] : "text", fam ? `New ${fam.name} card` : "Untitled card");
     change({ ...l, modules: [...l.modules, m] });
     edit(l.id, m.id);
   }
@@ -343,7 +338,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     scrollToWeek(next);
   };
   useShortcuts([
-    { keys: "n", label: "New card", run: () => today && addCard(lessonOf(today.id), "read"), enabled: !!today && !editorOpen && !running },
+    { keys: "n", label: "New card", run: () => today && addCard(lessonOf(today.id), "text"), enabled: !!today && !editorOpen && !running },
     { keys: "r", label: "Run Collab Studio", run: () => today?.session && setRunning({ lessonId: today.id, weekTitle: course.weeks.find((w) => w.lessons.includes(today))?.title ?? "" }), enabled: !!today?.session && !running },
     { keys: "[", label: "Previous week", run: () => weekStep(-1), enabled: !editorOpen && !running },
     { keys: "]", label: "Next week", run: () => weekStep(1), enabled: !editorOpen && !running },
@@ -613,8 +608,9 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             setEditing({ lessonId: cur.id, moduleId: copy.id });
             toast("Duplicated. You’re now editing the copy.", { icon: "layers" });
           }}
-          onDelete={() => {
+          onDelete={async () => {
             const removed = curModule;
+            if (removed.type === "group" && !(await ask({ title: `Delete “${removed.title}” and its ${removed.members?.length ?? 0} cards?`, body: "To keep the cards, use Ungroup instead. You can undo this.", confirm: "Delete all", danger: true }))) return;
             const before = deleteCard(removed.id);
             closeEditor();
             deletedToast(removed.title, before);

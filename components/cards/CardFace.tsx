@@ -3,7 +3,8 @@ import { videoEmbed } from "@/lib/media";
 import { suitOfCard } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
 import { Icon, StatusIcon } from "../Icon";
-import { GenArt } from "./GenArt";
+import { KindArt } from "./KindArt";
+import { kindMeta, kindOf } from "@/lib/kinds";
 
 /** The artwork window: shows the card's main media, or a soft gradient with the type glyph. */
 function Art({ m, big }: { m: Module; big: boolean }) {
@@ -74,7 +75,7 @@ function Art({ m, big }: { m: Module; big: boolean }) {
       </div>
     );
   }
-  return <GenArt id={m.id} tint={meta.tint} cover={meta.cover} />;
+  return <KindArt id={m.id} kind={kindOf(m)} tint={meta.tint} cover={meta.cover} />;
 }
 
 
@@ -91,9 +92,13 @@ export function CardFace({
 }) {
   const tag = badge ?? (m.choice ? (m.choice.recommended ? "Recommended path" : "Pick a path") : m.picked ? "Your path" : personal ? "For you" : undefined);
   const meta = suitOfCard(m);
+  const kind = kindMeta(kindOf(m));
+  const question = meta.id === "question";
+  // One shell per family: Content cards a clean double frame; Question cards a dashed inner frame and a coloured foot.
   return (
-    <div className="@container relative flex h-full w-full flex-col overflow-hidden rounded-[14px] border border-line bg-white select-none">
-      <div className="pointer-events-none absolute inset-[5px] rounded-[10px] border border-line/70" />
+    <div className="@container relative flex h-full w-full flex-col overflow-hidden rounded-[14px] border bg-white select-none" style={{ borderColor: `${meta.tint}40` }}>
+      <div className={`pointer-events-none absolute inset-[5px] rounded-[10px] border ${question ? "border-dashed" : ""}`} style={{ borderColor: `${meta.tint}${question ? "55" : "30"}` }} />
+      {question && <div className="pointer-events-none absolute inset-x-[5px] bottom-[5px] h-[22%] rounded-b-[10px]" style={{ background: `linear-gradient(to top, ${meta.tint}1f, transparent)` }} />}
       {/* corner: the suit, and one status (done, or a due date that's close or past) */}
       <div className="relative flex min-h-[18px] items-center gap-1.5 px-3 pt-2.5" style={{ color: meta.tint }}>
         <span className="rounded-full" style={{ background: meta.tint, width: big ? 7 : 6, height: big ? 7 : 6 }} />
@@ -114,6 +119,11 @@ export function CardFace({
       <div className={`relative px-3 pt-2.5 font-medium leading-[1.25] ${big ? "text-[16px]" : "text-[13.5px]"} line-clamp-3`}>{m.title}</div>
       <div className="flex-1" />
       {footer && <div className="relative flex items-center gap-1.5 px-3 pb-2.5 text-ink-3">{footer}</div>}
+      {/* the index corner, like a playing card's: what kind of card it is */}
+      <div className="relative flex items-center justify-end gap-1 px-3 pb-2.5 font-medium" style={{ color: meta.tint }}>
+        <Icon name={kind.icon} size={big ? 13 : 11} />
+        <span className={big ? "text-[11px]" : "text-[10px]"}>{kind.name}</span>
+      </div>
     </div>
   );
 }

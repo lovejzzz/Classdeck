@@ -29,6 +29,9 @@ export function visibleModules(lesson: Lesson, studentId: string, chosen: Record
   // tree (treeView) so wires from other lessons count; without it, only this lesson's wires are seen.
   const hidden = tree?.hidden ?? followUps(lesson);
   const dealt = tree?.dealt ?? new Set<string>();
+  // A card group isn't a card a student opens: its cards are, framed together, and only while the group is on the board.
+  const groupHidden = new Set<string>();
+  for (const g of lesson.modules) if (g.type === "group" && hidden.has(g.id) && !dealt.has(g.id)) for (const id of g.members ?? []) groupHidden.add(id);
   const firstVariant: Record<string, string> = {};
   const counts: Record<string, number> = {};
   for (const m of lesson.modules) {
@@ -39,6 +42,7 @@ export function visibleModules(lesson: Lesson, studentId: string, chosen: Record
   const out: Module[] = [];
   for (const m of lesson.modules) {
     const a = m.audience;
+    if (m.type === "group" || groupHidden.has(m.id)) continue;
     if (hidden.has(m.id) && !dealt.has(m.id)) continue;
     if (a.kind === "all") out.push(m);
     else if (a.kind === "student") {

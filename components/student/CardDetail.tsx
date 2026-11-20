@@ -7,6 +7,7 @@ import { useShortcuts } from "@/lib/shortcuts";
 import { dueInfo, optionOrder, quizSet } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META, suitOfCard } from "@/lib/ui";
+import { familyOf, kindMeta, kindOf } from "@/lib/kinds";
 import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Plan, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
@@ -65,7 +66,9 @@ export function CardDetail(p: DetailProps) {
   const [now] = useState(() => Date.now());
   const due = p.progress?.status === "done" ? undefined : dueInfo(m.due, now);
   const review = p.progress?.review;
-  const hasOutput = !!meta.outputLabel && m.type !== "selfcheck";
+  const kind = kindOf(m);
+  // Content cards are to take in, and a poll is just a vote: no notes box under either.
+  const hasOutput = !!meta.outputLabel && m.type !== "selfcheck" && familyOf(kind) !== "content" && kind !== "poll";
   const showWork = WORK_TYPES.has(m.type) && !m.choice;
   const skills = (m.skills ?? []).map((id) => p.course.skills?.find((s) => s.id === id)?.name).filter(Boolean);
   // The earliest other self-check with ratings, for showing progress.
@@ -186,7 +189,7 @@ export function CardDetail(p: DetailProps) {
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: suitOfCard(m).tint }}>
-              <Icon name={m.type} size={13} strokeWidth={2} /> {suitOfCard(m).name}<span className="font-normal normal-case tracking-normal text-ink-3">· {meta.name}</span>
+              <Icon name={kindMeta(kind).icon} size={13} strokeWidth={2} /> {suitOfCard(m).name}<span className="font-normal normal-case tracking-normal text-ink-3">· {kindMeta(kind).name}</span>
               {m.personal && <span className="chip ml-1 h-5 normal-case tracking-normal">For you</span>}
             </div>
             <h2 className={`mt-2 font-semibold tracking-tight ${p.big ? "text-[28px]" : "text-[22px]"}`}>{m.title}</h2>
@@ -640,23 +643,41 @@ function Questions(p: DetailProps) {
                   const isPicked = picked === oi;
                   const isKey = submitted && rv?.answer === oi && !isPicked;
                   let tone = "";
-                  if (isPicked && showResult) tone = right ? "border-ok/50 bg-ok/[0.06]" : "border-bad/45 bg-bad/[0.05] shake";
+                  if (m.poll) tone = isPicked ? "border-[#4b56a8]/50 bg-[#eef0fb]" : "";
+                  else if (isPicked && showResult) tone = right ? "border-ok/50 bg-ok/[0.06]" : "border-bad/45 bg-bad/[0.05] shake";
                   else if (isKey) tone = "border-dashed border-ok/60 bg-white";
                   return (
-                    <button key={`${oi}-${isPicked && showResult ? (right ? "y" : "n") : ""}`} onClick={() => answer(q.id, oi)} disabled={locked} aria-pressed={isPicked} className={optBtn(isPicked, tone)}>
+                    <button key={`${oi}-${isPicked && showResult ? (right ? "y" : "n") : ""}`} onClick={() => answer(q.id, oi)} disabled={locked && !m.poll} aria-pressed={isPicked} className={optBtn(isPicked, tone)}>
                       <span className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border ${isPicked ? "border-ink bg-ink" : "border-line-strong"}`}>
                         {isPicked && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </span>
                       <span className="flex-1">{opt}</span>
-                      {isPicked && showResult && <span className={`pop ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={15} strokeWidth={2.2} /></span>}
+                      {isPicked && showResult && !m.poll && <span className={`pop ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={15} strokeWidth={2.2} /></span>}
+                      {isPicked && m.poll && <span className="pop text-[11.5px] font-medium text-[#4b56a8]">Your vote</span>}
                       {isKey && <span className="text-[11.5px] text-ok">Answer</span>}
                     </button>
                   );
                 })}
               </div>
             )}
+            {m.poll && has(picked) && m.tally && (() => {
+              // How the class voted, once you have.
+              const tally = m.tally!, all = Math.max(1, tally.reduce((a, b) => a + b, 0));
+              return (
+                <div className="rise mt-3 space-y-1.5 rounded-xl bg-lane p-3">
+                  <div className="text-[12px] text-ink-3">How the class voted · {tally.reduce((a, b) => a + b, 0)} vote{tally.reduce((a, b) => a + b, 0) === 1 ? "" : "s"}</div>
+                  {q.options.map((o, oi) => (
+                    <div key={oi} className="flex items-center gap-2 text-[12.5px]">
+                      <span className="w-28 flex-none truncate text-ink-2">{o}</span>
+                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-white"><span className="block h-full rounded-full bg-[#4b56a8] transition-[width] duration-700 ease-[var(--ease-out)]" style={{ width: `${(100 * (tally[oi] ?? 0)) / all}%` }} /></span>
+                      <span className="mono w-8 text-right">{tally[oi] ?? 0}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
-            {showResult && !right && !isQuiz && (!q.kind || q.kind === "choice" || q.kind === "short") && (
+            {showResult && !right && !isQuiz && !m.poll && (!q.kind || q.kind === "choice" || q.kind === "short") && (
               <p className="rise mt-1.5 text-[12.5px] text-bad">Not quite. Have another go.</p>
             )}
             {submitted && q.kind === "short" && !right && rv?.accept && (
@@ -676,7 +697,7 @@ function Questions(p: DetailProps) {
           <span className="mono text-[11.5px]">{answeredCount}/{total} answered</span>
         </div>
       )}
-      {(submitted || (!isQuiz && progress?.status === "done")) && (
+      {!m.poll && (submitted || (!isQuiz && progress?.status === "done")) && (
         <div className="pop flex flex-wrap items-center gap-3 text-[14px]">
           <span className="flex items-center gap-2"><StatusIcon status="done" size={15} /> Score <span className="font-mono">{progress?.score ?? 0} / {total}</span></span>
           {submitted && attempt < tries && (progress?.score ?? 0) < total && (

@@ -8,6 +8,7 @@ import { db, listCourses, removeCourse, save } from "@/lib/store";
 import { randomCode, UPLOAD_DIR } from "@/lib/uploads";
 import { DEFAULT_LEVELS } from "@/lib/skillsets";
 import { standardWeek } from "@/lib/templates";
+import { kindWeeks } from "@/lib/kinds";
 import type { Course } from "@/lib/types";
 
 /** The signed-in teacher's courses: their own and those shared with them. (The demo stays reachable by its address.) */
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
       : [{ id: uid("w-"), title: "Week 1", lessons: [{ id: uid("l-"), title: "Lesson 1", modules: [], branches: {} }] }];
   // New courses have no skills to rate; cards and reviews then leave skills out entirely.
   for (const w of weeks) for (const l of w.lessons) for (const m of l.modules) m.skills = undefined;
+  kindWeeks(weeks);
   const course: Course = {
     id,
     ownerId: t.id,

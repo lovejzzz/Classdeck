@@ -70,13 +70,11 @@ export function standardWeek(theme: string, n: number): Week {
     modules: [
       t("goal"),
       t("example"),
-      // A small card tree to start from: a quick check that deals a review card below 60% and a stretch card at 90%+.
-      { id: "qc", ...base({ type: "quiz", title: "Quick check", body: "Two quick questions about the example. Your score decides what comes next.", minutes: 5, attempts: 2,
-        questions: [
-          { id: "qc1", text: "What did the example do well?", options: ["Edit this answer (correct)", "Edit this answer"], answer: 0 },
-          { id: "qc2", text: "Which change would help most?", options: ["Edit this answer (correct)", "Edit this answer"], answer: 0 },
-        ],
-        bands: [{ min: 0, next: "qc-review" }, { min: 60, next: null }, { min: 90, next: "qc-stretch" }] }) },
+      // A small card tree to start from: a quick check (a card group of two Multiple choice cards) that deals a
+      // review card below 60% and a stretch card at 90%+.
+      { id: "qc", ...base({ type: "group", kind: "group", title: "Quick check", body: "", members: ["qc1", "qc2"], bands: [{ min: 0, next: "qc-review" }, { min: 60, next: null }, { min: 90, next: "qc-stretch" }] }) },
+      { id: "qc1", ...base({ type: "practice", kind: "choice", title: "Quick check 1", body: "", questions: [{ id: "qc1q", text: "What did the example do well?", options: ["Edit this answer (correct)", "Edit this answer"], answer: 0 }] }) },
+      { id: "qc2", ...base({ type: "practice", kind: "choice", title: "Quick check 2", body: "", questions: [{ id: "qc2q", text: "Which change would help most?", options: ["Edit this answer (correct)", "Edit this answer"], answer: 0 }] }) },
       { id: "qc-review", ...base({ type: "read", title: "Go over the example again", body: "Watch the example once more, slowly. Pause at the moment that answers the quick check, and write down what you notice.", minutes: 10 }) },
       { id: "qc-stretch", ...base({ type: "practice", title: "Stretch: try it somewhere new", body: "Use this week’s idea in a new setting of your choice, and record one take.", minutes: 15, submitTo: "personal" }) },
       { id: "p", ...practice },

@@ -1,30 +1,31 @@
-import type { ModuleType, Status } from "./types";
+import type { Module, ModuleType, Status } from "./types";
+import { familyOf, kindOf, PICKABLE, type CardKind } from "./kinds";
 import type { ToolResult } from "./connectors/types";
 
 /**
- * Three suits, like a card game: every card is Learn, Do, or Share. Each suit has a few variants
- * (the stored ModuleType); colour belongs to the suit, the icon to the variant.
+ * Two families, like the suits of a deck: every card is Content (something to take in) or a Question (something to
+ * answer). Colour belongs to the family; the kind (Text, Image, Poll, …) gives the icon. See lib/kinds.ts.
  */
-export type Suit = "learn" | "do" | "share";
+export type Suit = "content" | "question";
 
 const COVER = {
-  learn: "radial-gradient(55% 90% at 20% 20%, #b4cdf0 0%, transparent 70%), radial-gradient(50% 80% at 80% 90%, #d6e6f2 0%, transparent 70%), #e6ebf2",
-  do: "radial-gradient(55% 90% at 25% 30%, #f4ccb0 0%, transparent 70%), radial-gradient(50% 80% at 80% 80%, #efe0c9 0%, transparent 70%), #efe8e1",
-  share: "radial-gradient(55% 90% at 25% 30%, #e6c3df 0%, transparent 70%), radial-gradient(50% 80% at 80% 80%, #f0d0c8 0%, transparent 70%), #eee6ec",
+  content: "radial-gradient(55% 90% at 20% 20%, #b4cdf0 0%, transparent 70%), radial-gradient(50% 80% at 80% 90%, #d6e6f2 0%, transparent 70%), #e6ebf2",
+  question: "radial-gradient(55% 90% at 25% 30%, #f4ccb0 0%, transparent 70%), radial-gradient(50% 80% at 80% 80%, #efe0c9 0%, transparent 70%), #efe8e1",
 };
 
-export const SUITS: { id: Suit; name: string; tint: string; cover: string; rule: string; types: ModuleType[] }[] = [
-  { id: "learn", name: "Learn", tint: "#3d68a6", cover: COVER.learn, rule: "Read, watch, and listen.", types: ["read", "explore"] },
-  { id: "do", name: "Do", tint: "#a0561f", cover: COVER.do, rule: "Practice, answer, make, hand in, and look back.", types: ["practice", "quiz", "builder", "submit", "selfcheck", "reflect"] },
-  { id: "share", name: "Share", tint: "#9a4a8c", cover: COVER.share, rule: "Show your work and trade feedback.", types: ["studio", "wall"] },
+export const SUITS: { id: Suit; name: string; tint: string; cover: string; rule: string; types: ModuleType[]; kinds: CardKind[] }[] = [
+  { id: "content", name: "Content", tint: "#3d68a6", cover: COVER.content, rule: "Text, images, links and recordings to take in.", types: ["read", "explore"], kinds: PICKABLE.filter((k) => k.family === "content").map((k) => k.id) },
+  { id: "question", name: "Question", tint: "#a0561f", cover: COVER.question, rule: "Q&A, multiple choice, polls and discussions.", types: ["quiz", "practice", "submit", "reflect", "builder", "selfcheck", "wall", "studio", "group"], kinds: PICKABLE.filter((k) => k.family === "question").map((k) => k.id) },
 ];
 
 export const suitOf = (t: ModuleType): (typeof SUITS)[number] => SUITS.find((s) => s.types.includes(t)) ?? SUITS[1];
+/** A kind's family, as a suit (its colour and name). */
+export const suitOfKind = (k: CardKind): (typeof SUITS)[number] => SUITS.find((s) => s.id === familyOf(k))!;
 
 export const TYPE_ORDER: ModuleType[] = SUITS.flatMap((s) => s.types);
 
-/** A card's suit: the one the teacher chose, or (for older cards) the one its type belongs to. */
-export const suitOfCard = (m: { type: ModuleType; suit?: string }): (typeof SUITS)[number] => SUITS.find((s) => s.id === m.suit) ?? suitOf(m.type);
+/** A card's family: from its kind (which every card has once loaded; older cards get theirs from their type). */
+export const suitOfCard = (m: Pick<Module, "type" | "kind" | "attachments" | "poll" | "questions">): (typeof SUITS)[number] => suitOfKind(kindOf(m));
 
 type Meta = { label: string; name: string; hint: string; tint: string; cover: string; outputLabel?: string; doneLabel: string };
 const variant = (t: ModuleType, v: Omit<Meta, "tint" | "cover">): Meta => {
@@ -44,6 +45,7 @@ export const TYPE_META: Record<ModuleType, Meta> = {
   reflect: variant("reflect", { label: "Reflect", name: "Reflect", hint: "Look back: what worked, what's next", outputLabel: "Your reflection (only you and your teacher can see it)", doneLabel: "Save" }),
   studio: variant("studio", { label: "Studio", name: "Collab Studio", hint: "Small groups present and give feedback", doneLabel: "Done" }),
   wall: variant("wall", { label: "Wall", name: "Class wall", hint: "Everyone posts; the class responds", doneLabel: "Done" }),
+  group: variant("group", { label: "Group", name: "Card group", hint: "Cards that go together; its score counts the Multiple choice cards", doneLabel: "Done" }),
 };
 
 export const STATUS_LABEL: Record<Status, string> = { todo: "Not started", doing: "In progress", done: "Done" };

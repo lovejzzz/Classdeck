@@ -1,3 +1,4 @@
+import { withKind } from "@/lib/kinds";
 import { getSession, teacherOf, unauthorized } from "@/lib/auth";
 import { uid } from "@/lib/profile";
 import { save, type SavedCard } from "@/lib/store";
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
   const { id, audience, due, choice, picked, personal, bands, dealtFor, ...rest } = m as Module;
   // A card tree's wiring points at cards in that lesson only.
   if (Array.isArray(rest.questions)) rest.questions = rest.questions.map(({ next: _next, ...q }) => q); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const card0 = fold({ ...rest, audience: { kind: "all" }, tools: Array.isArray(rest.tools) ? rest.tools : [], attachments: Array.isArray(rest.attachments) ? rest.attachments : [], title: String(rest.title ?? "").slice(0, 120), body: String(rest.body ?? "").slice(0, 8000) } as Omit<Module, "id">);
+  const card0 = withKind(fold({ ...rest, audience: { kind: "all" }, tools: Array.isArray(rest.tools) ? rest.tools : [], attachments: Array.isArray(rest.attachments) ? rest.attachments : [], title: String(rest.title ?? "").slice(0, 120), body: String(rest.body ?? "").slice(0, 8000) } as Module)) as Omit<Module, "id">;
   if (JSON.stringify(card0).length > MAX_BYTES) return Response.json({ ok: false, error: "This card is too big to save" }, { status: 400 });
   const name = String(body.name ?? card0.title ?? "").trim().slice(0, 60) || "My card";
   const cards = (t.cards ??= []);

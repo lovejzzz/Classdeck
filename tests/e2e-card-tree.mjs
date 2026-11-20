@@ -136,7 +136,7 @@ await page.getByRole("button", { name: "Deal a card for answer A" }).waitFor();
 await settle(800);
 await page.getByRole("button", { name: "Deal a card for answer A" }).click();
 await page.locator(".pop").getByRole("button", { name: "Lesson 2", exact: true }).click();
-await page.locator(".pop").getByRole("button", { name: "Read", exact: true }).click();
+await page.locator(".pop").getByRole("button", { name: "Text", exact: true }).click();
 await settle();
 await page.keyboard.press("Escape");
 await settle(1200);
@@ -184,6 +184,24 @@ await dragTo("m-z", l1Title);
 c1 = (await T.get(`/api/course/${cid}`)).course;
 check("map: a card can't move before the card that deals it", c1.weeks[0].lessons[1].modules.some((m) => m.id === "m-z") && !c1.weeks[0].lessons[0].modules.some((m) => m.id === "m-z"));
 check("map: the refusal says why", await page.getByText(/Can’t move it there/).first().isVisible());
+
+// 6) Card groups: shift-click two cards on the map, make a group, then ungroup.
+const head = (id) => page.locator(`[data-node="${id}"] button[aria-label^="Edit"]`).first();
+await head("m-all1").click({ modifiers: ["Shift"] });
+await head("m-all2").click({ modifiers: ["Shift"] });
+await page.getByRole("button", { name: "Make a card group" }).click();
+await settle();
+let c6 = (await T.get(`/api/course/${cid}`)).course;
+const g6 = c6.weeks[0].lessons[0].modules.find((m) => m.type === "group");
+check("map: two picked cards become a card group, in their lesson order", !!g6 && g6.members?.length === 2 && g6.members.includes("m-all1") && g6.members.includes("m-all2"), g6);
+await page.keyboard.press("Escape");
+await settle(800);
+check("map: the group is one node listing its cards", (await page.locator(`[data-node="${g6?.id}"]`).count()) === 1 && (await page.locator(`[data-node="m-all1"]`).count()) === 0);
+await page.locator(`[data-node="${g6?.id}"] button[aria-label^="Edit"]`).first().click();
+await page.getByRole("button", { name: "Ungroup (keep the cards)" }).click();
+await settle();
+c6 = (await T.get(`/api/course/${cid}`)).course;
+check("ungroup keeps the cards and drops the group", !c6.weeks[0].lessons[0].modules.some((m) => m.type === "group") && c6.weeks[0].lessons[0].modules.some((m) => m.id === "m-all1") && c6.weeks[0].lessons[0].modules.some((m) => m.id === "m-all2"));
 
 check("no errors in the page", errors.length === 0, errors);
 await browser.close();

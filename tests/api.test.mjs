@@ -105,7 +105,11 @@ async function main() {
   const sv = await A.op(cid, { op: "saveLesson", lesson: { ...lesson, modules: mods } });
   check("save a lesson with all ten kinds", sv.ok !== false && sv.status === 200, sv);
   const after = courseOf(await A.state(cid));
-  check("all ten kinds come back", modulesOf(after).map((m) => m.type).join() === types.join(), modulesOf(after).map((m) => m.type));
+  // Older types become the eight kinds: Text, Image, Link, Recording (content); Q&A, Multiple choice, Poll, Discussion.
+  const kinds = ["text", "text", "answer", "choice", "answer", "answer", "poll", "answer", "discussion", "discussion"];
+  check("older types come back as kinds", modulesOf(after).map((m) => m.kind).join() === kinds.join(), modulesOf(after).map((m) => m.kind));
+  check("each kind runs on its type (a quiz stays a quiz, a group discussion stays a studio)", modulesOf(after).map((m) => m.type).join() === "read,read,submit,quiz,submit,submit,practice,submit,studio,wall", modulesOf(after).map((m) => m.type));
+  check("a rating card becomes a poll with choices and no right answer", (() => { const p = modulesOf(after).find((m) => m.kind === "poll"); return p?.poll === true && p.questions?.[0]?.options?.length === 4 && p.questions[0].answer === undefined; })());
   const add = await A.op(cid, { op: "addLesson", weekId: after.weeks[0].id, title: "Lesson 2" });
   check("add a lesson", add.ok !== false, add);
   check("lesson added", courseOf(await A.state(cid)).weeks[0].lessons.length === 2);
@@ -161,7 +165,7 @@ async function main() {
   const sm = saved.card?.module ?? {};
   check("saved card drops id/due/personal/choice/picked", !("id" in sm) && !sm.due && !sm.personal && !sm.choice && !sm.picked, sm);
   check("saved card is for the whole class", sm.audience?.kind === "all", sm.audience);
-  check("saved card keeps content", sm.body === "Do scales" && sm.type === "practice");
+  check("saved card keeps content (a practice card is now a Q&A)", sm.body === "Do scales" && sm.kind === "answer" && sm.type === "submit", sm);
   const noName = await A.post("/api/library", { module: { ...mods[0], title: "" } });
   check("unnamed card gets a name", noName.ok && noName.card.name.length > 0, noName.card?.name);
   check("B's library is separate", (await B.get("/api/library")).cards.length === 0);
@@ -466,6 +470,82 @@ async function main() {
     await A.del("/api/courses", { id: tpl.id, confirm: `Tpl ${run}` });
   }
 
+  // ---- Poll cards: no right answer, the class tally after voting, and a card for each choice
+  {
+    const tc = await A.post("/api/courses", { title: `Poll ${run}`, start: "blank" });
+    const tid = tc.id;
+    await A.op(tid, { op: "addStudents", names: "Hal One\nIvy Two" });
+    const l = courseOf(await A.state(tid)).weeks[0].lessons[0];
+    const card = (id, kind, title, extra = {}) => ({ id, kind, type: "read", title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
+    await A.op(tid, { op: "saveLesson", lesson: { ...l, modules: [card("m-poll", "poll", "Which do you prefer?", { questions: [{ id: "p", text: "Prefer?", options: ["Ear", "Score"], answer: 1, next: ["m-ear", null] }] }), card("m-ear", "text", "Ear path")] } });
+    const saved = courseOf(await A.state(tid)).weeks[0].lessons[0].modules.find((m) => m.id === "m-poll");
+    check("a poll saves as a poll: no right answer, its wiring kept", saved.kind === "poll" && saved.poll === true && saved.type === "practice" && saved.questions[0].answer === undefined && saved.questions[0].next?.[0] === "m-ear", saved);
+    const links = (await A.op(tid, { op: "setupLinks" })).links;
+    const as = async (name) => { const c = client(); const r = await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] }); return { c, id: r.studentId }; };
+    const h = await as("Hal One"), i = await as("Ivy Two");
+    const v1 = await h.c.op(tid, { op: "answer", studentId: h.id, moduleId: "m-poll", qid: "p", choice: 0 });
+    check("a vote counts (no wrong answers in a poll), and deals that choice's card", v1.correct === true && v1.dealt?.[0]?.id === "m-ear", v1);
+    await i.c.op(tid, { op: "answer", studentId: i.id, moduleId: "m-poll", qid: "p", choice: 1 });
+    const seen = modulesOf(courseOf(await i.c.state(`${tid}?as=${i.id}`))).find((m) => m.id === "m-poll");
+    check("students see the class tally", JSON.stringify(seen.tally) === "[1,1]", seen.tally);
+    check("the other choice deals nothing", !modulesOf(courseOf(await i.c.state(`${tid}?as=${i.id}`))).some((m) => m.id === "m-ear"));
+    const events = (await A.state(tid)).events ?? [];
+    check("a poll vote is never logged as a wrong answer", !events.some((e) => e.kind === "wrong" && e.moduleId === "m-poll"));
+    await A.del("/api/courses", { id: tid, confirm: `Poll ${run}` });
+  }
+
+  // ---- Card groups: one question per card, a group scores them together and deals by the total
+  {
+    const tc = await A.post("/api/courses", { title: `Group ${run}`, start: "blank" });
+    const tid = tc.id;
+    await A.op(tid, { op: "addStudents", names: "Jo Low\nKit High" });
+    const l = courseOf(await A.state(tid)).weeks[0].lessons[0];
+    const mc = (id, answer) => ({ id, kind: "choice", type: "practice", title: id, body: "", audience: { kind: "all" }, tools: [], attachments: [], questions: [{ id: `${id}-q`, text: "Pick", options: ["A", "B"], answer }] });
+    const card = (id, kind, title, extra = {}) => ({ id, kind, type: "read", title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
+    const group = { id: "m-g", kind: "group", type: "group", title: "Check", body: "", audience: { kind: "all" }, tools: [], attachments: [], members: ["m-c1", "m-c2", "m-c3", "m-nope"], bands: [{ min: 0, next: "m-lo" }, { min: 60, next: null }, { min: 90, next: "m-hi" }] };
+    // Members out of order in the lesson: the server puts them right after their group.
+    await A.op(tid, { op: "saveLesson", lesson: { ...l, modules: [mc("m-c2", 1), group, card("m-lo", "text", "Review"), mc("m-c1", 0), card("m-hi", "text", "Stretch"), mc("m-c3", 0)] } });
+    const ls = courseOf(await A.state(tid)).weeks[0].lessons[0];
+    check("a group keeps real members only, right after it", JSON.stringify(ls.modules.find((m) => m.id === "m-g").members) === JSON.stringify(["m-c1", "m-c2", "m-c3"]) && ls.modules.map((m) => m.id).slice(0, 4).join() === "m-g,m-c1,m-c2,m-c3", ls.modules.map((m) => m.id));
+    const links = (await A.op(tid, { op: "setupLinks" })).links;
+    const as = async (name) => { const c = client(); const r = await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] }); return { c, id: r.studentId }; };
+    const jo = await as("Jo Low"), kit = await as("Kit High");
+    const view = async (s) => courseOf(await s.c.state(`${tid}?as=${s.id}`));
+    const v0 = await view(jo);
+    check("students see the group's cards, framed as a deck, not the group as a card", !modulesOf(v0).some((m) => m.id === "m-g") && v0.weeks[0].lessons[0].decks?.[0]?.members?.join() === "m-c1,m-c2,m-c3", v0.weeks[0].lessons[0].decks);
+    // Jo gets one right of three (and fixes a wrong one later: the first answer is what counts).
+    await jo.c.op(tid, { op: "answer", studentId: jo.id, moduleId: "m-c1", qid: "m-c1-q", choice: 0 });
+    await jo.c.op(tid, { op: "answer", studentId: jo.id, moduleId: "m-c2", qid: "m-c2-q", choice: 0 });
+    await jo.c.op(tid, { op: "answer", studentId: jo.id, moduleId: "m-c2", qid: "m-c2-q", choice: 1 });
+    const mid = await view(jo);
+    check("no deal before every card in the group is answered", !modulesOf(mid).some((m) => m.id === "m-lo" || m.id === "m-hi"));
+    const last = await jo.c.op(tid, { op: "answer", studentId: jo.id, moduleId: "m-c3", qid: "m-c3-q", choice: 1 });
+    check("the last answer scores the group and deals by the total (1 of 3 → review)", last.dealt?.some((d) => d.id === "m-lo"), last);
+    const jv = await view(jo);
+    check("the deck shows its score", jv.weeks[0].lessons[0].decks[0].score === 33 && jv.weeks[0].lessons[0].decks[0].done === true, jv.weeks[0].lessons[0].decks[0]);
+    for (const [m, a] of [["m-c1", 0], ["m-c2", 1], ["m-c3", 0]]) await kit.c.op(tid, { op: "answer", studentId: kit.id, moduleId: m, qid: `${m}-q`, choice: a });
+    const kv = modulesOf(await view(kit)).map((m) => m.id);
+    check("all right → the stretch card only", kv.includes("m-hi") && !kv.includes("m-lo"), kv);
+    // A group dealt as a follow-up hides its cards until then.
+    const ls2 = courseOf(await A.state(tid)).weeks[0].lessons[0];
+    const gate = mc("m-gate", 0);
+    gate.questions[0].next = ["m-g", null];
+    await A.op(tid, { op: "saveLesson", lesson: { ...ls2, modules: [gate, ...ls2.modules] } });
+    const fresh = await A.op(tid, { op: "addStudents", names: "Lou New" });
+    void fresh;
+    const l3 = (await A.op(tid, { op: "setupLinks" })).links.find((x) => x.name === "Lou New");
+    const lou = client(); const lr = await lou.post("/api/auth", { action: "invite", courseId: tid, token: l3.link.split("#")[1] });
+    const louIds = modulesOf(courseOf(await lou.state(`${tid}?as=${lr.studentId}`))).map((m) => m.id);
+    check("a group dealt by an answer keeps its cards hidden until then", !louIds.some((x) => ["m-c1", "m-c2", "m-c3"].includes(x)) && louIds.includes("m-gate"), louIds);
+    await lou.op(tid, { op: "answer", studentId: lr.studentId, moduleId: "m-gate", qid: "m-gate-q", choice: 0 });
+    check("…and shows them once dealt", modulesOf(courseOf(await lou.state(`${tid}?as=${lr.studentId}`))).filter((m) => ["m-c1", "m-c2", "m-c3"].includes(m.id)).length === 3);
+    const l4 = courseOf(await A.state(tid)).weeks[0].lessons[0];
+    await A.op(tid, { op: "saveLesson", lesson: { ...l4, modules: l4.modules.map((m) => (m.id === "m-gate" ? { ...m, questions: [{ ...m.questions[0], next: ["m-g", "m-c2"] }] } : m)) } });
+    const gateNext = courseOf(await A.state(tid)).weeks[0].lessons[0].modules.find((m) => m.id === "m-gate").questions[0].next;
+    check("a card inside a group can't be dealt on its own (deal the group)", gateNext?.[0] === "m-g" && !gateNext?.[1], gateNext);
+    await A.del("/api/courses", { id: tid, confirm: `Group ${run}` });
+  }
+
   // ---- The public sample: anyone gets a private copy as its one student
   {
     const V = client();
@@ -473,10 +553,17 @@ async function main() {
     check("a visitor gets their own sample copy, signed in as its student", r.ok && r.courseId?.startsWith("sample-") && !!V.cookie, r);
     const sv = courseOf(await V.state(`${r.courseId}?as=${r.studentId}`));
     check("the copy has the sample lessons and only this student", sv.weeks?.[0]?.lessons?.length === 2 && sv.students?.length === 1 && !!sv.sample, sv.title);
-    const quiz = modulesOf(sv).find((m) => m.type === "quiz");
-    for (const q of quiz.questions) await V.op(r.courseId, { op: "answer", studentId: r.studentId, moduleId: quiz.id, qid: q.id, choice: q.options.findIndex((o) => /Half|Perfect|Plagal \(IV/.test(o)) === -1 ? 0 : { q1: 1, q2: 0, q3: 0 }[q.id] });
-    const sub = await V.op(r.courseId, { op: "submitQuiz", studentId: r.studentId, moduleId: quiz.id });
-    check("full marks in the sample deal the challenge in lesson 2", sub.score === 3 && sub.dealt?.some((d) => /Challenge/.test(d.title) && d.lesson === "Using cadences"), sub);
+    // The sample's check is a card group of three Multiple choice cards; all right deals the lesson-2 challenge.
+    const deck = sv.weeks[0].lessons[0].decks?.[0];
+    let sub = {};
+    for (const id of deck?.members ?? []) {
+      const m = modulesOf(sv).find((x) => x.id === id);
+      const right = { "A phrase ends on chord V. Which cadence is it?": 1 }[m.questions[0].text] ?? 0;
+      sub = await V.op(r.courseId, { op: "answer", studentId: r.studentId, moduleId: id, qid: m.questions[0].id, choice: right });
+    }
+    check("full marks on the sample's card group deal the challenge in lesson 2", deck?.members?.length === 3 && sub.dealt?.some((d) => /Challenge/.test(d.title) && d.lesson === "Using cadences"), sub);
+    const way = modulesOf(sv).find((m) => m.title === "Pick your way in");
+    check("the sample's “pick your way in” is a poll", way?.kind === "poll" && way.poll === true, way?.kind);
     check("nobody can edit a sample copy", [401, 403].includes((await V.op(r.courseId, { op: "addStudents", names: "Intruder" })).status) && [401, 403].includes((await A.op(r.courseId, { op: "addStudents", names: "Intruder" })).status));
     check("sample copies never show in a teacher's courses", !(await A.get("/api/courses")).courses.some((c) => c.id === r.courseId));
     check("two visitors get two separate copies", (await client().post("/api/try", {})).courseId !== r.courseId);
