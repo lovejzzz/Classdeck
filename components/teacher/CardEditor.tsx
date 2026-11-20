@@ -60,8 +60,10 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 }
 
 export function CardEditor({
-  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [], started = 0, onTree, allCards,
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, skills = [], started = 0, onTree, allCards, neighbors,
 }: {
+  /** Shown at the top of the panel: where this card sits in the course's card tree. */
+  neighbors?: React.ReactNode;
   /** Every card in the course (a card tree can deal cards in later lessons). */
   allCards?: Module[];
   /** Open the lesson's card tree (to wire answers to follow-up cards). */
@@ -188,6 +190,7 @@ export function CardEditor({
       </div>
 
       <div className="flex-1 overflow-y-auto bg-[#f7f7f5]">
+        {neighbors && <div key={m.id} className="rise px-4 pt-4">{neighbors}</div>}
         {/* The card on the table. */}
         <div className="px-5 pb-4 pt-6"><TiltPreview m={m} /></div>
 

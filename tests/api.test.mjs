@@ -414,7 +414,56 @@ async function main() {
       check("saveLessons refuses an empty list", (await A.op(tid, { op: "saveLessons", lessons: [] })).ok === false);
       check("students can't save lessons", [401, 403].includes((await S.Dee.op(tid, { op: "saveLessons", lessons: [a] })).status));
     }
+    // The server's own guard: a lesson saved without a source card (not through the website's delete) takes the
+    // follow-ups only it dealt with it, even in another lesson; a wire just unhooked keeps its card.
+    {
+      const now = courseOf(await A.state(tid)).weeks[0].lessons;
+      const l1 = now[0], l2 = now[1];
+      const unhooked = { ...l1, modules: l1.modules.map((m) => (m.id === "m-ch" ? { ...m, questions: [{ ...m.questions[0], next: [null, null] }] } : m)) };
+      await A.op(tid, { op: "saveLesson", lesson: unhooked });
+      check("unhooking a wire keeps the card", courseOf(await A.state(tid)).weeks[0].lessons[1].modules.some((m) => m.id === "m-l2x"));
+      await A.op(tid, { op: "saveLesson", lesson: l1 }); // wire back
+      const r = await A.op(tid, { op: "saveLesson", lesson: { ...l1, modules: l1.modules.filter((m) => m.id !== "m-sq") } });
+      const after = courseOf(await A.state(tid)).weeks[0].lessons;
+      const ids0 = after[0].modules.map((m) => m.id);
+      check("deleting a quiz removes the cards only its scores dealt", !["m-low", "m-mid", "m-top"].some((x) => ids0.includes(x)) && (r.removedFollowUps ?? []).length === 3, [ids0, r.removedFollowUps]);
+      const r2 = await A.op(tid, { op: "saveLesson", lesson: { ...after[0], modules: after[0].modules.filter((m) => m.id !== "m-ch") } });
+      const l2now = courseOf(await A.state(tid)).weeks[0].lessons[1].modules.map((m) => m.id);
+      check("deleting a source removes its follow-up in a later lesson", !l2now.includes("m-l2x") && l2now.includes("m-l2a") && r2.removedFollowUps?.includes("m-l2x"), [l2now, r2]);
+      void l2;
+    }
     await A.del("/api/courses", { id: tid, confirm: `Tree2 ${run}` });
+  }
+
+  // ---- The student's map: paths taken (and why), card backs for the rest; a template that starts with a tree
+  {
+    const tc = await A.post("/api/courses", { title: `Map ${run}`, start: "blank" });
+    const tid = tc.id;
+    await A.op(tid, { op: "addStudents", names: "Gus Map" });
+    const l = courseOf(await A.state(tid)).weeks[0].lessons[0];
+    const card = (id, type, title, extra = {}) => ({ id, type, title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
+    await A.op(tid, { op: "saveLesson", lesson: { ...l, modules: [card("m-src", "practice", "Pick", { questions: [{ id: "q", text: "Which?", options: ["Left", "Right"], answer: 0, next: ["m-left", "m-right"] }] }), card("m-left", "read", "Left card"), card("m-right", "read", "Secret right card")] } });
+    const G = client();
+    await G.post("/api/auth", { action: "invite", courseId: tid, token: (await A.op(tid, { op: "setupLinks" })).links[0].link.split("#")[1] });
+    const gid = courseOf(await A.state(tid)).students[0].id;
+    const srcOf = async () => modulesOf(courseOf(await G.state(`${tid}?as=${gid}`))).find((m) => m.id === "m-src");
+    const before = await srcOf();
+    check("before answering: two anonymous card backs", before.paths?.length === 2 && before.paths.every((p) => !p.to && !p.title && !p.why), before.paths);
+    await G.op(tid, { op: "answer", studentId: gid, moduleId: "m-src", qid: "q", choice: 0 });
+    const after = await srcOf();
+    const taken = after.paths?.find((p) => p.to === "m-left");
+    check("the path taken points at its card and says why", taken?.why === "You chose “Left”", after.paths);
+    check("the path not taken stays a card back (no title leaks)", after.paths.some((p) => !p.to && !p.title) && !JSON.stringify(after).includes("Secret right card"));
+    await A.op(tid, { op: "saveLesson", lesson: { ...courseOf(await A.state(tid)).weeks[0].lessons[0], openPaths: true } });
+    const open = await srcOf();
+    check("with every path shown, the other path has its title and condition", open.paths.some((p) => !p.to && p.title === "Secret right card" && p.why === "If you choose “Right”"), open.paths);
+    check("a dealt card is marked for the student", modulesOf(courseOf(await G.state(`${tid}?as=${gid}`))).find((m) => m.id === "m-left")?.dealtFor === true);
+    await A.del("/api/courses", { id: tid, confirm: `Map ${run}` });
+    const tpl = await A.post("/api/courses", { title: `Tpl ${run}`, start: "template", weeks: 1 });
+    const tl = courseOf(await A.state(tpl.id)).weeks[0].lessons[0];
+    const qc = tl.modules.find((m) => m.title === "Quick check");
+    check("a new course from the template starts with a score tree on fresh ids", !!qc && qc.bands?.filter((b) => b.next).length === 2 && qc.bands.every((b) => !b.next || (tl.modules.some((m) => m.id === b.next) && !b.next.startsWith("qc-"))), qc?.bands);
+    await A.del("/api/courses", { id: tpl.id, confirm: `Tpl ${run}` });
   }
 
   // ---- Uploads used by a saved card survive deleting a course

@@ -6,7 +6,7 @@ import { db, logEvent, reset, save } from "@/lib/store";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
-import { cleanCourseWiring, deals, dealsByScore, SCORE, treeView } from "@/lib/branching";
+import { cardsOf, cleanCourseWiring, deals, dealsByScore, orphansOf, pathsFor, SCORE, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate, revokeInvites } from "@/lib/hooks";
@@ -58,6 +58,8 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
   const all = db().choices[course.id] ?? {};
   const taken = (lessonId: string) => Object.entries(all).filter(([sid, c]) => sid !== studentId && c[`elective:${lessonId}`]).length;
   const tree = treeOf(course, studentId);
+  const visible = new Set(course.weeks.flatMap((w) => w.lessons.flatMap((l) => (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree)).map((m) => m.id))));
+  const paths = pathsFor(course.weeks, db().progress[course.id]?.[studentId] ?? {}, tree, visible);
   return {
     ...course,
     // Students never receive the class passcode, the tools key, classmates' emails, or the co-teachers.
@@ -77,6 +79,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
           ...m,
           bands: undefined,
           dealtFor: tree.dealt.has(m.id) || undefined,
+          paths: paths.get(m.id),
           audience: { kind: "all" as const },
           personal: m.audience.kind !== "all" && !m.choice && !m.picked,
           questions: asked(m).length ? asked(m).map(publicQuestion) : undefined,
@@ -586,6 +589,7 @@ export async function POST(request: Request, { params }: Ctx) {
       // they're all in place.
       const list = (body.op === "saveLessons" ? (Array.isArray(body.lessons) ? body.lessons : []) : [body.lesson]) as Lesson[];
       if (!list.length || list.length > 80 || list.some((l) => !l || !Array.isArray(l.modules))) return fail("Nothing to save");
+      const cardsBefore = cardsOf(course.weeks).map((c) => c.m);
       for (const next of list) {
         next.modules = next.modules.map((m) => fold(m));
         for (const m of next.modules) {
@@ -603,8 +607,13 @@ export async function POST(request: Request, { params }: Ctx) {
           w.lessons[i] = next;
         }
       }
+      // A follow-up whose source cards were all deleted here would go to everyone: it goes with them (the website
+      // sends those deletions itself; this covers anything that saves lessons another way).
+      const orphans = orphansOf(cardsBefore, cardsOf(course.weeks).map((c) => c.m));
+      if (orphans.size) for (const w of course.weeks) for (const l of w.lessons) l.modules = l.modules.filter((m) => !orphans.has(m.id));
       // Card trees can reach into later lessons, so the wiring is checked across the whole course.
       cleanCourseWiring(course.weeks);
+      if (orphans.size) extra = { removedFollowUps: [...orphans] };
       break;
     }
     case "addLesson": {

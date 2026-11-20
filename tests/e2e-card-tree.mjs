@@ -54,7 +54,8 @@ await ctx.addCookies([{ name: "cd_s", value: T.cookie.split("=")[1], domain: "lo
 const page = await ctx.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
-await page.goto(`${B}/teach/${cid}`);
+// The List view (rows of cards) for the delete steps; the map is checked further down.
+await page.goto(`${B}/teach/${cid}?tab=plan`);
 await page.getByRole("button", { name: "Edit Source question" }).waitFor();
 await settle(800);
 
@@ -128,9 +129,9 @@ now = await server();
 check("deleting a follow-up removes only it", now.l1.join() === "m-all1,m-src" && now.l2.join() === "m-all2,m-y,m-z", now);
 check("…and unhooks its answer, keeping the other wire", JSON.stringify(now.src?.questions?.[0]?.next) === JSON.stringify([null, "m-y"]), now.src?.questions);
 
-// 4) A new card in Lesson 2, made from a Lesson 1 answer in the tree: the card and its wire are saved together.
+// 4) A new card in Lesson 2, made from a Lesson 1 answer on the course map: the card and its wire are saved together.
 await page.getByRole("button", { name: "Lesson 1 actions" }).click();
-await page.getByRole("menuitem", { name: /Card tree/ }).click();
+await page.getByRole("menuitem", { name: /Show on the map/ }).click();
 await page.getByRole("button", { name: "Deal a card for answer A" }).waitFor();
 await settle(800);
 await page.getByRole("button", { name: "Deal a card for answer A" }).click();

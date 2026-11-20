@@ -31,6 +31,7 @@ import { useConnectors, useCourse, useQuery } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import { suitOfCard } from "@/lib/ui";
 import type { Lesson, Module, Profile, Progress, Status } from "@/lib/types";
+import { StudentMap } from "@/components/student/StudentMap";
 
 const narrowQuery = "(max-width: 639px)";
 function useNarrow() {
@@ -81,6 +82,11 @@ export default function LearnPage() {
   const todayRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const [openWeeks, setOpenWeeks] = useState<Set<string>>(new Set());
+  // Cards in rows of weeks, or the quest map. Remembered on this device (a convenience; the board works without it).
+  const [layoutMode, setLayoutMode] = useState<"cards" | "map">(() => {
+    try { return typeof window !== "undefined" && localStorage.getItem("questhand:board-view") === "map" ? "map" : "cards"; } catch { return "cards"; }
+  });
+  const pickLayout = (v: "cards" | "map") => { setLayoutMode(v); try { localStorage.setItem("questhand:board-view", v); } catch { /* fine without it */ } };
   const [burst, setBurst] = useState<{ x: number; y: number; colors: string[]; key: number } | null>(null);
   const [now] = useState(() => Date.now());
 
@@ -477,7 +483,29 @@ export default function LearnPage() {
             />
           )}
 
-          <div className="mt-6 space-y-8 pb-16">
+          <div className="mx-auto mt-6 flex max-w-6xl items-center gap-2 px-4">
+            <div className="flex rounded-lg bg-lane p-0.5" role="tablist" aria-label="How to show your cards">
+              {(["cards", "map"] as const).map((v) => (
+                <button key={v} role="tab" aria-selected={layoutMode === v} onClick={() => pickLayout(v)}
+                  className={`press flex h-7 items-center gap-1.5 rounded-md px-3 text-[12.5px] transition-colors ${layoutMode === v ? "bg-white font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>
+                  <Icon name={v === "cards" ? "layers" : "split"} size={12} /> {v === "cards" ? "Cards" : "Map"}
+                </button>
+              ))}
+            </div>
+            {layoutMode === "map" && <span className="text-[12px] text-ink-3">Your path through the course. Your answers open new cards.</span>}
+          </div>
+          {layoutMode === "map" && (
+            <div className="mt-4 px-4 pb-16">
+              <StudentMap
+                lessons={lessons}
+                weekOf={Object.fromEntries(course.weeks.flatMap((w) => w.lessons.map((l) => [l.id, w.title.split(" · ")[0]])))}
+                todayId={current.id}
+                statusOf={statusOf}
+                onOpen={open}
+              />
+            </div>
+          )}
+          <div className={`mt-6 space-y-8 pb-16 ${layoutMode === "map" ? "hidden" : ""}`}>
             {weeksShown.map((week) => {
               const ms = week.lessons.flatMap((l) => l.modules);
               const finished = ms.length > 0 && ms.every((m) => statusOf(m.id) === "done");
@@ -572,6 +600,8 @@ export default function LearnPage() {
           onBackdrop={() => close()}
           landing={() => {
             if (lift.completed && handMode && pileRef.current) return pileRef.current.getBoundingClientRect();
+            // On the map, the card goes back to the spot it was opened from (the rows of cards are hidden).
+            if (layoutMode === "map") return lift.from ?? null;
             return els.current.get(lift.id)?.getBoundingClientRect() ?? null;
           }}
           onGone={() => {

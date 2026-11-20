@@ -194,3 +194,50 @@ export function deleteCardIn(lessons: Lesson[], id: string): { before: Lesson[];
   }
   return { before, after, gone };
 }
+
+/**
+ * Follow-ups whose every source card was deleted in this save (not just unhooked): left alone they'd go to everyone.
+ * `before` and `after` are the course's cards before and after the save. Returns the cards to remove, chains included.
+ */
+export function orphansOf(before: Module[], after: Module[]): Set<string> {
+  const now = new Set(after.map((m) => m.id));
+  const removed = new Set(before.map((m) => m.id).filter((id) => !now.has(id)));
+  if (!removed.size) return new Set();
+  const was = wiresOf(before);
+  const is = wiresOf(after);
+  const out = new Set<string>();
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const id of now) {
+      if (out.has(id)) continue;
+      // Still dealt by a card that stays → not an orphan.
+      if (is.some((w) => w.to === id && !out.has(w.from))) continue;
+      const sources = was.filter((w) => w.to === id).map((w) => w.from);
+      if (sources.length && sources.every((s) => removed.has(s) || out.has(s))) { out.add(id); grew = true; }
+    }
+  }
+  return out;
+}
+
+/**
+ * The branches out of each card a student can see, for their map: where a dealt branch went and why, and a card back
+ * for each one not dealt (with its title and condition only if the teacher opened that lesson's paths).
+ */
+export function pathsFor(weeks: { lessons: Lesson[] }[], prog: Record<string, Progress>, view: TreeView, visible: Set<string>):
+  Map<string, { to?: string; title?: string; type?: Module["type"]; why?: string }[]> {
+  const cards = cardsOf(weeks);
+  const byId = new Map(cards.map((c) => [c.m.id, c]));
+  const out = new Map<string, { to?: string; title?: string; type?: Module["type"]; why?: string }[]>();
+  for (const w of wiresOf(cards.map((c) => c.m))) {
+    if (!visible.has(w.from)) continue;
+    const src = byId.get(w.from)!, dst = byId.get(w.to);
+    if (!dst) continue;
+    const cond = w.score ? `Score ${bandLabel(w.score)}` : `“${src.m.questions?.find((q) => q.id === w.q)?.options[w.option]?.trim() || String.fromCharCode(65 + w.option)}”`;
+    const list = out.get(w.from) ?? out.set(w.from, []).get(w.from)!;
+    const mine = picked(prog[w.from]?.dealt?.[w.q], w) && view.dealt.has(w.to) && visible.has(w.to);
+    if (mine) { if (!list.some((x) => x.to === w.to)) list.push({ to: w.to, why: w.score ? cond : `You chose ${cond}` }); continue; }
+    if (list.some((x) => x.to === w.to)) continue;
+    list.push(src.lesson.openPaths ? { title: dst.m.title, type: dst.m.type, why: w.score ? cond : `If you choose ${cond}` } : {});
+  }
+  return out;
+}

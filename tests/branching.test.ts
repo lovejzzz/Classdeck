@@ -1,5 +1,5 @@
 // Card-tree rules, checked without a server: npx tsx tests/branching.test.ts
-import { cleanCourseWiring, dealtTo, deleteCardIn, treeView, wiresOf, SCORE } from "../lib/branching";
+import { cleanCourseWiring, dealtTo, deleteCardIn, orphansOf, treeView, wiresOf, SCORE } from "../lib/branching";
 import { cloneWeek } from "../lib/clone";
 import type { Lesson, Module, Progress, Week } from "../lib/types";
 
@@ -51,6 +51,16 @@ const course = () => [
   const ls = course();
   const { before, after } = deleteCardIn(ls, "all2");
   check("deleting a card nobody wires touches one lesson", before.length === 1 && after.length === 1 && after[0].id === "L2");
+}
+
+// The server's guard against orphans.
+{
+  const before = course().flatMap((l) => l.modules);
+  const gone = orphansOf(before, before.filter((m) => m.id !== "src"));
+  check("orphans: a deleted source's own follow-ups (and chain) are found", ["X", "Y", "Z"].every((x) => gone.has(x)) && !gone.has("S"));
+  const unhooked = before.map((m) => (m.id === "src" ? { ...m, questions: [ask("q", [null, null, null])] } : m));
+  check("orphans: unhooking alone (source kept) finds none", orphansOf(before, unhooked).size === 0);
+  check("orphans: nothing removed, nothing found", orphansOf(before, before).size === 0);
 }
 
 // Dealing across lessons and by score.

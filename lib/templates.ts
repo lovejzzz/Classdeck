@@ -47,7 +47,6 @@ export const CARD_TEMPLATES: CardTemplate[] = [
   },
 ];
 
-/** A standard CaPS week: six cards, a Guided/Stretch choice, and a 60-minute Collab Studio agenda. */
 /** The next free number for "Week N" or "Lesson N": one past the highest in use, so names never repeat. */
 export function nextNumber(titles: string[], word: "Week" | "Lesson"): number {
   const re = new RegExp(`^${word} (\\d+)\\b`);
@@ -71,6 +70,15 @@ export function standardWeek(theme: string, n: number): Week {
     modules: [
       t("goal"),
       t("example"),
+      // A small card tree to start from: a quick check that deals a review card below 60% and a stretch card at 90%+.
+      { id: "qc", ...base({ type: "quiz", title: "Quick check", body: "Two quick questions about the example. Your score decides what comes next.", minutes: 5, attempts: 2,
+        questions: [
+          { id: "qc1", text: "What did the example do well?", options: ["Edit this answer (correct)", "Edit this answer"], answer: 0 },
+          { id: "qc2", text: "Which change would help most?", options: ["Edit this answer (correct)", "Edit this answer"], answer: 0 },
+        ],
+        bands: [{ min: 0, next: "qc-review" }, { min: 60, next: null }, { min: 90, next: "qc-stretch" }] }) },
+      { id: "qc-review", ...base({ type: "read", title: "Go over the example again", body: "Watch the example once more, slowly. Pause at the moment that answers the quick check, and write down what you notice.", minutes: 10 }) },
+      { id: "qc-stretch", ...base({ type: "practice", title: "Stretch: try it somewhere new", body: "Use this week’s idea in a new setting of your choice, and record one take.", minutes: 15, submitTo: "personal" }) },
       { id: "p", ...practice },
       t("studio"),
       t("reflect"),

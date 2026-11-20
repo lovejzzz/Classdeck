@@ -9,6 +9,7 @@ import { GoogleButton } from "@/components/GoogleButton";
 import { Icon } from "@/components/Icon";
 import { Clearable } from "@/components/Clearable";
 import { LogoMark, Wordmark } from "@/components/Logo";
+import { HeroTree } from "@/components/HeroTree";
 import { CARD_SIZE } from "@/lib/cards";
 
 type CourseTile = { id: string; title: string; subtitle?: string; weeks: number; cards: number; students: number; today?: string | null; toReview?: number; waiting?: number; role?: "owner" | "editor" | "viewer" };
@@ -107,8 +108,15 @@ export default function Home() {
     <main className="flex w-full flex-1 flex-col items-center justify-center px-4 py-16">
       <AccountMenu className="!fixed right-4 top-4 z-30 sm:right-6 sm:top-5" />
       <div className="rise"><Wordmark /></div>
+      <p className="rise mt-6 max-w-xl text-center text-[clamp(18px,2.6vw,24px)] font-medium leading-snug tracking-tight text-ink" style={{ "--i": 1 } as React.CSSProperties}>
+        Every answer opens a different door.
+      </p>
+      <p className="rise mt-2 max-w-lg text-center text-[14.5px] leading-relaxed text-ink-2" style={{ "--i": 2 } as React.CSSProperties}>
+        Build a course as a map of cards. Students who struggle get help, students who fly get a challenge, and you see every path.
+      </p>
+      <div className="rise mt-8 w-full max-w-[600px]" style={{ "--i": 3 } as React.CSSProperties}><HeroTree /></div>
 
-      <div className="rise mt-12 grid w-full max-w-md gap-6" style={{ "--i": 1 } as React.CSSProperties}>
+      <div className="rise mt-10 grid w-full max-w-md gap-6" style={{ "--i": 4 } as React.CSSProperties}>
         {me?.kind === "student" && (
           <Link href={`/learn/${me.courseId}/${me.studentId}`} className="flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-[13.5px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:bg-[#fafaf9]">
             <span className="flex-1">Continue as <span className="font-medium">{me.name}</span> in {me.courseTitle}</span>
@@ -137,6 +145,20 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      <ul className="rise mt-16 grid w-full max-w-3xl gap-3 sm:grid-cols-3" style={{ "--i": 5 } as React.CSSProperties}>
+        {[
+          ["split", "Branch by answer or score", "What a student picks, or how they score, decides the card they get next."],
+          ["layers", "Paths across lessons", "Today’s answer can choose next week’s card."],
+          ["eye", "See every path", "The map shows how many students took each branch, and who is stuck."],
+        ].map(([icon, title, text]) => (
+          <li key={title} className="rounded-2xl border border-line bg-white px-4 py-4">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#eef0fb] text-[#4b56a8]"><Icon name={icon} size={15} /></span>
+            <div className="mt-3 text-[14px] font-semibold text-ink">{title}</div>
+            <p className="mt-1 text-[13px] leading-relaxed text-ink-2">{text}</p>
+          </li>
+        ))}
+      </ul>
     </main>
   );
 }

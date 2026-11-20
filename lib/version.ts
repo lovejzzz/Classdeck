@@ -3,6 +3,20 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.7",
+    date: "2026-11-20",
+    changes: [
+      "The course map is now the main view (the Map tab): every lesson side by side, each card in its tree, wires between lessons. Zoom out to see the whole term as titles; zoom in to see what each card asks. The old view is the List tab.",
+      "Click a card on the map to edit it in the panel. Arrow keys move between cards and Enter opens one. Each lesson has + Card, and there is + Lesson at the end.",
+      "The card panel starts with the card’s neighbours: what deals it and what each of its answers or score ranges deals. Click one to move to it, or open the card on the map.",
+      "Where students are: on the map, each card shows who is working on it; a card where two or more have been stuck for over two days turns orange.",
+      "Students get a Map view of their own path: the cards they have, why each follow-up came (“You chose …”), and a card back for every path they didn’t take. A lesson’s ⋯ menu can show students every path instead.",
+      "Deleting a card in any way now removes the follow-ups only it dealt, even when saved from outside the website.",
+      "New courses from the template start with a small tree: a quick check that deals a review card below 60% and a stretch card at 90% and up.",
+      "A new home page: “Every answer opens a different door”, with an animated card tree.",
+    ],
+  },
+  {
     version: "0.1.6",
     date: "2026-11-20",
     changes: [

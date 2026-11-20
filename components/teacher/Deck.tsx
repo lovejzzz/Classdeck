@@ -22,7 +22,8 @@ import { useShortcuts } from "@/lib/shortcuts";
 import { useUrlState } from "@/lib/urlState";
 import { nextNumber, standardWeek } from "@/lib/templates";
 import { CardEditor } from "./CardEditor";
-import { CardTree } from "./CardTree";
+import { CourseMap } from "./CourseMap";
+import { NeighborGraph } from "./NeighborGraph";
 import { bandLabel, branchBelow, deleteCardIn, treeView, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
 import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
@@ -33,10 +34,18 @@ const clock = () => Date.now();
 const SIZE = CARD_SIZE.deck;
 
 /** The teacher's whole course as a deck: one row per week, lessons laid out left to right. */
-export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, live, readOnly = false }: { course: Course; connectors?: ConnectorInfo[]; readOnly?: boolean; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode }) {
+export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, live, readOnly = false, view = "list", onView }: {
+  course: Course; connectors?: ConnectorInfo[]; readOnly?: boolean; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode;
+  /** The course map (the default) or the list of weeks. */
+  view?: "map" | "list";
+  onView?: (v: "map" | "list") => void;
+}) {
   const [drafts, setDrafts] = useState<Record<string, Lesson>>({});
   const [editing, setEditing] = useState<{ lessonId: string; moduleId: string } | null>(null);
-  const [treeFor, setTreeFor] = useState<string | null>(null);
+  // A card or lesson the map should bring into view (set when moving there from the list or the editor).
+  const [mapFocus, setMapFocus] = useState<{ id: string; at: number } | null>(null);
+  /** Show a card or lesson on the course map. */
+  const showOnMap = (id: string) => { setMapFocus({ id, at: clock() }); if (view !== "map") onView?.("map"); };
   const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -371,6 +380,26 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
         statusSlot,
       )}
 
+      {view === "map" ? (
+        <div className="ml-[calc(50%-50vw)] w-screen px-4">
+          <CourseMap
+            lessons={allLessons()}
+            weekOf={Object.fromEntries(course.weeks.flatMap((w) => w.lessons.map((l) => [l.id, w.title.split(" · ")[0]])))}
+            todayId={course.currentLessonId}
+            students={course.students}
+            progress={progress}
+            readOnly={readOnly}
+            busy={editorOpen}
+            selected={editorOpen ? editing?.moduleId : null}
+            focus={mapFocus ?? (course.currentLessonId ? { id: course.currentLessonId, at: 0 } : null)}
+            onChange={change}
+            onChangeMany={changeMany}
+            onEdit={(lid, id) => { if (!readOnly) edit(lid, id); }}
+            onAddLesson={course.weeks.length ? () => addLesson(course.weeks[course.weeks.length - 1].id) : undefined}
+          />
+        </div>
+      ) : (
+        <>
       {course.weeks.length > 1 && <WeekNav
         className="top-14 -mx-4 mb-4"
         weeks={course.weeks.map((w, i) => ({ id: w.id, label: w.title.split(" · ")[0], ...classDone(w), current: i === currentWeekIndex }))}
@@ -474,7 +503,11 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                               }
                               setAgendaFor(l.id);
                             }],
-                            [lessonWires.length ? `Card tree (${lessonWires.length} branch${lessonWires.length === 1 ? "" : "es"})` : "Card tree", () => setTreeFor(l.id)],
+                            [lessonWires.length ? `Show on the map (${lessonWires.length} branch${lessonWires.length === 1 ? "" : "es"})` : "Show on the map", () => showOnMap(l.id)],
+                            ...(lessonWires.length ? [[l.openPaths ? "Hide paths from students (card backs)" : "Show students every path", () => {
+                              change({ ...l, openPaths: !l.openPaths || undefined });
+                              toast(l.openPaths ? "Students see card backs for paths they haven’t taken" : "Students see every path and what deals it", { icon: "split" });
+                            }] as [string, () => void]] : []),
                             ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
                             ...(l.elective ? [["Make required for everyone", () => {
                               change({ ...l, elective: undefined });
@@ -546,24 +579,11 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
         </div>}
       </div>
 
-      {running && (
-        <SessionRunner course={course} lesson={lessonOf(running.lessonId)} weekTitle={running.weekTitle} posts={studioPosts} onClose={() => setRunning(null)} live={live} />
+        </>
       )}
 
-      {treeFor && lessonOf(treeFor) && (
-        <CardTree
-          lessons={allLessons()}
-          lessonId={treeFor}
-          progress={progress}
-          students={course.students}
-          readOnly={readOnly}
-          busy={editorOpen}
-          onChange={change}
-          onChangeMany={changeMany}
-          onEdit={(lid, id) => !readOnly && edit(lid, id)}
-          onLesson={setTreeFor}
-          onClose={() => setTreeFor(null)}
-        />
+      {running && (
+        <SessionRunner course={course} lesson={lessonOf(running.lessonId)} weekTitle={running.weekTitle} posts={studioPosts} onClose={() => setRunning(null)} live={live} />
       )}
 
       {cur && curModule && (
@@ -581,7 +601,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           onPrev={at > 0 ? () => step(-1) : undefined}
           onNext={at >= 0 && at < order.length - 1 ? () => step(1) : undefined}
           onSaveToLibrary={() => saveToLibrary(curModule)}
-          onTree={readOnly ? undefined : () => { setTreeFor(cur.id); closeEditor(); }}
+          onTree={readOnly ? undefined : () => { showOnMap(curModule.id); if (view !== "map") closeEditor(); }}
+          neighbors={<NeighborGraph card={curModule} lessons={allLessons()} onGo={(lid, id) => { edit(lid, id); if (view === "map") setMapFocus({ id, at: clock() }); }} onMap={view === "map" ? undefined : () => { showOnMap(curModule.id); closeEditor(); }} />}
           allCards={courseCards}
           onDuplicate={() => {
             const copy: Module = { ...structuredClone(curModule), id: uid("m-"), title: `${curModule.title} (copy)` };

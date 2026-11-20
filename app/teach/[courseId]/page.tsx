@@ -22,7 +22,8 @@ import { toast } from "@/lib/toast";
 import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
 
-const TABS = [["plan", "Deck"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
+// Map (the course as a card tree) is the default; List is the same cards in rows of weeks.
+const TABS = [["map", "Map"], ["plan", "List"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
 type Tab = (typeof TABS)[number][0];
 
 const KIND: Record<ClassEvent["kind"], { icon: string; tint: string }> = {
@@ -50,9 +51,9 @@ export default function TeachPage() {
   // The tab lives in the address, so Back returns to the previous tab and a reload stays put.
   const [tabParam, setTabParam] = useUrlState("tab");
   // "class" was its own tab before it joined Students.
-  const tab: Tab = tabParam === "class" ? "students" : TABS.some(([id]) => id === tabParam) ? (tabParam as Tab) : "plan";
-  // Every tab change is its own Back step, including going back to the Deck.
-  const setTab = (t: Tab) => setTabParam(t === "plan" ? null : t, { push: true, drop: ["card", "run", "qr"] });
+  const tab: Tab = tabParam === "class" ? "students" : TABS.some(([id]) => id === tabParam) ? (tabParam as Tab) : "map";
+  // Every tab change is its own Back step, including going back to the map.
+  const setTab = (t: Tab) => setTabParam(t === "map" ? null : t, { push: true, drop: ["run", "qr", ...(t === "map" || t === "plan" ? [] : ["card"])] });
   const [picked, setPicked] = useState<string | null>(null);
   const [sel, setSel] = useState<{ sid: string; mid: string } | null>(null);
   const seenKey = `seen-at:teacher:${courseId}`;
@@ -119,12 +120,13 @@ export default function TeachPage() {
           </button>
           <Shortcuts
             list={[
-              { keys: "1", label: "Deck", run: () => setTab("plan") },
-              { keys: "2", label: "Students", run: () => setTab("students") },
-              { keys: "3", label: "Grades", run: () => setTab("grades") },
-              ...(viewer ? [] : [{ keys: "4", label: "Settings", run: () => setTab("settings") }]),
+              { keys: "1", label: "Map", run: () => setTab("map") },
+              { keys: "2", label: "List", run: () => setTab("plan") },
+              { keys: "3", label: "Students", run: () => setTab("students") },
+              { keys: "4", label: "Grades", run: () => setTab("grades") },
+              ...(viewer ? [] : [{ keys: "5", label: "Settings", run: () => setTab("settings") }]),
             ]}
-            extra={tab === "plan" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s Collab Studio" }, { keys: "[", label: "Previous / next week ( [ ] )" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
+            extra={tab === "plan" || tab === "map" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s Collab Studio" }, { keys: "[", label: "Previous / next week ( [ ] )" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
           <NotificationCenter
             title="Class activity"
@@ -220,7 +222,7 @@ export default function TeachPage() {
           )}
         </div>
 
-        <main key={tab} className="rise mt-6">
+        <main key={tab === "plan" ? "map" : tab} className="rise mt-6">
           {viewer && (
             <p className="mb-5 rounded-xl bg-lane px-4 py-2.5 text-[13px] text-ink-2">You can view this course. Only its owner and editors can change it.</p>
           )}
@@ -244,7 +246,7 @@ export default function TeachPage() {
               <Icon name="arrow" size={13} />
             </button>
           )}
-          {tab === "plan" && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} />}
+          {(tab === "plan" || tab === "map") && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} view={tab === "map" ? "map" : "list"} onView={(v) => setTab(v === "map" ? "map" : "plan")} />}
           {tab === "students" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
           {tab === "students" && <div className={course.students.length ? "mt-8" : ""}><Settings part="students" course={course} readOnly={viewer} onInvite={() => setInviting(true)} onChanged={refresh} /></div>}
           {tab === "grades" && (course.students.length > 0 || courseId === "demo") && <Gradebook state={state} />}

@@ -220,6 +220,11 @@ export interface Module {
   bands?: ScoreBand[];
   /** Set only for students: this card was dealt to them by one of their answers or scores. */
   dealtFor?: boolean;
+  /**
+   * Set only for students: the branches out of this card. A dealt one points at its card and says why; one not dealt
+   * is a card back (its title and the answer that deals it show only when the teacher opened the lesson's paths).
+   */
+  paths?: { to?: string; title?: string; type?: ModuleType; why?: string }[];
 }
 
 export type FormPart = "feedback" | "next" | "levels" | "score" | "links" | "status";
@@ -261,6 +266,8 @@ export interface Lesson {
   session?: SessionPlan;
   /** An elective: students choose whether to take it. */
   elective?: boolean;
+  /** Card trees: students see every path out of this lesson's cards (titles and the answers that deal them), not card backs. */
+  openPaths?: boolean;
   /** Sent to students only: whether they've chosen this elective, and how many classmates have. */
   chosen?: boolean;
   takenBy?: number;
