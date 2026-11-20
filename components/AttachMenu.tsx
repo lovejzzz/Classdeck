@@ -13,8 +13,8 @@ type Mode = "audio" | "video" | "screen" | "photo" | "draw" | "link";
 
 /**
  * Every way to add something: record audio, video, or your screen; take a photo; draw; upload a file; or paste a link.
- * Students see recording first (that's what they hand in). Teachers building a card see Link, Upload, Draw, and the
- * recordings under More.
+ * Students see recording first (that's what they hand in). Teachers building a card see Link, Upload, Draw, and
+ * Record, which opens a choice of audio, video, the screen or a photo.
  */
 export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pdf,.doc,.docx,.ppt,.pptx,.key,.txt,.csv", compact = false, teacher = false }: {
   onAdd: (a: Omit<Attachment, "id">) => Promise<void> | void;
@@ -52,10 +52,10 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
   type Opt = { mode: Mode; label: string; icon: string; group?: string };
   const options: Opt[] = teacher
     ? [
-        { mode: "audio", label: "Audio", icon: "mic", group: "Recording" },
-        { mode: "video", label: "Video", icon: "camera", group: "Recording" },
-        { mode: "screen", label: "Screen", icon: "board", group: "Recording" },
-        { mode: "photo", label: "Take a photo", icon: "image" },
+        { mode: "audio", label: "Audio", icon: "mic" },
+        { mode: "video", label: "Video", icon: "video" },
+        { mode: "screen", label: "Screen", icon: "board" },
+        { mode: "photo", label: "Photo", icon: "camera" },
       ]
     : [
         { mode: "screen", label: "Record screen", icon: "board" },
@@ -111,9 +111,9 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
       <button onClick={() => file.current?.click()} disabled={busy} className={btn}><Icon name="upload" size={13} /> {busy ? `Uploading…${progress > 0 && progress < 1 ? ` ${Math.round(progress * 100)}%` : ""}` : "Upload"}</button>
       {teacher && <button onClick={() => setMode("draw")} className={btn}><Icon name="practice" size={13} /> Draw</button>}
       <div ref={menu} className="relative">
-        <button onClick={() => setMore((m) => !m)} aria-expanded={more} className={btn}>More <Icon name="chevron" size={12} className={`transition-transform duration-300 ${more ? "rotate-180" : ""}`} /></button>
+        <button onClick={() => setMore((m) => !m)} aria-expanded={more} aria-haspopup="menu" className={btn}>{teacher ? <><Icon name="mic" size={13} /> Record</> : "More"} <Icon name="chevron" size={12} className={`transition-transform duration-300 ${more ? "rotate-180" : ""}`} /></button>
         {more && (
-          <div className="pop absolute bottom-full left-0 z-20 mb-1.5 w-48 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]" role="menu">
+          <div className={`pop absolute bottom-full left-0 z-20 mb-1.5 ${teacher ? "w-40" : "w-48"} rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]`} role="menu">
             {options.map((o, i) => (
               <div key={o.mode}>
                 {o.group && o.group !== options[i - 1]?.group && <div className="px-2.5 pb-0.5 pt-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{o.group}</div>}

@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.15",
+    date: "2026-11-20",
+    changes: [
+      "Building a card, More is now Record: pick Audio, Video, Screen or Photo.",
+      "Students’ maps show playing-card shapes too, with each card’s picture; a path not yet taken is a card back.",
+      "The course map fills the screen; the Privacy, Terms and version line sits below it.",
+    ],
+  },
+  {
     version: "0.1.14",
     date: "2026-11-20",
     changes: [

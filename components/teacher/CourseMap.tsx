@@ -625,7 +625,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         tabIndex={0}
         onKeyDown={onKey}
         aria-label="Course map"
-        className="tree-canvas relative h-[calc(100vh-11.5rem)] min-h-[30rem] overflow-auto rounded-2xl border border-line bg-canvas outline-none focus-visible:ring-2 focus-visible:ring-[#4b56a8]/30"
+        className="tree-canvas relative h-[calc(100dvh-11.75rem)] sm:h-[calc(100dvh-9.5rem)] min-h-[30rem] overflow-auto rounded-2xl border border-line bg-canvas outline-none focus-visible:ring-2 focus-visible:ring-[#4b56a8]/30"
         style={{ backgroundSize: `${22 * zoom}px ${22 * zoom}px` }}
         onPointerDown={(e) => {
           if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.canvas) return;

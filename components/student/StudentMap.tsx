@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { pathColor, suitOfCard, suitOf } from "@/lib/ui";
-import { faceMeta } from "@/lib/kinds";
+import { faceMeta, faceOf } from "@/lib/kinds";
+import { KindArt } from "../cards/KindArt";
 import type { Lesson, Module, Status } from "@/lib/types";
 import { Icon } from "../Icon";
 
-const W = 212;
-const H = 84;
+// Each card is a playing card, 5 wide by 7 tall (a card group is a frame holding its cards as rows).
+const W = 180;
+const H = Math.round((W * 7) / 5);
 const MH = 62; // a card inside a card group's frame
 const FRAME_TOP = 34;
 const COL = 84;
@@ -161,15 +163,15 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
             const src = n.id.split("~")[0];
             const answered = src.startsWith("deck:") ? !!nodes.get(src)?.deck?.done : statusOf(src) === "done";
             return (
-              <div key={n.id} className="tree-node absolute flex flex-col justify-center rounded-[16px] border border-dashed border-[#c9ccdf] px-3.5" style={{ left: n.x, top: n.y, width: n.w, height: n.h, animationDelay: `${Math.min(i, 14) * 25}ms`, background: known ? "#fff" : "repeating-linear-gradient(135deg, #f2f3f9 0 8px, #e9ebf5 8px 16px)" }}>
+              <div key={n.id} className="tree-node absolute flex flex-col justify-center rounded-[16px] border border-dashed border-[#c9ccdf] px-4 text-center" style={{ left: n.x, top: n.y, width: n.w, height: n.h, animationDelay: `${Math.min(i, 14) * 25}ms`, background: known ? "#fff" : "repeating-linear-gradient(135deg, #f2f3f9 0 8px, #e9ebf5 8px 16px)" }}>
                 {known ? (
                   <>
                     <span className="text-[10.5px] font-medium uppercase tracking-[0.06em]" style={{ color: suitOf(n.stub.type ?? "read").tint }}>Another path</span>
-                    <span className="mt-0.5 truncate text-[13px] font-semibold text-ink-2">{n.stub.title}</span>
-                    {n.stub.why && <span className="mt-0.5 truncate text-[11px] text-ink-3">{n.stub.why}</span>}
+                    <span className="mt-1 line-clamp-3 text-[14px] font-semibold text-ink-2">{n.stub.title}</span>
+                    {n.stub.why && <span className="mt-1 line-clamp-2 text-[11px] text-ink-3">{n.stub.why}</span>}
                   </>
                 ) : (
-                  <span className="flex items-center gap-2 text-[12.5px] font-medium text-[#7b80a8]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/80 text-[14px]">?</span>{answered ? "A path you didn’t take" : "Answer to see where this leads"}</span>
+                  <span className="flex flex-col items-center gap-2.5 text-[12.5px] font-medium text-[#7b80a8]"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-[20px]">?</span>{answered ? "A path you didn’t take" : "Answer to see where this leads"}</span>
                 )}
               </div>
             );
@@ -183,21 +185,30 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
             <button
               key={n.id}
               onClick={(e) => onOpen(n.lessonId, m.id, e.currentTarget)}
-              className={`tree-node press absolute rounded-[16px] border border-line bg-white text-left ${s === "done" ? "opacity-80" : ""}`}
+              className={`tree-node press absolute flex flex-col rounded-[16px] border border-line bg-white text-left ${s === "done" ? "opacity-80" : ""}`}
               style={{ left: n.x, top: n.y, width: n.w, height: n.h, animationDelay: `${Math.min(i, 14) * 25}ms`, borderColor: m.dealtFor ? `${tone}80` : undefined }}
               aria-label={`${m.title}${s === "done" ? ", done" : ""}`}
             >
               {into && <span className="absolute -left-[6px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-white" style={{ background: tone }} />}
-              <span className="tree-bar block h-[5px] rounded-t-[16px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
-              <span className={`flex items-center gap-1.5 px-3.5 text-[10.5px] font-medium uppercase tracking-[0.06em] ${n.inDeck ? "pt-1.5" : "pt-2"}`} style={{ color: suit.tint }}>
+              <span className="tree-bar block h-[5px] flex-none rounded-t-[16px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
+              <span className={`flex flex-none items-center gap-1.5 px-3.5 text-[10.5px] font-medium uppercase tracking-[0.06em] ${n.inDeck ? "pt-1.5" : "pt-2"}`} style={{ color: suit.tint }}>
                 {faceMeta(m).name}
                 {m.dealtFor && <span className="rounded-full px-1.5 normal-case tracking-normal" style={{ background: `${tone}14`, color: tone }}>For you</span>}
                 <span className="flex-1" />
                 {s === "done" && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-ok text-white"><Icon name="check" size={10} strokeWidth={3} /></span>}
                 {s === "doing" && <span className="h-2 w-2 rounded-full bg-warn" />}
               </span>
-              <span className="block truncate px-3.5 pt-0.5 text-[13.5px] font-semibold text-ink">{m.title || "Untitled card"}</span>
-              {n.why && !n.inDeck && <span className="block truncate px-3.5 pt-0.5 text-[11px]" style={{ color: tone }}>{n.why}</span>}
+              <span className={`block flex-none px-3.5 pt-0.5 text-[13.5px] font-semibold leading-snug text-ink ${n.inDeck ? "truncate" : "line-clamp-2"}`}>{m.title || "Untitled card"}</span>
+              {!n.inDeck && (
+                // The card's picture (or a drawing of what it is), like the face of a playing card.
+                <span className="relative mx-3 mb-3 mt-2 block min-h-0 flex-1 overflow-hidden rounded-[10px]" style={{ background: suit.cover }}>
+                  {m.attachments?.[0]?.kind === "image"
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={m.attachments[0].url} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" />
+                    : <KindArt id={m.id} face={faceOf(m)} tint={suit.tint} cover={suit.cover} />}
+                </span>
+              )}
+              {n.why && !n.inDeck && <span className="-mt-1.5 block flex-none truncate px-3.5 pb-2.5 text-[11px]" style={{ color: tone }}>{n.why}</span>}
             </button>
           );
         })}
