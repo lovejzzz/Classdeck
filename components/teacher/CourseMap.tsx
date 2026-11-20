@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { bandLabel, bandsOf, branchBelow, canBranch, DEFAULT_BANDS, SCORE, SHARED_ONLY, wiresOf, type Wire } from "@/lib/branching";
 import { suitOfCard, suitOfKind } from "@/lib/ui";
-import { PICKABLE, faceMeta, kindMeta, kindOf, newCard as makeCard, type CardKind } from "@/lib/kinds";
+import { PICKABLE, faceMeta, kindMeta, kindOf, newCard as makeCard, unfinished, type CardKind } from "@/lib/kinds";
 import type { AnswerValue, Lesson, Module, ProgressMap } from "@/lib/types";
 import { Icon } from "../Icon";
 import { toast } from "@/lib/toast";
@@ -748,7 +748,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
                           <Icon name={faceMeta(m).icon} size={11} />{faceMeta(m).name}
                           <span className="truncate normal-case tracking-normal text-ink-3">
-                            · {fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : "everyone"}
+                            · {unfinished(m) ? <span className="text-[#a0561f]">hidden until it has a question</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : "everyone"}
                           </span>
                         </span>
                         {typing?.id === m.id && typing.field === "title"
@@ -774,7 +774,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                           <button onClick={() => onEdit(nd.lessonId, c.id)} className="flex w-full items-center gap-2 px-3.5 text-left hover:bg-lane" style={{ height: SEC }} title="Edit this card">
                             <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md" style={{ color: suitOfCard(c).tint, background: "rgba(0,0,0,0.035)" }}><Icon name={faceMeta(c).icon} size={11} /></span>
                             <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{c.title || "Untitled card"}</span>
-                            <span className="text-[10.5px] text-ink-3">{faceMeta(c).name}</span>
+                            <span className={`text-[10.5px] ${unfinished(c) ? "text-[#a0561f]" : "text-ink-3"}`}>{unfinished(c) ? "No question yet" : faceMeta(c).name}</span>
                           </button>
                           {branchQs(c).map((q) => q.options.map((o, oi) => {
                             const to = q.next?.[oi];

@@ -477,11 +477,11 @@ async function main() {
     await A.op(tid, { op: "addStudents", names: "Hal One\nIvy Two" });
     const l = courseOf(await A.state(tid)).weeks[0].lessons[0];
     const card = (id, kind, title, extra = {}) => ({ id, kind, type: "read", title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
-    await A.op(tid, { op: "saveLesson", lesson: { ...l, modules: [card("m-poll", "poll", "Which do you prefer?", { questions: [{ id: "p", text: "Prefer?", options: ["Ear", "Score"], answer: 1, next: ["m-ear", null] }] }), card("m-ear", "text", "Ear path")] } });
+    await A.op(tid, { op: "saveLesson", lesson: { ...l, modules: [card("m-poll", "choice", "Which do you prefer?", { type: "practice", poll: true, questions: [{ id: "p", text: "Prefer?", options: ["Ear", "Score"], answer: 1, next: ["m-ear", null] }] }), card("m-ear", "content", "Ear path"), card("m-blank", "choice", "Question 2", { type: "practice", questions: [{ id: "b", text: "", options: ["", ""], answer: 0 }] })] } });
     const savedMods = courseOf(await A.state(tid)).weeks[0].lessons[0].modules;
     const saved = savedMods.find((m) => m.id === "m-poll");
-    check("an old Text card comes back as Content", savedMods.find((m) => m.id === "m-ear")?.kind === "content", savedMods.find((m) => m.id === "m-ear")?.kind);
-    check("an old Poll card becomes a Choice card with no right answer, its wiring kept", saved.kind === "choice" && saved.poll === true && saved.type === "practice" && saved.questions[0].answer === undefined && saved.questions[0].next?.[0] === "m-ear", saved);
+    check("a Content card saves as Content", savedMods.find((m) => m.id === "m-ear")?.kind === "content", savedMods.find((m) => m.id === "m-ear")?.kind);
+    check("a poll saves as a Choice card with no right answer, its wiring kept", saved.kind === "choice" && saved.poll === true && saved.type === "practice" && saved.questions[0].answer === undefined && saved.questions[0].next?.[0] === "m-ear", saved);
     const links = (await A.op(tid, { op: "setupLinks" })).links;
     const as = async (name) => { const c = client(); const r = await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] }); return { c, id: r.studentId }; };
     const h = await as("Hal One"), i = await as("Ivy Two");
@@ -490,6 +490,8 @@ async function main() {
     await i.c.op(tid, { op: "answer", studentId: i.id, moduleId: "m-poll", qid: "p", choice: 1 });
     const seen = modulesOf(courseOf(await i.c.state(`${tid}?as=${i.id}`))).find((m) => m.id === "m-poll");
     check("students see the class tally", JSON.stringify(seen.tally) === "[1,1]", seen.tally);
+    check("a Choice card with no question yet is hidden from students", !modulesOf(courseOf(await i.c.state(`${tid}?as=${i.id}`))).some((m) => m.id === "m-blank"));
+    check("but the teacher still has it", modulesOf(courseOf(await A.state(tid))).some((m) => m.id === "m-blank"));
     check("the other choice deals nothing", !modulesOf(courseOf(await i.c.state(`${tid}?as=${i.id}`))).some((m) => m.id === "m-ear"));
     const events = (await A.state(tid)).events ?? [];
     check("a poll vote is never logged as a wrong answer", !events.some((e) => e.kind === "wrong" && e.moduleId === "m-poll"));
@@ -506,7 +508,7 @@ async function main() {
     const card = (id, kind, title, extra = {}) => ({ id, kind, type: "read", title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
     const group = { id: "m-g", kind: "group", type: "group", title: "Check", body: "", audience: { kind: "all" }, tools: [], attachments: [], members: ["m-c1", "m-c2", "m-c3", "m-nope"], bands: [{ min: 0, next: "m-lo" }, { min: 60, next: null }, { min: 90, next: "m-hi" }] };
     // Members out of order in the lesson: the server puts them right after their group.
-    await A.op(tid, { op: "saveLesson", lesson: { ...l, modules: [mc("m-c2", 1), group, card("m-lo", "text", "Review"), mc("m-c1", 0), card("m-hi", "text", "Stretch"), mc("m-c3", 0)] } });
+    await A.op(tid, { op: "saveLesson", lesson: { ...l, modules: [mc("m-c2", 1), group, card("m-lo", "content", "Review"), mc("m-c1", 0), card("m-hi", "content", "Stretch"), mc("m-c3", 0)] } });
     const ls = courseOf(await A.state(tid)).weeks[0].lessons[0];
     check("a group keeps real members only, right after it", JSON.stringify(ls.modules.find((m) => m.id === "m-g").members) === JSON.stringify(["m-c1", "m-c2", "m-c3"]) && ls.modules.map((m) => m.id).slice(0, 4).join() === "m-g,m-c1,m-c2,m-c3", ls.modules.map((m) => m.id));
     const links = (await A.op(tid, { op: "setupLinks" })).links;

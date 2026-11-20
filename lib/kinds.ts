@@ -9,8 +9,6 @@ import type { Module, ModuleType, Question } from "./types";
 export type Family = "content" | "question";
 /** The kinds a teacher picks from: Content; Q&A, Choice, Discussion. A card group is made by merging cards. */
 export type CardKind = "content" | "answer" | "choice" | "discussion" | "group";
-/** The kinds before 0.1.11, still read from stored cards and folded into the five above. */
-type OldKind = "text" | "image" | "link" | "recording" | "poll";
 /** How a card looks: its picture and name. A Content card looks like its media; a Choice card like a quiz or a poll. */
 export type Face = "text" | "image" | "video" | "link" | "recording" | "answer" | "choice" | "poll" | "discussion" | "group";
 
@@ -47,12 +45,9 @@ const VIDEO_LINK = /^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be|vimeo\.com)/
 type KindFields = Pick<Module, "kind" | "type" | "attachments" | "poll" | "questions">;
 const isKind = (k: unknown): k is CardKind => KINDS.some((x) => x.id === k);
 
-/** A card's kind: the one stored, or (for a card from before these five kinds) the one its old kind or type points to. */
+/** A card's kind: the one stored, or (for a card made without one, such as a template) the one its type points to. */
 export function kindOf(m: KindFields): CardKind {
   if (isKind(m.kind)) return m.kind;
-  const old = m.kind as OldKind | undefined;
-  if (old === "poll") return "choice";
-  if (old) return "content";
   switch (m.type) {
     case "group":
       return "group";
@@ -73,7 +68,7 @@ export function kindOf(m: KindFields): CardKind {
 }
 
 /** Whether a card is a poll: a Choice card with no right answer. */
-export const isPoll = (m: KindFields) => kindOf(m) === "choice" && !!(m.poll || m.kind === ("poll" as string) || m.type === "selfcheck");
+export const isPoll = (m: KindFields) => kindOf(m) === "choice" && !!(m.poll || m.type === "selfcheck");
 
 /** How a card looks. A Content card follows its first piece of media: a picture, a video, a recording, a link, or words. */
 export function faceOf(m: KindFields): Face {
@@ -138,9 +133,11 @@ export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
   return next;
 }
 
-/** A card from before kinds, given one (idempotent: a card with a kind comes back unchanged). */
+/** A card made without a kind (or with one its type doesn't fit), given one. Idempotent. */
 export function withKind(m: Module): Module {
-  if (isKind(m.kind) && (m.type === typeOfKind(m.kind, m.type) || (m.kind === "choice" && m.poll && m.type === "practice"))) return m;
+  // A poll keeps no right answer, and only one question.
+  const cleanPoll = !m.poll || (m.type === "practice" && (m.questions?.length ?? 0) <= 1 && !m.questions?.some((q) => q.answer !== undefined));
+  if (isKind(m.kind) && cleanPoll && m.type === typeOfKind(m.kind, m.type)) return m;
   return asKind(m, kindOf(m));
 }
 
@@ -171,3 +168,6 @@ export function addToGroup<L extends { modules: Module[] }>(lesson: L, groupId: 
   modules.splice(at, 0, card);
   return { lesson: { ...lesson, modules }, card };
 }
+
+/** A Choice card whose question has no words yet: students don't see it until the teacher writes one. */
+export const unfinished = (m: KindFields) => kindOf(m) === "choice" && !(m.questions ?? []).some((q) => q.text?.trim());

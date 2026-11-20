@@ -14,13 +14,13 @@ check("a YouTube link: Video", faceOf(card({ kind: "content", attachments: [att(
 check("a page link: Link", faceOf(card({ kind: "content", attachments: [att("link", "https://en.wikipedia.org/wiki/Cadence")] })) === "link");
 check("an uploaded video: Recording", faceOf(card({ kind: "content", attachments: [att("video", "/api/upload/x.webm")] })) === "recording");
 
-// Old kinds fold into the new ones.
-for (const old of ["text", "image", "link", "recording"]) check(`old ${old} → content`, withKind(card({ kind: old as never })).kind === "content");
-const oldPoll = withKind(card({ kind: "poll" as never, type: "practice", poll: true, questions: [{ id: "q", text: "?", options: ["a", "b"], answer: 1, next: ["x", null] }] }));
-check("old poll → a Choice card with no right answer", oldPoll.kind === "choice" && oldPoll.poll === true && oldPoll.questions?.[0].answer === undefined && oldPoll.questions?.[0].next?.[0] === "x");
+// A poll is a Choice card with no right answer.
+const oldPoll = withKind(card({ type: "practice", poll: true, questions: [{ id: "q", text: "?", options: ["a", "b"], answer: 1, next: ["x", null] }] }));
+check("a poll card is a Choice card with no right answer", oldPoll.kind === "choice" && oldPoll.poll === true && oldPoll.questions?.[0].answer === undefined && oldPoll.questions?.[0].next?.[0] === "x");
 check("a poll looks like a poll", faceOf(oldPoll) === "poll" && isPoll(oldPoll));
 check("withKind leaves a current poll alone", withKind(oldPoll) === oldPoll);
 check("a rating card becomes a poll", isPoll(withKind(card({ type: "selfcheck" }))));
+check("an unknown kind falls back to its type", withKind(card({ kind: "text" as never })).kind === "content");
 
 // The right-answer switch.
 const quizQ = asKind(oldPoll, "choice", false);

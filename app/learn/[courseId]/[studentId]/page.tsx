@@ -694,7 +694,8 @@ function TipBar() {
   const key = "tip:cards:v1";
   const [show, setShow] = useState(() => {
     try {
-      return typeof window !== "undefined" && !localStorage.getItem(key);
+      // Keyboard tips are no use on a phone or tablet without a keyboard and mouse.
+      return typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches && !localStorage.getItem(key);
     } catch {
       return false;
     }

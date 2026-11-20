@@ -59,17 +59,17 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
       <div className="flex items-center gap-1 border-b border-line px-2 pt-1.5">
         {([["next", "For you", recs.length], ["todo", "To-do", todos.length]] as const).map(([k, label, n]) => (
           <button key={k} onClick={() => setTab(k)} aria-pressed={tab === k}
-            className={`press -mb-px flex h-9 items-center gap-1.5 border-b-2 px-3 text-[13px] ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>
+            className={`press -mb-px flex h-9 flex-none items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-[13px] ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>
             {label}<span className="mono text-[11px]">{n}</span>
           </button>
         ))}
         <span className="flex-1" />
         {typeof Notification !== "undefined" && !canNotify && Notification.permission !== "denied" && (
-          <button onClick={async () => setCanNotify((await Notification.requestPermission()) === "granted")} className="btn btn-quiet press h-7 px-2 text-[12px]" title="Get a notification when your teacher sends a reminder">
-            <Icon name="clock" size={12} /> Turn on reminders
+          <button onClick={async () => setCanNotify((await Notification.requestPermission()) === "granted")} className="btn btn-quiet press h-7 whitespace-nowrap px-2 text-[12px]" title="Get a notification when your teacher sends a reminder" aria-label="Turn on reminders">
+            <Icon name="clock" size={12} /><span className="hidden sm:inline"> Turn on reminders</span>
           </button>
         )}
-        <button onClick={onBoard} className="btn btn-quiet press h-7 px-2 text-[12px]">My progress <Icon name="arrow" size={12} /></button>
+        <button onClick={onBoard} className="btn btn-quiet press h-7 whitespace-nowrap px-2 text-[12px]">My progress <Icon name="arrow" size={12} /></button>
       </div>
 
       {tab === "next" ? (

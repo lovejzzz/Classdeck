@@ -1,3 +1,4 @@
+import { unfinished } from "./kinds";
 import type { Lesson, Module, PresetId, Profile } from "./types";
 import { followUps, type TreeView } from "./branching";
 
@@ -42,7 +43,7 @@ export function visibleModules(lesson: Lesson, studentId: string, chosen: Record
   const out: Module[] = [];
   for (const m of lesson.modules) {
     const a = m.audience;
-    if (m.type === "group" || groupHidden.has(m.id)) continue;
+    if (m.type === "group" || groupHidden.has(m.id) || unfinished(m)) continue;
     if (hidden.has(m.id) && !dealt.has(m.id)) continue;
     if (a.kind === "all") out.push(m);
     else if (a.kind === "student") {

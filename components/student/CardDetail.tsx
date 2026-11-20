@@ -7,7 +7,7 @@ import { useShortcuts } from "@/lib/shortcuts";
 import { dueInfo, optionOrder, quizSet } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META, suitOfCard } from "@/lib/ui";
-import { faceMeta, familyOf, isPoll, kindOf } from "@/lib/kinds";
+import { faceMeta, familyOf, kindOf } from "@/lib/kinds";
 import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Plan, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
@@ -67,8 +67,10 @@ export function CardDetail(p: DetailProps) {
   const due = p.progress?.status === "done" ? undefined : dueInfo(m.due, now);
   const review = p.progress?.review;
   const kind = kindOf(m);
-  // Content cards are to take in, and a poll is just a vote: no notes box under either.
-  const hasOutput = !!meta.outputLabel && m.type !== "selfcheck" && familyOf(kind) !== "content" && !isPoll(m);
+  // Only a Q&A card has a box to write in. A Content card is to take in (it gets a plain Done button), and a Choice
+  // card is done once it's answered.
+  const hasOutput = !!meta.outputLabel && m.type !== "selfcheck" && kind === "answer";
+  const doneOnly = familyOf(kind) === "content";
   // A vote or a multiple-choice answer is the whole response: no recording or file box under it.
   const showWork = WORK_TYPES.has(m.type) && !m.choice && kind !== "choice";
   const skills = (m.skills ?? []).map((id) => p.course.skills?.find((s) => s.id === id)?.name).filter(Boolean);
@@ -383,18 +385,18 @@ export function CardDetail(p: DetailProps) {
           </div>
         )}
 
-        {hasOutput && !m.choice && (
+        {(hasOutput || doneOnly) && !m.choice && (
           // Stays in view at the bottom of the card while you scroll through long content.
           <div className="sticky -bottom-3 z-10 -mx-6 -mb-6 mt-7 flex flex-wrap items-center gap-3 rounded-b-[inherit] border-t border-line bg-white/95 px-6 pb-6 pt-3 backdrop-blur sm:-bottom-8 sm:-mx-8 sm:-mb-8 sm:px-8 sm:pb-11">
             <button onClick={() => save("done")} disabled={finishing} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>
-              <Icon name="check" size={14} /> {p.progress?.status === "done" ? "Save changes" : review?.verdict === "revise" ? "Hand in revision" : meta.doneLabel}
+              <Icon name="check" size={14} /> {doneOnly ? (p.progress?.status === "done" ? "Done" : meta.doneLabel) : p.progress?.status === "done" ? "Save changes" : review?.verdict === "revise" ? "Hand in revision" : meta.doneLabel}
             </button>
             {checklist.length > 0 && p.progress?.status !== "done" && (
               <span className={`mono text-[11.5px] ${checks.length === checklist.length ? "text-ok" : ""}`}>{checks.length}/{checklist.length} steps</span>
             )}
             {p.progress?.status === "done" ? (
-              <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> Done. You can still edit.</span>
-            ) : (
+              <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> {doneOnly ? "Done" : "Done. You can still edit."}</span>
+            ) : doneOnly ? null : (
               <span className="text-[12.5px] text-ink-3">Saves as you type · {typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "⌘" : "Ctrl"}↵ to finish</span>
             )}
           </div>

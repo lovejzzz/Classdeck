@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.12",
+    date: "2026-11-20",
+    changes: [
+      "Content cards have a Done button again, so students can finish them (it went missing in 0.1.9).",
+      "A Choice card with no question written yet stays hidden from students. On the map it says so, and in a card group it shows as “No question yet”.",
+      "Multiple choice cards no longer show a notes box and a Save button: answering is all they need.",
+      "On phones: the For you and To-do tabs no longer break across lines, and the keyboard tips are hidden.",
+      "A poll never keeps a right answer, even one saved from an older copy of the card.",
+    ],
+  },
+  {
     version: "0.1.11",
     date: "2026-11-20",
     changes: [
