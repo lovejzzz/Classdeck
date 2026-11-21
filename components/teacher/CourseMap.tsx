@@ -5,6 +5,7 @@ import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFA
 import { bandTone, pathColor, suitOfCard, suitOfKind } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
+import { MathText, plainMath } from "../MathText";
 import type { AnswerValue, Lesson, Module, ProgressMap } from "@/lib/types";
 import { Icon } from "../Icon";
 import { toast } from "@/lib/toast";
@@ -376,7 +377,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   async function newCard(port: Port, type: CardKind, into: string) {
     const lesson = lessonWith(port.from);
     const src = lesson.modules.find((m) => m.id === port.from)!;
-    const what = port.q === SCORE ? `Score ${bandLabel(bandsOf(src)[port.option])}` : src.questions?.find((x) => x.id === port.q)?.options[port.option]?.trim();
+    const what = port.q === SCORE ? `Score ${bandLabel(bandsOf(src)[port.option])}` : plainMath(src.questions?.find((x) => x.id === port.q)?.options[port.option]?.trim() ?? "");
     const card = blank(type, what ? `If “${what.slice(0, 40)}”` : `New ${familyName(type)} card`);
     const p = portPos(port);
     born.set(card.id, { x: p.x + 40, y: p.y - HEAD / 2 });
@@ -606,7 +607,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const src = all.find((x) => x.m.id === w.from)?.m;
     if (!src) return "";
     if (w.q === SCORE) { const b = bandsOf(src)[w.option]; return b ? `Score ${bandLabel(b)}` : "Score"; }
-    const o = src.questions?.find((q) => q.id === w.q)?.options[w.option]?.trim();
+    const o = plainMath(src.questions?.find((q) => q.id === w.q)?.options[w.option]?.trim() ?? "");
     return `${letter(w.option)} · ${o || `Option ${w.option + 1}`}`;
   };
   const drawn = wires.filter((w) => nodes.has(nodeOf(w.from)) && nodes.has(w.to));
@@ -870,7 +871,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                             return (
                               <div key={`${q.id}-${oi}`} className="relative flex items-center gap-2 pl-9 pr-3.5" style={{ height: ROW }}>
                                 <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined}>{letter(oi)}</span>
-                                <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">{o.trim() || `Option ${oi + 1}`}</span>
+                                <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">{o.trim() ? <MathText text={o.trim()} /> : `Option ${oi + 1}`}</span>
                                 <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `${c.title}: answer ${letter(oi)} deals a card. Change it` : `${c.title}: deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: c.id, q: q.id, option: oi })} />
                               </div>
                             );
@@ -881,7 +882,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                         <div key={q.id}>
                           {typing?.id === m.id && typing.field === `q:${q.id}`
                             ? <div className="flex items-center px-2" style={{ height: SEC }}>{typeBox("h-6 text-[11.5px]")}</div>
-                            : <div onDoubleClick={startTyping(m.id, `q:${q.id}`, q.text)} className="truncate px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }} title={readOnly ? undefined : "Double-click to edit"}>{q.text.trim() || m.title || "Question"}</div>}
+                            : <div onDoubleClick={startTyping(m.id, `q:${q.id}`, q.text)} className="truncate px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }} title={readOnly ? undefined : "Double-click to edit"}><MathText text={q.text.trim() || m.title || "Question"} /></div>}
                           {q.options.map((o, oi) => {
                             const to = q.next?.[oi];
                             return (
@@ -889,7 +890,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                                 <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined} title={q.answer === oi && !m.poll ? "The right answer" : undefined}>{letter(oi)}</span>
                                 {typing?.id === m.id && typing.field === `o:${q.id}:${oi}`
                                   ? <span className="min-w-0 flex-1 pr-3">{typeBox("h-6 text-[12.5px]")}</span>
-                                  : <span onDoubleClick={startTyping(m.id, `o:${q.id}:${oi}`, o)} className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2" title={readOnly ? undefined : "Double-click to edit"}>{o.trim() || `Option ${oi + 1}`}</span>}
+                                  : <span onDoubleClick={startTyping(m.id, `o:${q.id}:${oi}`, o)} className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2" title={readOnly ? undefined : "Double-click to edit"}>{o.trim() ? <MathText text={o.trim()} /> : `Option ${oi + 1}`}</span>}
                                 <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `Answer ${letter(oi)} deals a card. Change it` : `Deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: q.id, option: oi })} />
                               </div>
                             );
@@ -999,7 +1000,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               return (
                 <div className="pop absolute z-20 w-72 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x + 14, top: Math.max(8, menu.y - 24) }} onPointerDown={(e) => e.stopPropagation()}>
                   <div className="px-2 pb-1.5 pt-0.5 text-[12px] font-medium text-ink">
-                    {isScore ? `Score ${band ? bandLabel(band) : ""}` : `Answer ${letter(menu.port.option)}${q?.options[menu.port.option]?.trim() ? ` · “${q.options[menu.port.option].trim()}”` : ""}`}
+                    {isScore ? `Score ${band ? bandLabel(band) : ""}` : `Answer ${letter(menu.port.option)}${q?.options[menu.port.option]?.trim() ? ` · “${plainMath(q.options[menu.port.option].trim())}”` : ""}`}
                   </div>
                   <div className="px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">New card in</div>
                   <div className="mb-1.5 flex flex-wrap gap-1 px-1">
@@ -1070,7 +1071,7 @@ function CardRest({ m, far, art, tint, cover }: { m: Module; far: boolean; art: 
             : <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />}
         </div>
       )}
-      {!far && body && <p className={`flex-none text-[12px] leading-[1.45] text-ink-2 ${art ? "line-clamp-3" : "line-clamp-[8]"}`}>{body}</p>}
+      {!far && body && <p className={`flex-none text-[12px] leading-[1.45] text-ink-2 ${art ? "line-clamp-3" : "line-clamp-[8]"}`}><MathText text={body} /></p>}
       {/* Nothing more to say: the card's drawing fills the rest of its face, as on a playing card. */}
       {!far && !body && !art && (
         <div className="relative min-h-0 flex-1 overflow-hidden rounded-[12px] opacity-80" style={{ background: cover }}>

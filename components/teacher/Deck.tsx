@@ -292,6 +292,17 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     if (cardParam === null && openRef.current) closeEditor(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardParam]);
+  // A card in the address when the course opens (a reload with the editor open, or a link to the card): open it again.
+  const linkUsed = useRef(false);
+  useEffect(() => {
+    if (linkUsed.current) return;
+    linkUsed.current = true;
+    const id = cardParam;
+    if (!id || readOnly) return;
+    const l = allLessons().find((x) => x.modules.some((m) => m.id === id));
+    setTimeout(() => (l ? edit(l.id, id) : setCardParam(null, { replace: true })), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function addCard(l: Lesson, kind: CardKind) {
     const m = newCard(kind);

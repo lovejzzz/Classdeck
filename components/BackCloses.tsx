@@ -7,7 +7,7 @@ import { useUrlState } from "@/lib/urlState";
  * Ties an overlay (a card, a full-screen view) to the browser's Back button: opening it adds ?key=value to the
  * address, Back closes it, and closing it on screen takes that step back out of the history.
  */
-export function BackCloses({ name, value, onBack }: { name: string; value: string | null; onBack: () => void }) {
+export function BackCloses({ name, value, onBack, restore = false }: { name: string; value: string | null; onBack: () => void; restore?: boolean }) {
   const [param, setParam] = useUrlState(name);
   const shown = useRef<string | null>(null);
   // Whether opening added a history entry; only then does closing on screen step back (never out of the site).
@@ -17,7 +17,8 @@ export function BackCloses({ name, value, onBack }: { name: string; value: strin
 
   // A value already in the address when the page loads (a reload, a bookmark) isn't open here: clear it quietly.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has(name) && !value) setParam(null, { replace: true });
+    // With restore, the page reopens it itself (a reload while a card was open), so leave it.
+    if (!restore && new URLSearchParams(window.location.search).has(name) && !value) setParam(null, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

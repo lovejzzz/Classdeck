@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.22",
+    date: "2026-11-21",
+    changes: [
+      "Math in cards: write $2^{o(n)}$ in a card’s text, a question, its choices or the explanation, and students see it typeset. $$…$$ puts it on its own line; \\$ is a plain dollar sign. The editor shows how it will look.",
+      "A link to a card opens it, and reloading the page keeps the open card open, for students and in the teacher’s editor. Before, the card was dropped.",
+      "A teacher who opens a class’s join page is warned that joining as a student signs them out of their teacher account, with a way back.",
+      "The right-answer switch on a Question card reads “Has a right answer: Yes / No (a poll)”, which also fits questions with several right answers.",
+      "The sign-in screen shows the Questhand mark instead of a plain square.",
+    ],
+  },
+  {
     version: "0.1.21",
     date: "2026-11-21",
     changes: [

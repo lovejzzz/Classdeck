@@ -21,6 +21,7 @@ export default function PickName() {
   const [busy, setBusy] = useState(false);
   const [newbie, setNewbie] = useState(false);
   const [name, setName] = useState("");
+  const [teacher, setTeacher] = useState<string | null>(null);
   const pinRef = useRef<HTMLInputElement>(null);
   const passcode = () => {
     try {
@@ -43,6 +44,7 @@ export default function PickName() {
     // Already signed in to this class? Go straight to your cards.
     fetch("/api/auth").then((r) => r.json()).then((me) => {
       if (me.kind === "student" && me.courseId === courseId) router.replace(`/learn/${courseId}/${me.studentId}`);
+      if (me.kind === "teacher") setTeacher(me.name || me.email || "a teacher");
     });
   }, [courseId, router]);
   useEffect(() => {
@@ -86,6 +88,14 @@ export default function PickName() {
 
   return (
     <main className="mx-auto w-full max-w-xl flex-1 px-4 py-16">
+      {/* One sign-in per browser: joining as a student would quietly end the teacher's session. */}
+      {teacher && (
+        <div className="rise mb-8 rounded-xl border border-warn/35 bg-warn/[0.06] px-4 py-3 text-[13px] leading-relaxed text-ink-2" role="note">
+          <b className="font-medium text-ink">You’re signed in as {teacher}, a teacher.</b> Joining here as a student signs you out of your teacher account in this browser.
+          To try the course as a student, use a private window, or open a student’s view from your course’s Students tab.{" "}
+          <Link href={`/teach/${courseId}`} className="font-medium text-ink underline underline-offset-2">Back to the teacher view</Link>
+        </div>
+      )}
       {roster && adding ? (
         <form className="rise" onSubmit={join}>
           {roster.students.length > 0 && <button type="button" onClick={() => { setNewbie(false); setPin(""); setError(""); }} className="inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink"><Icon name="back" size={13} /> Back to the class list</button>}

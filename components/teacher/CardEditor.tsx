@@ -12,6 +12,7 @@ import { suitOfCard } from "@/lib/ui";
 import { ask } from "../Confirm";
 import { Clearable } from "../Clearable";
 import { clearOlder, olderSettings } from "@/lib/cardmodel";
+import { MathPreview } from "../MathText";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { CardFace } from "../cards/CardFace";
@@ -211,6 +212,7 @@ export function CardEditor({
           <Panel n={1} title="Title and what to do">
             <Clearable><input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" /></Clearable>
             <Clearable multiline className="mt-2"><textarea value={m.body} onChange={(e) => set({ body: e.target.value })} rows={5} placeholder="What students should read, watch or do" aria-label="Body" className="field resize-y leading-relaxed" /></Clearable>
+            <MathPreview text={m.body} />
             <div className="mt-3">
           <div className="space-y-1.5">
             {attachments.map((x, i) => {
@@ -294,8 +296,8 @@ export function CardEditor({
               {kind === "answer" && <p className="text-[12.5px] text-ink-3">Students type an answer, record audio or video, or upload files and links. Only you see it, and you give feedback.</p>}
               {kind === "choice" && m.type !== "quiz" && (
                 <div className="mb-3 flex flex-wrap items-center gap-2 text-[12.5px]">
-                  <span className="text-ink-2">Right answer</span>
-                  <Seg value={isPoll(m) ? "poll" : "right"} options={[["right", "One is right"], ["poll", "None (a poll)"]]}
+                  <span className="text-ink-2">Has a right answer</span>
+                  <Seg value={isPoll(m) ? "poll" : "right"} options={[["right", "Yes"], ["poll", "No (a poll)"]]}
                     onPick={(v) => { if ((v === "poll") !== isPoll(m)) set(asKind(m, "choice", v === "poll")); }} />
                 </div>
               )}
@@ -433,6 +435,7 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, single }: { 
                   : v === "order" ? { kind: "order", options: q.options.length >= 3 ? q.options : [...q.options, "", "", ""].slice(0, 3), next: undefined }
                   : { kind: undefined, options: q.options.length ? q.options : ["", ""], answer: q.answer ?? 0 })} />
             </div>
+            <div className="pl-7"><MathPreview text={[q.text, ...(short ? [] : q.options)].filter((x) => x.trim()).join("  ·  ")} /></div>
             {short ? (
               <div className="mt-2 pl-7">
                 <input value={(q.accept ?? []).join(", ")} onChange={(e) => set(q.id, { accept: e.target.value.split(",").map((x) => x.trimStart()) })}

@@ -1,5 +1,6 @@
 "use client";
 
+import { MathText, hasMath, plainMath } from "../MathText";
 import { useEffect, useRef, useState } from "react";
 import { op } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
@@ -263,14 +264,15 @@ export function CardDetail(p: DetailProps) {
 
         {m.body && !m.choice && (
           <>
-            <div className="mt-5"><ReadAloud text={`${m.title}. ${m.body}`} big={p.big} /></div>
+            <div className="mt-5"><ReadAloud text={`${m.title}. ${plainMath(m.body)}`} big={p.big} /></div>
             <div className="mt-3">
-              <HighlightableText text={m.body} highlights={highlights} className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}
+              {/* Math is typeset; highlighting works on plain text, so a card with math shows it without highlights. */}
+              {hasMath(m.body) ? <div className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}><MathText text={m.body} /></div> : <HighlightableText text={m.body} highlights={highlights} className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}
                 onChange={(h) => {
                   setHighlights(h);
                   p.optimistic({ highlights: h });
                   op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, highlights: h }).then(p.onChanged);
-                }} />
+                }} />}
             </div>
           </>
         )}
@@ -571,7 +573,7 @@ function Questions(p: DetailProps) {
             <legend className={`font-medium ${p.big ? "text-[18px]" : "text-[15px]"}`}>
               {/* One question: no number. With no words of its own, the card's title asks it. */}
               {set.length > 1 && <span className="mono mr-2">{String(qi + 1).padStart(2, "0")}</span>}
-              {q.text.trim() || (set.length > 1 ? m.title : "")}
+              <MathText text={q.text.trim() || (set.length > 1 ? m.title : "")} />
               {q.kind === "multi" && <span className="ml-2 text-[12px] font-normal text-ink-3">Choose all that apply</span>}
               {q.kind === "order" && <span className="ml-2 text-[12px] font-normal text-ink-3">Put these in order</span>}
             </legend>
@@ -606,7 +608,7 @@ function Questions(p: DetailProps) {
                       return (
                         <button key={oi} onClick={() => !locked && toggle(oi)} disabled={locked} aria-pressed={on} className={optBtn(on, tone)}>
                           <span className={`flex h-4 w-4 flex-none items-center justify-center rounded border ${on ? "border-ink bg-ink text-white" : "border-line-strong"}`}>{on && <Icon name="check" size={10} strokeWidth={3} />}</span>
-                          <span className="flex-1">{q.options[oi]}</span>
+                          <span className="flex-1"><MathText text={q.options[oi]} /></span>
                         </button>
                       );
                     })}
@@ -636,7 +638,7 @@ function Questions(p: DetailProps) {
                     {cur.map((t, i) => (
                       <li key={t} className={`flex items-center gap-2 rounded-[10px] border bg-white px-2 py-1.5 transition-transform ${submitted && correct ? (correct[i] === t ? "border-ok/50" : "border-bad/45") : "border-line"} ${p.big ? "text-[16px]" : "text-[14px]"}`}>
                         <span className="mono w-5 text-center">{i + 1}</span>
-                        <span className="flex-1">{t}</span>
+                        <span className="flex-1"><MathText text={t} /></span>
                         {!locked && (
                           <span className="flex">
                             <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move “${t}” up`} className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-lane disabled:opacity-25"><Icon name="chevron" size={14} className="rotate-180" /></button>
@@ -671,7 +673,7 @@ function Questions(p: DetailProps) {
                       <span className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border ${isPicked ? "border-ink bg-ink" : "border-line-strong"}`}>
                         {isPicked && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </span>
-                      <span className="flex-1">{opt}</span>
+                      <span className="flex-1"><MathText text={opt} /></span>
                       {isPicked && showResult && !m.poll && <span className={`pop ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={15} strokeWidth={2.2} /></span>}
                       {isPicked && m.poll && <span className="pop text-[11.5px] font-medium text-[#4b56a8]">Your vote</span>}
                       {isKey && <span className="text-[11.5px] text-ok">Answer</span>}
@@ -688,7 +690,7 @@ function Questions(p: DetailProps) {
                   <div className="text-[12px] text-ink-3">How the class voted · {tally.reduce((a, b) => a + b, 0)} vote{tally.reduce((a, b) => a + b, 0) === 1 ? "" : "s"}</div>
                   {q.options.map((o, oi) => (
                     <div key={oi} className="flex items-center gap-2 text-[12.5px]">
-                      <span className="w-28 flex-none truncate text-ink-2">{o}</span>
+                      <span className="w-28 flex-none truncate text-ink-2"><MathText text={o} /></span>
                       <span className="h-2 flex-1 overflow-hidden rounded-full bg-white"><span className="block h-full rounded-full bg-[#4b56a8] transition-[width] duration-700 ease-[var(--ease-out)]" style={{ width: `${(100 * (tally[oi] ?? 0)) / all}%` }} /></span>
                       <span className="mono w-8 text-right">{tally[oi] ?? 0}</span>
                     </div>
@@ -713,7 +715,7 @@ function Questions(p: DetailProps) {
             )}
             {(showResult || submitted) && rv?.explain && (
               <p className="rise mt-2 flex gap-2 rounded-lg bg-lane px-3 py-2 text-[13px] leading-relaxed text-ink-2">
-                <Icon name="sparkles" size={13} className="mt-[3px] flex-none text-ink-3" /><span><span className="font-medium text-ink">Why: </span>{rv.explain}</span>
+                <Icon name="sparkles" size={13} className="mt-[3px] flex-none text-ink-3" /><span><span className="font-medium text-ink">Why: </span><MathText text={rv.explain} /></span>
               </p>
             )}
           </fieldset>

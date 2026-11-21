@@ -13,6 +13,7 @@ import type { Attachment, CourseState, Lesson, Level, Module, Review, Skill } fr
 import { download, toCsv } from "@/lib/download";
 import { toast } from "@/lib/toast";
 import { MarkedMedia } from "../Marks";
+import { MathText } from "../MathText";
 import { AttachMenu } from "../AttachMenu";
 import { MediaView } from "../cards/Media";
 import { draftOf } from "../student/SpeechBuilder";
@@ -410,7 +411,7 @@ export function Classroom({
                   return (
                     <li key={q.id} className="flex items-center gap-2">
                       <span className="mono w-5">{String(i + 1).padStart(2, "0")}</span>
-                      <span className="flex-1">{q.text.trim() || selModule.title}</span>
+                      <span className="flex-1"><MathText text={q.text.trim() || selModule.title} /></span>
                       {a === undefined ? <span className="text-ink-3">No answer</span> : (
                         <span className={`flex items-center gap-1 ${ok ? "text-ok" : "text-bad"}`}><Icon name={ok ? "check" : "x"} size={13} strokeWidth={2.2} />{answerText(q, a)}</span>
                       )}
@@ -448,7 +449,7 @@ export function Classroom({
               return (
                 <div key={q.id} className="grid items-center gap-3 text-[13px] sm:grid-cols-[1.5rem_1fr_10rem_6rem]">
                   <span className="mono">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="truncate">{q.text.trim() || m.title}</span>
+                  <span className="truncate"><MathText text={q.text.trim() || m.title} /></span>
                   <div className="h-1.5 overflow-hidden rounded-full bg-lane">
                     <div className={`h-full rounded-full transition-[width] duration-700 ${rate < 0.6 ? "bg-bad/70" : "bg-ok"}`} style={{ width: `${rate * 100}%` }} />
                   </div>

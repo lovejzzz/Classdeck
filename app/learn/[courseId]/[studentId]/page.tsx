@@ -99,6 +99,22 @@ export default function LearnPage() {
   // Every course is laid out the same way now: the whole term, comfortable cards, any card open in any order.
   const profile = course ? FIXED_PROFILE : undefined;
 
+  // A card in the address when the page loads (a reload while it was open, or a link to it) opens again, once the course is in.
+  const [linkedCard] = useState<string | null>(() => (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("card") : null));
+  const restoring = !!linkedCard;
+  const linkUsed = useRef(false);
+  useEffect(() => {
+    const id = linkedCard;
+    if (!id || !course || isPreview || linkUsed.current) return;
+    linkUsed.current = true;
+    const lesson = course.weeks.flatMap((w) => w.lessons).find((l) => l.modules.some((m) => m.id === id));
+    if (!lesson) { router.replace(window.location.pathname, { scroll: false }); return; }
+    const w = window.innerWidth, h = window.innerHeight;
+    // Once the board has drawn, so the card rises over it.
+    setTimeout(() => setLift({ id, lessonId: lesson.id, from: new DOMRect(w / 2 - 90, h / 2 - 126, 180, 252), open: true, completed: false }), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course, isPreview]);
+
   // An answer just dealt a card (maybe in a later lesson): unfold its week, bring it into view, and make it glow.
   useEffect(() => {
     const show = (e: Event) => {
@@ -644,7 +660,7 @@ export default function LearnPage() {
 
       {burst && <Burst key={burst.key} seed={burst.key} x={burst.x} y={burst.y} colors={burst.colors} onDone={() => setBurst(null)} />}
 
-      {!isPreview && <BackCloses name="card" value={lift?.open ? lift.id : null} onBack={() => close()} />}
+      {!isPreview && <BackCloses name="card" restore={restoring} value={lift?.open ? lift.id : null} onBack={() => close()} />}
       {lift && openModule && (
         <Lift
           from={lift.from}
