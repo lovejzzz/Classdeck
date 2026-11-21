@@ -230,11 +230,11 @@ export default function TeachPage() {
             <section aria-label="Getting started" className="card mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 p-5">
               <div className="min-w-[14rem] flex-1">
                 <h2 className="text-[15px] font-medium">{course.waiting?.length ? `${course.waiting.length} student${course.waiting.length === 1 ? " is" : "s are"} waiting to be let in` : "No students yet"}</h2>
-                <p className="mt-1 text-[13px] text-ink-2">Invite students by email, or share the class link or QR code.</p>
+                <p className="mt-1 text-[13px] text-ink-2">{course.waiting?.length ? `${course.waiting.map((w) => w.name).slice(0, 3).join(", ")}${course.waiting.length > 3 ? " and others" : ""} joined with the class code. Let them in or turn them away.` : "Invite students by email, or share the class link or QR code."}</p>
               </div>
               {!viewer && (
                 <button onClick={() => setInviting(true)} className="btn btn-dark press h-9">
-                  <Icon name="plus" size={13} /> {course.waiting?.length ? "Let them in" : "Invite students"}
+                  {course.waiting?.length ? <>Review <Icon name="arrow" size={13} /></> : <><Icon name="plus" size={13} /> Invite students</>}
                 </button>
               )}
             </section>

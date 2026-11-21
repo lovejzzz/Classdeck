@@ -105,6 +105,8 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
         )}
       </section>
 
+      {/* Groups matter only to a discussion run in groups: show them once a course has one, or already has groups. */}
+      {(course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => m.type === "studio"))) || (course.groups?.length ?? 0) > 1) && (
       <section className="card p-6">
         <div className="flex items-center">
           <h3 className="flex-1 text-[15px] font-medium">Collab Studio groups</h3>
@@ -163,6 +165,7 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
           )}
         </div>
       </section>
+      )}
         </>
       ) : (
         <>

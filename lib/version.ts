@@ -3,6 +3,20 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.16",
+    date: "2026-11-20",
+    changes: [
+      "A Question card’s question box is optional: leave it empty and the card’s title asks the question. A card with options is no longer hidden from students for want of separate question words.",
+      "A card with one question no longer numbers it “01”, for students or in the editor.",
+      "The course map fits the screen below whatever sits above it (like the “No students yet” banner), so the zoom bar stays in view. A card you add comes into view on the map, and a Question card with nothing more to say shows its drawing instead of empty space.",
+      "Wording brought up to date: the home page picture, the map and editor hints (no more “make it a quiz”), polls say Option like other questions, “1 card” not “1 cards”, “Your work” for a student’s files.",
+      "A card a student’s answer opens is announced as “Your answer opened a new card”, not “Your teacher added a card”. A score below full shows without a green tick.",
+      "When students are waiting, the banner names them and its button says Review.",
+      "Grades no longer explain skill levels in a course with no skills; group discussion groups and the AI summary button appear only where they apply.",
+      "The sign-in page has the Questhand logo, and no second Privacy and Terms line.",
+    ],
+  },
+  {
     version: "0.1.15",
     date: "2026-11-20",
     changes: [

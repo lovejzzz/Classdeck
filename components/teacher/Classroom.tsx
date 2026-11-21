@@ -7,6 +7,7 @@ import { invokeTool, op } from "@/lib/client";
 import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
+import { faceMeta } from "@/lib/kinds";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
 import type { CourseState, Lesson, Level, Module, Review, Skill } from "@/lib/types";
 import { download, toCsv } from "@/lib/download";
@@ -34,7 +35,9 @@ export function Classroom({
   const feedbackGiven = (sid: string) => new Set(state.studio.feedback.filter((f) => f.fromId === sid && lessonPosts.some((p) => p.id === f.postId && p.studentId !== sid)).map((f) => f.postId)).size;
   const feedbackGoal = (sid: string) => Math.min(2, Math.max(0, (course.groups?.find((g) => g.studentIds.includes(sid))?.studentIds.length ?? 1) - 1));
   const helpfulGiven = (sid: string) => state.studio.feedback.filter((f) => f.fromId === sid && f.helpful && lessonPosts.some((p) => p.id === f.postId)).length;
-  const groupName = (sid: string) => course.groups?.find((g) => g.studentIds.includes(sid))?.name ?? "";
+  // A student's group is worth showing only once the course has a discussion run in groups (or several groups).
+  const usesGroups = course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => m.type === "studio"))) || (course.groups?.length ?? 0) > 1;
+  const groupName = (sid: string) => (usesGroups ? course.groups?.find((g) => g.studentIds.includes(sid))?.name ?? "" : "");
 
   // —— who needs attention in this lesson ——
   const DAY = 86400000;
@@ -237,7 +240,7 @@ export function Classroom({
                 return (
                   <th key={m.id} className="min-w-[6.5rem] border-b border-line px-2 py-3 text-left font-normal">
                     <div className="flex items-center gap-1.5" style={{ color: suitOfCard(m).tint }}>
-                      <Icon name={m.type} size={13} />
+                      <Icon name={faceMeta(m).icon} size={13} />
                     </div>
                     <div className="mt-1.5 max-w-28 truncate text-[12.5px] font-medium text-ink" title={m.title}>{m.title}</div>
                     <div className="mt-1 flex items-center gap-1.5">
@@ -403,7 +406,7 @@ export function Classroom({
                   return (
                     <li key={q.id} className="flex items-center gap-2">
                       <span className="mono w-5">{String(i + 1).padStart(2, "0")}</span>
-                      <span className="flex-1">{q.text}</span>
+                      <span className="flex-1">{q.text.trim() || selModule.title}</span>
                       {a === undefined ? <span className="text-ink-3">No answer</span> : (
                         <span className={`flex items-center gap-1 ${ok ? "text-ok" : "text-bad"}`}><Icon name={ok ? "check" : "x"} size={13} strokeWidth={2.2} />{answerText(q, a)}</span>
                       )}
@@ -431,7 +434,7 @@ export function Classroom({
       {lesson.modules.filter((m) => m.questions?.length).map((m) => (
         <section key={m.id} className="card p-5">
           <h3 className="flex items-center gap-2 text-[14px] font-medium">
-            <span style={{ color: suitOfCard(m).tint }}><Icon name={m.type} size={14} /></span>
+            <span style={{ color: suitOfCard(m).tint }}><Icon name={faceMeta(m).icon} size={14} /></span>
             {m.title}<span className="font-normal text-ink-3">· correct by question</span>
           </h3>
           <div className="mt-4 space-y-2.5">
@@ -441,7 +444,7 @@ export function Classroom({
               return (
                 <div key={q.id} className="grid items-center gap-3 text-[13px] sm:grid-cols-[1.5rem_1fr_10rem_6rem]">
                   <span className="mono">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="truncate">{q.text}</span>
+                  <span className="truncate">{q.text.trim() || m.title}</span>
                   <div className="h-1.5 overflow-hidden rounded-full bg-lane">
                     <div className={`h-full rounded-full transition-[width] duration-700 ${rate < 0.6 ? "bg-bad/70" : "bg-ok"}`} style={{ width: `${rate * 100}%` }} />
                   </div>
@@ -510,10 +513,10 @@ function WallPanel({ courseId, module: m, state, aiReady }: { courseId: string; 
                 {pending > 0 && <span className="chip h-5 bg-warn/10 text-[11px] text-warn">{pending} waiting for approval</span>}
               </h3>
               <button onClick={() => setPresenting(true)} disabled={!posts.length} className="btn btn-dark press h-8"><Icon name="play" size={12} /> Present</button>
-              <button onClick={summarize} disabled={busy || posts.length === 0} className="btn btn-ghost press h-8"><Icon name="sparkles" size={13} /> {busy ? "Reading…" : "Summary"}</button>
+              {aiReady && <button onClick={summarize} disabled={busy || posts.length === 0} className="btn btn-ghost press h-8"><Icon name="sparkles" size={13} /> {busy ? "Reading…" : "Summary"}</button>}
               <button onClick={exportCsv} disabled={!posts.length} className="btn btn-ghost press h-8"><Icon name="download" size={13} /> CSV</button>
             </div>
-            {!aiReady && !summary && <p className="mt-1 text-[12px] text-ink-3">Summaries need the AI tutor connector, and its key isn’t set on the server yet.</p>}
+            
             {error && <p className="rise mt-3 rounded-lg border border-bad/20 bg-bad/5 px-3 py-2 text-[13px] text-bad">{error}</p>}
             {busy && <div className="skeleton mt-3 h-20" />}
             {summary && <p className="rise mt-3 whitespace-pre-wrap rounded-lg bg-lane px-4 py-3 text-[13.5px] leading-relaxed">{summary}</p>}

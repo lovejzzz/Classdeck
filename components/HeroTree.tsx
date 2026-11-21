@@ -5,9 +5,9 @@
 export function HeroTree() {
   const quiz = { x: 40, y: 92 };
   const ends = [
-    { y: 14, tint: "#3d68a6", kind: "LEARN", title: "Go over it again", why: "Score below 60%" },
-    { y: 92, tint: "#a0561f", kind: "DO", title: "Practice two takes", why: "Score 60–89%" },
-    { y: 170, tint: "#9a4a8c", kind: "DO", title: "Stretch: a new setting", why: "Score 90% and up" },
+    { y: 14, tint: "#3d68a6", kind: "CONTENT", title: "Go over it again", why: "Score below 60%" },
+    { y: 92, tint: "#a0561f", kind: "QUESTION", title: "Try two more", why: "Score 60–89%" },
+    { y: 170, tint: "#a0561f", kind: "QUESTION", title: "Stretch: a harder one", why: "Score 90% and up" },
   ];
   const sx = quiz.x + 150, ex = 372;
   const path = (y: number) => `M ${sx} ${quiz.y + 34} C ${sx + 90} ${quiz.y + 34}, ${ex - 90} ${y + 34}, ${ex} ${y + 34}`;
@@ -16,10 +16,10 @@ export function HeroTree() {
   const students = [
     { d: walk(ends[0].y), c: "#3d68a6", t: "Ana", begin: "0s" },
     { d: walk(ends[1].y), c: "#a0561f", t: "Ben", begin: "1.1s" },
-    { d: walk(ends[2].y), c: "#9a4a8c", t: "Cal", begin: "2.2s" },
+    { d: walk(ends[2].y), c: "#2f8a55", t: "Cal", begin: "2.2s" },
   ];
   return (
-    <svg viewBox="0 0 600 252" className="hero-tree h-auto w-full max-w-[600px]" role="img" aria-label="One quiz deals three different next cards, depending on each student's score">
+    <svg viewBox="0 0 600 252" className="hero-tree h-auto w-full max-w-[600px]" role="img" aria-label="One question card deals three different next cards, depending on each student's score">
       <defs>
         <filter id="hero-shadow" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="8" floodColor="#141412" floodOpacity="0.12" /></filter>
       </defs>
@@ -29,7 +29,7 @@ export function HeroTree() {
       <g filter="url(#hero-shadow)" className="hero-card" style={{ animationDelay: "0.1s" }}>
         <rect x={quiz.x} y={quiz.y} width="150" height="68" rx="14" fill="#fff" stroke="#e6e6e3" />
         <rect x={quiz.x} y={quiz.y} width="150" height="5" rx="2.5" fill="#a0561f" />
-        <text x={quiz.x + 14} y={quiz.y + 26} fontSize="10" fontWeight="600" letterSpacing="0.06em" fill="#a0561f">QUIZ</text>
+        <text x={quiz.x + 14} y={quiz.y + 26} fontSize="10" fontWeight="600" letterSpacing="0.06em" fill="#a0561f">QUESTION</text>
         <text x={quiz.x + 14} y={quiz.y + 46} fontSize="14" fontWeight="600" fill="#1b1b1a">Quick check</text>
         <circle cx={sx} cy={quiz.y + 34} r="6" fill="#4b56a8" stroke="#fff" strokeWidth="2" />
       </g>

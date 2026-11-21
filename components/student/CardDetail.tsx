@@ -378,7 +378,7 @@ export function CardDetail(p: DetailProps) {
         {showWork && (
           <div className="mt-5">
             <div className="eyebrow mb-2">
-              {(p.progress?.work?.length ?? 0) > 0 ? "Your takes" : "Add a recording, file, or link"}
+              {(p.progress?.work?.length ?? 0) > 0 ? "Your work" : "Add a recording, file, or link"}
               {m.submitTo === "personal" ? " · saved to your personal board" : ""}
             </div>
             <WorkComposer courseId={p.courseId} studentId={p.studentId} moduleId={m.id} work={p.progress?.work ?? []} onChanged={p.onChanged} />
@@ -553,8 +553,9 @@ function Questions(p: DetailProps) {
         return (
           <fieldset key={q.id}>
             <legend className={`font-medium ${p.big ? "text-[18px]" : "text-[15px]"}`}>
-              <span className="mono mr-2">{String(qi + 1).padStart(2, "0")}</span>
-              {q.text}
+              {/* One question: no number. With no words of its own, the card's title asks it. */}
+              {set.length > 1 && <span className="mono mr-2">{String(qi + 1).padStart(2, "0")}</span>}
+              {q.text.trim() || (set.length > 1 ? m.title : "")}
               {q.kind === "multi" && <span className="ml-2 text-[12px] font-normal text-ink-3">Choose all that apply</span>}
               {q.kind === "order" && <span className="ml-2 text-[12px] font-normal text-ink-3">Put these in order</span>}
             </legend>
@@ -702,7 +703,10 @@ function Questions(p: DetailProps) {
       )}
       {!m.poll && (submitted || (!isQuiz && progress?.status === "done")) && (
         <div className="pop flex flex-wrap items-center gap-3 text-[14px]">
-          <span className="flex items-center gap-2"><StatusIcon status="done" size={15} /> Score <span className="font-mono">{progress?.score ?? 0} / {total}</span></span>
+          <span className="flex items-center gap-2">
+            {(progress?.score ?? 0) >= total ? <StatusIcon status="done" size={15} /> : <Icon name="quiz" size={15} className="text-ink-3" />}
+            Score <span className="font-mono">{progress?.score ?? 0} / {total}</span>
+          </span>
           {submitted && attempt < tries && (progress?.score ?? 0) < total && (
             <button onClick={retake} className="btn btn-ghost press h-8"><Icon name="reset" size={13} /> Try again ({tries - attempt} left)</button>
           )}

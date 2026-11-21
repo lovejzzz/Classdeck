@@ -6,6 +6,7 @@
 // the site already knows how to show and grade. Question cards are where card trees branch: each choice of a Choice
 // card (quiz question or poll), and each score range of a quiz or a card group, can deal a card.
 import type { Module, ModuleType, Question } from "./types";
+import { isAsked } from "./grading";
 
 export type Family = "content" | "question";
 /**
@@ -67,12 +68,12 @@ export function kindOf(m: KindFields): CardKind {
       return "group";
     case "read":
     case "explore":
-      return m.questions?.some((q) => q.text?.trim()) ? "choice" : "content";
+      return m.questions?.some(isAsked) ? "choice" : "content";
     case "quiz":
     case "selfcheck":
       return "choice";
     case "practice":
-      return m.poll || m.questions?.some((q) => q.text?.trim()) ? "choice" : "answer";
+      return m.poll || m.questions?.some(isAsked) ? "choice" : "answer";
     case "wall":
     case "studio":
       return "discussion";
@@ -183,5 +184,5 @@ export function addToGroup<L extends { modules: Module[] }>(lesson: L, groupId: 
   return { lesson: { ...lesson, modules }, card };
 }
 
-/** A Choice card whose question has no words yet: students don't see it until the teacher writes one. */
-export const unfinished = (m: KindFields) => kindOf(m) === "choice" && !(m.questions ?? []).some((q) => q.text?.trim());
+/** A card with choices that has neither words nor options yet: students don't see it until the teacher writes them. */
+export const unfinished = (m: KindFields) => kindOf(m) === "choice" && !(m.questions ?? []).some(isAsked);

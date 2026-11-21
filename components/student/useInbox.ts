@@ -41,7 +41,7 @@ export function useInbox(course: Course | undefined, studentId: string, progress
         .filter((x) => !known.has(x.m.id))
         .map((x) => ({
           id: `m:${x.m.id}`, at: now, group: x.l.id, groupLabel: x.l.title, source: x.l.title,
-          icon: x.m.type, title: "Your teacher added a card", text: x.m.title,
+          icon: x.m.type, title: x.m.dealtFor ? "Your answer opened a new card" : "Your teacher added a card", text: x.m.title,
         }));
       if (prev.lesson !== course.currentLessonId) {
         const l = lessons.find((x) => x.id === course.currentLessonId);

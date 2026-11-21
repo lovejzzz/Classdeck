@@ -25,7 +25,7 @@ export function responseOf(m: Pick<Module, "type" | "questions">): Response {
   switch (m.type) {
     case "read":
     case "explore":
-      return m.questions?.some((q) => q.text?.trim()) ? "questions" : "none";
+      return m.questions?.some((q) => q.text?.trim() || q.options?.some((o) => o.trim())) ? "questions" : "none";
     case "quiz":
       return "questions";
     case "selfcheck":

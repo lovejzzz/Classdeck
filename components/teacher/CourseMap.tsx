@@ -254,6 +254,30 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const t = setTimeout(() => setFresh(null), 1600);
     return () => clearTimeout(t);
   }, [fresh]);
+  // A card just put down comes into view, so it never lands out of sight below the fold (a moved card stays put).
+  const shown = useRef<string | null>(null);
+  useEffect(() => {
+    if (!fresh || shown.current === fresh || !targets.has(fresh) || !born.has(fresh)) return;
+    shown.current = fresh;
+    requestAnimationFrame(() => bringIntoView(fresh));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fresh, targets]);
+  // The map fills the rest of the screen below wherever it starts (a banner above it moves it down), so its
+  // controls stay on screen and the page's footer sits just below.
+  const [fill, setFill] = useState<number | null>(null);
+  useEffect(() => {
+    const measure = () => {
+      const el = scroller.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      setFill(Math.max(480, window.innerHeight - top - 16));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    const ro = new ResizeObserver(measure);
+    if (scroller.current?.parentElement?.parentElement) ro.observe(scroller.current.parentElement.parentElement);
+    return () => { window.removeEventListener("resize", measure); ro.disconnect(); };
+  }, []);
 
   /** Scroll so a card (or a lesson's region) sits in view, left of the editor panel when it's open. */
   function bringIntoView(id: string, z = zoom) {
@@ -626,7 +650,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         onKeyDown={onKey}
         aria-label="Course map"
         className="tree-canvas relative h-[calc(100dvh-11.75rem)] sm:h-[calc(100dvh-9.5rem)] min-h-[30rem] overflow-auto rounded-2xl border border-line bg-canvas outline-none focus-visible:ring-2 focus-visible:ring-[#4b56a8]/30"
-        style={{ backgroundSize: `${22 * zoom}px ${22 * zoom}px` }}
+        style={{ backgroundSize: `${22 * zoom}px ${22 * zoom}px`, height: fill ?? undefined }}
         onPointerDown={(e) => {
           if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.canvas) return;
           setMenu(null);
@@ -680,7 +704,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     {today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
                   </div>
                   <div className="flex items-center gap-2 px-5 pt-1.5">
-                    {level !== "far" && <span className="mono">{r.lesson.modules.filter((m) => m.type !== "group").length} cards{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
+                    {level !== "far" && <span className="mono">{r.lesson.modules.filter((m) => m.type !== "group").length} card${r.lesson.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
                     <span className="flex-1" />
                     {!readOnly && level !== "far" && (
                       <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.left, b.bottom); setMenu({ add: r.lesson.id, x: p.x - 200, y: p.y + 4 }); }}
@@ -843,7 +867,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                         <div key={q.id}>
                           {typing?.id === m.id && typing.field === `q:${q.id}`
                             ? <div className="flex items-center px-2" style={{ height: SEC }}>{typeBox("h-6 text-[11.5px]")}</div>
-                            : <div onDoubleClick={startTyping(m.id, `q:${q.id}`, q.text)} className="truncate px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }} title={readOnly ? undefined : "Double-click to edit"}>{q.text.trim() || "Question"}</div>}
+                            : <div onDoubleClick={startTyping(m.id, `q:${q.id}`, q.text)} className="truncate px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }} title={readOnly ? undefined : "Double-click to edit"}>{q.text.trim() || m.title || "Question"}</div>}
                           {q.options.map((o, oi) => {
                             const to = q.next?.[oi];
                             return (
@@ -1009,7 +1033,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         {nothing && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
             <div className="max-w-sm rounded-2xl border border-line bg-white px-5 py-4 text-center text-[13px] text-ink-2 shadow-sm">
-              This course has no cards yet. Use <b>+ Card</b> on a lesson to put one down. Give a card a question with choices (or make it a quiz) and drag its answers to the cards they deal.
+              This course has no cards yet. Use <b>+ Card</b> on a lesson to put one down. Give a Question card some choices, then drag each answer to the card it deals.
             </div>
           </div>
         )}
@@ -1033,7 +1057,12 @@ function CardRest({ m, far, art, tint, cover }: { m: Module; far: boolean; art: 
         </div>
       )}
       {!far && body && <p className={`flex-none text-[12px] leading-[1.45] text-ink-2 ${art ? "line-clamp-3" : "line-clamp-[8]"}`}>{body}</p>}
-      {!far && !body && !art && <p className="flex-none text-[12px] text-ink-3">No instructions yet</p>}
+      {/* Nothing more to say: the card's drawing fills the rest of its face, as on a playing card. */}
+      {!far && !body && !art && (
+        <div className="relative min-h-0 flex-1 overflow-hidden rounded-[12px] opacity-80" style={{ background: cover }}>
+          <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />
+        </div>
+      )}
     </div>
   );
 }

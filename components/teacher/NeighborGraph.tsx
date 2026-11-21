@@ -44,7 +44,7 @@ export function NeighborGraph({ card, lessons, onGo, onMap }: {
     return (
       <div className="flex items-center gap-2 rounded-2xl border border-dashed border-line px-3 py-2.5 text-[12px] text-ink-3">
         <Icon name="split" size={13} />
-        <span className="flex-1">Everyone gets this card. Give it a question with choices (or make it a quiz) to deal different cards by answer.</span>
+        <span className="flex-1">Everyone gets this card. A Question card with choices can deal different cards by answer: drag an answer to a card on the map.</span>
         {onMap && <button onClick={onMap} className="press flex-none rounded-lg px-2 py-1 font-medium text-[#4b56a8] hover:bg-[#eef0fb]">Open in map</button>}
       </div>
     );

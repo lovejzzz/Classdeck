@@ -40,9 +40,14 @@ export function seededShuffle<T>(list: T[], seedText: string): T[] {
  * The questions one student gets on one try, in the order they see them.
  * With `pick`, a random draw from the bank; with `shuffle`, mixed up. Same on client and server.
  */
+/**
+ * Whether a question is really asked: it has words, or options. A card's only question may leave its words empty, and
+ * then the card's title asks it.
+ */
+export const isAsked = (q: Pick<Question, "text" | "options">) => !!(q.text?.trim() || (q.options ?? []).some((o) => o?.trim()));
 /** The questions students actually get: a question the teacher left blank isn't asked. */
 export function asked(m: Pick<Module, "questions">): Question[] {
-  return (m.questions ?? []).filter((q) => q.text?.trim());
+  return (m.questions ?? []).filter(isAsked);
 }
 
 export function quizSet(m: Module, studentId: string, attempt = 1): Question[] {

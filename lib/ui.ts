@@ -45,7 +45,7 @@ export const TYPE_META: Record<ModuleType, Meta> = {
   reflect: variant("reflect", { label: "Reflect", name: "Reflect", hint: "Look back: what worked, what's next", outputLabel: "Your reflection (only you and your teacher can see it)", doneLabel: "Save" }),
   studio: variant("studio", { label: "Studio", name: "Collab Studio", hint: "Small groups present and give feedback", doneLabel: "Done" }),
   wall: variant("wall", { label: "Wall", name: "Class wall", hint: "Everyone posts; the class responds", doneLabel: "Done" }),
-  group: variant("group", { label: "Group", name: "Card group", hint: "Cards that go together; its score counts the Choice cards with a right answer", doneLabel: "Done" }),
+  group: variant("group", { label: "Group", name: "Card group", hint: "Cards that go together; its score counts the questions with a right answer", doneLabel: "Done" }),
 };
 
 export const STATUS_LABEL: Record<Status, string> = { todo: "Not started", doing: "In progress", done: "Done" };

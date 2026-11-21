@@ -8,6 +8,7 @@
 // the same lesson or any later lesson of the course. What decides a student's path is fixed the first time: their first
 // answer to a question, and their first submitted score on a quiz (progress.dealt), so retakes never take a card away.
 import type { AnswerValue, Lesson, Module, Progress, Question, ScoreBand, Week } from "./types";
+import { isAsked } from "./grading";
 
 /** Question kinds that can deal cards: the ones with options a student picks. */
 export const canBranch = (q: Question) => !q.kind || q.kind === "choice" || q.kind === "multi";
@@ -192,7 +193,7 @@ export const bandLabel = (b: { min: number; max: number }) => (b.max > 100 ? (b.
 
 /** How many questions count towards a score: a group's Choice cards with a right answer and words; a quiz's questions. */
 export function scoreCount(m: Module, cards: Module[]): number {
-  const asked = (c: Module) => (c.questions ?? []).filter((q) => q.text?.trim()).length;
+  const asked = (c: Module) => (c.questions ?? []).filter(isAsked).length;
   if (m.type === "quiz") return m.pick && m.pick > 0 ? Math.min(m.pick, asked(m)) : asked(m);
   if (m.type !== "group") return 0;
   return (m.members ?? []).map((id) => cards.find((c) => c.id === id)).filter((c): c is Module => !!c && !c.poll && (c.type === "practice" || c.type === "quiz")).reduce((n, c) => n + asked(c), 0);
@@ -330,7 +331,7 @@ export function groupScore(group: Module, cards: Module[], prog: Record<string, 
   for (const id of group.members ?? []) {
     const m = cards.find((c) => c.id === id);
     if (!m || m.poll || !(m.type === "practice" || m.type === "quiz")) continue;
-    for (const q of (m.questions ?? []).filter((x) => x.text?.trim())) {
+    for (const q of (m.questions ?? []).filter(isAsked)) {
       total++;
       const f = prog[m.id]?.first?.[q.id];
       if (f === undefined) done = false;

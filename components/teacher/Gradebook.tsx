@@ -75,7 +75,9 @@ export function Gradebook({ state }: { state: CourseState }) {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <p className="flex-1 text-[13px] text-ink-3">
-          Skill levels come from your rubric reviews (latest per skill), shown next to each student’s own latest self-rating. Click a student for their reviewed work.
+          {skills.length
+            ? "Skill levels come from your rubric reviews (latest per skill), shown next to each student’s own latest self-rating. Click a student for their reviewed work."
+            : "Each student’s cards done, late work, quiz scores and work waiting for your feedback. Click a student for their work."}
         </p>
         <button onClick={exportCsv} className="btn btn-ghost press h-8"><Icon name="download" size={13} /> Export CSV</button>
       </div>
@@ -168,7 +170,7 @@ export function Gradebook({ state }: { state: CourseState }) {
           </tbody>
         </table>
       </div>
-      <p className="text-[12px] text-ink-3">Levels: {levels.map((l) => `${l.n} ${l.name}`).join(" · ")}. An arrow marks a self-rating two or more levels away from yours.</p>
+      {skills.length > 0 && <p className="text-[12px] text-ink-3">Levels: {levels.map((l) => `${l.n} ${l.name}`).join(" · ")}. An arrow marks a self-rating two or more levels away from yours.</p>}
     </div>
   );
 }
