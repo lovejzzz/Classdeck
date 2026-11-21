@@ -531,12 +531,15 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                   const isToday = l.id === course.currentLessonId;
                   const lessonWires = wiresOf(l);
                   const studentsOf = (m: Module) => {
-                    const w = courseWires.find((x) => x.to === m.id);
+                    const into = courseWires.filter((x) => x.to === m.id);
+                    const w = into[0];
                     if (w) {
+                      // Dealt from more than one answer (or card): say so, so the other ways in aren't hidden.
+                      const more = into.length > 1 ? ` · +${into.length - 1} more` : "";
                       const src = courseCards.find((x) => x.id === w.from);
-                      if (w.score) return `If score ${bandLabel(w.score)}`;
+                      if (w.score) return `If score ${bandLabel(w.score)}${more}`;
                       const q = src?.questions?.find((x) => x.id === w.q);
-                      return `If ${String.fromCharCode(65 + w.option)}${q?.options[w.option]?.trim() ? `: ${q.options[w.option].trim().slice(0, 18)}` : ""}`;
+                      return `If ${String.fromCharCode(65 + w.option)}${q?.options[w.option]?.trim() ? `: ${q.options[w.option].trim().slice(0, 18)}` : ""}${more}`;
                     }
                     return m.audience.kind === "branch" ? m.audience.variant : m.audience.kind === "student" ? course.students.find((s) => s.id === (m.audience as { studentId: string }).studentId)?.name : undefined;
                   };

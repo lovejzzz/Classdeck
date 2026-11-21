@@ -84,7 +84,7 @@ export default function TeachPage() {
   };
 
   // A student working through quick cards makes a finished note (and a wrong-answer note) per card. Answers and
-  // finished cards close together are one note per student: "Answered 4 cards · 1 wrong", the misses spelled out.
+  // finished cards close together in one lesson are one note per student: "Answered 4 cards · 1 wrong", the misses spelled out.
   // Quizzes, posts, raised hands and the rest stay notes of their own.
   const RUN = 15 * 60_000;
   const fresh = state.events.filter((e) => e.at > seenAt).sort((a, b) => a.at - b.at);
@@ -92,9 +92,11 @@ export default function TeachPage() {
   const openRun = new Map<string, ClassEvent[]>();
   for (const e of fresh) {
     if (e.kind !== "done" && e.kind !== "wrong") { runs.push([e]); continue; }
-    const r = openRun.get(e.studentId);
+    // One run per student and lesson: catching up on several lessons stays several notes.
+    const key = `${e.studentId}|${moduleOf(e.moduleId)?.l.id ?? ""}`;
+    const r = openRun.get(key);
     if (r && e.at - r[r.length - 1].at <= RUN) r.push(e);
-    else { const n = [e]; runs.push(n); openRun.set(e.studentId, n); }
+    else { const n = [e]; runs.push(n); openRun.set(key, n); }
   }
   const notes: Note[] = runs.map((r) => {
     const e = r[r.length - 1];

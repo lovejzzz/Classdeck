@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.33",
+    date: "2026-11-21",
+    changes: [
+      "Class activity groups a student's quick answers by lesson: catching up on several lessons in one sitting shows a note per lesson, not one note for everything.",
+      "In the List, a card dealt from more than one answer says so (“If C: Hard · +1 more”), instead of naming only the first.",
+    ],
+  },
+  {
     version: "0.1.32",
     date: "2026-11-21",
     changes: [
