@@ -81,6 +81,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
     access: undefined,
     people: undefined,
     ownerId: undefined,
+    trash: undefined,
     waiting: undefined,
     students: course.students.map(({ id, name }) => ({ id, name })),
     weeks: course.weeks.map((w) => ({
@@ -147,7 +148,7 @@ function view(request: Request, courseId: string): Response {
     if (!course.access?.guestToken || guest !== course.access.guestToken) return Response.json({ error: "This guest link has been turned off" }, { status: 403 });
     const view: CourseState = {
       course: {
-        ...course, students: [], groups: [], joinCode: "", access: undefined, waiting: undefined, people: undefined, ownerId: undefined,
+        ...course, students: [], groups: [], joinCode: "", access: undefined, waiting: undefined, people: undefined, ownerId: undefined, trash: undefined,
         // Cards made for one student stay private; shared and path cards are shown without who they're for.
         weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student").map((m) => ({ ...m, bands: undefined, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
       },
@@ -636,6 +637,20 @@ async function change(request: Request, courseId: string, body: Record<string, a
         m.skills = m.skills.filter((id) => keep.has(id));
         if (!m.skills.length) m.skills = undefined;
       }
+      break;
+    }
+    // The map's trash bin: cards deleted together, kept to put back.
+    case "trashPut": {
+      const e = body.entry;
+      if (!e || typeof e.id !== "string" || !Array.isArray(e.lessons) || !Array.isArray(e.inbound)) return fail("Nothing to keep");
+      if (JSON.stringify(e).length > 300_000) return fail("Too much to keep in the trash");
+      const entry = { id: e.id.slice(0, 40), at: Date.now(), title: String(e.title ?? "").slice(0, 120), lessons: e.lessons, inbound: e.inbound };
+      course.trash = [...(course.trash ?? []).filter((x) => x.id !== entry.id), entry].slice(-30);
+      break;
+    }
+    case "trashDrop": {
+      course.trash = (course.trash ?? []).filter((x) => x.id !== body.id);
+      if (!course.trash.length) course.trash = undefined;
       break;
     }
     case "setCourseInfo": {

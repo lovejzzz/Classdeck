@@ -341,7 +341,21 @@ export interface CoTeacher {
   at: number;
 }
 
+/** Cards deleted together (a card with its follow-ups), kept so the teacher can put them back. Never sent to students. */
+export interface TrashEntry {
+  id: string;
+  at: number;
+  /** The card that was deleted (its follow-ups went with it). */
+  title: string;
+  /** Each lesson the cards came from, and where each card sat in it. */
+  lessons: { lessonId: string; lessonTitle: string; cards: { m: Module; index: number }[] }[];
+  /** Answers (or score ranges) on cards that stayed, which dealt these cards. */
+  inbound: { from: string; q: string; option: number; to: string }[];
+}
+
 export interface Course {
+  /** Deleted cards, newest last (at most 30). Never sent to students. */
+  trash?: TrashEntry[];
   id: string;
   /** The teacher account that owns this course. The demo course has none. */
   ownerId?: string;

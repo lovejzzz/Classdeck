@@ -134,8 +134,11 @@ await page.getByRole("button", { name: "Lesson 1 actions" }).click();
 await page.getByRole("menuitem", { name: /Show on the map/ }).click();
 await page.getByRole("button", { name: "Deal a card for answer A" }).waitFor();
 await settle(800);
+// The map opens folded (each lesson's main path); show every card for the steps below.
+await page.getByRole("button", { name: "Unfold all", exact: true }).click();
+await settle(600);
 await page.getByRole("button", { name: "Deal a card for answer A" }).click();
-await page.locator(".pop").getByRole("button", { name: "Lesson 2", exact: true }).click();
+await page.locator(".pop").getByRole("button", { name: /^Week 1: Lesson 2$/ }).click();
 await page.locator(".pop").getByRole("button", { name: "Content", exact: true }).click();
 await settle();
 await page.keyboard.press("Escape");

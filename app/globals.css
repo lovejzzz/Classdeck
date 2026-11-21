@@ -143,8 +143,10 @@ button:disabled { cursor: not-allowed; }
 .card-holo {
   pointer-events: none; position: absolute; inset: 0; border-radius: 14px; opacity: 0.55; mix-blend-mode: multiply;
   background: linear-gradient(115deg, transparent 25%, rgba(255, 120, 200, 0.22) 38%, rgba(110, 220, 255, 0.24) 50%, rgba(255, 225, 120, 0.22) 62%, transparent 75%);
+  /* One copy only, moved within its own size: a repeated copy shows its hard edge across the card. */
   background-size: 250% 250%;
-  background-position: calc(var(--mx, 50%) * 1.2) calc(var(--my, 50%) * 1.2);
+  background-repeat: no-repeat;
+  background-position: clamp(0%, calc(var(--mx, 50%) * 1.2), 100%) clamp(0%, calc(var(--my, 50%) * 1.2), 100%);
   transition: opacity 0.3s ease;
 }
 [role="button"]:focus-visible { outline: none; }
@@ -207,8 +209,11 @@ button:disabled { cursor: not-allowed; }
 .tree-flow { stroke-dasharray: 2.5 15.5; opacity: 0.75; animation: tree-flow 0.9s linear infinite; }
 @keyframes tree-dash { to { stroke-dashoffset: -24; } }
 .tree-dash { animation: tree-dash 0.6s linear infinite; }
-.tree-port { transition: transform 0.18s var(--ease-spring), box-shadow 0.2s, background-color 0.2s, border-color 0.2s; }
-.tree-port:not(:disabled):hover { transform: translateY(-50%) scale(1.3); border-color: var(--port) !important; }
+/* An answer's port: hovering fills it with the answer's colour (no growing, so it never flickers at the edge). A wider
+   invisible ring makes it easy to hit. */
+.tree-port { transition: box-shadow 0.2s, background-color 0.15s, border-color 0.15s; }
+.tree-port::before { content: ""; position: absolute; inset: -7px; border-radius: 9999px; }
+.tree-port:not(:disabled):hover { border-color: var(--port) !important; background-color: var(--port) !important; }
 
 /* A card an answer just dealt onto a student's board. */
 @keyframes dealt-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(75, 86, 168, 0); } 50% { box-shadow: 0 0 0 8px rgba(75, 86, 168, 0.22); } }

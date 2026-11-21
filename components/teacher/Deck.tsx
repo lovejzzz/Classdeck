@@ -12,7 +12,7 @@ import { toast } from "@/lib/toast";
 import { SUITS, suitOfCard } from "@/lib/ui";
 import { ask } from "../Confirm";
 import { Clearable } from "../Clearable";
-import type { Course, Lesson, Module, ProgressMap, StudioPost } from "@/lib/types";
+import type { Course, Lesson, Module, ProgressMap, StudioPost, TrashEntry } from "@/lib/types";
 import { HScroll } from "../HScroll";
 import { scrollToWeek, WeekNav } from "../WeekNav";
 import { CardFace } from "../cards/CardFace";
@@ -25,7 +25,7 @@ import { CardEditor } from "./CardEditor";
 import { CourseMap } from "./CourseMap";
 import { newCard, type CardKind } from "@/lib/kinds";
 import { NeighborGraph } from "./NeighborGraph";
-import { bandLabel, branchBelow, deleteCardIn, treeView, wiresOf } from "@/lib/branching";
+import { bandLabel, branchBelow, deleteCardIn, SCORE, treeView, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
 import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
 
@@ -238,14 +238,64 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
    * Delete a card and the follow-ups only it deals (they'd otherwise go to everyone), in whichever lessons they are,
    * and unhook any wires to them. Returns those lessons as they were, to restore.
    */
+  // The last deletion's trash entry, so Undo can take it back out of the trash.
+  const lastTrash = useRef<string | null>(null);
   function deleteCard(id: string): Lesson[] {
-    const { before, after } = deleteCardIn(allLessons(), id);
+    const lessons = allLessons();
+    const { before, after, gone } = deleteCardIn(lessons, id);
+    // Keep what went in the map's trash bin: each card, where it sat, and the answers that dealt it.
+    const all = lessons.flatMap((l) => l.modules);
+    const entry: TrashEntry = {
+      id: uid("t-"), at: Date.now(), title: all.find((m) => m.id === id)?.title || "Untitled card",
+      lessons: before.map((l) => ({ lessonId: l.id, lessonTitle: l.title, cards: l.modules.map((m, index) => ({ m, index })).filter((x) => gone.has(x.m.id)) })).filter((x) => x.cards.length),
+      inbound: wiresOf(all).filter((w) => gone.has(w.to) && !gone.has(w.from)).map((w) => ({ from: w.from, q: w.q, option: w.option, to: w.to })),
+    };
+    lastTrash.current = entry.id;
+    void op(course.id, { op: "trashPut", entry });
     if (after.length === 1) change(after[0]);
     else changeMany(after);
     return before;
   }
-  const deletedToast = (title: string, before: Lesson[]) =>
-    toast(`Deleted “${title}”`, { icon: "trash", tone: "plain", action: { label: "Undo", run: () => { if (before.length === 1) change(before[0]); else changeMany(before); toast(`Restored “${title}”`); } } });
+  const deletedToast = (title: string, before: Lesson[]) => {
+    const tid = lastTrash.current;
+    toast(`Deleted “${title}”`, { icon: "trash", tone: "plain", action: { label: "Undo", run: () => { if (before.length === 1) change(before[0]); else changeMany(before); if (tid) void op(course.id, { op: "trashDrop", id: tid }); toast(`Restored “${title}”`); } } });
+  };
+  /** Put cards from the trash back where they were (or at the end of the first lesson, if theirs is gone). */
+  async function restoreTrash(e: TrashEntry) {
+    const lessons = allLessons();
+    const have = new Set(lessons.flatMap((l) => l.modules.map((m) => m.id)));
+    const changed = new Map<string, Lesson>();
+    const get = (id: string) => changed.get(id) ?? lessons.find((l) => l.id === id);
+    for (const part of e.lessons) {
+      const target = get(part.lessonId) ?? get(lessons[0]?.id ?? "");
+      if (!target) continue;
+      const modules = [...target.modules];
+      for (const { m, index } of [...part.cards].sort((a, b) => a.index - b.index)) if (!have.has(m.id)) { modules.splice(Math.min(index, modules.length), 0, m); have.add(m.id); }
+      changed.set(target.id, { ...target, modules });
+    }
+    // The answers that dealt these cards point at them again, where the answer is still free.
+    for (const w of e.inbound) {
+      const l = [...changed.values(), ...lessons].find((x) => x.modules.some((m) => m.id === w.from));
+      if (!l || !have.has(w.to)) continue;
+      const cur = get(l.id)!;
+      changed.set(l.id, { ...cur, modules: cur.modules.map((m) => {
+        if (m.id !== w.from) return m;
+        if (w.q === SCORE) return m.bands?.[w.option] && !m.bands[w.option].next ? { ...m, bands: m.bands.map((b, i) => (i === w.option ? { ...b, next: w.to } : b)) } : m;
+        return { ...m, questions: m.questions?.map((q) => {
+          if (q.id !== w.q || q.next?.[w.option]) return q;
+          const next = [...(q.next ?? [])];
+          while (next.length < q.options.length) next.push(null);
+          next[w.option] = w.to;
+          return { ...q, next };
+        }) };
+      }) });
+    }
+    if (!changed.size) return;
+    await changeMany([...changed.values()]);
+    await op(course.id, { op: "trashDrop", id: e.id });
+    onRefresh();
+    toast(`Restored “${e.title}”`, { icon: "reset" });
+  }
   async function removeCard(_l: Lesson, m: Module) {
     const extra = branchBelow(allLessons().flatMap((l) => l.modules), m.id).length;
     if (!(await ask({ title: `Delete “${m.title}”?`, body: extra ? `The ${extra} follow-up card${extra === 1 ? "" : "s"} it deals go with it. Students’ work stays saved, and you can undo this.` : "Students’ work on it stays saved, and you can undo this.", confirm: "Delete", danger: true }))) return;
@@ -404,6 +454,9 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             onChangeMany={changeMany}
             onEdit={(lid, id) => { if (!readOnly) edit(lid, id); }}
             onAddLesson={course.weeks.length ? () => addLesson(course.weeks[course.weeks.length - 1].id) : undefined}
+            trash={course.trash ?? []}
+            onRestore={readOnly ? undefined : (e) => void restoreTrash(e)}
+            onForget={readOnly ? undefined : async (id) => { await op(course.id, { op: "trashDrop", id }); onRefresh(); }}
             onDelete={readOnly ? undefined : async (m) => {
               if (m.type === "group") {
                 if (!(await ask({ title: `Delete “${m.title}” and its ${m.members?.length ?? 0} cards?`, body: "To keep the cards, open the group and use Ungroup instead. You can undo this.", confirm: "Delete all", danger: true }))) return;

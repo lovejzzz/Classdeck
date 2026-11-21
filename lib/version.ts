@@ -3,6 +3,19 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.31",
+    date: "2026-11-21",
+    changes: [
+      "Reorder cards on the course map: drag a card along its lesson's row and the others slide aside to show where it will land. Drag it into another lesson to move it there, in the spot you drop it.",
+      "A trash bin at the end of the map's toolbar: drag a card onto it to delete it (with the cards it deals). Click it to see deleted cards and restore them, back in their places and with the answers that dealt them.",
+      "The map opens folded, showing each lesson's main path; unfold a card (or Unfold all) to see its branches. A card you wire or create from an answer stays in view.",
+      "An answer's circle on the map fills with its colour when you point at it, instead of growing and shrinking, and is easier to hit.",
+      "New card in: other lessons are named with their week, like “Week 2: Comparing and adding”.",
+      "The rainbow shine on “For you” cards blends smoothly, without hard edges showing as you move over a card.",
+      "Students see each lesson of a week on its own row of cards, instead of the week's lessons side by side.",
+    ],
+  },
+  {
     version: "0.1.30",
     date: "2026-11-21",
     changes: [

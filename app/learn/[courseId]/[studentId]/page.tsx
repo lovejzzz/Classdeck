@@ -593,13 +593,15 @@ export default function LearnPage() {
                       </button>
                     </div>
                   ) : (
-                    <HScroll className="mt-1">
-                      <div className="flex w-max gap-10 pb-1 pt-2 sm:pb-6 sm:pt-4" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
+                    // One row per lesson: a week's lessons stack, each scrolling sideways on its own when it has many cards.
+                    <div className="mt-1 space-y-1 sm:space-y-2">
                         {week.lessons.map((l) => {
                           const isToday = l.id === current.id;
                           const rowWidth = Math.max(l.modules.length, 1) * (size.w + 14) - 14;
                           return (
-                            <div key={l.id} ref={isToday ? todayRef : undefined} className="scroll-ml-6">
+                            <HScroll key={l.id}>
+                            <div className="w-max pb-1 pt-2 sm:pb-4 sm:pt-3" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
+                            <div ref={isToday ? todayRef : undefined} className="scroll-ml-6">
                               <div className="flex flex-wrap items-center gap-2 text-[13px]" style={{ maxWidth: Math.max(rowWidth, 280) }}>
                                 <span className="font-medium">{l.title}</span>
                                 {isToday && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
@@ -644,10 +646,11 @@ export default function LearnPage() {
                                 <div className="hatch mt-5 flex items-center justify-center text-[12.5px] text-ink-3" style={{ width: size.w, height: size.h }}>No cards yet</div>
                               )}
                             </div>
+                            </div>
+                            </HScroll>
                           );
                         })}
-                      </div>
-                    </HScroll>
+                    </div>
                   )}
                 </section>
               );

@@ -6,7 +6,7 @@ import { bandTone, pathColor, suitOfCard, suitOfKind } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
 import { MathText, plainMath } from "../MathText";
-import type { AnswerValue, Lesson, Module, ProgressMap } from "@/lib/types";
+import type { AnswerValue, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
 import { Icon } from "../Icon";
 import { toast } from "@/lib/toast";
 import { ask } from "../Confirm";
@@ -28,7 +28,6 @@ const TOP = 92; // room for each lesson's header
 const NEW_KINDS: CardKind[] = FAMILIES.map((f) => f.start);
 const familyName = (k: CardKind) => FAMILIES.find((f) => f.start === k)!.name;
 const INK = "#4b56a8";
-const FOLD_KEY = "qh:map-folded";
 const DAY = 86400000;
 
 export type Level = "far" | "mid" | "near";
@@ -153,6 +152,27 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
   return { nodes, regions, width: x0 + width + 60, height: Math.max(y0 + 60, 420) };
 }
 
+/**
+ * A card moved to just before another card (`before`; null: the end) in a lesson, the same one or another. Its group's
+ * cards go with a card group; in its own lesson its follow-ups go with it too, so the List keeps them under it.
+ * Returns the lessons that changed.
+ */
+function applyMove(lessons: Lesson[], id: string, toId: string, before: string | null): Lesson[] {
+  const from = lessons.find((l) => l.modules.some((m) => m.id === id));
+  const to = lessons.find((l) => l.id === toId);
+  if (!from || !to) return [];
+  const card = from.modules.find((m) => m.id === id)!;
+  const ids = new Set([id, ...(card.type === "group" ? card.members ?? [] : [])]);
+  if (from.id === to.id) for (const x of branchBelow(from.modules, id)) ids.add(x);
+  const block = from.modules.filter((m) => ids.has(m.id));
+  const rest = (from.id === to.id ? from.modules : to.modules).filter((m) => !ids.has(m.id));
+  let at = before ? rest.findIndex((m) => m.id === before) : rest.length;
+  if (at < 0) at = rest.length;
+  const placed = [...rest.slice(0, at), ...block, ...rest.slice(at)];
+  if (from.id === to.id) return placed.every((m, i) => m === from.modules[i]) ? [] : [{ ...from, modules: placed }];
+  return [{ ...from, modules: from.modules.filter((m) => !ids.has(m.id)) }, { ...to, modules: placed }];
+}
+
 /** Positions that glide to their new place when the map changes (nodes and wires read the same numbers). */
 function useGlide(target: Map<string, { x: number; y: number }>, spawnAt: (id: string) => { x: number; y: number } | undefined) {
   const [pos, setPos] = useState(target);
@@ -192,7 +212,12 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new" } | { add: 
  * lesson or into a later one). Zoomed out, cards shrink to their titles; zoomed in, they show what to do. Drag from a
  * port onto a card to deal it, or into empty space for a new card. Click a card to edit it in the panel.
  */
-export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete }: {
+export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget }: {
+  /** Deleted cards, to put back from the trash bin. */
+  trash?: TrashEntry[];
+  onRestore?: (e: TrashEntry) => void;
+  /** Delete a trash entry for good. */
+  onForget?: (id: string) => void;
   /** Every lesson in the course, in order (with unsaved edits). */
   lessons: Lesson[];
   /** Lesson id → its week's title. */
@@ -223,14 +248,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   // A card inside a group has its ports on the group's node.
   const groupOf = useMemo(() => new Map(all.flatMap((x) => (x.m.type === "group" ? (x.m.members ?? []).map((id) => [id, x.m.id] as const) : []))), [all]);
   const nodeOf = (id: string) => groupOf.get(id) ?? id;
-  // Cards whose follow-ups are folded away (the button under a card), kept in this browser.
-  const [folded, setFolded] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(FOLD_KEY) ?? "[]")); } catch { return new Set(); }
-  });
+  // Cards whose follow-ups are folded away (the button under a card). The map opens with everything folded: each
+  // lesson's main path first, the branches a click away.
+  const [folded, setFolded] = useState<Set<string>>(() => new Set(wires.map((w) => nodeOf(w.from))));
   const fold = (id: string, on: boolean) => setFolded((f) => {
+    if (f.has(id) === on) return f;
     const n = new Set(f);
     if (on) n.add(id); else n.delete(id);
-    try { localStorage.setItem(FOLD_KEY, JSON.stringify([...n].slice(-500))); } catch {}
     return n;
   });
   /**
@@ -260,7 +284,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     return seen.size;
   };
   const shownLessons = useMemo(() => (hidden.size ? lessons.map((l) => ({ ...l, modules: l.modules.filter((m) => !hidden.has(m.id) && !hidden.has(groupOf.get(m.id) ?? "")) })) : lessons), [lessons, hidden]);
-  const { nodes, regions, width, height } = useMemo(() => layout(shownLessons, wires, level, !!readOnly), [shownLessons, wires, level, readOnly]);
+  // A card being dragged: where the pointer is, the lesson under it and the card it would go before (null: the end),
+  // or the trash bin.
+  const [moving, setMoving] = useState<{ id: string; x: number; y: number; to?: string; before?: string | null; trash?: boolean } | null>(null);
+  const base = useMemo(() => layout(shownLessons, wires, level, !!readOnly), [shownLessons, wires, level, readOnly]);
+  // While a card is dragged, the map shows it where it would land: the other cards slide aside to make room.
+  const preview = useMemo(() => {
+    if (!moving?.to || moving.trash || moving.before === undefined) return null;
+    const changed = applyMove(shownLessons, moving.id, moving.to, moving.before);
+    if (!changed.length) return null;
+    const by = new Map(changed.map((l) => [l.id, l]));
+    return layout(shownLessons.map((l) => by.get(l.id) ?? l), wires, level, !!readOnly);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moving?.id, moving?.to, moving?.before, moving?.trash, shownLessons, wires, level, readOnly]);
+  const { nodes, regions, width, height } = preview ?? base;
   /** Whether a card deals anything (so it can fold its follow-ups away). */
   const dealsSome = (id: string) => wires.some((w) => nodeOf(w.from) === id);
   const [drag, setDrag] = useState<{ port: Port; x: number; y: number; over?: string } | null>(null);
@@ -271,7 +308,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   // Words edited in place on a card (double-click a title, a question or an answer).
   const [typing, setTyping] = useState<{ id: string; field: string; value: string } | null>(null);
   // A card being dragged to another lesson, and where the pointer is.
-  const [moving, setMoving] = useState<{ id: string; x: number; y: number; to?: string } | null>(null);
   const [dragged, setDragged] = useState(false);
   // Cards picked to put in a card group: shift-click a card, or shift-drag a box around several.
   const [picks, setPicks] = useState<Set<string>>(new Set());
@@ -407,7 +443,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     climb(focus.id);
     // Scroll to it once the map has redrawn with it in place.
     setGoing(focus.id);
-    setFolded((f) => { const n = new Set([...f].filter((x) => !up.has(x))); try { localStorage.setItem(FOLD_KEY, JSON.stringify([...n])); } catch {} return n; });
+    setFolded((f) => new Set([...f].filter((x) => !up.has(x))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.at]);
   useEffect(() => {
@@ -519,6 +555,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       });
       if (!ok) return;
     }
+    // The card it now deals shows (a folded card would hide it).
+    fold(nodeOf(port.from), false);
     onChange(withWire(lessonWith(port.from), port, to));
   };
   const setBands = (m: Module, bands: { min: number; next: string | null }[] | undefined) => {
@@ -536,6 +574,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const p = portPos(port);
     born.set(card.id, { x: p.x + 40, y: p.y - HEAD / 2 });
     setMenu(null);
+    fold(nodeOf(port.from), false);
     if (into === lesson.id) {
       // After the card that deals it and that card's other follow-ups, so the list reads in order.
       const below = new Set(branchBelow(lesson, port.from));
@@ -633,8 +672,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     setTyping({ id, field, value });
   };
 
-  /** Which lesson's region a point on the canvas is over. */
-  const regionAt = (y: number) => regions.find((r) => y >= r.y - REGION_GAP / 2 && y <= r.y + r.h + REGION_GAP / 2)?.lesson.id;
 
   /** Why a card can't go to a lesson: wires only run forward, so it can't go before a card that deals it, or after one it deals. */
   function whyNot(id: string, to: string): string | null {
@@ -645,54 +682,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     if (after) return `It deals “${all.find((x) => x.m.id === after.to)?.m.title}” in ${lessonWith(after.to).title}, so it can’t come after that lesson.`;
     return null;
   }
-  async function moveCard(id: string, to: string) {
-    const from = lessonWith(id);
-    if (!from || from.id === to) return;
-    const why = whyNot(id, to);
-    if (why) { toast(`Can’t move it there. ${why}`, { icon: "split", tone: "plain" }); return; }
-    const m = from.modules.find((x) => x.id === id)!;
-    const target = lessons.find((l) => l.id === to)!;
-    born.delete(id);
-    await onChangeMany([{ ...from, modules: from.modules.filter((x) => x.id !== id) }, { ...target, modules: [...target.modules, m] }]);
-    setFresh(id);
-    toast(`Moved “${m.title}” to ${target.title}`, { icon: "layers" });
-  }
-  /** Press on a card's head and move: drag it to another lesson. A press without moving is a click (opens it). */
-  function startMove(e: React.PointerEvent, id: string) {
-    if (readOnly || e.button !== 0 || typing) return;
-    const start = { x: e.clientX, y: e.clientY };
-    let on = false;
-    // Held still for a moment: show the delete buttons (and don't open the card on release).
-    let held = false;
-    const hold = onDelete ? window.setTimeout(() => { held = true; setJiggle(true); navigator.vibrate?.(10); }, 520) : 0;
-    const move = (ev: PointerEvent) => {
-      if (!on && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return;
-      clearTimeout(hold);
-      on = true;
-      edge.track(ev);
-      const p = toCanvas(ev.clientX, ev.clientY);
-      setMoving({ id, x: p.x, y: p.y, to: regionAt(p.y) });
-    };
-    const edge = edgeScroll((ev) => { if (!on) return; const p = toCanvas(ev.clientX, ev.clientY); setMoving({ id, x: p.x, y: p.y, to: regionAt(p.y) }); });
-    const up = (ev: PointerEvent) => {
-      edge.stop();
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
-      clearTimeout(hold);
-      setMoving(null);
-      if (held && !on) { setDragged(true); setTimeout(() => setDragged(false), 0); return; }
-      if (!on) return;
-      setDragged(true);
-      setTimeout(() => setDragged(false), 0);
-      const to = regionAt(toCanvas(ev.clientX, ev.clientY).y);
-      if (to && ev.type === "pointerup") moveCard(id, to);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
-  }
-
   /**
    * While dragging (a wire, or a card to another lesson), holding the pointer near the map's edge scrolls the map that
    * way, so a card in a lesson further down can be reached. `again` redraws the drag at the pointer after a scroll.
@@ -711,6 +700,88 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     };
     raf = requestAnimationFrame(tick);
     return { track: (ev: PointerEvent) => { last = ev; }, stop: () => cancelAnimationFrame(raf) };
+  }
+
+  /** Put a dragged card where it was dropped: before another card in its lesson's row, or in another lesson. */
+  async function moveCard(id: string, to: string, before: string | null | undefined) {
+    const from = lessonWith(id);
+    if (!from) return;
+    const m = from.modules.find((x) => x.id === id)!;
+    if (from.id === to) {
+      if (before === undefined) return;
+      const changed = applyMove(lessons, id, to, before);
+      if (changed.length) onChange(changed[0]);
+      return;
+    }
+    const why = whyNot(id, to);
+    if (why) { toast(`Can’t move it there. ${why}`, { icon: "split", tone: "plain" }); return; }
+    const changed = applyMove(lessons, id, to, before ?? null);
+    if (!changed.length) return;
+    born.delete(id);
+    await onChangeMany(changed);
+    setFresh(id);
+    toast(`Moved “${m.title}” to ${lessons.find((l) => l.id === to)?.title}`, { icon: "layers" });
+  }
+  /** Where a dragged card would land: the trash bin, or a lesson and the card in its row it would go before. */
+  function dropAt(id: string, p: { x: number; y: number }, ev: PointerEvent): { to?: string; before?: string | null; trash?: boolean } {
+    if ((document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest("[data-trash]")) return { trash: true };
+    // Read from the map as it is without the drag, so the cards sliding aside don't move the target.
+    const to = base.regions.find((r) => p.y >= r.y - REGION_GAP / 2 && p.y <= r.y + r.h + REGION_GAP / 2)?.lesson.id;
+    if (!to) return {};
+    const from = lessonWith(id);
+    if (to !== from?.id && whyNot(id, to)) return { to };
+    // A card an answer deals sits under that card; its place in the row isn't its own to choose.
+    if (to === from?.id && base.nodes.get(id)?.parent) return { to };
+    const row = [...base.nodes.values()].filter((n) => n.lessonId === to && !n.parent && n.m.id !== id).sort((a, b) => a.x - b.x);
+    const next = row.find((n) => p.x < n.x + W / 2);
+    return { to, before: next ? next.m.id : null };
+  }
+  /** Press on a card's head and move: drag it along its row to reorder, to another lesson, or into the trash. A press without moving is a click (opens it). */
+  function startMove(e: React.PointerEvent, id: string) {
+    if (readOnly || e.button !== 0 || typing) return;
+    const start = { x: e.clientX, y: e.clientY };
+    let on = false;
+    let last: ReturnType<typeof dropAt> = {};
+    // Held still for a moment: show the delete buttons (and don't open the card on release).
+    let held = false;
+    const hold = onDelete ? window.setTimeout(() => { held = true; setJiggle(true); navigator.vibrate?.(10); }, 520) : 0;
+    const show = (ev: PointerEvent) => {
+      const p = toCanvas(ev.clientX, ev.clientY);
+      last = dropAt(id, p, ev);
+      setMoving({ id, x: p.x, y: p.y, ...last });
+    };
+    const move = (ev: PointerEvent) => {
+      if (!on && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return;
+      clearTimeout(hold);
+      on = true;
+      edge.track(ev);
+      show(ev);
+    };
+    const edge = edgeScroll((ev) => { if (on) show(ev); });
+    const up = (ev: PointerEvent) => {
+      edge.stop();
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      clearTimeout(hold);
+      if (held && !on) { setMoving(null); setDragged(true); setTimeout(() => setDragged(false), 0); return; }
+      if (!on) return setMoving(null);
+      setDragged(true);
+      setTimeout(() => setDragged(false), 0);
+      if (ev.type !== "pointerup") return setMoving(null);
+      if (last.trash) {
+        setMoving(null);
+        const m = all.find((x) => x.m.id === id)?.m;
+        if (m) onDelete?.(m);
+        return;
+      }
+      // The card stays where the preview showed it while the change is saved (no jump back first).
+      if (last.to) void moveCard(id, last.to, last.before);
+      requestAnimationFrame(() => setMoving(null));
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   }
 
   function startDrag(e: React.PointerEvent, port: Port) {
@@ -869,9 +940,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           <button
             onClick={() => {
               const all = [...new Set(wires.map((w) => nodeOf(w.from)))];
-              const next = folded.size ? new Set<string>() : new Set(all);
-              setFolded(next);
-              try { localStorage.setItem(FOLD_KEY, JSON.stringify([...next])); } catch {}
+              setFolded(folded.size ? new Set<string>() : new Set(all));
             }}
             title={folded.size ? "Show every card again" : "Fold away every card an answer deals, to see the main path"}
             className="pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-2.5 text-[12.5px] text-ink-2 shadow-sm"
@@ -879,6 +948,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
             <Icon name="chevron" size={13} className={folded.size ? "-rotate-90" : ""} /> {folded.size ? "Unfold all" : "Fold all"}
           </button>
         )}
+        {!readOnly && onDelete && <TrashBin entries={trash} hot={!!moving?.trash} dragging={!!moving} onRestore={onRestore} onForget={onForget} />}
         {students.length > 0 && (
           <button onClick={() => setLive((v) => !v)} aria-pressed={live} className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${live ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
             <Icon name="users" size={13} /> Where students are
@@ -1020,7 +1090,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                   data-node={m.id}
                   onPointerEnter={() => setHot(m.id)}
                   onPointerLeave={() => setHot((h) => (h === m.id ? null : h))}
-                  className={`tree-node absolute flex flex-col rounded-[18px] border bg-white ${m.type === "group" ? "isolate" : ""} ${jiggle ? "tree-jiggle" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
+                  className={`tree-node absolute flex flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? "isolate" : ""} ${jiggle ? "tree-jiggle" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
                   style={{ left: p.x, top: p.y, width: W, height: nd.h, animationDelay: jiggle ? `${-(i % 5) * 70}ms` : `${Math.min(i, 14) * 25}ms` }}
                 >
                   {jiggle && onDelete && (
@@ -1049,7 +1119,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     if (dragged || typing || jiggle) return;
                     if ((e.shiftKey || picking) && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
                     onEdit(nd.lessonId, m.id);
-                  }} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none rounded-t-[18px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"} ${moving?.id === m.id ? "opacity-40" : ""}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
+                  }} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none rounded-t-[18px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
                     <span className="tree-bar block h-[5px] rounded-t-[18px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
                     {level === "far" ? (
                       <span className="line-clamp-2 px-4 pt-3 text-[26px] font-semibold leading-[1.15] text-ink">{m.title || "Untitled card"}</span>
@@ -1203,7 +1273,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                 <div className="pointer-events-none absolute z-30 rotate-[2deg] rounded-[18px] border border-[#4b56a8] bg-white shadow-[0_24px_50px_-18px_rgba(20,20,18,0.55)]" style={{ left: moving.x - W / 2, top: moving.y - 20, width: W }}>
                   <span className="block h-1.5 rounded-t-[18px]" style={{ background: suitOfCard(m).tint }} />
                   <span className="block truncate px-3.5 pb-3 pt-2 text-[14px] font-semibold text-ink">{m.title || "Untitled card"}</span>
-                  {moving.to && moving.to !== lessonWith(moving.id)?.id && (
+                  {moving.trash ? (
+                    <span className="block border-t border-line px-3.5 py-1.5 text-[11.5px] text-bad">Drop to delete</span>
+                  ) : moving.to && moving.to !== lessonWith(moving.id)?.id && (
                     <span className={`block border-t border-line px-3.5 py-1.5 text-[11.5px] ${bad ? "text-bad" : "text-[#4b56a8]"}`}>{bad ? "Can’t go here" : `Move to ${lessons.find((l) => l.id === moving.to)?.title}`}</span>
                   )}
                 </div>
@@ -1243,7 +1315,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     {later.map((l, k) => (
                       <button key={l.id} onClick={() => setMenuLesson(l.id)} aria-pressed={into === l.id}
                         className={`press h-6 rounded-full px-2.5 text-[11.5px] transition-colors ${into === l.id ? "bg-ink text-white" : "bg-lane text-ink-2 hover:bg-line"}`}>
-                        {k === 0 ? "This lesson" : l.title}
+                        {k === 0 ? "This lesson" : `${weekOf[l.id] ? `${weekOf[l.id]}: ` : ""}${l.title}`}
                       </button>
                     ))}
                   </div>
@@ -1367,5 +1439,53 @@ function LessonName({ title, onRename }: { title: string; onRename: (t: string) 
       onChange={(e) => setDraft(e.target.value)} onBlur={() => done(true)}
       onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); }}
       className="-mx-1 min-w-0 flex-1 rounded-md border border-line-strong bg-white px-1 font-semibold text-ink outline-none" />
+  );
+}
+
+/**
+ * The trash bin at the end of the map's toolbar: drag a card onto it to delete it (with its follow-ups); click it to see
+ * what was deleted and put cards back.
+ */
+function TrashBin({ entries, hot, dragging, onRestore, onForget }: { entries: TrashEntry[]; hot: boolean; dragging: boolean; onRestore?: (e: TrashEntry) => void; onForget?: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => { if (!box.current?.contains(e.target as globalThis.Node)) setOpen(false); };
+    window.addEventListener("pointerdown", away);
+    return () => window.removeEventListener("pointerdown", away);
+  }, [open]);
+  const list = [...entries].reverse();
+  const ago = (t: number) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+  return (
+    <div ref={box} className="pointer-events-auto relative">
+      <button data-trash="1" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={`Trash${entries.length ? `, ${entries.length} deleted` : ""}`}
+        title="Drag a card here to delete it. Click to see deleted cards and put them back."
+        className={`press relative flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm transition-[transform,background-color,border-color,color] duration-200 ${hot ? "scale-110 border-bad bg-bad text-white" : dragging ? "border-bad/40 bg-white text-bad" : "border-line bg-white/95 text-ink-2"}`}>
+        <Icon name="trash" size={13} /> Trash
+        {entries.length > 0 && !hot && <span className="mono rounded-full bg-lane px-1.5 text-[10.5px] text-ink-3">{entries.length}</span>}
+      </button>
+      {open && (
+        <div className="pop absolute bottom-10 left-0 z-30 w-80 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]">
+          <div className="px-2 pb-1.5 pt-0.5 text-[12px] font-medium text-ink">Deleted cards</div>
+          {!list.length && <div className="px-2 pb-2 text-[12px] text-ink-3">Nothing here. Drag a card onto the trash to delete it; it waits here in case you want it back.</div>}
+          <div className="max-h-72 overflow-auto">
+            {list.map((e) => {
+              const n = e.lessons.reduce((k, l) => k + l.cards.filter((c) => c.m.type !== "group").length, 0);
+              return (
+                <div key={e.id} className="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-lane">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12.5px] font-medium text-ink">{e.title}</span>
+                    <span className="block truncate text-[11px] text-ink-3">{n > 1 ? `${n} cards · ` : ""}{e.lessons.map((l) => l.lessonTitle).join(", ")} · {ago(e.at)}</span>
+                  </span>
+                  {onRestore && <button onClick={() => { onRestore(e); setOpen(false); }} className="press h-7 flex-none rounded-lg bg-[#eef0fb] px-2 text-[12px] font-medium text-[#4b56a8] hover:bg-[#e3e6f8]">Restore</button>}
+                  {onForget && <button onClick={() => onForget(e.id)} aria-label={`Delete “${e.title}” for good`} title="Delete for good" className="press flex h-7 w-7 flex-none items-center justify-center rounded-lg text-ink-3 hover:bg-white hover:text-bad"><Icon name="x" size={12} /></button>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

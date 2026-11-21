@@ -291,6 +291,15 @@ async function main() {
     const again = await A.state(`${fresh.id}?as=${mia.id}&preview=1`);
     check("Student View: Start over goes back to the real progress", !again.progress[mia.id]?.[qv.id] && !modulesOf(courseOf(again)).some((m) => m.id === xv.id));
   }
+  // The map's trash bin: deleted cards are kept for the teacher, never shown to students.
+  {
+    const entry = { id: `t-${run}`, title: "Gone card", lessons: [{ lessonId: "l-x", lessonTitle: "Lesson", cards: [{ m: { id: "m-gone", type: "read", title: "Gone card", body: "", audience: { kind: "all" }, tools: [], attachments: [] }, index: 0 }] }], inbound: [] };
+    check("trash: the teacher keeps a deleted card", (await A.op(fresh.id, { op: "trashPut", entry })).ok !== false && courseOf(await A.state(fresh.id)).trash?.some((e) => e.id === entry.id));
+    check("trash: students never receive it", !JSON.stringify(courseOf(await S1.state(`${fresh.id}?as=${mia.id}`))).includes("Gone card"));
+    check("trash: a student can't add to it", (await S1.op(fresh.id, { op: "trashPut", entry })).ok === false);
+    await A.op(fresh.id, { op: "trashDrop", id: entry.id });
+    check("trash: an entry can be removed", !courseOf(await A.state(fresh.id)).trash?.some((e) => e.id === entry.id));
+  }
   check("unknown op refused", (await A.op(fresh.id, { op: "nope" })).ok === false);
   check("unknown card refused", (await S1.op(fresh.id, { op: "setProgress", studentId: mia.id, moduleId: "m-nope", status: "done" })).ok === false);
 
