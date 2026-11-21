@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.27",
+    date: "2026-11-21",
+    changes: [
+      "Score ranges on a quiz or card group stay on one line on the map (“75–100%   3–4 right”) instead of running into each other. Hover the count for the full “3–4 of 4 right”.",
+    ],
+  },
+  {
     version: "0.1.26",
     date: "2026-11-21",
     changes: [

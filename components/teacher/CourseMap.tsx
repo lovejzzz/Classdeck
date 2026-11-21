@@ -989,7 +989,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                               {bi === 0 || readOnly ? (
                                 <span className="min-w-0 flex-1 text-[12.5px] text-ink-2">{bandLabel(b)}</span>
                               ) : (
-                                <span className="flex min-w-0 flex-1 items-center gap-1 text-[12.5px] text-ink-2">
+                                <span className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap text-[12.5px] text-ink-2">
                                   <input
                                     type="number" min={bands[bi - 1].min + 1} max={(bands[bi + 1]?.min ?? 101) - 1} value={b.min}
                                     onChange={(e) => {
@@ -1000,10 +1000,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                                     aria-label="Lowest score in this range"
                                     className="h-6 w-12 rounded-md border border-line bg-white px-1 text-center text-[12px] focus:border-line-strong focus:outline-none"
                                   />
-                                  <span>{b.max > 100 ? (b.min >= 100 ? "%" : "–100%") : `–${b.max - 1}%`}</span>
+                                  <span className="whitespace-nowrap">{b.max > 100 ? (b.min >= 100 ? "%" : "–100%") : `–${b.max - 1}%`}</span>
                                 </span>
                               )}
-                              {nQ > 0 && (() => { const r = bandRight(b, nQ); return <span className={`mono mr-2 flex-none text-[10.5px] ${r ? "" : "text-bad"}`} title={r ? undefined : "No score falls in this range"}>{r ?? "never"}</span>; })()}
+                              {nQ > 0 && (() => { const r = bandRight(b, nQ); return <span className={`mono mr-2 flex-none whitespace-nowrap text-[10.5px] ${r ? "" : "text-bad"}`} title={r ?? "No score falls in this range"}>{r ? r.replace(/ of \d+ right$/, " right") : "never"}</span>; })()}
                               <PortDot color={bandTone(bi, bands.length)} wired={!!b.next} readOnly={readOnly} label={b.next ? `Score ${bandLabel(b)} deals a card. Change it` : `Deal a card for score ${bandLabel(b)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: SCORE, option: bi })} />
                             </div>
                           ))}
