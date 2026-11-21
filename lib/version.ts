@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.30",
+    date: "2026-11-21",
+    changes: [
+      "Fold a card's follow-ups on the course map: the button under a card that deals other cards hides them (it then shows how many), so you see just that card. Fold all shows only the main path; Unfold all brings everything back. Opening a folded-away card unfolds what hides it.",
+      "Pinching on a trackpad (or ctrl/⌘ + scroll) over the map zooms the map only, not the whole page.",
+      "With a card open in the side panel, the map's right edge moves in to meet the panel instead of hiding under it. Scroll right to see what's beyond.",
+    ],
+  },
+  {
     version: "0.1.29",
     date: "2026-11-21",
     changes: [

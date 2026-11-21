@@ -28,6 +28,7 @@ const TOP = 92; // room for each lesson's header
 const NEW_KINDS: CardKind[] = FAMILIES.map((f) => f.start);
 const familyName = (k: CardKind) => FAMILIES.find((f) => f.start === k)!.name;
 const INK = "#4b56a8";
+const FOLD_KEY = "qh:map-folded";
 const DAY = 86400000;
 
 export type Level = "far" | "mid" | "near";
@@ -219,7 +220,49 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   // Playing-card sized cards are tall: start a little zoomed out so a lesson shows several at once.
   const [zoom, setZoom] = useState(0.7);
   const level = levelOf(zoom);
-  const { nodes, regions, width, height } = useMemo(() => layout(lessons, wires, level, !!readOnly), [lessons, wires, level, readOnly]);
+  // A card inside a group has its ports on the group's node.
+  const groupOf = useMemo(() => new Map(all.flatMap((x) => (x.m.type === "group" ? (x.m.members ?? []).map((id) => [id, x.m.id] as const) : []))), [all]);
+  const nodeOf = (id: string) => groupOf.get(id) ?? id;
+  // Cards whose follow-ups are folded away (the button under a card), kept in this browser.
+  const [folded, setFolded] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(FOLD_KEY) ?? "[]")); } catch { return new Set(); }
+  });
+  const fold = (id: string, on: boolean) => setFolded((f) => {
+    const n = new Set(f);
+    if (on) n.add(id); else n.delete(id);
+    try { localStorage.setItem(FOLD_KEY, JSON.stringify([...n].slice(-500))); } catch {}
+    return n;
+  });
+  /**
+   * Cards out of sight because what deals them is folded: every wire into the card comes from a folded card or from a
+   * card that is itself out of sight. A card another, unfolded card also deals stays on the map.
+   */
+  const hidden = useMemo(() => {
+    const out = new Set<string>();
+    if (!folded.size) return out;
+    const into = new Map<string, Wire[]>();
+    for (const w of wires) (into.get(w.to) ?? into.set(w.to, []).get(w.to)!).push(w);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const [to, ws] of into) {
+        if (out.has(to)) continue;
+        if (ws.every((w) => { const f = nodeOf(w.from); return folded.has(f) || out.has(f); })) { out.add(to); grew = true; }
+      }
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folded, wires, groupOf]);
+  /** How many cards a fold hides under each folded card (its own follow-ups and theirs). */
+  const foldedUnder = (id: string) => {
+    const seen = new Set<string>();
+    const walk = (from: string) => { for (const w of wires) if (nodeOf(w.from) === from && hidden.has(w.to) && !seen.has(w.to)) { seen.add(w.to); walk(w.to); } };
+    walk(id);
+    return seen.size;
+  };
+  const shownLessons = useMemo(() => (hidden.size ? lessons.map((l) => ({ ...l, modules: l.modules.filter((m) => !hidden.has(m.id) && !hidden.has(groupOf.get(m.id) ?? "")) })) : lessons), [lessons, hidden]);
+  const { nodes, regions, width, height } = useMemo(() => layout(shownLessons, wires, level, !!readOnly), [shownLessons, wires, level, readOnly]);
+  /** Whether a card deals anything (so it can fold its follow-ups away). */
+  const dealsSome = (id: string) => wires.some((w) => nodeOf(w.from) === id);
   const [drag, setDrag] = useState<{ port: Port; x: number; y: number; over?: string } | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [menuLesson, setMenuLesson] = useState<string | null>(null);
@@ -301,7 +344,35 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     return () => { window.removeEventListener("resize", measure); ro.disconnect(); };
   }, []);
 
-  /** Scroll so a card (or a lesson's region) sits in view, left of the editor panel when it's open. */
+  // The card panel (30rem, fixed on the right) shouldn't cover the map: while it's open the map's right edge moves in
+  // to meet it, and what's under the panel is reached by scrolling right.
+  const PANEL = 480;
+  const [gap, setGap] = useState(0);
+  useEffect(() => {
+    const measure = () => {
+      const wrap = scroller.current?.parentElement;
+      if (!wrap || !selected || window.innerWidth < 900) return setGap(0);
+      setGap(Math.max(0, Math.round(wrap.getBoundingClientRect().right - (window.innerWidth - PANEL) + 12)));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [selected]);
+
+  // Once the map has made room, the card being edited is moved into view if the panel's arrival left it out of sight.
+  useEffect(() => {
+    if (!gap || !selected) return;
+    const t = setTimeout(() => {
+      const el = scroller.current, n = targets.get(selected);
+      if (!el || !n) return;
+      const left = n.x * zoom - el.scrollLeft, right = (n.x + W) * zoom - el.scrollLeft;
+      if (left < 0 || right > el.clientWidth) bringIntoView(selected);
+    }, 480);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gap, selected]);
+
+  /** Scroll so a card (or a lesson's region) sits in view (the map already stops at the editor panel when it's open). */
   function bringIntoView(id: string, z = zoom) {
     const el = scroller.current;
     if (!el) return;
@@ -310,8 +381,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const px = n ? n.x + W / 2 : r ? r.x + Math.min(r.w, 700) / 2 : null;
     const py = n ? n.y + 80 : r ? r.y + TOP + 120 : null;
     if (px == null || py == null) return;
-    const panel = selected && window.innerWidth >= 900 ? 480 : 0;
-    const room = el.clientWidth - panel;
+    const room = el.clientWidth;
     // A lesson wider than the view starts at its left edge (its name and first cards), not cut off in the middle.
     const left = r && !n && (r.w + 40) * z > room ? (r.x - 28) * z : px * z - room / 2;
     // A lesson starts at its top (its name and first row of cards).
@@ -326,13 +396,45 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   useEffect(() => {
     if (!going) return;
     const id = going;
-    requestAnimationFrame(() => { bringIntoView(id, 0.7); setGoing(null); });
+    requestAnimationFrame(() => { bringIntoView(id); setGoing(null); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [going, regions]);
+  // A card brought into view (from the panel, a search) that is folded away: unfold what hides it first.
+  useEffect(() => {
+    if (!focus || !hidden.has(focus.id)) return;
+    const up = new Set<string>();
+    const climb = (id: string) => { for (const w of wires) if (w.to === id) { const f = nodeOf(w.from); if (!up.has(f)) { up.add(f); climb(f); } } };
+    climb(focus.id);
+    // Scroll to it once the map has redrawn with it in place.
+    setGoing(focus.id);
+    setFolded((f) => { const n = new Set([...f].filter((x) => !up.has(x))); try { localStorage.setItem(FOLD_KEY, JSON.stringify([...n])); } catch {} return n; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.at]);
   useEffect(() => {
     if (focus) requestAnimationFrame(() => bringIntoView(focus.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.at]);
+
+  // Pinch on a trackpad (or ctrl/⌘ + scroll) zooms the map, never the page. React's wheel listener can't stop the
+  // browser's own zoom (it's passive), so these are the browser's listeners. Safari pinches with gesture events.
+  const zoomer = useRef({ zoom, zoomTo: (z: number) => { void z; } });
+  useEffect(() => { zoomer.current.zoom = zoom; zoomer.current.zoomTo = zoomTo; });
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const wheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      zoomer.current.zoomTo(zoomer.current.zoom * Math.exp(-Math.max(-30, Math.min(30, e.deltaY)) * 0.008));
+    };
+    let start = 1;
+    const gStart = (e: Event) => { e.preventDefault(); start = zoomer.current.zoom; };
+    const gChange = (e: Event) => { e.preventDefault(); const k = (e as Event & { scale?: number }).scale; if (k) zoomer.current.zoomTo(start * k); };
+    el.addEventListener("wheel", wheel, { passive: false });
+    el.addEventListener("gesturestart", gStart, { passive: false } as AddEventListenerOptions);
+    el.addEventListener("gesturechange", gChange, { passive: false } as AddEventListenerOptions);
+    return () => { el.removeEventListener("wheel", wheel); el.removeEventListener("gesturestart", gStart); el.removeEventListener("gesturechange", gChange); };
+  }, []);
 
   /** Zoom keeping the middle of the view still. */
   function zoomTo(z: number) {
@@ -361,8 +463,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     return { x: (cx - r.left + scroller.current!.scrollLeft) / zoom, y: (cy - r.top + scroller.current!.scrollTop) / zoom };
   };
   // A card inside a group has its ports on the group's node.
-  const groupOf = useMemo(() => new Map(all.flatMap((x) => (x.m.type === "group" ? (x.m.members ?? []).map((id) => [id, x.m.id] as const) : []))), [all]);
-  const nodeOf = (id: string) => groupOf.get(id) ?? id;
   const portPos = (port: Port) => {
     const nid = nodeOf(port.from), n = nodes.get(nid)!, p = at(nid);
     const key = nid !== port.from ? `${port.from}|${port.q}:${port.option}` : `${port.q}:${port.option}`;
@@ -765,6 +865,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
             <Icon name="layers" size={13} /> Group cards
           </button>
         )}
+        {wires.length > 0 && (
+          <button
+            onClick={() => {
+              const all = [...new Set(wires.map((w) => nodeOf(w.from)))];
+              const next = folded.size ? new Set<string>() : new Set(all);
+              setFolded(next);
+              try { localStorage.setItem(FOLD_KEY, JSON.stringify([...next])); } catch {}
+            }}
+            title={folded.size ? "Show every card again" : "Fold away every card an answer deals, to see the main path"}
+            className="pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-2.5 text-[12.5px] text-ink-2 shadow-sm"
+          >
+            <Icon name="chevron" size={13} className={folded.size ? "-rotate-90" : ""} /> {folded.size ? "Unfold all" : "Fold all"}
+          </button>
+        )}
         {students.length > 0 && (
           <button onClick={() => setLive((v) => !v)} aria-pressed={live} className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${live ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
             <Icon name="users" size={13} /> Where students are
@@ -778,7 +892,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         onKeyDown={onKey}
         aria-label="Course map"
         className="tree-canvas relative overscroll-contain h-[calc(100dvh-11.75rem)] sm:h-[calc(100dvh-9.5rem)] min-h-[30rem] overflow-auto rounded-2xl border border-line bg-canvas outline-none focus-visible:ring-2 focus-visible:ring-[#4b56a8]/30"
-        style={{ backgroundSize: `${22 * zoom}px ${22 * zoom}px`, height: fill ?? undefined }}
+        style={{ backgroundSize: `${22 * zoom}px ${22 * zoom}px`, height: fill ?? undefined, marginRight: gap, transition: "margin-right 0.45s cubic-bezier(0.22, 1, 0.36, 1)" }}
         onPointerDown={(e) => {
           if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.canvas) return;
           setMenu(null);
@@ -811,36 +925,33 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           window.addEventListener("pointermove", move);
           window.addEventListener("pointerup", up);
         }}
-        onWheel={(e) => {
-          if (!e.ctrlKey && !e.metaKey) return;
-          e.preventDefault();
-          zoomTo(zoom - e.deltaY * 0.003);
-        }}
       >
         <div data-canvas="1" style={{ width: width * zoom, height: height * zoom }} className="relative">
           <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width, height, transform: `scale(${zoom})` }}>
             {/* Lessons: a quiet band each, with its name and a way to add a card. */}
             {regions.map((r) => {
               const today = r.lesson.id === todayId;
-              const branches = wiresOf(r.lesson).length;
+              // The lesson as it really is (the drawn one leaves out folded-away cards).
+              const full = lessons.find((l) => l.id === r.lesson.id) ?? r.lesson;
+              const branches = wiresOf(full).length;
               return (
                 <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "tree-lesson-today" : "tree-lesson"}`} style={{ left: r.x - 20, top: r.y, width: r.w + 40, height: r.h }}>
                   <div className="flex min-w-0 items-center gap-2 px-5 pt-3.5" style={{ fontSize: level === "far" ? 22 : 13 }}>
                     <span className={`flex flex-none items-center justify-center rounded-full font-semibold ${today ? "bg-ok text-white" : "bg-ink text-white"} ${level === "far" ? "h-9 w-9 text-[17px]" : "h-[22px] w-[22px] text-[11px]"}`}>{regions.indexOf(r) + 1}</span>
                     {readOnly || level === "far" ? <span className="min-w-0 truncate font-semibold text-ink">{r.lesson.title}</span>
-                      : <LessonName title={r.lesson.title} onRename={(title) => onChange({ ...r.lesson, title })} />}
+                      : <LessonName title={r.lesson.title} onRename={(title) => { const real = lessons.find((l) => l.id === r.lesson.id); if (real) onChange({ ...real, title }); }} />}
                     {weekOf[r.lesson.id] && <span className="flex-none text-ink-3">{weekOf[r.lesson.id]}</span>}
                     {today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
                   </div>
                   <div className="flex items-center gap-2 px-5 pt-1.5">
-                    {level !== "far" && <span className="mono">{r.lesson.modules.filter((m) => m.type !== "group").length} card{r.lesson.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
+                    {level !== "far" && <span className="mono">{full.modules.filter((m) => m.type !== "group").length} card{full.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
                     <span className="flex-1" />
                     {!readOnly && level !== "far" && (
                       <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.left, b.bottom); setMenu({ add: r.lesson.id, x: p.x - 200, y: p.y + 4 }); }}
                         className="press flex h-7 items-center gap-1 rounded-lg bg-white px-2 text-[12px] text-ink-2 shadow-sm hover:text-ink"><Icon name="plus" size={12} /> Card</button>
                     )}
                   </div>
-                  {!r.lesson.modules.length && (
+                  {!full.modules.length && (
                     <div className="mx-5 mt-6 rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-[12.5px] text-ink-3">No cards yet</div>
                   )}
                 </div>
@@ -1058,6 +1169,24 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     </div>
                   )}
                   {!nd.members && <CardRest m={m} far={level === "far"} art={level === "far" || !hasBody(m)} tint={suit.tint} cover={suit.cover} />}
+                  {dealsSome(m.id) && (() => {
+                    // Fold this card's follow-ups away to see just this card, or bring them back.
+                    const shut = folded.has(m.id);
+                    const n = shut ? foldedUnder(m.id) : 0;
+                    return (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); fold(m.id, !shut); }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        aria-pressed={shut}
+                        aria-label={shut ? `Show the ${n} card${n === 1 ? "" : "s"} this card deals` : "Fold away the cards this card deals"}
+                        title={shut ? "Show the cards this card deals" : "Fold away the cards this card deals"}
+                        className={`press absolute bottom-0 left-1/2 z-10 flex -translate-x-1/2 translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full border font-medium shadow-sm transition-colors ${shut ? "border-[#4b56a8] bg-[#4b56a8] text-white hover:bg-[#3f4991]" : "border-line bg-white text-ink-3 hover:border-line-strong hover:text-ink"} ${level === "far" ? "h-10 px-4 text-[18px]" : "h-6 px-2.5 text-[11.5px]"}`}
+                      >
+                        <Icon name="chevron" size={level === "far" ? 16 : 11} className={`transition-transform ${shut ? "-rotate-90" : "rotate-0"}`} />
+                        {shut ? `${n} card${n === 1 ? "" : "s"}` : "Fold"}
+                      </button>
+                    );
+                  })()}
                 </div>
               );
             })}
