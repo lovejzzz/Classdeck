@@ -115,7 +115,7 @@ export default function TeachPage() {
       title: studentName(e.studentId),
       text: r.length === 1 ? e.text
         : one ? wrong.map((x) => x.text).concat(r.some((x) => x.kind === "done") ? ["Finished"] : []).join(" · ")
-        : `Answered ${cards.length} cards${wrong.length ? ` · ${wrong.length} wrong: ${wrong.map((x) => `${moduleOf(x.moduleId)?.m.title ?? "a card"} (${x.text.replace(/^Q\d+: /, "")})`).join("; ")}` : ""}`,
+        : `Worked through ${cards.length} cards${wrong.length ? ` · ${wrong.length} wrong: ${wrong.map((x) => `${moduleOf(x.moduleId)?.m.title ?? "a card"} (${x.text.replace(/^Q\d+: /, "")})`).join("; ")}` : ""}`,
     };
   }).reverse();
 

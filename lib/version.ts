@@ -3,13 +3,20 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.29",
+    date: "2026-11-21",
+    changes: [
+      "A student's run of cards in Class activity reads “Worked through 4 cards”, since some may be reading cards rather than answers.",
+    ],
+  },
+  {
     version: "0.1.28",
     date: "2026-11-21",
     changes: [
       "Student View: a button next to the class code. Pick a student (each has their own cards, from their own answers) or a new student with no work, and try the course as them. It’s a test: nothing you do there is saved or graded, and no one is notified. Start over goes back to where the student really is.",
       "In the card panel, the card an answer deals is a link: click it to open that card, and “Back to …” takes you back to the question.",
       "Wiring an answer to a card everyone gets now asks first, since only students who pick that answer will see it. Students who already started the card keep it.",
-      "Class activity is quieter: a student’s quick answers close together are one note (“Answered 4 cards · 1 wrong”, with the misses spelled out) instead of two notes per card.",
+      "Class activity is quieter: a student’s quick answers close together are one note (“Worked through 4 cards · 1 wrong”, with the misses spelled out) instead of two notes per card.",
       "With Where students are on, how many students took each answer shows in the answer’s row on the map, not in a bubble over the wires.",
       "The map: “Go to a lesson” zooms in when you’re zoomed far out; the zoom button first fits the map’s width, then (pressed again) the whole course; scrolling inside the map no longer scrolls the page.",
     ],
