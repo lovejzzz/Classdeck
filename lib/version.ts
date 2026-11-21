@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.34",
+    date: "2026-11-21",
+    changes: [
+      "A student's Map is laid out like the teacher's: each lesson is a row, one under another, and the cards an answer opened hang below the card that opened them. Lines leave the bottom of a card and come into the top of the next.",
+      "The student Map can zoom: the − and + buttons, a trackpad pinch, or ⌘/Ctrl + scroll. Zoomed far out, each week becomes a column, so the whole course fits on one screen; the percentage button fits a lesson's row first, then the whole course.",
+    ],
+  },
+  {
     version: "0.1.33",
     date: "2026-11-21",
     changes: [
