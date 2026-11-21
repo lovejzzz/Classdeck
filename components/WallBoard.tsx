@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { op } from "@/lib/client";
 import { wallOf } from "@/lib/profile";
+import { wallProgress } from "@/lib/grading";
 import { ago } from "@/lib/time";
 import { toast } from "@/lib/toast";
-import type { Attachment, Module, Post, Student } from "@/lib/types";
+import type { Attachment, Comment, Module, Post, Student } from "@/lib/types";
 import { AttachMenu } from "./AttachMenu";
 import { MediaView } from "./cards/Media";
 import { Avatar, Icon } from "./Icon";
@@ -27,6 +28,32 @@ function Up({ on }: { on: boolean }) {
   );
 }
 
+/** What kind of reply it is, named like a card's face. */
+function replyLabel(work?: Attachment[]): string {
+  const a = work?.[0];
+  if (!a) return "Text";
+  return a.kind === "video" ? "Video reply" : a.kind === "audio" ? "Voice reply" : a.kind === "image" ? "Picture" : a.kind === "link" ? "Link" : "File";
+}
+const replyIcon = (work?: Attachment[]) => { const k = work?.[0]?.kind; return k === "video" ? "video" : k === "audio" ? "mic" : k === "image" ? "image" : k === "link" ? "link" : k ? "file" : "read"; };
+
+/** A reply to a post, shown as a small content card: words, a recording, or both. */
+function ReplyCard({ c, who, avatar }: { c: Comment; who: string; avatar: string }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-white">
+      <div className="h-[3px] bg-[#3d68a6]" />
+      <div className="px-3 py-2.5">
+        <div className="flex items-center gap-2 text-[12px] text-ink-3">
+          <span className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[#3d68a6]"><Icon name={replyIcon(c.work)} size={11} />{replyLabel(c.work)}</span>
+          <span className="flex-1" />
+          <Avatar name={avatar} size={16} /><span className="font-medium text-ink-2">{who}</span><span className="mono">{ago(c.at)}</span>
+        </div>
+        {c.text && <p className="mt-1.5 whitespace-pre-wrap text-[13.5px] leading-relaxed">{c.text}</p>}
+        {c.work?.map((a) => <div key={a.id} className="mt-2"><MediaView a={a} /></div>)}
+      </div>
+    </div>
+  );
+}
+
 function PostCard({ post, me, teacher, module: m, students, courseId, onChanged, index }: {
   post: Post; me: Who; teacher: boolean; module: Module; students: Student[]; courseId: string; onChanged: () => void; index: number;
 }) {
@@ -34,6 +61,8 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
   const [local, setLocal] = useState<{ likes?: string[]; votes?: string[] }>({});
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  const [reply, setReply] = useState<Attachment | null>(null);
+  const [sending, setSending] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const own = !teacher && (post.mine || post.studentId === me);
   const sections = w.sections?.filter((x) => x.trim()) ?? [];
@@ -57,10 +86,13 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
   }
 
   async function comment() {
-    if (!text.trim()) return;
-    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: me, postId: post.id, text });
-    if (!r.ok) return toast(r.error ?? "Couldn’t comment", { icon: "x", tone: "bad" });
+    if ((!text.trim() && !reply) || sending) return;
+    setSending(true);
+    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: me, postId: post.id, text, work: reply ? [reply] : undefined });
+    setSending(false);
+    if (!r.ok) return toast(r.error ?? "Couldn’t send your reply", { icon: "x", tone: "bad" });
     setText("");
+    setReply(null);
     onChanged();
   }
 
@@ -142,16 +174,21 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
       <div className={`fold ${open ? "fold-open" : ""}`}>
         <div className="min-h-0 overflow-hidden">
           <div className="space-y-2.5 border-t border-line bg-[#fcfcfb] px-4 py-3">
-            {comments.map((c) => (
-              <div key={c.id} className="flex gap-2 text-[13px]">
-                <Avatar name={name(c.from)} size={18} />
-                <p className="leading-relaxed"><span className="font-medium">{c.from === me ? "You" : name(c.from)}</span> <span className="text-ink-3">· {ago(c.at)}</span><br />{c.text}</p>
-              </div>
-            ))}
+            {comments.map((c) => <ReplyCard key={c.id} c={c} who={c.from === me ? "You" : name(c.from)} avatar={name(c.from)} />)}
             {canComment && (
-              <div className="flex gap-2">
-                <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && comment()} placeholder="Add a comment…" aria-label="Comment" className="field h-8 py-0" />
-                <button onClick={comment} disabled={!text.trim()} className="btn btn-dark press h-8">Send</button>
+              <div className="space-y-2">
+                {reply && (
+                  <div className="rise rounded-xl border border-line bg-white p-2">
+                    <div className="mb-1.5 flex items-center gap-2 text-[12px] text-ink-3"><span className="min-w-0 flex-1 truncate">Your reply: {reply.name ?? replyLabel([reply])}</span>
+                      <button onClick={() => setReply(null)} aria-label="Remove this recording" className="hover:text-bad"><Icon name="x" size={12} /></button></div>
+                    <MediaView a={reply} />
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && comment()} placeholder={reply ? "Add a few words (optional)…" : "Write a reply…"} aria-label="Reply" className="field h-8 py-0" />
+                  <button onClick={comment} disabled={(!text.trim() && !reply) || sending} className="btn btn-dark press h-8">{sending ? "Sending…" : "Send"}</button>
+                </div>
+                {!reply && <AttachMenu compact label="Record your reply: what worked, and one thing to try next." onAdd={(a) => setReply({ ...a, id: `r-${Math.random().toString(36).slice(2, 9)}` })} />}
               </div>
             )}
           </div>
@@ -190,9 +227,20 @@ export function WallBoard({ courseId, me, teacher = false, module: m, posts, stu
     toast(w.approval && !teacher ? "Posted. Your teacher will approve it." : "Posted to the wall", { icon: "wall" });
   }
 
+  const needed = w.replies ?? 0;
+  const prog = !teacher && needed > 0 ? wallProgress(posts, m.id, me, needed) : null;
+
   return (
     <div>
       {header}
+      {/* Peer review: what's left before this card is done. */}
+      {prog && (
+        <div className={`mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border px-3.5 py-2.5 text-[13px] ${prog.done ? "border-ok/35 bg-ok/[0.05]" : "border-line bg-white"}`} role="status">
+          <span className={`flex items-center gap-1.5 ${prog.posted ? "text-ok" : "text-ink-2"}`}><Icon name={prog.posted ? "check" : "wall"} size={13} />{prog.posted ? "You posted" : "Post yours"}</span>
+          <span className={`flex items-center gap-1.5 ${prog.replied >= needed ? "text-ok" : "text-ink-2"}`}><Icon name={prog.replied >= needed ? "check" : "message"} size={13} />Replied to {Math.min(prog.replied, needed)} of {needed} classmate{needed === 1 ? "" : "s"}</span>
+          {prog.done ? <span className="font-medium text-ok">Done</span> : <span className="text-ink-3">Open a classmate’s post to reply with words, a video or a voice note.</span>}
+        </div>
+      )}
       {canPost ? (
         <div className="rounded-xl border border-line bg-white p-3">
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder={teacher ? "Post to the wall as the teacher…" : "Write something for the wall…"} aria-label="New post"

@@ -1,5 +1,5 @@
 // Card kinds and faces, checked without a server: npx tsx tests/kinds.test.ts
-import { mixedOrder } from "../lib/grading";
+import { mixedOrder, wallProgress } from "../lib/grading";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, asKind, faceMeta, faceOf, familyOf, isPoll, kindOf, newCard, withKind } from "../lib/kinds";
 import type { Attachment, Module } from "../lib/types";
 
@@ -60,6 +60,16 @@ check("a card an answer deals gets the next question on its own", n3.grouped ===
 const steps = ["Dm7", "G7", "Cmaj7"];
 check("order options are never sent in the right order", Array.from({ length: 50 }, (_, i) => mixedOrder(steps, `q${i}`)).every((o) => o.join() !== steps.join() && [...o].sort().join() === [...steps].sort().join()));
 check("an order card is labelled Put in order", faceMeta(card({ kind: "choice", type: "practice", questions: [{ id: "q", kind: "order", text: "", options: steps }] })).name === "Put in order");
+
+// Peer review on a discussion: done once you've posted and replied to enough different classmates (not yourself, not the teacher).
+const wall = [
+  { id: "p1", moduleId: "w", studentId: "ada", comments: [{ from: "ben" }, { from: "ben" }] },
+  { id: "p2", moduleId: "w", studentId: "ben", comments: [{ from: "ben" }] },
+  { id: "p3", moduleId: "w", studentId: "teacher", comments: [{ from: "ben" }] },
+  { id: "p4", moduleId: "w", studentId: "cy", comments: [] },
+];
+check("replies to one classmate count once, own post and teacher post don't count", wallProgress(wall, "w", "ben", 2).replied === 1 && !wallProgress(wall, "w", "ben", 2).done && wallProgress(wall, "w", "ben", 1).done);
+check("no post yet: not done even with replies", !wallProgress(wall.filter((p) => p.studentId !== "ben"), "w", "ben", 1).done);
 
 const failed = rows.filter(([, ok]) => !ok);
 for (const [n] of failed) console.log("  ✗", n);

@@ -19,10 +19,12 @@ type Row = { key: string; name: string; email?: string; picture?: string; right:
  * A share box in the familiar shape: add people by email, see who has access, set general access, copy the link.
  * Used for inviting students and for inviting other teachers.
  */
-function ShareBox({ title, placeholder, onAdd, rows, general, link, linkLabel, extra, note, onClose, addLabel = "Add", roleSelect, underInput }: {
+function ShareBox({ title, placeholder, onAdd, rows, general, link, linkLabel, extra, note, onClose, addLabel = "Add", roleSelect, underInput, listAction }: {
   title: string; placeholder: string; onAdd?: (emails: string[]) => Promise<void> | void; rows: Row[]; general?: React.ReactNode;
   link: string; linkLabel: string; extra?: React.ReactNode; note?: React.ReactNode; onClose: () => void; addLabel?: string; roleSelect?: React.ReactNode;
   underInput?: React.ReactNode;
+  /** Beside the "People with access" heading, such as letting everyone waiting in at once. */
+  listAction?: React.ReactNode;
 }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -60,7 +62,7 @@ function ShareBox({ title, placeholder, onAdd, rows, general, link, linkLabel, e
         {bad.length > 0 && <p className="mt-1.5 text-[12.5px] text-bad">{bad[0]} isn’t an email address.</p>}
         {underInput}
 
-        <h3 className="mt-6 text-[14px] font-medium">People with access</h3>
+        <div className="mt-6 flex items-center gap-2"><h3 className="flex-1 text-[14px] font-medium">People with access</h3>{listAction}</div>
         <ul className="mt-2 max-h-72 space-y-0.5 overflow-y-auto">
           {rows.map((r) => (
             <li key={r.key} className="flex items-center gap-3 rounded-lg px-1 py-1.5">
@@ -162,6 +164,9 @@ export function InviteStudents({ course, me, onClose, onChanged }: { course: Cou
             <input type="checkbox" checked={emailThem} onChange={(e) => setEmailThem(e.target.checked)} className="accent-[#1b1b1a]" />
             Email each one a personal invitation from Questhand
           </label>
+        ) : undefined}
+        listAction={waiting.length > 1 ? (
+          <button onClick={() => letIn(waiting.map((s) => s.id), true, `all ${waiting.length} students`)} className="btn btn-dark press h-7 px-2.5 text-[12px]">Let all {waiting.length} in</button>
         ) : undefined}
         rows={[
           ...waiting.map((s) => ({ key: s.id, name: s.name, email: "Waiting to be let in", right: (

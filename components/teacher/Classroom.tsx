@@ -494,7 +494,7 @@ function WallPanel({ courseId, module: m, state, aiReady }: { courseId: string; 
 
   function exportCsv() {
     const rows = [["Author", "Anonymous", "Posted", "Text", "Attachments", "Votes", "Likes", "Comments", "Approved"]].concat(
-      posts.map((p) => [name(p.studentId), p.anonymous ? "yes" : "", new Date(p.createdAt).toISOString(), p.text, (p.work ?? []).map((a) => a.url).join(" "), String(p.votes?.length ?? 0), String(p.likes?.length ?? 0), (p.comments ?? []).map((c) => `${name(c.from)}: ${c.text}`).join(" | "), p.approved === false ? "no" : "yes"]),
+      posts.map((p) => [name(p.studentId), p.anonymous ? "yes" : "", new Date(p.createdAt).toISOString(), p.text, (p.work ?? []).map((a) => a.url).join(" "), String(p.votes?.length ?? 0), String(p.likes?.length ?? 0), (p.comments ?? []).map((c) => `${name(c.from)}: ${[c.text, ...(c.work ?? []).map((w) => w.url)].filter(Boolean).join(" ")}`).join(" | "), p.approved === false ? "no" : "yes"]),
     );
     download(`${m.title} - wall.csv`, toCsv(rows), "text/csv");
   }

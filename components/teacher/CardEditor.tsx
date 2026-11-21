@@ -332,6 +332,11 @@ export function CardEditor({
                         <Seg value={m.wall?.reactions ?? "likes"} options={[["likes", "Likes"], ["votes", "Votes"], ["none", "None"]]} onPick={(v) => set({ wall: { ...wallDefaults, ...m.wall, reactions: v as "likes" | "votes" | "none" } })} />
                       </div>
                       <label className="flex items-center gap-2"><input type="checkbox" checked={!!m.wall?.anonymous} onChange={(e) => set({ wall: { ...wallDefaults, ...m.wall, anonymous: e.target.checked } })} className="accent-[#4b56a8]" /> Hide names from classmates</label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-ink-2">Each student replies to</span>
+                        <Seg value={String(m.wall?.replies ?? 0)} options={[["0", "No one"], ["1", "1 classmate"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ wall: { ...wallDefaults, ...m.wall, replies: Number(v) || undefined } })} />
+                      </div>
+                      {(m.wall?.replies ?? 0) > 0 && <p className="-mt-1 text-ink-3">The card counts as done once a student has posted and replied to {m.wall!.replies} classmate{m.wall!.replies === 1 ? "" : "s"}. Replies can be words, a video, a voice recording or a file.</p>}
                       <label className="flex items-center gap-2"><input type="checkbox" checked={!!m.wall?.approval} onChange={(e) => set({ wall: { ...wallDefaults, ...m.wall, approval: e.target.checked } })} className="accent-[#4b56a8]" /> I approve posts before others see them</label>
                     </>
                   )}

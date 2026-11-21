@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.23",
+    date: "2026-11-21",
+    changes: [
+      "Replies on a discussion are small content cards: write a few words, record a video or a voice reply, or add a picture or file. Each reply is labelled Video reply, Voice reply or Text.",
+      "Peer review: on a Discussion card, choose how many classmates each student replies to. The card is done once a student has posted and replied to that many, and students see what’s left.",
+      "Let all in: when several students are waiting to join, let them all in with one click.",
+      "Students waiting to join show at the top of the Map and List, not only on the Students tab, so nobody is left on the waiting page.",
+    ],
+  },
+  {
     version: "0.1.22",
     date: "2026-11-21",
     changes: [

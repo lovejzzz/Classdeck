@@ -104,7 +104,7 @@ export function feedbackFor(state: CourseState, studentId: string): FeedbackItem
     items.push({ key: `m:${mk.id}`, from: name(mk.from), kind: "note", text: `At ${t}: ${mk.text}`, where: title(myWork.get(mk.attachmentId)), moduleId: myWork.get(mk.attachmentId), at: mk.at });
   }
   for (const post of state.posts.filter((p) => p.mine || p.studentId === studentId)) {
-    for (const c of post.comments ?? []) if (c.from !== studentId) items.push({ key: `c:${c.id}`, from: name(c.from), kind: "comment", text: c.text, where: title(post.moduleId), moduleId: post.moduleId, at: c.at });
+    for (const c of post.comments ?? []) if (c.from !== studentId) items.push({ key: `c:${c.id}`, from: name(c.from), kind: "comment", text: c.text || (c.work?.length ? `Replied with a ${c.work[0].kind === "video" ? "video" : c.work[0].kind === "audio" ? "voice recording" : "file"}` : ""), where: title(post.moduleId), moduleId: post.moduleId, at: c.at });
   }
   return items.sort((a, b) => b.at - a.at);
 }

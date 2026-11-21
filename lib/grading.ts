@@ -129,3 +129,15 @@ export function mixedOrder(options: string[], seed: string): string[] {
   const out = m.every((v, i) => v === i) && idx.length > 1 ? [...idx.slice(1), idx[0]] : m;
   return out.map((i) => options[i]);
 }
+
+/**
+ * A discussion card's progress for one student: whether they posted, and how many classmates' posts they replied to.
+ * With replies required, the card is done once they have posted and replied to that many different classmates.
+ */
+export function wallProgress(posts: { id: string; moduleId: string; studentId: string; mine?: boolean; comments?: { from: string }[] }[], moduleId: string, studentId: string, needed = 0) {
+  const here = posts.filter((p) => p.moduleId === moduleId);
+  const own = (p: { studentId: string; mine?: boolean }) => p.mine || p.studentId === studentId;
+  const posted = here.some(own);
+  const replied = here.filter((p) => !own(p) && p.studentId !== "teacher" && (p.comments ?? []).some((c) => c.from === studentId)).length;
+  return { posted, replied, needed, done: posted && replied >= needed };
+}

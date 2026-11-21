@@ -64,6 +64,8 @@ export interface WallSettings {
   approval: boolean;
   /** Optional columns, e.g. ["What worked", "Questions", "Ideas"]. Empty: one stream. */
   sections?: string[];
+  /** Peer review: how many classmates' posts each student replies to before the card counts as done (0 or unset: posting is enough). */
+  replies?: number;
 }
 
 export interface Comment {
@@ -72,6 +74,8 @@ export interface Comment {
   from: string;
   text: string;
   at: number;
+  /** A reply can be a small content card: a video or audio recording, a picture, a file or a link, with or without words. */
+  work?: Attachment[];
 }
 
 export interface Question {

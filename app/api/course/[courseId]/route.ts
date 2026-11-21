@@ -4,7 +4,7 @@ import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
 import { randomCode, safeUrl } from "@/lib/uploads";
-import { isCorrect, quizSet, asked, mixedOrder } from "@/lib/grading";
+import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
 import { kindWeeks, withKind } from "@/lib/kinds";
 import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, orphansOf, pathsFor, SCORE, treeView } from "@/lib/branching";
@@ -1138,7 +1138,8 @@ export async function POST(request: Request, { params }: Ctx) {
       if (!teacher) {
         logEvent(courseId, { kind: "post", studentId: body.studentId, moduleId: body.moduleId, text: w.approval ? `Waiting for approval: ${text.slice(0, 80)}` : text.slice(0, 80) || "Posted an attachment" });
         const p = mine(body.studentId, body.moduleId);
-        p.status = "done";
+        // With peer replies required, posting starts the card; replying to enough classmates finishes it.
+        p.status = wallProgress(d.posts[courseId], body.moduleId, body.studentId, w.replies ?? 0).done ? "done" : "doing";
         p.updatedAt = Date.now();
       }
       extra = { post: { ...post, mine: true } };
@@ -1171,8 +1172,15 @@ export async function POST(request: Request, { params }: Ctx) {
       const who = String(body.who ?? "");
       if (!w.comments && who !== "teacher") return fail("Comments are off on this wall");
       const text = String(body.text ?? "").trim().slice(0, 600);
-      if (!text) return fail("Write a comment first");
-      (post.comments ??= []).push({ id: uid("c-"), from: who, text, at: Date.now() });
+      const work = (Array.isArray(body.work) ? body.work : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 1);
+      if (!text && !work.length) return fail("Write a reply or record one first");
+      (post.comments ??= []).push({ id: uid("c-"), from: who, text, at: Date.now(), work: work.length ? work : undefined });
+      // A reply can be what finishes a peer-review card.
+      if (who !== "teacher" && (w.replies ?? 0) > 0 && course.students.some((st) => st.id === who)) {
+        const prog = wallProgress(d.posts[courseId], post.moduleId, who, w.replies);
+        const p = mine(who, post.moduleId);
+        if (prog.done && p.status !== "done") { p.status = "done"; p.updatedAt = Date.now(); }
+      }
       break;
     }
     case "moderatePost": {

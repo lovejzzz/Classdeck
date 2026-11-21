@@ -239,10 +239,11 @@ export default function TeachPage() {
               )}
             </section>
           )}
-          {course.students.length > 0 && !!course.waiting?.length && tab === "students" && !viewer && (
+          {/* Someone waiting to join shows on every tab but Settings, not only Students, so nobody is left on the waiting page. */}
+          {course.students.length > 0 && !!course.waiting?.length && tab !== "settings" && !viewer && (
             <button onClick={() => setInviting(true)} className="press mb-5 flex w-full items-center gap-2 rounded-xl bg-[#fbf3ee] px-4 py-2.5 text-left text-[13px]">
               <span className="h-2 w-2 rounded-full bg-[#ae502f]" />
-              <span className="flex-1"><span className="font-medium">{course.waiting.length} waiting to join.</span> Let them in or turn them away.</span>
+              <span className="flex-1"><span className="font-medium">{course.waiting.length === 1 ? `${course.waiting[0].name} is waiting to join.` : `${course.waiting.length} waiting to join: ${course.waiting.map((w) => w.name).slice(0, 3).join(", ")}${course.waiting.length > 3 ? " and others" : ""}.`}</span> Let them in or turn them away.</span>
               <Icon name="arrow" size={13} />
             </button>
           )}
