@@ -78,12 +78,24 @@ interface Region { lesson: Lesson; li: number; x: number; y: number; w: number; 
  * its first line), and what their answers deal hanging below the card that deals them, wired into its top. A card dealt
  * from an earlier lesson starts its own lesson's row, with the wire coming down from above.
  */
-function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolean) {
+function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolean, weekOfLesson: Record<string, string> = {}) {
   const nodes = new Map<string, Node>();
   const regions: Region[] = [];
-  const x0 = 40;
-  let y0 = 16, width = 0;
+  // Zoomed far out, each week is a column (its lessons stacked in it), so a long course fits on one screen. Closer
+  // in, every lesson is a row, one under another.
+  const columns = level === "far";
+  let x0 = 40;
+  let y0 = 16, width = 0, height = 0;
+  let col: Region[] = [];
+  const endColumn = () => {
+    if (!col.length) return;
+    const cw = Math.max(...col.map((r) => r.w));
+    for (const r of col) r.w = cw;
+    x0 += cw + REGION_GAP;
+    col = [];
+  };
   lessons.forEach((lesson, li) => {
+    if (columns && li > 0 && weekOfLesson[lesson.id] !== weekOfLesson[lessons[li - 1].id]) { endColumn(); y0 = 16; }
     // Cards in a group are drawn inside their group's node; a wire from one of them leaves from the group.
     const groupOf = new Map<string, string>();
     for (const g of lesson.modules) if (g.type === "group") for (const id of g.members ?? []) groupOf.set(id, g.id);
@@ -143,10 +155,18 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
     for (const r of order) { place(r.id, x); x += span.get(r.id)! + HGAP * (level === "far" ? 0.6 : 1); }
     const w = Math.max(W * 2, x - HGAP - x0);
     const h = (rowH.length ? rowTop(rowH.length) - VGAP : top + 120) - y0 + 36;
-    regions.push({ lesson, li, x: x0, y: y0, w, h });
+    const region = { lesson, li, x: x0, y: y0, w, h };
+    regions.push(region);
+    if (columns) col.push(region);
     width = Math.max(width, w);
     y0 += h + REGION_GAP;
+    height = Math.max(height, y0);
   });
+  // Every lesson's row is as wide as the widest, so they line up like shelves.
+  if (columns) {
+    endColumn();
+    return { nodes, regions, width: x0 - REGION_GAP + 60, height: Math.max(height + 60, 420) };
+  }
   // Every lesson's row is as wide as the widest, so they line up like shelves.
   for (const r of regions) r.w = width;
   return { nodes, regions, width: x0 + width + 60, height: Math.max(y0 + 60, 420) };
@@ -287,14 +307,18 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   // A card being dragged: where the pointer is, the lesson under it and the card it would go before (null: the end),
   // or the trash bin.
   const [moving, setMoving] = useState<{ id: string; x: number; y: number; to?: string; before?: string | null; trash?: boolean } | null>(null);
-  const base = useMemo(() => layout(shownLessons, wires, level, !!readOnly), [shownLessons, wires, level, readOnly]);
+  // The lesson → week names, kept the same object while they don't change (the caller builds a new one each time).
+  const weekKey = JSON.stringify(weekOf);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const weeksOf = useMemo(() => weekOf, [weekKey]);
+  const base = useMemo(() => layout(shownLessons, wires, level, !!readOnly, weeksOf), [shownLessons, wires, level, readOnly, weeksOf]);
   // While a card is dragged, the map shows it where it would land: the other cards slide aside to make room.
   const preview = useMemo(() => {
     if (!moving?.to || moving.trash || moving.before === undefined) return null;
     const changed = applyMove(shownLessons, moving.id, moving.to, moving.before);
     if (!changed.length) return null;
     const by = new Map(changed.map((l) => [l.id, l]));
-    return layout(shownLessons.map((l) => by.get(l.id) ?? l), wires, level, !!readOnly);
+    return layout(shownLessons.map((l) => by.get(l.id) ?? l), wires, level, !!readOnly, weeksOf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moving?.id, moving?.to, moving?.before, moving?.trash, shownLessons, wires, level, readOnly]);
   const { nodes, regions, width, height } = preview ?? base;
@@ -489,7 +513,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const el = scroller.current;
     if (!el) return;
     const byWidth = Math.max(0.15, Math.min(1, (el.clientWidth - 24) / width));
-    const whole = Math.max(0.15, Math.min(1, (el.clientWidth - 24) / width, (el.clientHeight - 24) / height));
+    // The whole course is seen zoomed far out, where weeks are columns: size it from that layout.
+    const far = layout(shownLessons, wires, "far", !!readOnly, weeksOf);
+    let whole = Math.max(0.15, Math.min(1, (el.clientWidth - 24) / far.width, (el.clientHeight - 24) / far.height));
+    if (whole >= 0.55) whole = Math.max(0.15, Math.min(1, (el.clientWidth - 24) / width, (el.clientHeight - 24) / height));
     setZoom(Math.abs(zoom - byWidth) < 0.01 ? whole : byWidth);
     requestAnimationFrame(() => el.scrollTo({ left: 0, top: 0, behavior: "smooth" }));
   };
@@ -726,7 +753,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   function dropAt(id: string, p: { x: number; y: number }, ev: PointerEvent): { to?: string; before?: string | null; trash?: boolean } {
     if ((document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest("[data-trash]")) return { trash: true };
     // Read from the map as it is without the drag, so the cards sliding aside don't move the target.
-    const to = base.regions.find((r) => p.y >= r.y - REGION_GAP / 2 && p.y <= r.y + r.h + REGION_GAP / 2)?.lesson.id;
+    const to = base.regions.find((r) => p.x >= r.x - REGION_GAP / 2 && p.x <= r.x + r.w + REGION_GAP / 2 && p.y >= r.y - REGION_GAP / 2 && p.y <= r.y + r.h + REGION_GAP / 2)?.lesson.id;
     if (!to) return {};
     const from = lessonWith(id);
     if (to !== from?.id && whyNot(id, to)) return { to };

@@ -524,8 +524,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                 <span className="text-[12.5px] text-ink-3">Show cards</span>
               </button>
             ) : (
-            <HScroll className="ml-[calc(50%-50vw)] w-screen">
-              <div className="flex w-max items-start gap-10 pb-6 pt-4" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
+            // One row per lesson: a week's lessons stack, each scrolling sideways on its own when it has many cards.
+            <div className="ml-[calc(50%-50vw)] w-screen space-y-1">
                 {w.lessons.map((ls) => {
                   const l = lessonOf(ls.id);
                   const isToday = l.id === course.currentLessonId;
@@ -541,7 +541,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                     return m.audience.kind === "branch" ? m.audience.variant : m.audience.kind === "student" ? course.students.find((s) => s.id === (m.audience as { studentId: string }).studentId)?.name : undefined;
                   };
                   return (
-                    <div key={l.id}>
+                    <HScroll key={l.id}>
+                    <div className="w-max pb-5 pt-4" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
                       <div className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ maxWidth: `min(${Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 360)}px, calc(100vw - 2rem))` }}>
                         <Clearable inline><input
                           value={l.title}
@@ -632,10 +633,10 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                         ariaLabel={l.title}
                       />
                     </div>
+                    </HScroll>
                   );
                 })}
-              </div>
-            </HScroll>
+            </div>
             )}
           </section>
         ))}

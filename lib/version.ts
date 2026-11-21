@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.32",
+    date: "2026-11-21",
+    changes: [
+      "Zoomed far out, the course map shows each week as a column with its lessons stacked, so a six-week course fits on one screen. Zoom in and lessons are rows again. The zoom button's second press now fits this whole-course view.",
+      "The List shows each lesson of a week on its own row of cards, so a week's second lesson is never cut off at the right edge.",
+    ],
+  },
+  {
     version: "0.1.31",
     date: "2026-11-21",
     changes: [
