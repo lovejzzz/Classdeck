@@ -523,7 +523,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                         onChange={(e) => change({ ...l, goal: e.target.value || undefined })}
                         placeholder="Add a one-line goal for this lesson"
                         aria-label="Lesson goal"
-                        className="-ml-1.5 mt-0.5 block w-full rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[12.5px] text-ink-3 placeholder:text-ink-3 hover:border-line focus:border-line-strong focus:bg-white focus:text-ink-2 focus:outline-none"
+                        className="-ml-1.5 mt-0.5 block w-full min-w-[19rem] rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[12.5px] text-ink-3 placeholder:text-ink-3 hover:border-line focus:border-line-strong focus:bg-white focus:text-ink-2 focus:outline-none"
                         style={{ maxWidth: Math.min(Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 280), 576) }}
                       /></Clearable>
                       {agendaFor === l.id && <AgendaEditor lesson={l} onChange={change} onClose={() => setAgendaFor(null)} />}
@@ -533,7 +533,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                           label: `Edit ${m.title}`,
                           front: (
                             <span className={`relative block h-full w-full ${trashWeek === w.id ? "animate-[wiggle_0.32s_ease-in-out_infinite_alternate]" : ""}`}>
-                              <CardFace m={m} badge={studentsOf(m)} due={m.due ? { label: `Due ${new Date(dueAt(m.due)).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, tone: "later" } : undefined} />
+                              <CardFace m={m} badge={studentsOf(m)} due={m.due ? { label: `Due ${new Date(dueAt(m.due)).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, tone: "plain" } : undefined} />
                               {trashWeek === w.id && (
                                 <button
                                   onPointerDown={(e) => e.stopPropagation()}

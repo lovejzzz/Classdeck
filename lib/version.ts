@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.19",
+    date: "2026-11-20",
+    changes: [
+      "Your cards in the List view show their due date in the corner, so a card that’s overdue for students is easy to spot.",
+      "A student’s progress page shows what they posted to a class discussion, and the current card icons; “Recorded takes” is now “Recordings”.",
+      "The lesson goal box is wide enough for its hint.",
+      "A guest link no longer tries to open the teacher’s live updates (it just checks now and then).",
+    ],
+  },
+  {
     version: "0.1.18",
     date: "2026-11-20",
     changes: [

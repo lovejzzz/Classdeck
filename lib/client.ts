@@ -90,7 +90,8 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
     refresh();
     // Live updates: the server pushes a message on every change. Polling stays on as a slow fallback.
     let pending: ReturnType<typeof setTimeout> | null = null;
-    const es = typeof EventSource !== "undefined" ? new EventSource(`/api/course/${courseId}/stream`) : null;
+    // A guest link reads the course without signing in, so it has no live stream: it just checks now and then.
+    const es = typeof EventSource !== "undefined" && !as?.startsWith("guest:") ? new EventSource(`/api/course/${courseId}/stream`) : null;
     es?.addEventListener("change", () => {
       if (pending) return;
       pending = setTimeout(() => {
@@ -105,7 +106,7 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
       if (pending) clearTimeout(pending);
       clearInterval(t);
     };
-  }, [refresh, everyMs, courseId]);
+  }, [refresh, everyMs, courseId, as]);
 
   return { state, error, refresh, needAuth };
 }

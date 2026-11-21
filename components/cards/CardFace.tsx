@@ -88,7 +88,7 @@ export function CardFace({
 }: {
   m: Module; status?: Status; index?: number; total?: number; personal?: boolean; badge?: string; big?: boolean; footer?: React.ReactNode;
   /** Shown in the corner instead of the time when the card is due soon or late. */
-  due?: { label: string; tone: "late" | "soon" | "later" };
+  due?: { label: string; tone: "late" | "soon" | "later" | "plain" };
 }) {
   const tag = badge ?? (m.choice ? (m.choice.recommended ? "Recommended path" : "Pick a path") : m.picked ? "Your path" : personal ? "For you" : undefined);
   const meta = suitOfCard(m);
@@ -105,7 +105,7 @@ export function CardFace({
         <span className={`font-semibold uppercase tracking-[0.1em] ${big ? "text-[11px]" : "text-[10px]"}`}>{suitOfCard(m).name}</span>
         <span className="flex-1" />
         {status === "done" ? <StatusIcon status="done" size={big ? 15 : 13} /> : due && due.tone !== "later" ? (
-          <span title={due.label} className={`whitespace-nowrap rounded-full px-1.5 py-[1px] text-[10px] font-medium ${due.tone === "late" ? "bg-bad/10 text-bad" : "bg-warn/10 text-warn"}`}>
+          <span title={due.label} className={`whitespace-nowrap rounded-full px-1.5 py-[1px] text-[10px] font-medium ${due.tone === "late" ? "bg-bad/10 text-bad" : due.tone === "plain" ? "bg-black/[0.05] text-ink-2" : "bg-warn/10 text-warn"}`}>
             {due.label.replace("Due ", "").replace(/ days? late/, "d late")}
           </span>
         ) : null}

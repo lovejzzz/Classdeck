@@ -9,7 +9,8 @@ import { FeedbackInbox } from "@/components/student/Progress";
 import { Avatar, Icon, StatusIcon } from "@/components/Icon";
 import { useCourse, useQuery } from "@/lib/client";
 import { ago } from "@/lib/time";
-import { TYPE_META } from "@/lib/ui";
+import { suitOfCard } from "@/lib/ui";
+import { faceMeta } from "@/lib/kinds";
 import type { Module, Progress } from "@/lib/types";
 
 /** A student's own board: everything they made, and the feedback they got. */
@@ -62,7 +63,7 @@ export default function BoardPage() {
         </header>
 
         <div className="rise mt-6 grid grid-cols-3 gap-3" style={{ "--i": 1 } as React.CSSProperties}>
-          {[["Cards done", `${done}`], ["Recorded takes", `${takes}`], ["Feedback given", `${given}`]].map(([k, v]) => (
+          {[["Cards done", `${done}`], ["Recordings", `${takes}`], ["Feedback given", `${given}`]].map(([k, v]) => (
             <div key={k} className="card px-4 py-3">
               <div className="text-[12px] text-ink-3">{k}</div>
               <div className="mt-1 font-mono text-[22px]">{v}</div>
@@ -90,11 +91,12 @@ export default function BoardPage() {
                   {items.map((m) => {
                     const p = mine[m.id];
                     const post = posts.find((x) => x.moduleId === m.id);
-                    const meta = TYPE_META[m.type];
+                    // What this student posted on a class discussion (a wall), shown like their other work.
+                    const wallPosts = state.posts.filter((x) => x.moduleId === m.id && x.studentId === studentId);
                     return (
                       <article key={m.id} className="card p-4">
                         <div className="flex items-center gap-2">
-                          <span style={{ color: meta.tint }}><Icon name={m.type} size={14} /></span>
+                          <span style={{ color: suitOfCard(m).tint }}><Icon name={faceMeta(m).icon} size={14} /></span>
                           <h3 className="flex-1 text-[14px] font-medium">{m.title}</h3>
                           {p?.starred && <Icon name="star" size={13} className="text-[#d39b1f]" />}
                           <StatusIcon status={p?.status ?? "todo"} size={13} />
@@ -106,9 +108,16 @@ export default function BoardPage() {
                         )}
                         {p?.output && <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{p.output}</p>}
                         {p?.work?.length ? <div className="mt-3 space-y-2">{p.work.map((a) => <div key={a.id}><div className="mb-1 text-[12px] text-ink-3">{a.name}</div><MediaView a={a} /></div>)}</div> : null}
+                        {wallPosts.map((wp) => (
+                          <div key={wp.id} className="mt-3 rounded-lg bg-lane p-3">
+                            <div className="text-[12px] text-ink-3">Posted to the class · {ago(wp.createdAt)}{wp.comments?.length ? ` · ${wp.comments.length} repl${wp.comments.length === 1 ? "y" : "ies"}` : ""}</div>
+                            {wp.text && <p className="mt-1 whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{wp.text}</p>}
+                            {wp.work?.length ? <div className="mt-2 space-y-2">{wp.work.map((a) => <MediaView key={a.id} a={a} />)}</div> : null}
+                          </div>
+                        ))}
                         {post && (
                           <div className="mt-3 rounded-lg bg-[#fbf3ee] p-3">
-                            <div className="text-[12.5px] font-medium">Posted to Collab Studio · {ago(post.updatedAt)}</div>
+                            <div className="text-[12.5px] font-medium">Posted to your group · {ago(post.updatedAt)}</div>
                             {post.question && <p className="mt-1 text-[13px] text-ink-2">Asked: {post.question}</p>}
                             {fbFor(post.id).map((f) => (
                               <div key={f.id} className="mt-2 flex gap-2 text-[13px]">
