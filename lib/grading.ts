@@ -66,6 +66,8 @@ export function optionOrder(q: Question, studentId: string, shuffle: boolean): n
   const idx = q.options.map((_, i) => i);
   // "order" questions are always shown mixed up; that's the task.
   if (q.kind === "order") {
+    // Sent to a student already mixed by the server, which alone knows the right order: show it as it came.
+    if (q.mixed) return idx;
     const mixed = seededShuffle(idx, `opts:${studentId}:${q.id}`);
     return mixed.every((v, i) => v === i) && idx.length > 1 ? [...idx.slice(1), idx[0]] : mixed;
   }
@@ -119,3 +121,11 @@ export function isoDay(n: number, from = Date.now()): string {
 }
 
 export const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+/** An "order" question's options as students get them: mixed, and never already in the right order. */
+export function mixedOrder(options: string[], seed: string): string[] {
+  const idx = options.map((_, i) => i);
+  const m = seededShuffle(idx, `mix:${seed}`);
+  const out = m.every((v, i) => v === i) && idx.length > 1 ? [...idx.slice(1), idx[0]] : m;
+  return out.map((i) => options[i]);
+}

@@ -36,6 +36,9 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
     typeof navigator !== "undefined" && !navigator.mediaDevices ? "This browser can’t record. Try uploading a file instead." : null,
   );
   const [secs, setSecs] = useState(0);
+  // The microphone or camera is open. Until then Start waits, and after a few seconds says why.
+  const [live, setLive] = useState(false);
+  const [slow, setSlow] = useState(false);
   const [levels, setLevels] = useState<number[]>(Array(32).fill(0.08));
   const [blob, setBlob] = useState<Blob | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -65,11 +68,14 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
       .then((s) => {
         if (cancelled) return s.getTracks().forEach((t) => t.stop());
         stream.current = s;
+        setLive(true);
         if (preview.current) preview.current.srcObject = s;
       })
       .catch(() => setError(screen ? "Screen sharing was cancelled or blocked." : video ? "Couldn’t use the camera. Check this site’s camera and microphone permission." : "Couldn’t use the microphone. Check this site’s microphone permission."));
+    const wait = setTimeout(() => setSlow(true), 5000);
     return () => {
       cancelled = true;
+      clearTimeout(wait);
       listening.current = false;
       recog.current?.stop();
       cancelAnimationFrame(raf.current);
@@ -177,7 +183,7 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
         {label && phase === "ready" && <p className="mb-2 text-[12.5px] text-ink-3">{label}</p>}
         {phase === "ready" && (
           <div className="flex items-center gap-2">
-            <button onClick={start} disabled={!!error} className="btn btn-dark press"><span className="h-2 w-2 rounded-full bg-bad" /> Start {screen ? "screen recording" : video ? "video" : "recording"}</button>
+            <button onClick={start} disabled={!!error || !live} className="btn btn-dark press disabled:opacity-60"><span className={`h-2 w-2 rounded-full bg-bad ${live ? "" : "animate-pulse"}`} /> {live ? `Start ${screen ? "screen recording" : video ? "video" : "recording"}` : `Waiting for the ${screen ? "screen" : video ? "camera" : "microphone"}…`}</button>
             <button onClick={onCancel} className="btn btn-quiet press">Cancel</button>
           </div>
         )}
@@ -208,6 +214,11 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label }:
           </div>
         )}
         {error && <p className="mt-2 text-[12.5px] text-bad">{error}</p>}
+        {!error && !live && slow && phase === "ready" && (
+          <p className="mt-2 text-[12.5px] text-ink-3" role="status">
+            {screen ? "Pick a screen or window to share in your browser’s prompt." : `Allow the ${video ? "camera and microphone" : "microphone"} when your browser asks. If nothing asks, check this site’s permissions in the address bar, or cancel and upload a recording instead.`}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ import { suitOfCard } from "@/lib/ui";
 import { ask } from "../Confirm";
 import { Clearable } from "../Clearable";
 import { clearOlder, olderSettings } from "@/lib/cardmodel";
-import { ANSWER_FORMS, FAMILIES, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
+import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { CardFace } from "../cards/CardFace";
 import { Avatar, Icon } from "../Icon";
@@ -59,7 +59,7 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 }
 
 export function CardEditor({
-  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, allCards, neighbors,
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, onOpen, allCards, neighbors,
 }: {
   /** Shown at the top of the panel: where this card sits in the course's card tree. */
   neighbors?: React.ReactNode;
@@ -67,6 +67,8 @@ export function CardEditor({
   allCards?: Module[];
   /** Open the lesson's card tree (to wire answers to follow-up cards). */
   onTree?: () => void;
+  /** Switch the editor to another card in this lesson (one just added). */
+  onOpen?: (id: string) => void;
   onDuplicate: () => void;
   /** Keep a copy among the teacher's saved cards, to reuse in any course. */
   onSaveToLibrary?: () => void;
@@ -300,7 +302,17 @@ export function CardEditor({
               {kind === "choice" && !isPoll(m) && (
                 <>
                   <QuestionsEditor single questions={m.questions ?? []} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
-                  <p className="mt-2 text-[12px] text-ink-3">One question per card. To ask several and branch by the total score, use Group cards on the map to put them in a card group.</p>
+                  {onOpen && (
+                    <button onClick={() => {
+                      const cur = lessonRef.current;
+                      const dealt = (allCards ?? cur.modules).some((x) => (x.questions ?? []).some((q) => q.next?.includes(m.id)) || (x.bands ?? []).some((b) => b.next === m.id));
+                      const { lesson: next, card, grouped } = addNextQuestion(cur, m.id, dealt);
+                      onChange(next);
+                      onOpen(card.id);
+                      toast(grouped === "new" ? "Added the next question. The two cards are now a card group, answered together." : grouped ? `Added “${card.title}” to the card group` : "Added the next question as its own card, since an answer deals this one.", { icon: "plus" });
+                    }} className="btn btn-ghost press mt-2"><Icon name="plus" size={13} /> Add the next question</button>
+                  )}
+                  <p className="mt-2 text-[12px] text-ink-3">One question per card. The next question goes on a new card, and the cards become a card group: students answer them together, and the total score can deal cards.</p>
                 </>
               )}
               {isPoll(m) && <PollEditor question={m.questions?.[0]} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(q) => set({ questions: [q] })} />}

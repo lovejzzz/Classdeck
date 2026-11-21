@@ -168,7 +168,7 @@ const dragTo = async (id, toLessonTitle) => {
   await page.locator(".tree-canvas").evaluate((el) => el.scrollTo({ top: 0 }));
   await settle(300);
   const hb = await head.boundingBox();
-  const region = page.locator("span.font-semibold", { hasText: new RegExp(`^${toLessonTitle}$`) }).first();
+  const region = page.locator(".font-semibold", { hasText: new RegExp(`^${toLessonTitle}$`) }).first();
   const rb = await region.boundingBox();
   await page.mouse.move(hb.x + hb.width / 2, hb.y + 20);
   await page.mouse.down();

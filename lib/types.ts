@@ -80,6 +80,8 @@ export interface Question {
   kind?: "choice" | "multi" | "short" | "order";
   text: string;
   options: string[];
+  /** "order" questions sent to students: the server already mixed the options (so the right order never leaves it). */
+  mixed?: boolean;
   /** 正确选项的下标。发给学生前会被服务器去掉。 */
   answer?: number;
   /** "multi": every correct option index. Stripped before sending to students. */
@@ -110,6 +112,8 @@ export interface Review {
   at: number;
   /** Rubric: skill id → level 1–4 (the course's levels). */
   levels?: Record<string, number>;
+  /** A recording or file sent with the feedback, such as the teacher playing it the way they mean. */
+  attachments?: Attachment[];
 }
 
 /** The parts of a talk, as the speech builder lays them out. */

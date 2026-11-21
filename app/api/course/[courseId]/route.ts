@@ -4,7 +4,7 @@ import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
 import { randomCode, safeUrl } from "@/lib/uploads";
-import { isCorrect, quizSet, asked } from "@/lib/grading";
+import { isCorrect, quizSet, asked, mixedOrder } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
 import { kindWeeks, withKind } from "@/lib/kinds";
 import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, orphansOf, pathsFor, SCORE, treeView } from "@/lib/branching";
@@ -15,7 +15,7 @@ import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, For
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
 // "order" questions go out alphabetised, so the correct order never reaches the browser.
-const publicQuestion = (q: Question): Question => ({ id: q.id, kind: q.kind, text: q.text, options: q.kind === "short" ? [] : q.kind === "order" ? [...q.options].sort((a, b) => a.localeCompare(b)) : q.options });
+const publicQuestion = (q: Question): Question => ({ id: q.id, kind: q.kind, text: q.text, options: q.kind === "short" ? [] : q.kind === "order" ? mixedOrder(q.options, q.id) : q.options, mixed: q.kind === "order" || undefined });
 
 type Ctx = { params: Promise<{ courseId: string }> };
 
@@ -1112,7 +1112,8 @@ export async function POST(request: Request, { params }: Ctx) {
         const v = Number(body.levels?.[sk.id]);
         if (v >= 1 && v <= 4) levels[sk.id] = v;
       }
-      p.review = { verdict, text: String(body.text ?? "").slice(0, 2000), at: Date.now(), levels: Object.keys(levels).length ? levels : undefined };
+      const attachments = (Array.isArray(body.attachments) ? body.attachments : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 3);
+      p.review = { verdict, text: String(body.text ?? "").slice(0, 2000), at: Date.now(), levels: Object.keys(levels).length ? levels : undefined, attachments: attachments.length ? attachments : undefined };
       // Asking for a revision puts the card back in the student's hand.
       if (verdict === "revise" && p.status === "done") p.status = "doing";
       break;

@@ -609,6 +609,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           onNext={at >= 0 && at < order.length - 1 ? () => step(1) : undefined}
           onSaveToLibrary={() => saveToLibrary(curModule)}
           onTree={readOnly ? undefined : () => { showOnMap(curModule.id); if (view !== "map") closeEditor(); }}
+          onOpen={readOnly ? undefined : (id) => setEditing({ lessonId: cur.id, moduleId: id })}
           neighbors={<NeighborGraph card={curModule} lessons={allLessons()} onGo={(lid, id) => { edit(lid, id); if (view === "map") setMapFocus({ id, at: clock() }); }} onMap={view === "map" ? undefined : () => { showOnMap(curModule.id); closeEditor(); }} />}
           allCards={courseCards}
           onDuplicate={() => {

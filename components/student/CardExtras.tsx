@@ -7,6 +7,7 @@ import { FEEL } from "@/lib/onboarding";
 import { toast } from "@/lib/toast";
 import type { ExternalUpdate, Level, Review, Skill } from "@/lib/types";
 import { Icon } from "../Icon";
+import { MediaView } from "../cards/Media";
 
 /** The teacher's note on this work, pinned to the top of the card. */
 export function ReviewNote({ review, big, skills = [], levels = [] }: { review: Review; big?: boolean; skills?: Skill[]; levels?: Level[] }) {
@@ -20,6 +21,7 @@ export function ReviewNote({ review, big, skills = [], levels = [] }: { review: 
         <span className="font-normal text-ink-3">{new Date(review.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
       </div>
       {review.text && <p className={`mt-1.5 whitespace-pre-wrap leading-relaxed text-ink ${big ? "text-[16px]" : "text-[14px]"}`}>{review.text}</p>}
+      {review.attachments?.map((a) => <div key={a.id} className="mt-2"><MediaView a={a} /></div>)}
       {review.levels && Object.keys(review.levels).length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {Object.entries(review.levels).map(([id, n]) => (

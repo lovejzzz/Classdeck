@@ -3,6 +3,20 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.21",
+    date: "2026-11-21",
+    changes: [
+      "Click a lesson’s name on the map to rename it. Before, a lesson could only be renamed in the List view.",
+      "Add the next question, on a Question card: the next question goes on a new card, and the cards become a card group, answered together.",
+      "Put-in-order questions always reach students mixed up. Before, they could arrive already in the right order.",
+      "Card labels say what a single question asks for: Put in order or Short answer, not Multiple choice.",
+      "Your feedback can carry a recording or a file, such as you playing it the way you mean. Students hear it on the card.",
+      "Recording waits for the microphone or camera and says so, with what to do if the browser never asks. Before, Start did nothing until it was ready.",
+      "The gradebook’s quiz average counts card groups of questions too.",
+      "Phones no longer show the keyboard shortcut for handing in, and old “Class tab” hints now point to the Students tab. The Standard weeks description matches what it makes.",
+    ],
+  },
+  {
     version: "0.1.20",
     date: "2026-11-20",
     changes: [

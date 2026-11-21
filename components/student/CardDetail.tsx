@@ -399,7 +399,7 @@ export function CardDetail(p: DetailProps) {
             {p.progress?.status === "done" ? (
               <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> {doneOnly ? "Done" : "Done. You can still edit."}</span>
             ) : doneOnly ? null : (
-              <span className="text-[12.5px] text-ink-3">Saves as you type · {typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "⌘" : "Ctrl"}↵ to finish</span>
+              <span className="text-[12.5px] text-ink-3">Saves as you type<span className="[@media(pointer:coarse)]:hidden"> · {typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "⌘" : "Ctrl"}↵ to finish</span></span>
             )}
           </div>
         )}

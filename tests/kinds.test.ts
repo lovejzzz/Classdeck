@@ -1,5 +1,6 @@
 // Card kinds and faces, checked without a server: npx tsx tests/kinds.test.ts
-import { ANSWER_FORMS, FAMILIES, addToGroup, asKind, faceOf, familyOf, isPoll, kindOf, newCard, withKind } from "../lib/kinds";
+import { mixedOrder } from "../lib/grading";
+import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, asKind, faceMeta, faceOf, familyOf, isPoll, kindOf, newCard, withKind } from "../lib/kinds";
 import type { Attachment, Module } from "../lib/types";
 
 const card = (extra: Partial<Module> = {}): Module => ({ id: "m", type: "read", title: "t", body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
@@ -45,6 +46,20 @@ check("a Question card starts with choices", FAMILIES[1].start === "choice" && n
 check("three ways to answer a Question card", ANSWER_FORMS.map((k) => k.id).join() === "choice,answer,discussion" && ANSWER_FORMS.every((k) => familyOf(k.id) === "question"));
 const swapped = asKind(asKind(card({ title: "Look", body: "words" }), "choice"), "content");
 check("a card swapped to Question and back keeps its words, and has no question left", swapped.title === "Look" && swapped.body === "words" && kindOf(swapped) === "content" && !swapped.questions);
+
+// "Add the next question": a card on its own becomes a card group with the new card; a grouped card's group grows.
+const solo = { modules: [card({ id: "x", kind: "content" }), card({ id: "q1", kind: "choice", type: "practice", title: "Chords" })] };
+const n1 = addNextQuestion(solo, "q1", false);
+const grp = n1.lesson.modules.find((m) => m.type === "group");
+check("a lone Question card becomes a card group with the next question", n1.grouped === "new" && grp?.members?.join() === `q1,${n1.card.id}` && grp?.title === "Chords" && n1.lesson.modules.map((m) => m.id).join() === `x,${grp?.id},q1,${n1.card.id}`);
+const n2 = addNextQuestion(n1.lesson, n1.card.id, false);
+check("the next one joins that group", n2.grouped === "joined" && n2.lesson.modules.find((m) => m.type === "group")?.members?.length === 3);
+const n3 = addNextQuestion(solo, "q1", true);
+check("a card an answer deals gets the next question on its own", n3.grouped === false && !n3.lesson.modules.some((m) => m.type === "group") && n3.lesson.modules[2].id === n3.card.id);
+// Put-in-order questions reach students mixed up, never already solved.
+const steps = ["Dm7", "G7", "Cmaj7"];
+check("order options are never sent in the right order", Array.from({ length: 50 }, (_, i) => mixedOrder(steps, `q${i}`)).every((o) => o.join() !== steps.join() && [...o].sort().join() === [...steps].sort().join()));
+check("an order card is labelled Put in order", faceMeta(card({ kind: "choice", type: "practice", questions: [{ id: "q", kind: "order", text: "", options: steps }] })).name === "Put in order");
 
 const failed = rows.filter(([, ok]) => !ok);
 for (const [n] of failed) console.log("  ✗", n);

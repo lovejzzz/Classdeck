@@ -233,7 +233,7 @@ function NewCourse({ onClose }: { onClose: () => void }) {
         <Clearable><input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course name" aria-label="Course name" className="field h-11 text-[14px]" /></Clearable>
         <Clearable><input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Subtitle (optional), e.g. Spring 2027 · Tuesdays" aria-label="Subtitle" className="field" /></Clearable>
         <div className="grid gap-1.5">
-          {([["blank", "Start blank", "One empty week."], ["template", "Standard weeks", "Three weeks with a ready-made rhythm: goal, practice, group feedback, reflection."]] as const).map(([k, label, hint]) => (
+          {([["blank", "Start blank", "One empty week."], ["template", "Standard weeks", "Three weeks with a ready-made rhythm: goal, example, quick check, task, discussion, reflection."]] as const).map(([k, label, hint]) => (
             <label key={k} className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 text-[13px] transition-colors ${start === k ? "border-ink" : "border-line hover:border-line-strong"}`}>
               <input type="radio" name="start" checked={start === k} onChange={() => setStart(k)} className="mt-0.5 accent-[#1b1b1a]" />
               <span><span className="font-medium">{label}</span><span className="block text-[12px] text-ink-3">{hint}</span></span>

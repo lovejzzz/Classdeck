@@ -712,7 +712,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                 <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "tree-lesson-today" : "tree-lesson"}`} style={{ left: r.x - 20, top: 16, width: r.w + 40, height: height - 32 }}>
                   <div className="flex min-w-0 items-center gap-2 px-5 pt-3.5" style={{ fontSize: level === "far" ? 22 : 13 }}>
                     <span className={`flex flex-none items-center justify-center rounded-full font-semibold ${today ? "bg-ok text-white" : "bg-ink text-white"} ${level === "far" ? "h-9 w-9 text-[17px]" : "h-[22px] w-[22px] text-[11px]"}`}>{regions.indexOf(r) + 1}</span>
-                    <span className="min-w-0 truncate font-semibold text-ink">{r.lesson.title}</span>
+                    {readOnly || level === "far" ? <span className="min-w-0 truncate font-semibold text-ink">{r.lesson.title}</span>
+                      : <LessonName title={r.lesson.title} onRename={(title) => onChange({ ...r.lesson, title })} />}
                     {weekOf[r.lesson.id] && <span className="flex-none text-ink-3">{weekOf[r.lesson.id]}</span>}
                     {today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
                   </div>
@@ -1091,5 +1092,29 @@ function PortDot({ wired, readOnly, label, color = "#4b56a8", onPointerDown }: {
     >
       {wired && <span className="block h-1.5 w-1.5 rounded-full bg-white" />}
     </button>
+  );
+}
+
+/** A lesson's name on the map: click it to rename, Enter or click away to keep, Esc to undo. */
+function LessonName({ title, onRename }: { title: string; onRename: (t: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const done = (keep: boolean) => {
+    const t = draft?.trim();
+    if (keep && t && t !== title) onRename(t);
+    setDraft(null);
+  };
+  if (draft === null) {
+    return (
+      <button onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setDraft(title); }} title="Rename this lesson"
+        className="-mx-1 min-w-0 truncate rounded-md px-1 font-semibold text-ink hover:bg-white/80">{title}</button>
+    );
+  }
+  return (
+    <input autoFocus value={draft} aria-label="Lesson name" maxLength={80}
+      onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => setDraft(e.target.value)} onBlur={() => done(true)}
+      onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); }}
+      className="-mx-1 min-w-0 flex-1 rounded-md border border-line-strong bg-white px-1 font-semibold text-ink outline-none" />
   );
 }

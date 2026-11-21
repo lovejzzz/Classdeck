@@ -8,7 +8,7 @@ import type { CourseState, Module } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { SkillRadar } from "../SkillRadar";
 import { FeedbackInbox, Journal } from "../student/Progress";
-import { treeView } from "@/lib/branching";
+import { groupScore, treeView } from "@/lib/branching";
 
 const WORK = new Set(["explore", "practice", "submit", "reflect"]);
 
@@ -42,7 +42,14 @@ export function Gradebook({ state }: { state: CourseState }) {
     const late = cards.filter(({ m }) => isLate(m, mine[m.id], now)).length;
     // A quiz counts once it's been handed in, by its best try, even while the student is on another try.
     const quizzes = cards.filter(({ m }) => m.type === "quiz" && m.questions?.length && isFinished(m, mine[m.id]));
-    const quizPct = quizzes.length ? quizzes.reduce((t, { m }) => t + (mine[m.id].best ?? mine[m.id].score ?? 0) / Math.max(1, quizSet(m, st.id, mine[m.id].attempt ?? 1).length), 0) / quizzes.length : undefined;
+    // A card group of questions counts too, once all its questions are answered, by its first answers.
+    const shown = new Set(cards.map(({ m }) => m.id));
+    const groups = all.flatMap(({ l }) => l.modules.filter((g) => g.type === "group" && g.members?.some((id) => shown.has(id))).map((g) => groupScore(g, l.modules, mine)).filter((g) => g.done));
+    const scores = [
+      ...quizzes.map(({ m }) => (mine[m.id].best ?? mine[m.id].score ?? 0) / Math.max(1, quizSet(m, st.id, mine[m.id].attempt ?? 1).length)),
+      ...groups.map((g) => g.right / g.total),
+    ];
+    const quizPct = scores.length ? scores.reduce((t, x) => t + x, 0) / scores.length : undefined;
     const reviews = cards.filter(({ m }) => mine[m.id]?.review).map(({ m, week }) => ({ m, week, r: mine[m.id].review! })).sort((a, b) => b.r.at - a.r.at);
     const waiting = cards.filter(({ m }) => WORK.has(m.type) && !m.questions?.length && mine[m.id]?.status === "done" && !mine[m.id]?.review).length;
     // Latest teacher level per skill, and the student's latest self-rating.
@@ -77,7 +84,7 @@ export function Gradebook({ state }: { state: CourseState }) {
         <p className="flex-1 text-[13px] text-ink-3">
           {skills.length
             ? "Skill levels come from your rubric reviews (latest per skill), shown next to each student’s own latest self-rating. Click a student for their reviewed work."
-            : "Each student’s cards done, late work, quiz scores and work waiting for your feedback. Click a student for their work."}
+            : "Each student’s cards done, late work, quiz and card-group scores and work waiting for your feedback. Click a student for their work."}
         </p>
         <button onClick={exportCsv} className="btn btn-ghost press h-8"><Icon name="download" size={13} /> Export CSV</button>
       </div>
@@ -137,7 +144,7 @@ export function Gradebook({ state }: { state: CourseState }) {
                       ]} />
                       <div>
                       {r.reviews.length === 0 ? (
-                        <p className="text-[13px] text-ink-3">No reviewed work yet. Review work from the Class tab.</p>
+                        <p className="text-[13px] text-ink-3">No reviewed work yet. Review work from the Students tab, under “Ready for your feedback”.</p>
                       ) : (
                         <ul className="rise space-y-2.5">
                           {r.reviews.map(({ m, week, r: rv }) => (

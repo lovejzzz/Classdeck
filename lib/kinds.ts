@@ -98,7 +98,16 @@ export function faceOf(m: KindFields): Face {
   if (a.kind === "audio" || a.kind === "link") return "link";
   return "text";
 }
-export const faceMeta = (m: KindFields) => FACES[faceOf(m)];
+export const faceMeta = (m: KindFields): { name: string; icon: string } => {
+  const f = FACES[faceOf(m)];
+  // A choice card's label says what its question asks for: picking, ordering or typing.
+  if (faceOf(m) === "choice" && (m.questions?.length ?? 0) === 1) {
+    const k = m.questions![0].kind;
+    if (k === "order") return { ...f, name: "Put in order" };
+    if (k === "short") return { ...f, name: "Short answer" };
+  }
+  return f;
+};
 
 /**
  * The stored type a kind runs on, given the card's current type. A Multiple choice card answers right away (practice);
@@ -182,6 +191,29 @@ export function addToGroup<L extends { modules: Module[] }>(lesson: L, groupId: 
   const modules = lesson.modules.map((x) => (x.id === groupId ? { ...x, members: [...members, card.id] } : x));
   modules.splice(at, 0, card);
   return { lesson: { ...lesson, modules }, card };
+}
+
+/**
+ * "Add the next question" on a Question card: a quiz grows one card at a time. A card already in a card group gets a
+ * new card at the end of its group. A card on its own becomes a card group with the new card, named after it, so the
+ * questions are answered together and their total score can deal cards. A card an answer deals can't join a group,
+ * so the new card goes right after it on its own.
+ */
+export function addNextQuestion<L extends { modules: Module[] }>(lesson: L, cardId: string, dealt: boolean): { lesson: L; card: Module; grouped: "new" | "joined" | false } {
+  const group = lesson.modules.find((x) => x.type === "group" && x.members?.includes(cardId));
+  if (group) return { ...addToGroup(lesson, group.id), grouped: "joined" };
+  const m = lesson.modules.find((x) => x.id === cardId);
+  const at = lesson.modules.findIndex((x) => x.id === cardId);
+  if (!m || at < 0) { const card = newCard("choice", "Question 2"); return { lesson: { ...lesson, modules: [...lesson.modules, card] }, card, grouped: false }; }
+  const card = newCard("choice", "Question 2");
+  const modules = [...lesson.modules];
+  if (dealt) {
+    modules.splice(at + 1, 0, card);
+    return { lesson: { ...lesson, modules }, card, grouped: false };
+  }
+  const g: Module = { ...newCard("content", m.title || "Quiz"), type: "group", kind: "group", suit: "question", members: [m.id, card.id] } as Module;
+  modules.splice(at, 1, g, m, card);
+  return { lesson: { ...lesson, modules }, card, grouped: "new" };
 }
 
 /** A card with choices that has neither words nor options yet: students don't see it until the teacher writes them. */

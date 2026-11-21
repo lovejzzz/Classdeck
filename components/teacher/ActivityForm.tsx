@@ -90,8 +90,8 @@ export function FormEditor({ form, onChange }: { form: ActivityForm; onChange: (
         </label>
       )}
       <p className="text-[12px] leading-relaxed text-ink-3">{student
-        ? "Students fill it in on this card and can change their answers later. Everyone’s answers are in the Class tab, under this lesson, with a CSV download."
-        : "Fill it in for each student from the Class tab: open a student’s cell for this card, then use “Save and next”. Students see your answers on this card and in their feedback."}</p>
+        ? "Students fill it in on this card and can change their answers later. Everyone’s answers are in the Students tab, under this lesson, with a CSV download."
+        : "Fill it in for each student from the Students tab: open a student’s cell for this card, then use “Save and next”. Students see your answers on this card and in their feedback."}</p>
       <button onClick={() => onChange(undefined)} className="btn btn-quiet press h-7 px-2 text-[12px] hover:!text-bad">Remove form</button>
     </div>
   );

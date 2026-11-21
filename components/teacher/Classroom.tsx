@@ -9,10 +9,12 @@ import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { faceMeta } from "@/lib/kinds";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
-import type { CourseState, Lesson, Level, Module, Review, Skill } from "@/lib/types";
+import type { Attachment, CourseState, Lesson, Level, Module, Review, Skill } from "@/lib/types";
 import { download, toCsv } from "@/lib/download";
 import { toast } from "@/lib/toast";
 import { MarkedMedia } from "../Marks";
+import { AttachMenu } from "../AttachMenu";
+import { MediaView } from "../cards/Media";
 import { draftOf } from "../student/SpeechBuilder";
 import { Present } from "../Present";
 import { WallBoard } from "../WallBoard";
@@ -571,15 +573,16 @@ function ExportMenu({ items }: { items: [string, () => void][] }) {
 function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels, onNext, rateOpen = false }: { courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean; skills: Skill[]; rateOpen?: boolean; levels: Level[]; onNext?: () => void }) {
   const [text, setText] = useState(review?.text ?? "");
   const [rubric, setRubric] = useState<Record<string, number>>(review?.levels ?? {});
+  const [files, setFiles] = useState<Attachment[]>(review?.attachments ?? []);
   const [busy, setBusy] = useState(false);
   // Rating skills is optional: open when the card names its skills or levels were already given.
   const [rating, setRating] = useState(rateOpen || Object.keys(review?.levels ?? {}).length > 0);
   async function send(verdict: "good" | "revise" | "clear") {
     setBusy(true);
-    const r = await op<{ ok: boolean; error?: string }>(courseId, verdict === "clear" ? { op: "review", studentId, moduleId, clear: true } : { op: "review", studentId, moduleId, verdict, text, levels: rubric });
+    const r = await op<{ ok: boolean; error?: string }>(courseId, verdict === "clear" ? { op: "review", studentId, moduleId, clear: true } : { op: "review", studentId, moduleId, verdict, text, levels: rubric, attachments: files });
     setBusy(false);
     if (r.ok === false) return toast(r.error ?? "Couldn’t save", { icon: "message", tone: "plain" });
-    if (verdict === "clear") setText("");
+    if (verdict === "clear") { setText(""); setFiles([]); }
     toast(verdict === "revise" ? `Sent back to ${name} for a revision` : verdict === "good" ? `Sent to ${name}` : "Feedback removed", { icon: verdict === "revise" ? "reset" : "message" });
     // Marking down a list of work: go straight on to the next one waiting.
     if (verdict !== "clear") onNext?.();
@@ -619,9 +622,25 @@ function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, 
       )}
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder={`What ${name} did well, and one thing to try next`} aria-label="Feedback for the student" className="field resize-y leading-relaxed"
         onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send("good"); } }} />
+      {files.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {files.map((a) => (
+            <div key={a.id} className="rounded-xl border border-line p-2">
+              <div className="mb-1 flex items-center gap-2 text-[12px] text-ink-3"><span className="min-w-0 flex-1 truncate">{a.name}</span>
+                <button onClick={() => setFiles((f) => f.filter((x) => x.id !== a.id))} aria-label={`Remove ${a.name ?? "file"}`} className="hover:text-bad"><Icon name="x" size={12} /></button></div>
+              <MediaView a={a} />
+            </div>
+          ))}
+        </div>
+      )}
+      {files.length < 3 && (
+        <div className="mt-2">
+          <AttachMenu compact teacher label="Record how you’d play or say it, so they can hear it." onAdd={(a) => setFiles((f) => [...f, { ...a, id: `fb-${Math.random().toString(36).slice(2, 9)}` }])} />
+        </div>
+      )}
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button onClick={() => send("good")} disabled={busy} className="btn btn-dark press h-8"><Icon name="check" size={13} /> Looks good</button>
-        <button onClick={() => send("revise")} disabled={busy || !text.trim()} title={text.trim() ? undefined : "Say what to revise first"} className="btn btn-ghost press h-8"><Icon name="reset" size={13} /> Ask to revise</button>
+        <button onClick={() => send("revise")} disabled={busy || (!text.trim() && !files.length)} title={text.trim() || files.length ? undefined : "Say what to revise first"} className="btn btn-ghost press h-8"><Icon name="reset" size={13} /> Ask to revise</button>
         <span className="flex-1" />
         {review && <button onClick={() => send("clear")} disabled={busy} className="btn btn-quiet press h-8 text-[12px]">Remove</button>}
       </div>
