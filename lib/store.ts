@@ -78,7 +78,7 @@ const LEGACY = path.join(DIR, "db.json");
 const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans"] as const;
 const GLOBAL = ["users", "sessions", "customConnectors", "uploads"] as const;
 
-const g = globalThis as unknown as { __lmsdb?: DB; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string> };
+const g = globalThis as unknown as { __lmsdb?: DB; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string>; __preview?: DB; __previews?: Map<string, { at: number; data: Record<string, unknown> }> };
 
 function fresh(custom: Manifest[] = []): DB {
   // A deep copy, so edits to the demo course never change the seed data a later reset restores.
@@ -145,6 +145,8 @@ function nightlyDemoReset() {
 }
 
 export function db(): DB {
+  // Inside a Student View test (runPreview): the sandbox copy, never the real data.
+  if (g.__preview) return g.__preview;
   if (g.__lmsdb) nightlyDemoReset();
   if (!g.__lmsdb) {
     let d = load();
@@ -176,6 +178,8 @@ function fill(d: DB): DB {
 }
 
 export function save() {
+  // A Student View test is never saved: its changes stay in its sandbox.
+  if (g.__preview) return;
   const d = g.__lmsdb;
   if (!d) return;
   const next = new Map<string, string>();
@@ -282,4 +286,45 @@ export function logEvent(courseId: string, e: Omit<ClassEvent, "id" | "at">) {
   const list = (db().events[courseId] ??= []);
   list.push({ ...e, id: Math.random().toString(36).slice(2, 10), at: Date.now() });
   if (list.length > 300) list.splice(0, list.length - 300);
+}
+
+/**
+ * Student View: a teacher tries the course as one of their students. `fn` runs against a sandbox: the course as it is
+ * now, and the class's work, posts and choices as they were when the test began plus whatever the teacher has done in
+ * this test. Nothing in it is saved, logged for real or pushed to other pages. `fn` must do its work synchronously
+ * (an async function is fine as long as it doesn't await before it's done with the data).
+ * The sandbox lasts until reset (`endPreview`) or two hours without use.
+ */
+export function runPreview<T>(key: string, courseId: string, fn: () => T, testStudent?: { id: string; name: string }): T {
+  const real = db();
+  const all = (g.__previews ??= new Map());
+  const now = Date.now();
+  for (const [k, v] of all) if (now - v.at > 2 * 3600_000) all.delete(k);
+  let entry = all.get(key);
+  if (!entry) {
+    const data: Record<string, unknown> = {};
+    for (const k of PER_COURSE) if (k !== "courses") data[k] = structuredClone((real[k] as Record<string, unknown>)[courseId]);
+    entry = { at: now, data };
+    all.set(key, entry);
+  }
+  entry.at = now;
+  const box = { ...real } as unknown as Record<string, Record<string, unknown>>;
+  for (const k of PER_COURSE) {
+    box[k] = { ...(real[k] as Record<string, unknown>) };
+    box[k][courseId] = k === "courses" ? structuredClone(real.courses[courseId]) : entry.data[k];
+  }
+  // A blank student who exists only in this test (to try the course before anyone has joined).
+  if (testStudent) (box.courses[courseId] as unknown as Course).students.push({ ...testStudent } as Course["students"][number]);
+  g.__preview = box as unknown as DB;
+  try {
+    return fn();
+  } finally {
+    for (const k of PER_COURSE) if (k !== "courses") entry.data[k] = box[k][courseId];
+    g.__preview = undefined;
+  }
+}
+
+/** Start a Student View test over: the next request copies the class's real data again. */
+export function endPreview(key: string) {
+  g.__previews?.delete(key);
 }

@@ -21,6 +21,7 @@ import { op, useConnectors, useCourse } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
+import { StudentViewButton } from "@/components/teacher/StudentViewButton";
 
 // Map (the course as a card tree) is the default; List is the same cards in rows of weeks.
 const TABS = [["map", "Map"], ["plan", "List"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
@@ -82,19 +83,41 @@ export default function TeachPage() {
     }
   };
 
-  const notes: Note[] = state.events
-    .filter((e) => e.at > seenAt)
-    .map((e) => ({
-      id: e.id,
+  // A student working through quick cards makes a finished note (and a wrong-answer note) per card. Answers and
+  // finished cards close together are one note per student: "Answered 4 cards · 1 wrong", the misses spelled out.
+  // Quizzes, posts, raised hands and the rest stay notes of their own.
+  const RUN = 15 * 60_000;
+  const fresh = state.events.filter((e) => e.at > seenAt).sort((a, b) => a.at - b.at);
+  const runs: ClassEvent[][] = [];
+  const openRun = new Map<string, ClassEvent[]>();
+  for (const e of fresh) {
+    if (e.kind !== "done" && e.kind !== "wrong") { runs.push([e]); continue; }
+    const r = openRun.get(e.studentId);
+    if (r && e.at - r[r.length - 1].at <= RUN) r.push(e);
+    else { const n = [e]; runs.push(n); openRun.set(e.studentId, n); }
+  }
+  const notes: Note[] = runs.map((r) => {
+    const e = r[r.length - 1];
+    const cards = [...new Set(r.map((x) => x.moduleId))];
+    const wrong = r.filter((x) => x.kind === "wrong");
+    const one = cards.length === 1;
+    // The note opens the first card answered wrong (or the last one done).
+    const lead = wrong[0] ?? e;
+    const lessonsHit = [...new Set(cards.map((id) => moduleOf(id)?.l.title).filter(Boolean))];
+    return {
+      id: lead.id,
       at: e.at,
       group: e.studentId,
       groupLabel: studentName(e.studentId),
-      source: moduleOf(e.moduleId)?.m.title ?? "",
-      icon: KIND[e.kind].icon,
-      tint: KIND[e.kind].tint,
+      source: one ? moduleOf(e.moduleId)?.m.title ?? "" : lessonsHit.length === 1 ? lessonsHit[0]! : `${lessonsHit.length} lessons`,
+      icon: KIND[wrong.length ? "wrong" : e.kind].icon,
+      tint: KIND[wrong.length ? "wrong" : e.kind].tint,
       title: studentName(e.studentId),
-      text: e.text,
-    }));
+      text: r.length === 1 ? e.text
+        : one ? wrong.map((x) => x.text).concat(r.some((x) => x.kind === "done") ? ["Finished"] : []).join(" · ")
+        : `Answered ${cards.length} cards${wrong.length ? ` · ${wrong.length} wrong: ${wrong.map((x) => `${moduleOf(x.moduleId)?.m.title ?? "a card"} (${x.text.replace(/^Q\d+: /, "")})`).join("; ")}` : ""}`,
+    };
+  }).reverse();
 
   return (
     <MarksContext.Provider value={{ courseId, me: "teacher", marks: state.marks ?? [], names: Object.fromEntries(state.course.students.map((s) => [s.id, s.name])), refresh }}>
@@ -118,6 +141,7 @@ export default function TeachPage() {
           >
             <span className="text-ink-3">Class code</span><span className="font-mono tracking-[0.15em]">{course.joinCode}</span>
           </button>
+          {!viewer && <StudentViewButton courseId={courseId} students={course.students} />}
           <Shortcuts
             list={[
               { keys: "1", label: "Map", run: () => setTab("map") },

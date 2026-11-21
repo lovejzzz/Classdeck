@@ -43,6 +43,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
 }) {
   const [drafts, setDrafts] = useState<Record<string, Lesson>>({});
   const [editing, setEditing] = useState<{ lessonId: string; moduleId: string } | null>(null);
+  // Opened from an answer on another card (the card it deals): where to go back to.
+  const [cameFrom, setCameFrom] = useState<{ lessonId: string; moduleId: string; to: string; note: string } | null>(null);
   // A card or lesson the map should bring into view (set when moving there from the list or the editor).
   const [mapFocus, setMapFocus] = useState<{ id: string; at: number } | null>(null);
   /** Show a card or lesson on the course map. */
@@ -621,6 +623,21 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           onSaveToLibrary={() => saveToLibrary(curModule)}
           onTree={readOnly ? undefined : () => { showOnMap(curModule.id); if (view !== "map") closeEditor(); }}
           onOpen={readOnly ? undefined : (id) => setEditing({ lessonId: cur.id, moduleId: id })}
+          onGo={(id) => {
+            const lid = allLessons().find((l) => l.modules.some((x) => x.id === id))?.id;
+            if (!lid) return;
+            const src = curModule;
+            const q = src.questions?.find((x) => x.next?.includes(id));
+            const oi = q?.next?.indexOf(id) ?? -1;
+            const o = q && oi >= 0 ? q.options[oi]?.trim() : "";
+            setCameFrom({ lessonId: cur.id, moduleId: src.id, to: id, note: oi >= 0 ? `answer ${String.fromCharCode(65 + oi)}${o ? `: ${o}` : ""}` : "an answer" });
+            edit(lid, id);
+            if (view === "map") setMapFocus({ id, at: clock() });
+          }}
+          back={cameFrom && cameFrom.to === curModule.id ? (() => {
+            const from = allLessons().flatMap((l) => l.modules).find((x) => x.id === cameFrom.moduleId);
+            return from ? { title: from.title || "Untitled card", note: cameFrom.note, go: () => { const c = cameFrom; setCameFrom(null); edit(c.lessonId, c.moduleId); if (view === "map") setMapFocus({ id: c.moduleId, at: clock() }); } } : undefined;
+          })() : undefined}
           neighbors={<NeighborGraph card={curModule} lessons={allLessons()} onGo={(lid, id) => { edit(lid, id); if (view === "map") setMapFocus({ id, at: clock() }); }} onMap={view === "map" ? undefined : () => { showOnMap(curModule.id); closeEditor(); }} />}
           allCards={courseCards}
           onDuplicate={() => {

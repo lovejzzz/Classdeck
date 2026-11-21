@@ -2,7 +2,7 @@ import { publicOrigin } from "@/lib/origin";
 import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
-import { db, logEvent, reset, save } from "@/lib/store";
+import { db, endPreview, logEvent, reset, runPreview, save } from "@/lib/store";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
@@ -110,8 +110,32 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
   };
 }
 
+/** Student View: the key of a teacher's test as one student (their sign-in, the course, the student). */
+const previewKey = (session: { key: string }, courseId: string, studentId: string) => `${session.key}:${courseId}:${studentId}`;
+/** What a teacher may do while testing as a student: what the student does. Nothing a teacher does alone. */
+const PREVIEW_OPS = new Set([...STUDENT_OPS, "addPost", "comment", "react", "addMark", "removeMark"]);
+/** Student View's blank student: in no class list, only in the test's sandbox. */
+const TEST_STUDENT = { id: "s-test", name: "Test student" };
+const testStudentFor = (sid: string) => (sid === TEST_STUDENT.id ? TEST_STUDENT : undefined);
+
 export async function GET(request: Request, { params }: Ctx) {
   const { courseId } = await params;
+  const query = new URL(request.url).searchParams;
+  const as = query.get("as");
+  // Student View: the teacher sees the course as this student, from the test's sandbox.
+  if (as && query.get("preview") !== null) {
+    const course = db().courses[courseId];
+    const session = getSession(request);
+    if (!course) return Response.json({ error: "No such course" }, { status: 404 });
+    if (!session || !canTeach(session, course)) return unauthorized("teacher");
+    if (!testStudentFor(as) && !course.students.some((s) => s.id === as)) return Response.json({ error: "That student isn’t in this class" }, { status: 404 });
+    return runPreview(previewKey(session, courseId, as), courseId, () => view(request, courseId), testStudentFor(as));
+  }
+  return view(request, courseId);
+}
+
+/** The course as the person asking may see it (the whole course for its teachers, one student's board for them). */
+function view(request: Request, courseId: string): Response {
   const d = db();
   const course = d.courses[courseId];
   if (!course) return Response.json({ error: "No such course" }, { status: 404 });
@@ -287,6 +311,27 @@ export async function POST(request: Request, { params }: Ctx) {
     reset();
     return Response.json({ ok: true });
   }
+  // Student View: a teacher trying the course as a student. Only the student's own actions, run in the test's
+  // sandbox, so no grade, post or notification is real. "endPreview" starts the test over.
+  if (body.preview === true || body.op === "endPreview") {
+    const course = db().courses[courseId];
+    const session = getSession(request);
+    if (!course) return Response.json({ error: "No such course" }, { status: 404 });
+    if (!session || !canTeach(session, course)) return unauthorized("teacher");
+    const sid = typeof body.studentId === "string" ? body.studentId : typeof body.as === "string" ? body.as : "";
+    if (!testStudentFor(sid) && !course.students.some((s) => s.id === sid)) return Response.json({ ok: false, error: "That student isn’t in this class" }, { status: 400 });
+    if (body.op === "endPreview") { endPreview(previewKey(session, courseId, sid)); return Response.json({ ok: true }); }
+    if (!PREVIEW_OPS.has(body.op)) return Response.json({ ok: false, error: "That isn’t something a student does, so it can’t be tried in Student View" }, { status: 400 });
+    // react and comment name the student in `who`; the rest in `studentId`.
+    if ((body.op === "react" || body.op === "comment") && body.who !== sid) return Response.json({ ok: false, error: "In Student View you act as the student you picked" }, { status: 400 });
+    return runPreview(previewKey(session, courseId, sid), courseId, () => change(request, courseId, body), testStudentFor(sid));
+  }
+  return change(request, courseId, body);
+}
+
+/** One change to the course, from the teacher or a student (checked here). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function change(request: Request, courseId: string, body: Record<string, any>): Promise<Response> {
   const d = db();
   const course = d.courses[courseId];
   if (!course) return Response.json({ error: "No such course" }, { status: 404 });

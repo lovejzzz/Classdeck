@@ -7,7 +7,8 @@ import { MediaView } from "@/components/cards/Media";
 import { SignInNeeded } from "@/components/SignInNeeded";
 import { FeedbackInbox } from "@/components/student/Progress";
 import { Avatar, Icon, StatusIcon } from "@/components/Icon";
-import { useCourse, useQuery } from "@/lib/client";
+import { setPreview, useCourse, useQuery } from "@/lib/client";
+import { PreviewBar } from "@/components/student/PreviewBar";
 import { ago } from "@/lib/time";
 import { suitOfCard } from "@/lib/ui";
 import { faceMeta } from "@/lib/kinds";
@@ -16,6 +17,9 @@ import type { Module, Progress } from "@/lib/types";
 /** A student's own board: everything they made, and the feedback they got. */
 export default function BoardPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
+  // Student View (a teacher testing as this student): every request is a test, nothing is saved.
+  const testing = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("preview");
+  if (typeof window !== "undefined") setPreview(testing ? studentId : null);
   const { state, error, needAuth, refresh } = useCourse(courseId, studentId, 8000);
   const [tab, setTab] = useState<"work" | "feedback">(() => {
     const h = typeof window === "undefined" ? "" : window.location.hash.slice(1);
@@ -45,6 +49,7 @@ export default function BoardPage() {
 
   return (
     <div className="flex-1">
+      {testing && <div className="no-print"><PreviewBar board courseId={courseId} studentId={studentId} students={course.students} onReset={refresh} /></div>}
       <div className="no-print sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-4xl items-center gap-3 px-4 text-[13px]">
           <Link href={`/learn/${courseId}/${studentId}${query?.get("preview") ? "?preview=1" : ""}`} className="inline-flex items-center gap-1.5 text-ink-2 hover:text-ink"><Icon name="back" size={13} /> Cards</Link>

@@ -9,6 +9,7 @@ import { MathText, plainMath } from "../MathText";
 import type { AnswerValue, Lesson, Module, ProgressMap } from "@/lib/types";
 import { Icon } from "../Icon";
 import { toast } from "@/lib/toast";
+import { ask } from "../Confirm";
 
 // Fixed sizes, so ports and wires are placed from numbers, not by measuring the page.
 // A card on the map is a playing card: 5 wide by 7 tall. Only a card group (a stack) can grow taller.
@@ -247,6 +248,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 
   // How many students each answer or score band sent down its wire, and who is on which card right now.
   const took = (w: Wire) => students.filter((s) => picked(progress[s.id]?.[w.from]?.dealt?.[w.q], w)).length;
+  /** With Where students are on: how many went down an answer's (or score range's) wire, shown in that row. */
+  const wentBadge = (from: string, q: string, option: number) => {
+    if (!live) return null;
+    const w = wires.find((x) => x.from === from && x.q === q && x.option === option);
+    const n = w ? took(w) : 0;
+    return n ? <span className="chip h-5 flex-none bg-[#4b56a8] px-1.5 text-[10.5px] text-white" title={`${n} student${n === 1 ? "" : "s"} went this way`}><Icon name="users" size={10} />{n}</span> : null;
+  };
   const onCard = useMemo(() => {
     const out = new Map<string, { id: string; name: string; stuck: boolean }[]>();
     for (const s of students)
@@ -310,6 +318,17 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const top = r && !n ? (r.y - 8) * z : py * z - el.clientHeight / 2.4;
     el.scrollTo({ left: Math.max(0, left), top: Math.max(0, top), behavior: "smooth" });
   }
+  // Going to a lesson from far out: zoom in to where cards can be read, then scroll there once the map has redrawn.
+  const [going, setGoing] = useState<string | null>(null);
+  function goTo(id: string) {
+    if (zoom < 0.55) { setZoom(0.7); setGoing(id); } else bringIntoView(id);
+  }
+  useEffect(() => {
+    if (!going) return;
+    const id = going;
+    requestAnimationFrame(() => { bringIntoView(id, 0.7); setGoing(null); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [going, regions]);
   useEffect(() => {
     if (focus) requestAnimationFrame(() => bringIntoView(focus.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -324,10 +343,16 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     setZoom(nz);
     requestAnimationFrame(() => { el.scrollLeft = cx * nz - el.clientWidth / 2; el.scrollTop = cy * nz - el.clientHeight / 2; });
   }
+  /**
+   * The zoom button: first the widest lesson's row fills the map's width (lessons read top to bottom, so scroll down
+   * for the rest); pressed again, the whole course fits.
+   */
   const fitAll = () => {
     const el = scroller.current;
     if (!el) return;
-    setZoom(Math.max(0.15, Math.min(1, (el.clientWidth - 24) / width, (el.clientHeight - 24) / height)));
+    const byWidth = Math.max(0.15, Math.min(1, (el.clientWidth - 24) / width));
+    const whole = Math.max(0.15, Math.min(1, (el.clientWidth - 24) / width, (el.clientHeight - 24) / height));
+    setZoom(Math.abs(zoom - byWidth) < 0.01 ? whole : byWidth);
     requestAnimationFrame(() => el.scrollTo({ left: 0, top: 0, behavior: "smooth" }));
   };
 
@@ -379,7 +404,23 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       }),
     };
   }
-  const wire = (port: Port, to: string | null) => onChange(withWire(lessonWith(port.from), port, to));
+  /**
+   * Point a port at a card. A card everyone gets now becomes one only some students get, so say so first (students who
+   * already started it keep it).
+   */
+  const wire = async (port: Port, to: string | null) => {
+    if (to && !wires.some((w) => w.to === to)) {
+      const m = all.find((x) => x.m.id === to)?.m;
+      const started = students.filter((st) => { const p = progress[st.id]?.[to]; return !!p && p.status !== "todo"; }).length;
+      const ok = await ask({
+        title: `Only students who pick this get “${m?.title || "this card"}”`,
+        body: `Right now everyone gets it. Once this answer deals it, students who pick another answer won’t see it.${started ? ` ${started} student${started === 1 ? " has" : "s have"} already started it and will keep it.` : ""} You can undo this.`,
+        confirm: "Deal it by this answer",
+      });
+      if (!ok) return;
+    }
+    onChange(withWire(lessonWith(port.from), port, to));
+  };
   const setBands = (m: Module, bands: { min: number; next: string | null }[] | undefined) => {
     const l = lessonWith(m.id);
     onChange({ ...l, modules: l.modules.map((x) => (x.id === m.id ? { ...x, bands } : x)) });
@@ -706,12 +747,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex flex-wrap items-center gap-2">
         <div className="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-line bg-white/95 p-0.5 shadow-sm backdrop-blur">
           <button onClick={() => zoomTo(zoom - 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom out">−</button>
-          <button onClick={fitAll} className="mono h-7 w-12 rounded-lg text-center hover:bg-lane" title="See the whole course">{Math.round(zoom * 100)}%</button>
+          <button onClick={fitAll} className="mono h-7 w-12 rounded-lg text-center hover:bg-lane" title="Fit the map’s width (press again to see the whole course)">{Math.round(zoom * 100)}%</button>
           <button onClick={() => zoomTo(zoom + 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom in">+</button>
         </div>
         <select
           value=""
-          onChange={(e) => { if (e.target.value) { bringIntoView(e.target.value); e.target.value = ""; } }}
+          onChange={(e) => { if (e.target.value) { goTo(e.target.value); e.target.value = ""; } }}
           aria-label="Go to a lesson"
           className="pointer-events-auto h-8 rounded-xl border border-line bg-white/95 px-2 text-[12.5px] shadow-sm"
         >
@@ -736,7 +777,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         tabIndex={0}
         onKeyDown={onKey}
         aria-label="Course map"
-        className="tree-canvas relative h-[calc(100dvh-11.75rem)] sm:h-[calc(100dvh-9.5rem)] min-h-[30rem] overflow-auto rounded-2xl border border-line bg-canvas outline-none focus-visible:ring-2 focus-visible:ring-[#4b56a8]/30"
+        className="tree-canvas relative overscroll-contain h-[calc(100dvh-11.75rem)] sm:h-[calc(100dvh-9.5rem)] min-h-[30rem] overflow-auto rounded-2xl border border-line bg-canvas outline-none focus-visible:ring-2 focus-visible:ring-[#4b56a8]/30"
         style={{ backgroundSize: `${22 * zoom}px ${22 * zoom}px`, height: fill ?? undefined }}
         onPointerDown={(e) => {
           if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.canvas) return;
@@ -838,16 +879,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               {menu && "port" in menu && menu.mode === "new" && <path d={curve(portPos(menu.port), menu)} fill="none" stroke={INK} strokeWidth={2.2} strokeDasharray="6 6" markerEnd="url(#map-arrow)" className="tree-dash" />}
             </svg>
 
-            {level !== "far" && live && drawn.map((w) => {
-              const n = took(w);
-              if (!n) return null;
-              const a = portPos(w);
-              return (
-                <span key={`n-${w.from}-${w.q}-${w.option}`} className="chip pop absolute h-5 -translate-y-1/2 bg-[#4b56a8] px-1.5 text-[10.5px] text-white shadow-[0_4px_10px_-4px_rgba(75,86,168,0.8)]" style={{ left: a.x + 16, top: a.y - 13 }}
-                  title={`${n} student${n === 1 ? "" : "s"} went this way`}>{n}</span>
-              );
-            })}
-
             {level !== "far" && !drag && drawn.filter((w) => hot === w.from || hot === w.to || selected === w.from || selected === w.to).map((w) => {
               const { mid } = route(w);
               return (
@@ -945,6 +976,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                               <div key={`${q.id}-${oi}`} className="relative flex items-center gap-2 pl-9 pr-3.5" style={{ height: ROW }}>
                                 <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined}>{letter(oi)}</span>
                                 <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">{o.trim() ? <MathText text={o.trim()} /> : `Option ${oi + 1}`}</span>
+                                {wentBadge(c.id, q.id, oi)}
                                 <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `${c.title}: answer ${letter(oi)} deals a card. Change it` : `${c.title}: deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: c.id, q: q.id, option: oi })} />
                               </div>
                             );
@@ -964,6 +996,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                                 {typing?.id === m.id && typing.field === `o:${q.id}:${oi}`
                                   ? <span className="min-w-0 flex-1 pr-3">{typeBox("h-6 text-[12.5px]")}</span>
                                   : <span onDoubleClick={startTyping(m.id, `o:${q.id}:${oi}`, o)} className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2" title={readOnly ? undefined : "Double-click to edit"}>{o.trim() ? <MathText text={o.trim()} /> : `Option ${oi + 1}`}</span>}
+                                {wentBadge(m.id, q.id, oi)}
                                 <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `Answer ${letter(oi)} deals a card. Change it` : `Deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: q.id, option: oi })} />
                               </div>
                             );
@@ -1004,6 +1037,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                                 </span>
                               )}
                               {nQ > 0 && (() => { const r = bandRight(b, nQ); return <span className={`mono mr-2 flex-none whitespace-nowrap text-[10.5px] ${r ? "" : "text-bad"}`} title={r ?? "No score falls in this range"}>{r ? r.replace(/ of \d+ right$/, " right") : "never"}</span>; })()}
+                              {wentBadge(m.id, SCORE, bi)}
                               <PortDot color={bandTone(bi, bands.length)} wired={!!b.next} readOnly={readOnly} label={b.next ? `Score ${bandLabel(b)} deals a card. Change it` : `Deal a card for score ${bandLabel(b)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: SCORE, option: bi })} />
                             </div>
                           ))}

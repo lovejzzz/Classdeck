@@ -60,10 +60,14 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 }
 
 export function CardEditor({
-  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, onOpen, allCards, neighbors,
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, onOpen, allCards, neighbors, onGo, back,
 }: {
   /** Shown at the top of the panel: where this card sits in the course's card tree. */
   neighbors?: React.ReactNode;
+  /** Open another card (in any lesson): the card an answer deals. */
+  onGo?: (id: string) => void;
+  /** Came here from an answer on another card: a way back to it. */
+  back?: { title: string; note: string; go: () => void };
   /** Every card in the course (a card tree can deal cards in later lessons). */
   allCards?: Module[];
   /** Open the lesson's card tree (to wire answers to follow-up cards). */
@@ -195,6 +199,14 @@ export function CardEditor({
       </div>
 
       <div className="flex-1 overflow-y-auto bg-[#f7f7f5]">
+        {back && (
+          <div className="px-4 pt-3">
+            <button onClick={back.go} className="press flex w-full min-w-0 items-center gap-2 rounded-xl bg-[#eef0fb] px-3 py-2 text-left text-[12.5px] text-[#4b56a8] hover:bg-[#e3e6f8]">
+              <Icon name="arrow" size={12} className="flex-none rotate-180" />
+              <span className="min-w-0 flex-1 truncate">Back to <b className="font-semibold">{back.title}</b><span className="text-[#4b56a8]/70"> · {back.note}</span></span>
+            </button>
+          </div>
+        )}
         {neighbors && <div key={m.id} className="rise px-4 pt-4">{neighbors}</div>}
         {/* The card on the table. */}
         <div className="relative px-5 pb-4 pt-6">
@@ -303,7 +315,7 @@ export function CardEditor({
               )}
               {kind === "choice" && !isPoll(m) && (
                 <>
-                  <QuestionsEditor single questions={m.questions ?? []} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
+                  <QuestionsEditor single questions={m.questions ?? []} cards={allCards ?? lesson.modules} onTree={onTree} onGo={onGo} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
                   {onOpen && (
                     <button onClick={() => {
                       const cur = lessonRef.current;
@@ -317,7 +329,7 @@ export function CardEditor({
                   <p className="mt-2 text-[12px] text-ink-3">One question per card. The next question goes on a new card, and the cards become a card group: students answer them together, and the total score can deal cards.</p>
                 </>
               )}
-              {isPoll(m) && <PollEditor question={m.questions?.[0]} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(q) => set({ questions: [q] })} />}
+              {isPoll(m) && <PollEditor question={m.questions?.[0]} cards={allCards ?? lesson.modules} onTree={onTree} onGo={onGo} onChange={(q) => set({ questions: [q] })} />}
               {kind === "discussion" && (
                 <div className="space-y-2.5 text-[12.5px]">
                   <div className="flex flex-wrap items-center gap-2">
@@ -415,7 +427,7 @@ function Panel({ n, title, children }: { n: number; title: string; children: Rea
   );
 }
 
-function QuestionsEditor({ questions, onChange, cards = [], onTree, single }: { questions: Question[]; onChange: (q: Question[]) => void; cards?: Module[]; onTree?: () => void; single?: boolean }) {
+function QuestionsEditor({ questions, onChange, cards = [], onTree, onGo, single }: { questions: Question[]; onChange: (q: Question[]) => void; cards?: Module[]; onTree?: () => void; onGo?: (id: string) => void; single?: boolean }) {
   const titleOf = (id: string) => cards.find((c) => c.id === id)?.title || "Untitled card";
   const set = (id: string, patch: Partial<Question>) => onChange(questions.map((q) => (q.id === id ? { ...q, ...patch } : q)));
   return (
@@ -462,7 +474,7 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, single }: { 
                         {/* The right answer says so in words, not only with a filled circle, so a default isn't missed. */}
                         {correct && <span className="chip h-6 flex-none gap-1 bg-ok/10 px-2 text-[11px] font-medium text-ok"><Icon name="check" size={11} />Right</span>}
                         {!ordered && q.next?.[oi] && (
-                          <button onClick={onTree} title="Students who pick this get this card. Change it in the card tree." className="chip h-6 max-w-[40%] flex-none gap-1 truncate bg-[#eef0fb] px-2 text-[11px] text-[#4b56a8]">
+                          <button type="button" onClick={(e) => { e.preventDefault(); if (onGo) onGo(q.next![oi]!); else onTree?.(); }} title="Students who pick this get this card. Click to open it." className="chip h-6 max-w-[40%] flex-none gap-1 truncate bg-[#eef0fb] px-2 text-[11px] text-[#4b56a8]">
                             <Icon name="split" size={11} /> <span className="truncate">{titleOf(q.next[oi]!)}</span>
                           </button>
                         )}
@@ -501,7 +513,7 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, single }: { 
 const wallDefaults = { posting: "students" as const, comments: true, reactions: "likes" as const, anonymous: false, approval: false };
 
 /** A poll: one question and its choices, none of them right. Each choice can deal a card on the map. */
-function PollEditor({ question, onChange, cards = [], onTree }: { question?: Question; onChange: (q: Question) => void; cards?: Module[]; onTree?: () => void }) {
+function PollEditor({ question, onChange, cards = [], onTree, onGo }: { question?: Question; onChange: (q: Question) => void; cards?: Module[]; onTree?: () => void; onGo?: (id: string) => void }) {
   const q: Question = question ?? { id: uid("q-"), text: "", options: ["", ""] };
   const titleOf = (id: string) => cards.find((c) => c.id === id)?.title || "Untitled card";
   return (
@@ -513,7 +525,7 @@ function PollEditor({ question, onChange, cards = [], onTree }: { question?: Que
             <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md bg-lane text-[10.5px] font-semibold text-ink-3">{String.fromCharCode(65 + oi)}</span>
             <input value={o} onChange={(e) => onChange({ ...q, options: q.options.map((x, k) => (k === oi ? e.target.value : x)) })} placeholder={`Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className="field h-8 py-0" />
             {q.next?.[oi] && (
-              <button onClick={onTree} title="Students who pick this get this card. Change it on the map." className="chip h-6 max-w-[40%] flex-none gap-1 truncate bg-[#eef0fb] px-2 text-[11px] text-[#4b56a8]">
+              <button type="button" onClick={() => (onGo ? onGo(q.next![oi]!) : onTree?.())} title="Students who pick this get this card. Click to open it." className="chip h-6 max-w-[40%] flex-none gap-1 truncate bg-[#eef0fb] px-2 text-[11px] text-[#4b56a8]">
                 <Icon name="split" size={11} /> <span className="truncate">{titleOf(q.next[oi]!)}</span>
               </button>
             )}

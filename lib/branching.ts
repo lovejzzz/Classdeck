@@ -93,7 +93,12 @@ export interface TreeView { hidden: Set<string>; dealt: Set<string> }
 export function treeView(weeks: { lessons: Lesson[] }[], prog: Record<string, Progress> = {}): TreeView {
   const all = cardsOf(weeks).map((x) => x.m);
   const hidden = followUps(all);
-  return { hidden, dealt: hidden.size ? dealtTo(all, prog) : new Set() };
+  if (!hidden.size) return { hidden, dealt: new Set() };
+  const dealt = dealtTo(all, prog);
+  // A card a student already started or finished stays on their board, even if the teacher later wires an answer to
+  // it (it was for everyone when they opened it). Taking it away would lose their work from view.
+  for (const id of hidden) if (prog[id] && prog[id].status !== "todo") dealt.add(id);
+  return { hidden, dealt };
 }
 
 /** Whether this question deals any card (so its first answer should be kept). */

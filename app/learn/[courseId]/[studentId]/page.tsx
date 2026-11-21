@@ -27,7 +27,8 @@ import { ForYou } from "@/components/student/ForYou";
 import { Electives } from "@/components/student/Electives";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
-import { useConnectors, useCourse, useQuery } from "@/lib/client";
+import { setPreview, useConnectors, useCourse, useQuery } from "@/lib/client";
+import { PreviewBar } from "@/components/student/PreviewBar";
 import { toast } from "@/lib/toast";
 import { suitOfCard } from "@/lib/ui";
 import type { Lesson, Module, Profile, Progress, Status } from "@/lib/types";
@@ -66,6 +67,9 @@ const FIXED_PROFILE: Profile = { preset: "custom", density: "comfortable", auton
 
 export default function LearnPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
+  // Student View (a teacher testing as this student): set before the course is read, so every request is a test.
+  const testing = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("preview");
+  if (typeof window !== "undefined") setPreview(testing ? studentId : null);
   const { state, error, refresh, needAuth } = useCourse(courseId, studentId);
   const { connectors } = useConnectors();
   const query = useQuery();
@@ -295,13 +299,7 @@ export default function LearnPage() {
     <main className="flex-1 overflow-x-hidden">
       {!isPreview && <ConnectionBanner needAuth={needAuth} error={error} signInHref={`/learn/${courseId}`} />}
       {!isPreview && <StudentLive courseId={courseId} studentId={studentId} state={state} onChanged={synced} />}
-      {isPreview && (
-        <div className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-line bg-white/85 px-4 py-2 text-[13px] backdrop-blur">
-          <Icon name="eye" size={14} className="text-ink-3" />
-          <span className="text-ink-2">Previewing as {student.name}</span>
-          <Link href={`/teach/${courseId}`} className="ml-auto inline-flex items-center gap-1 text-ink-2 hover:text-ink"><Icon name="back" size={13} /> Teacher view</Link>
-        </div>
-      )}
+      {isPreview && <PreviewBar courseId={courseId} studentId={studentId} students={course.students} onReset={() => { setLocal({}); refresh(); }} />}
 
       {handMode && (
       <div className="mx-auto max-w-6xl px-4 pt-8">

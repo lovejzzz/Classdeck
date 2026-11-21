@@ -6,6 +6,14 @@ import type { ConnectorInfo, ToolResult } from "./connectors/types";
 import { toast } from "./toast";
 import type { CourseState } from "./types";
 
+/**
+ * Student View: while a teacher tests the course as a student, every read and change says so, and the server runs it in
+ * a sandbox (nothing is saved). Set by the student page from its address (?preview).
+ */
+let previewAs: string | null = null;
+export function setPreview(studentId: string | null) { previewAs = studentId; }
+export const previewing = () => previewAs;
+
 /** Fired when a request finds the session has ended, so the page can ask the person to sign in again. */
 export const SIGNED_OUT = "qh:signed-out";
 
@@ -17,7 +25,7 @@ export const SIGNED_OUT = "qh:signed-out";
 export async function op<T = Record<string, unknown>>(courseId: string, body: Record<string, unknown>): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`/api/course/${courseId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    res = await fetch(`/api/course/${courseId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(previewAs ? { ...body, preview: true, as: previewAs } : body) });
   } catch {
     toast("Can’t reach the server. Your last change wasn’t saved; check your connection and try again.", { icon: "x", tone: "bad" });
     return { ok: false, error: "Can’t reach the server" } as T;
@@ -52,7 +60,7 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`/api/course/${courseId}${as ? (as.startsWith("guest:") ? `?guest=${encodeURIComponent(as.slice(6))}` : `?as=${as}`) : ""}`, { cache: "no-store" });
+      const res = await fetch(`/api/course/${courseId}${as ? (as.startsWith("guest:") ? `?guest=${encodeURIComponent(as.slice(6))}` : `?as=${as}${previewAs === as ? "&preview=1" : ""}`) : ""}`, { cache: "no-store" });
       const raw = await res.text();
       if (!alive.current) return;
       const data = JSON.parse(raw);

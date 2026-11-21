@@ -265,6 +265,32 @@ async function main() {
     const tdel = await A.op(fresh.id, { op: "comment", who: "teacher", postId: leoPost.id, remove: tC.id });
     check("the teacher deletes a reply", tdel.ok !== false && !(await postsOf()).find((p) => p.id === leoPost.id).comments.length, tdel);
   }
+  // Student View: the teacher tries the course as a student in a sandbox. Nothing is saved.
+  {
+    const cur = courseOf(await A.state(fresh.id));
+    const l0 = cur.weeks[0].lessons[0];
+    const qv = { id: `m-sv-${run}`, type: "practice", kind: "choice", title: "Preview check", body: "", audience: { kind: "all" }, tools: [], attachments: [],
+      questions: [{ id: "q-sv", text: "Pick one", options: ["Right", "Wrong"], answer: 0, next: [null, `m-svx-${run}`] }] };
+    const xv = { id: `m-svx-${run}`, type: "read", kind: "content", title: "Preview follow-up", body: "", audience: { kind: "all" }, tools: [], attachments: [] };
+    await A.op(fresh.id, { op: "saveLesson", lesson: { ...l0, modules: [...l0.modules, qv, xv] } });
+    const realOf = async () => (await A.state(fresh.id)).progress?.[mia.id]?.[qv.id];
+    const eventsBefore = (await A.state(fresh.id)).events.length;
+    const r = await A.op(fresh.id, { op: "answer", preview: true, as: mia.id, studentId: mia.id, moduleId: qv.id, qid: "q-sv", choice: 1 });
+    check("Student View: the teacher answers as a student", r.ok !== false, r);
+    const pv = await A.state(`${fresh.id}?as=${mia.id}&preview=1`);
+    check("Student View: the answer deals the follow-up in the test", modulesOf(courseOf(pv)).some((m) => m.id === xv.id) && pv.progress[mia.id]?.[qv.id]?.status === "done");
+    check("Student View: the student's real progress is untouched", (await realOf()) === undefined, await realOf());
+    check("Student View: the student's real board is untouched", !modulesOf(courseOf(await S1.state(`${fresh.id}?as=${mia.id}`))).some((m) => m.id === xv.id));
+    check("Student View: no notification for the teacher", (await A.state(fresh.id)).events.length === eventsBefore);
+    check("Student View: a teacher-only change is refused", (await A.op(fresh.id, { op: "addStudents", preview: true, as: mia.id, names: "Nope" })).ok === false);
+    check("Student View: a student can't use it", (await S1.op(fresh.id, { op: "answer", preview: true, as: mia.id, studentId: mia.id, moduleId: qv.id, qid: "q-sv", choice: 0 })).ok === false);
+    const tv = await A.state(`${fresh.id}?as=s-test&preview=1`);
+    check("Student View: a new test student sees the course with no work", modulesOf(courseOf(tv)).some((m) => m.id === qv.id) && !Object.keys(tv.progress?.["s-test"] ?? {}).length);
+    check("Student View: the test student isn't in the real class", !courseOf(await A.state(fresh.id)).students.some((s) => s.id === "s-test"));
+    await A.op(fresh.id, { op: "endPreview", as: mia.id });
+    const again = await A.state(`${fresh.id}?as=${mia.id}&preview=1`);
+    check("Student View: Start over goes back to the real progress", !again.progress[mia.id]?.[qv.id] && !modulesOf(courseOf(again)).some((m) => m.id === xv.id));
+  }
   check("unknown op refused", (await A.op(fresh.id, { op: "nope" })).ok === false);
   check("unknown card refused", (await S1.op(fresh.id, { op: "setProgress", studentId: mia.id, moduleId: "m-nope", status: "done" })).ok === false);
 
