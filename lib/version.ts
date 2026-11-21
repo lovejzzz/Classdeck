@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.20",
+    date: "2026-11-20",
+    changes: [
+      "Make it today’s lesson, in each lesson’s ⋯ menu. A course without lesson dates could never move past its first lesson before.",
+      "Resetting a student’s sign-in also signs out whoever is signed in as them now, so a link that went to the wrong person stops working right away.",
+      "A teacher who opens a course shared with them but can’t get in is told why: a share needs a Google sign-in with the invited address, or the course isn’t shared with that account.",
+      "On a student’s map, a lesson’s name stays whole: its week and “Today” sit on a line below.",
+      "The shortcuts list shows the week keys properly ([ ]).",
+    ],
+  },
+  {
     version: "0.1.19",
     date: "2026-11-20",
     changes: [

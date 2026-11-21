@@ -495,6 +495,12 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                         {!readOnly && <More
                           label={`${l.title} actions`}
                           items={[
+                            // "Today" follows the lessons' dates; a course without dates moves it by hand.
+                            ...(l.id !== course.currentLessonId ? [["Make it today’s lesson", async () => {
+                              if (lessonDates(course).size) change({ ...l, date: localDay() });
+                              else { await op(course.id, { op: "setCurrentLesson", lessonId: l.id }); await onRefresh(); }
+                              toast(`“${l.title}” is today’s lesson`, { icon: "clock" });
+                            }] as [string, () => void]] : []),
                             // The session timer (with Live, polls and notes) is opened from here now, not a button on the lesson.
                             ...(l.session ? [[`Run the class session (${l.session.minutes} min)`, () => setRunning({ lessonId: l.id, weekTitle: w.title })] as [string, () => void]] : []),
                             [l.session ? "Edit the session agenda" : "Add a class session", () => {

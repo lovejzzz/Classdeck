@@ -46,7 +46,7 @@ function readSeen(key: string) {
 
 export default function TeachPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const { state, error, refresh, needAuth } = useCourse(courseId, undefined, 3000);
+  const { state, error, refresh, needAuth, authDetail } = useCourse(courseId, undefined, 3000);
   const { connectors } = useConnectors();
   // The tab lives in the address, so Back returns to the previous tab and a reload stays put.
   const [tabParam, setTabParam] = useUrlState("tab");
@@ -60,7 +60,7 @@ export default function TeachPage() {
   const [seenAt, setSeenAt] = useState(() => (typeof window === "undefined" ? 0 : readSeen(seenKey)));
   const [inviting, setInviting] = useState(false);
 
-  if (needAuth && !state) return <SignInNeeded who="teacher" courseId={courseId} next={`/teach/${courseId}`} />;
+  if (needAuth && !state) return <SignInNeeded who="teacher" courseId={courseId} next={`/teach/${courseId}`} detail={authDetail} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
   if (!state) {
     return (
@@ -126,7 +126,7 @@ export default function TeachPage() {
               { keys: "4", label: "Grades", run: () => setTab("grades") },
               ...(viewer ? [] : [{ keys: "5", label: "Settings", run: () => setTab("settings") }]),
             ]}
-            extra={tab === "plan" || tab === "map" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s class session" }, { keys: "[", label: "Previous / next week ( [ ] )" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
+            extra={tab === "plan" || tab === "map" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s class session" }, { keys: "[ ]", label: "Previous / next week" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
           <NotificationCenter
             title="Class activity"

@@ -1,5 +1,5 @@
 import { publicOrigin } from "@/lib/origin";
-import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf } from "@/lib/auth";
+import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, logEvent, reset, save } from "@/lib/store";
@@ -137,7 +137,7 @@ export async function GET(request: Request, { params }: Ctx) {
   if (waiting && canBeStudent(session, course, as!)) {
     return Response.json({ error: `Thanks, ${waiting.name}. Your teacher needs to let you into ${course.title}. This page opens your board as soon as they do.`, waiting: true }, { status: 403 });
   }
-  if (as ? !canBeStudent(session, course, as) : !canSeeTeacher(session, course)) return unauthorized(as ? "student" : "teacher");
+  if (as ? !canBeStudent(session, course, as) : !canSeeTeacher(session, course)) return as ? unauthorized("student") : unauthorized("teacher", undefined, teacherAccessHint(session, course));
   if (as && !course.students.some((s) => s.id === as)) return Response.json({ error: "You’re not on this class list. Ask your teacher to add you." }, { status: 404 });
   if (finishExpiredQuizzes(course)) save();
   const all = d.progress[courseId] ?? {};
@@ -1030,6 +1030,8 @@ export async function POST(request: Request, { params }: Ctx) {
       if (d.pins[courseId]) delete d.pins[courseId][body.studentId];
       const st = course.students.find((s) => s.id === body.studentId);
       if (st) revokeInvites(st);
+      // And whoever is signed in as them now is signed out, so the wrong person doesn't stay in.
+      for (const [k, v] of Object.entries(d.sessions)) if (v.kind === "student" && v.courseId === courseId && v.studentId === body.studentId) delete d.sessions[k];
       break;
     }
     // —— live class ——

@@ -15,7 +15,7 @@ const FRAME_TOP = 34;
 const COL = 84;
 const GAP = 18;
 const REGION_GAP = 72;
-const TOP = 64;
+const TOP = 76; // room for a lesson's two-line header
 
 type Stub = { id: string; title?: string; type?: Module["type"]; why?: string };
 type Deck = NonNullable<Lesson["decks"]>[number];
@@ -122,11 +122,14 @@ export function StudentMap({ lessons, weekOf, todayId, statusOf, onOpen }: {
       <div className="relative" style={{ width, height }}>
         {regions.map((r) => (
           <div key={r.lesson.id} className={`absolute rounded-[24px] ${r.lesson.id === todayId ? "tree-lesson-today" : "tree-lesson"}`} style={{ left: r.x - 16, top: 12, width: r.w + 32, height: height - 24 }}>
-            <div className="flex items-center gap-2 px-4 pt-3 text-[12.5px]">
+            {/* A narrow lesson (one column of cards) keeps its name whole: the week and "Today" go on a line below. */}
+            <div className="flex min-w-0 items-center gap-2 whitespace-nowrap px-4 pt-3 text-[12.5px]">
               <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[10.5px] font-semibold text-white ${r.lesson.id === todayId ? "bg-ok" : "bg-ink"}`}>{regions.indexOf(r) + 1}</span>
-              <span className="font-semibold text-ink">{r.lesson.title}</span>
+              <span className="min-w-0 truncate font-semibold text-ink" title={r.lesson.title}>{r.lesson.title}</span>
+            </div>
+            <div className="flex items-center gap-2 whitespace-nowrap pl-11 pr-4 pt-0.5 text-[11.5px]">
               {weekOf[r.lesson.id] && <span className="text-ink-3">{weekOf[r.lesson.id]}</span>}
-              {r.lesson.id === todayId && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
+              {r.lesson.id === todayId && <span className="chip h-[18px] bg-ok/10 text-[10.5px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
             </div>
           </div>
         ))}

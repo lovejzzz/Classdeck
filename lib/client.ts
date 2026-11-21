@@ -45,6 +45,8 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
   const [state, setState] = useState<CourseState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needAuth, setNeedAuth] = useState<"teacher" | "student" | null>(null);
+  // Why a signed-in visitor still can't open it (for example, a share that needs a Google sign-in).
+  const [authDetail, setAuthDetail] = useState<string | undefined>(undefined);
   const alive = useRef(true);
   const last = useRef("");
 
@@ -57,6 +59,7 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
       if (!res.ok) {
         setError(data.error ?? "Couldn't load");
         setNeedAuth(data.needAuth ?? null);
+        setAuthDetail(data.detail);
         return false;
       }
       else {
@@ -108,7 +111,7 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
     };
   }, [refresh, everyMs, courseId, as]);
 
-  return { state, error, refresh, needAuth };
+  return { state, error, refresh, needAuth, authDetail };
 }
 
 export function useConnectors() {

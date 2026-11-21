@@ -139,5 +139,17 @@ export function throttled(key: string, limit = 10, windowMs = 10 * 60_000) {
   return recent.length > limit;
 }
 
-export const unauthorized = (who: "teacher" | "student", msg?: string) =>
-  Response.json({ ok: false, error: msg ?? (who === "teacher" ? "Sign in as this course’s teacher" : "Sign in to this class first"), needAuth: who }, { status: 401 });
+export const unauthorized = (who: "teacher" | "student", msg?: string, detail?: string) =>
+  Response.json({ ok: false, error: msg ?? (who === "teacher" ? "Sign in as this course’s teacher" : "Sign in to this class first"), needAuth: who, detail }, { status: 401 });
+
+/**
+ * Why a signed-in teacher can't open a course's teacher view, in words they can act on (none if they aren't signed
+ * in). An invited address only counts once its owner signs in with Google, since a password account can't prove it.
+ */
+export function teacherAccessHint(session: Session | null, course: Course): string | undefined {
+  const t = teacherOf(session);
+  if (!t) return undefined;
+  const invited = course.people?.some((p) => p.email.toLowerCase() === t.email.toLowerCase());
+  if (invited && !t.google) return `This course was shared with ${t.email}. To open it, sign in with Google using that address: an email-and-password account can’t prove it owns the address.`;
+  return `You’re signed in as ${t.email}, and this course isn’t shared with that account. Ask its owner to add you, or sign in with the account they shared it with.`;
+}
