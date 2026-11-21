@@ -339,7 +339,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   };
   useShortcuts([
     { keys: "n", label: "New card", run: () => today && addCard(lessonOf(today.id), "content"), enabled: !!today && !editorOpen && !running },
-    { keys: "r", label: "Run Collab Studio", run: () => today?.session && setRunning({ lessonId: today.id, weekTitle: course.weeks.find((w) => w.lessons.includes(today))?.title ?? "" }), enabled: !!today?.session && !running },
+    { keys: "r", label: "Run the class session", run: () => today?.session && setRunning({ lessonId: today.id, weekTitle: course.weeks.find((w) => w.lessons.includes(today))?.title ?? "" }), enabled: !!today?.session && !running },
     { keys: "[", label: "Previous week", run: () => weekStep(-1), enabled: !editorOpen && !running },
     { keys: "]", label: "Next week", run: () => weekStep(1), enabled: !editorOpen && !running },
   ]);
@@ -496,8 +496,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
                           label={`${l.title} actions`}
                           items={[
                             // The session timer (with Live, polls and notes) is opened from here now, not a button on the lesson.
-                            ...(l.session ? [[`Run Collab Studio (${l.session.minutes} min)`, () => setRunning({ lessonId: l.id, weekTitle: w.title })] as [string, () => void]] : []),
-                            [l.session ? "Edit Collab Studio agenda" : "Add a Collab Studio session", () => {
+                            ...(l.session ? [[`Run the class session (${l.session.minutes} min)`, () => setRunning({ lessonId: l.id, weekTitle: w.title })] as [string, () => void]] : []),
+                            [l.session ? "Edit the session agenda" : "Add a class session", () => {
                               if (!l.session) {
                                 const agenda = [{ label: "Warm-up", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }];
                                 change({ ...l, session: { agenda, minutes: 50 } });
@@ -637,7 +637,7 @@ function NewWeek({ n, onBlank, onTemplate }: { n: number; onBlank: () => void; o
       <input autoFocus value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="e.g. Handling questions" aria-label="Week theme" className="field h-8 w-64 py-0" />
       <button type="submit" disabled={!theme.trim()} className="btn btn-dark press h-8">Create from template</button>
       <button type="button" onClick={() => setOpen(false)} className="btn btn-quiet press h-8">Cancel</button>
-      <p className="w-full text-[12px] text-ink-3">Six cards (goal, example, guided and stretch practice, Collab Studio, reflection) and a 60-minute session agenda. Edit anything after.</p>
+      <p className="w-full text-[12px] text-ink-3">A goal, an example, a two-question quick check that deals a review or a stretch card, a task, a class discussion and a reflection. Edit anything after.</p>
     </form>
   ) : (
     <div className="flex gap-2">
@@ -657,7 +657,7 @@ function AgendaEditor({ lesson, onChange, onClose }: { lesson: Lesson; onChange:
   return (
     <div className="pop mt-2 w-[30rem] max-w-[90vw] rounded-xl border border-line bg-white p-3 shadow-[0_16px_40px_-20px_rgba(20,20,18,0.35)]">
       <div className="mb-2 flex items-center text-[12.5px]">
-        <span className="flex-1 font-medium">Collab Studio agenda</span>
+        <span className="flex-1 font-medium">Class session agenda</span>
         <span className="mono mr-2">{agenda.reduce((n, a) => n + (a.minutes || 0), 0)} min</span>
         <button onClick={onClose} aria-label="Close agenda" className="btn btn-quiet press h-6 w-6 justify-center px-0"><Icon name="x" size={12} /></button>
       </div>

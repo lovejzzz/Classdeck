@@ -109,7 +109,7 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
       {(course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => m.type === "studio"))) || (course.groups?.length ?? 0) > 1) && (
       <section className="card p-6">
         <div className="flex items-center">
-          <h3 className="flex-1 text-[15px] font-medium">Collab Studio groups</h3>
+          <h3 className="flex-1 text-[15px] font-medium">Discussion groups</h3>
           <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6 }); onChanged(); toast("Split the class into balanced groups", { icon: "users" }); }} className="btn btn-ghost press mr-2 h-8"><Icon name="users" size={13} /> Auto-group</button>
           {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
             <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6, by: "elective" }); onChanged(); toast("Grouped students who share an elective", { icon: "users" }); }}

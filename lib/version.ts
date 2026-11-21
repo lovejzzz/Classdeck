@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.18",
+    date: "2026-11-20",
+    changes: [
+      "The Standard weeks template fits any subject: a goal, an example, a quick check that deals a review or a stretch card, a task, a class discussion and a reflection. Its words no longer come from a public-speaking course, and its quick-check questions start blank, so students don’t see them until you write them.",
+      "A lesson’s class session is called that (not “Collab Studio”), and the template no longer gives every lesson one.",
+      "On a phone, the course map opens at the start of today’s lesson instead of cut off in the middle, and all five tabs fit.",
+      "A student’s first visit on a new device still shows the last week’s feedback and reminders as new.",
+      "The class table no longer has a column for a card group itself, only for its cards.",
+      "A student’s attachments are labelled “Your files”, separate from “Your work”.",
+    ],
+  },
+  {
     version: "0.1.17",
     date: "2026-11-20",
     changes: [

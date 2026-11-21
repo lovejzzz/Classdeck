@@ -34,7 +34,8 @@ export function useInbox(course: Course | undefined, studentId: string, progress
     const stillThere = prev ? prev.known.filter((id) => ids.has(id)).length : 0;
     if (prev && prev.known.length > 0 && stillThere < prev.known.length / 2) prev = null;
     if (!prev) {
-      next = { known: all.map((x) => x.m.id), lesson: course.currentLessonId, notes: [], seenAt: now };
+      // First visit on this device: teacher feedback and reminders from the past week still count as new.
+      next = { known: all.map((x) => x.m.id), lesson: course.currentLessonId, notes: [], seenAt: now - 7 * 86400000 };
     } else {
       const known = new Set(prev.known);
       const fresh: Note[] = all

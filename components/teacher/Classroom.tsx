@@ -29,6 +29,8 @@ export function Classroom({
   const { course, progress, toolUse } = state;
   const visible = Object.fromEntries(course.students.map((s) => [s.id, new Set(visibleModules(lesson, s.id, state.choices[s.id], treeView(course.weeks, progress[s.id])).map((m) => m.id))]));
   const studioIds = new Set(lesson.modules.filter((m) => m.type === "studio").map((m) => m.id));
+  // The cards students do: a card group is a frame around its cards, not a card of its own.
+  const cards = lesson.modules.filter((m) => m.type !== "group");
   const lessonPosts = state.studio.posts.filter((p) => studioIds.has(p.moduleId));
   // Same rule as the server: peers' posts given feedback (each post counted once), against a goal of 2,
   // or fewer in a small group.
@@ -118,11 +120,11 @@ export function Classroom({
   }
 
   function exportCsv() {
-    const head = ["Student", "Group", ...lesson.modules.map((m) => m.title), ...(studioIds.size ? ["Feedback given"] : [])];
+    const head = ["Student", "Group", ...cards.map((m) => m.title), ...(studioIds.size ? ["Feedback given"] : [])];
     const rows = course.students.map((st) => [
       st.name,
       groupName(st.id),
-      ...lesson.modules.map((m) => {
+      ...cards.map((m) => {
         if (!visible[st.id].has(m.id)) return "";
         const pr = progress[st.id]?.[m.id];
         const status = pr?.status ?? "todo";
@@ -234,7 +236,7 @@ export function Classroom({
           <thead>
             <tr>
               <th className="sticky left-0 z-10 border-b border-line bg-white px-4 py-3 text-left text-[12px] font-normal text-ink-3">Student</th>
-              {lesson.modules.map((m) => {
+              {cards.map((m) => {
                 const who = course.students.filter((s) => visible[s.id].has(m.id));
                 const done = who.filter((s) => progress[s.id]?.[m.id]?.status === "done").length;
                 return (
@@ -271,7 +273,7 @@ export function Classroom({
                   </Link>
                   {groupName(s.id) && <span className="ml-2 text-[11px] text-ink-3">{groupName(s.id)}</span>}
                 </td>
-                {lesson.modules.map((m) => {
+                {cards.map((m) => {
                   if (!visible[s.id].has(m.id)) return <td key={m.id} className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0"><span className="block h-8 rounded-lg hatch" /></td>;
                   const p = progress[s.id]?.[m.id];
                   const status = p?.status ?? "todo";

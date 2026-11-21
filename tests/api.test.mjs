@@ -211,7 +211,13 @@ async function main() {
   check("student can't read another course", [401, 403, 404].includes((await S1.state(`${cid}?as=${mia.id}`)).status));
   check("student can't read as a classmate", [401, 403].includes((await S1.state(`${fresh.id}?as=${leo.id}`)).status));
   check("student can't read the teacher view", [401, 403].includes((await S1.state(fresh.id)).status));
-  const studio = modulesOf(inClass).find((m) => m.type === "studio");
+  // Session notes go with a discussion run in groups; the standard weeks don't start with one, so add one.
+  let studio = modulesOf(inClass).find((m) => m.type === "studio");
+  if (!studio) {
+    const l0 = inClass.weeks[0].lessons[0];
+    studio = { id: `m-studio-${run}`, type: "studio", kind: "discussion", title: "Group critique", body: "Post your work to your group.", audience: { kind: "all" }, tools: [], attachments: [], submitTo: "studio" };
+    await A.op(fresh.id, { op: "saveLesson", lesson: { ...l0, modules: [...l0.modules, studio] } });
+  }
   if (studio) {
     const sn = await A.op(fresh.id, { op: "sessionNotes", moduleId: studio.id, notes: { [mia.id]: "Nice pacing" } });
     check("session notes sent", sn.ok !== false && sn.sent === 1, sn);

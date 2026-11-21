@@ -424,7 +424,7 @@ export default function LearnPage() {
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px] text-ink-3">
                   <span><span className="font-mono text-ink">{doneCount(current)}</span> of {countable(current).length} cards done</span>
-                  {current.session && <span className="flex items-center gap-1"><Icon name="studio" size={12} />Collab Studio · {current.session.minutes} min</span>}
+                  {current.session && <span className="flex items-center gap-1"><Icon name="studio" size={12} />Class session · {current.session.minutes} min</span>}
                 </div>
                 {studioNudge && (
                   <button
@@ -474,7 +474,7 @@ export default function LearnPage() {
                   <div className="pop flex h-[252px] w-[180px] flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-ok/50 bg-ok/[0.04] p-4 text-center">
                     <StatusIcon status="done" size={22} />
                     <span className="text-[14px] font-medium">Every card is done</span>
-                    <span className="text-[12px] text-ink-3">{course.groups?.length ? "See you in Collab Studio." : "Nice work."}</span>
+                    <span className="text-[12px] text-ink-3">{course.groups?.length ? "See you in class." : "Nice work."}</span>
                   </div>
                 )}
               </div>
@@ -590,7 +590,7 @@ export default function LearnPage() {
                                 <span className="font-medium">{l.title}</span>
                                 {isToday && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
                                 <span className="mono">{doneCount(l)}/{countable(l).length}</span>
-                                {l.session && <span className="chip h-5 text-[11px]"><Icon name="studio" size={11} />Collab Studio · {l.session.minutes} min</span>}
+                                {l.session && <span className="chip h-5 text-[11px]"><Icon name="studio" size={11} />Class session · {l.session.minutes} min</span>}
                               </div>
                               {l.goal && !isToday && <p className="mt-1 text-[12.5px] text-ink-3" style={{ maxWidth: Math.min(Math.max(rowWidth, 280), 576) }}>{l.goal}</p>}
                               {l.modules.length ? (

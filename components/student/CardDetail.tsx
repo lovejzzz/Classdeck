@@ -380,7 +380,7 @@ export function CardDetail(p: DetailProps) {
         {showWork && (
           <div className="mt-5">
             <div className="eyebrow mb-2">
-              {(p.progress?.work?.length ?? 0) > 0 ? "Your work" : "Add a recording, file, or link"}
+              {(p.progress?.work?.length ?? 0) > 0 ? "Your files" : "Add a recording, file, or link"}
               {m.submitTo === "personal" ? " · saved to your personal board" : ""}
             </div>
             <WorkComposer courseId={p.courseId} studentId={p.studentId} moduleId={m.id} work={p.progress?.work ?? []} onChanged={p.onChanged} />

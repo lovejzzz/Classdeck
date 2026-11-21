@@ -1,7 +1,7 @@
 import { fold } from "./cardmodel";
 import type { Lesson, Module, Week } from "./types";
 
-// Card and week templates drawn from the recurring post types in the CaPS course plan.
+// The cards a "standard week" starts with. They fit any subject: the teacher swaps in their own example and task.
 
 export interface CardTemplate {
   id: string;
@@ -14,36 +14,24 @@ const base = (m: Partial<Module> & Pick<Module, "type" | "title" | "body">): Omi
 
 export const CARD_TEMPLATES: CardTemplate[] = [
   {
-    id: "goal", name: "Weekly goal", description: "Set the week’s goal and what “done” looks like.",
-    make: () => base({ type: "reflect", title: "This week’s goal", body: "Read the goal for this week. Then write, in one or two sentences, what you want to get better at and how you’ll know you did.", minutes: 10, submitTo: "personal", criteria: "A personal goal with a way to check it." }),
+    id: "goal", name: "Weekly goal", description: "Each student sets a goal for the week.",
+    make: () => base({ type: "submit", kind: "answer", title: "This week’s goal", body: "Read this week’s goal. Then write, in one or two sentences, what you want to get better at and how you’ll know you did.", minutes: 10 }),
   },
   {
-    id: "example", name: "Watch and observe", description: "A short video or audio example with observation questions.",
-    make: () => base({ type: "explore", title: "Watch and observe", body: "Watch the example. Note one thing the speaker did well, the moment it happened (a timestamp), and why it worked.", minutes: 15, submitTo: "personal", criteria: "One observation with a timestamp and a reason." }),
+    id: "example", name: "Watch and learn", description: "This week’s example: a video, a reading or a picture.",
+    make: () => base({ type: "read", kind: "content", title: "Watch and learn", body: "Watch or read this week’s example. Note one thing that stands out to you, and why.", minutes: 15 }),
   },
   {
-    id: "compare", name: "Hear the difference", description: "Two versions of the same thing to compare.",
-    make: () => base({ type: "explore", title: "Hear the difference", body: "Listen to both versions. Which is easier to follow? Point to a specific sentence and explain what made the difference.", minutes: 10, submitTo: "personal", criteria: "A specific moment identified and explained." }),
+    id: "task", name: "Try it yourself", description: "The week’s task; students hand in what they made.",
+    make: () => base({ type: "submit", kind: "answer", title: "Try it yourself", body: "Do this week’s task. Hand in what you made: a photo, a file, a recording or a few sentences.", minutes: 20 }),
   },
   {
-    id: "takes", name: "Two comparable takes", description: "Record before and after, keep both, note a timestamp.",
-    make: () => base({ type: "practice", title: "Two comparable takes", body: "Record your usual version. Change one thing on purpose and record again. Keep both, and note a timestamp where you can hear or see the change.", minutes: 20, submitTo: "personal", criteria: "Two recordings and one timestamped change." }),
-  },
-  {
-    id: "studio", name: "Collab Studio post", description: "Post work to your group and give feedback to two peers.",
-    make: () => base({ type: "studio", title: "Collab Studio", body: "Share this week’s work with your group and ask one specific question.", minutes: 60, submitTo: "studio", criteria: "Posted, and feedback given to two peers." }),
-  },
-  {
-    id: "wall", name: "Feedback wall", description: "Everyone posts; classmates vote for the most useful.",
-    make: () => base({ type: "wall", title: "Share and vote", body: "Post your answer. Then vote for the two most specific posts from your classmates.", minutes: 15, submitTo: "studio", wall: { posting: "students", comments: true, reactions: "votes", anonymous: false, approval: false } }),
-  },
-  {
-    id: "self", name: "Rate yourself", description: "Rate each skill on the four-level rubric.",
-    make: () => base({ type: "selfcheck", title: "Rate yourself", body: "Rate yourself honestly on each skill. You’ll compare against this later.", minutes: 15, submitTo: "personal", criteria: "All skills rated." }),
+    id: "share", name: "Share and discuss", description: "Everyone posts their work and replies to classmates.",
+    make: () => base({ type: "wall", kind: "discussion", title: "Share and discuss", body: "Post your work and one question about it. Then reply to two classmates.", minutes: 15, wall: { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false } }),
   },
   {
     id: "reflect", name: "Reflect and next goal", description: "What changed, what to keep, what’s next.",
-    make: () => base({ type: "reflect", title: "Reflect and set the next goal", body: "What did you change this week? How did listeners respond? What will you keep, and what will you work on next?", minutes: 10, submitTo: "personal", criteria: "One change, one thing to keep, one next goal." }),
+    make: () => base({ type: "submit", kind: "answer", title: "Reflect and set the next goal", body: "What did you change this week? What will you keep, and what will you work on next?", minutes: 10 }),
   },
 ];
 
@@ -59,26 +47,25 @@ export function standardWeek(theme: string, n: number): Week {
     const tpl = CARD_TEMPLATES.find((x) => x.id === id)!;
     return { id: `${id}-${Math.random().toString(36).slice(2, 7)}`, ...tpl.make(), ...patch };
   };
-  const practice = CARD_TEMPLATES.find((x) => x.id === "takes")!.make();
   const lesson: Lesson = {
     id: "new",
     title: theme,
     // A placeholder name ("Lesson 2") gets no goal, so the goal field invites the teacher to write one.
-    goal: /^Lesson \d+$/.test(theme) ? undefined : `Practice ${theme.toLowerCase()} and bring one piece of work to Collab Studio.`,
+    goal: /^Lesson \d+$/.test(theme) ? undefined : `Practice ${theme.toLowerCase()} and share one piece of work with the class.`,
     branches: {},
-    session: { minutes: 60, agenda: [{ label: "Warm-up and example", minutes: 10 }, { label: "Paired practice", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }] },
     modules: [
       t("goal"),
       t("example"),
-      // A small card tree to start from: a quick check (a card group of two Multiple choice cards) that deals a
-      // review card below 60% and a stretch card at 90%+.
+      // A small card tree to start from: a quick check (a card group of two questions) that deals a review card
+      // below 60% and a stretch card at 90%+. The questions start blank, so students don't see them until the teacher
+      // writes them (the map marks them "hidden until it has a question").
       { id: "qc", ...base({ type: "group", kind: "group", title: "Quick check", body: "", members: ["qc1", "qc2"], bands: [{ min: 0, next: "qc-review" }, { min: 60, next: null }, { min: 90, next: "qc-stretch" }] }) },
-      { id: "qc1", ...base({ type: "practice", kind: "choice", title: "Quick check 1", body: "", questions: [{ id: "qc1q", text: "What did the example do well?", options: ["Edit this answer (correct)", "Edit this answer"], answer: 0 }] }) },
-      { id: "qc2", ...base({ type: "practice", kind: "choice", title: "Quick check 2", body: "", questions: [{ id: "qc2q", text: "Which change would help most?", options: ["Edit this answer (correct)", "Edit this answer"], answer: 0 }] }) },
-      { id: "qc-review", ...base({ type: "read", title: "Go over the example again", body: "Watch the example once more, slowly. Pause at the moment that answers the quick check, and write down what you notice.", minutes: 10 }) },
-      { id: "qc-stretch", ...base({ type: "practice", title: "Stretch: try it somewhere new", body: "Use this week’s idea in a new setting of your choice, and record one take.", minutes: 15, submitTo: "personal" }) },
-      { id: "p", ...practice },
-      t("studio"),
+      { id: "qc1", ...base({ type: "practice", kind: "choice", title: "Quick check 1", body: "", questions: [{ id: "qc1q", text: "", options: ["", ""], answer: 0 }] }) },
+      { id: "qc2", ...base({ type: "practice", kind: "choice", title: "Quick check 2", body: "", questions: [{ id: "qc2q", text: "", options: ["", ""], answer: 0 }] }) },
+      { id: "qc-review", ...base({ type: "read", kind: "content", title: "Go over it again", body: "Go back to the example, slowly. Find the part that answers the quick check, and write down what you notice.", minutes: 10 }) },
+      { id: "qc-stretch", ...base({ type: "submit", kind: "answer", title: "Stretch: try it somewhere new", body: "Use this week’s idea somewhere new of your choice, and hand in what you did.", minutes: 15 }) },
+      t("task"),
+      t("share"),
       t("reflect"),
     ],
   };

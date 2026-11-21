@@ -292,7 +292,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const py = n ? n.y + 80 : r ? TOP + 120 : null;
     if (px == null || py == null) return;
     const panel = selected && window.innerWidth >= 900 ? 480 : 0;
-    el.scrollTo({ left: px * z - (el.clientWidth - panel) / 2, top: Math.max(0, py * z - el.clientHeight / 2.4), behavior: "smooth" });
+    const room = el.clientWidth - panel;
+    // A lesson wider than the view starts at its left edge (its name and first cards), not cut off in the middle.
+    const left = r && !n && (r.w + 40) * z > room ? (r.x - 28) * z : px * z - room / 2;
+    el.scrollTo({ left: Math.max(0, left), top: Math.max(0, py * z - el.clientHeight / 2.4), behavior: "smooth" });
   }
   useEffect(() => {
     if (focus) requestAnimationFrame(() => bringIntoView(focus.id));

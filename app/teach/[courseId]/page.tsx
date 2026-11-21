@@ -126,7 +126,7 @@ export default function TeachPage() {
               { keys: "4", label: "Grades", run: () => setTab("grades") },
               ...(viewer ? [] : [{ keys: "5", label: "Settings", run: () => setTab("settings") }]),
             ]}
-            extra={tab === "plan" || tab === "map" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s Collab Studio" }, { keys: "[", label: "Previous / next week ( [ ] )" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
+            extra={tab === "plan" || tab === "map" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s class session" }, { keys: "[", label: "Previous / next week ( [ ] )" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
           <NotificationCenter
             title="Class activity"
@@ -173,10 +173,10 @@ export default function TeachPage() {
 
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative flex max-w-full overflow-x-auto rounded-lg bg-lane p-0.5 [scrollbar-width:none]" role="tablist">
+          <div className="relative flex max-w-full overflow-x-auto rounded-lg bg-lane p-0.5 [--tab:4.25rem] [scrollbar-width:none] sm:[--tab:5rem]" role="tablist">
             <span
-              className="absolute inset-y-0.5 left-0.5 w-20 rounded-md bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-[var(--ease-out)]"
-              style={{ transform: `translateX(${TABS.findIndex((t) => t[0] === tab) * 5}rem)` }}
+              className="absolute inset-y-0.5 left-0.5 w-[var(--tab)] rounded-md bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-[var(--ease-out)]"
+              style={{ transform: `translateX(calc(${TABS.findIndex((t) => t[0] === tab)} * var(--tab)))` }}
             />
             {TABS.filter(([id]) => !(viewer && id === "settings")).map(([id, label]) => (
               <button
@@ -184,7 +184,7 @@ export default function TeachPage() {
                 role="tab"
                 aria-selected={tab === id}
                 onClick={() => setTab(id)}
-                className={`relative h-7 w-20 flex-none rounded-md text-[13px] transition-colors duration-300 ${tab === id ? "font-medium text-ink" : "text-ink-2 hover:text-ink"}`}
+                className={`relative h-7 w-[var(--tab)] flex-none rounded-md text-[13px] transition-colors duration-300 ${tab === id ? "font-medium text-ink" : "text-ink-2 hover:text-ink"}`}
               >
                 {label}
                 {id === "students" && !!course.waiting?.length && (

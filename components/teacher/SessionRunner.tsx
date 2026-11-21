@@ -168,7 +168,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [], 
   const cur = part?.roundRobin ? members[speaker] : undefined;
 
   return createPortal(
-    <div ref={shell} className="fade fixed inset-0 z-50 flex flex-col bg-canvas" role="dialog" aria-modal="true" aria-label="Run Collab Studio session">
+    <div ref={shell} className="fade fixed inset-0 z-50 flex flex-col bg-canvas" role="dialog" aria-modal="true" aria-label="Run the class session">
       <header className="flex h-14 flex-none items-center gap-3 border-b border-line px-3 sm:px-5">
         <button onClick={onClose} className="btn btn-quiet press h-8 px-2.5" title="Back to the deck (Esc). Your place and notes are kept.">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
@@ -177,7 +177,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [], 
         <span className="h-5 w-px bg-line" aria-hidden="true" />
         <Icon name="studio" size={16} className="text-[#ae502f]" />
         <div className="min-w-0">
-          <div className="truncate text-[14px] font-medium">Collab Studio · {lesson.title}</div>
+          <div className="truncate text-[14px] font-medium">Class session · {lesson.title}</div>
           <div className="mono">{weekTitle} · {plan.minutes} min</div>
         </div>
         <span className="flex-1" />
@@ -235,7 +235,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [], 
           )}
           {part?.roundRobin && members.length === 0 ? (
             <div className="pop mt-6 w-full max-w-md rounded-2xl border border-line bg-white px-6 py-5 text-center text-[14px] text-ink-2">
-              <p className="font-medium text-ink">{group ? `No one is in ${group.name} yet.` : "There are no Collab Studio groups yet."}</p>
+              <p className="font-medium text-ink">{group ? `No one is in ${group.name} yet.` : "There are no groups yet."}</p>
               <p className="mt-1.5">This part splits {part.minutes} minutes between the presenters, so it needs students. Add them, or put them in groups, on the Students tab.</p>
             </div>
           ) : (
@@ -291,7 +291,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [], 
       </div>
       {presenting && (
         <Present
-          title={`${group?.name ?? "Collab Studio"} · ${lesson.title}`}
+          title={`${group?.name ?? "Class session"} · ${lesson.title}`}
           subtitle={weekTitle}
           slides={posts
             .filter((p) => p.moduleId === studioId && !!group?.studentIds.includes(p.studentId))
