@@ -318,7 +318,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   /** Zoom keeping the middle of the view still. */
   function zoomTo(z: number) {
     const el = scroller.current;
-    const nz = Math.min(1.6, Math.max(0.25, +z.toFixed(2)));
+    const nz = Math.min(1.6, Math.max(0.15, +z.toFixed(2)));
     if (!el) return setZoom(nz);
     const cx = (el.scrollLeft + el.clientWidth / 2) / zoom, cy = (el.scrollTop + el.clientHeight / 2) / zoom;
     setZoom(nz);
@@ -327,7 +327,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const fitAll = () => {
     const el = scroller.current;
     if (!el) return;
-    setZoom(Math.max(0.25, Math.min(1, (el.clientWidth - 24) / width, (el.clientHeight - 24) / height)));
+    setZoom(Math.max(0.15, Math.min(1, (el.clientWidth - 24) / width, (el.clientHeight - 24) / height)));
     requestAnimationFrame(() => el.scrollTo({ left: 0, top: 0, behavior: "smooth" }));
   };
 
@@ -528,10 +528,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       if (!on && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return;
       clearTimeout(hold);
       on = true;
+      edge.track(ev);
       const p = toCanvas(ev.clientX, ev.clientY);
       setMoving({ id, x: p.x, y: p.y, to: regionAt(p.y) });
     };
+    const edge = edgeScroll((ev) => { if (!on) return; const p = toCanvas(ev.clientX, ev.clientY); setMoving({ id, x: p.x, y: p.y, to: regionAt(p.y) }); });
     const up = (ev: PointerEvent) => {
+      edge.stop();
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
@@ -549,6 +552,26 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     window.addEventListener("pointercancel", up);
   }
 
+  /**
+   * While dragging (a wire, or a card to another lesson), holding the pointer near the map's edge scrolls the map that
+   * way, so a card in a lesson further down can be reached. `again` redraws the drag at the pointer after a scroll.
+   */
+  function edgeScroll(again: (ev: PointerEvent) => void) {
+    let last: PointerEvent | null = null, raf = 0;
+    const tick = () => {
+      const el = scroller.current;
+      if (el && last) {
+        const r = el.getBoundingClientRect(), E = 56, V = 18;
+        const vx = last.clientX < r.left + E ? -V : last.clientX > r.right - E ? V : 0;
+        const vy = last.clientY < r.top + E ? -V : last.clientY > r.bottom - E ? V : 0;
+        if (vx || vy) { const l = el.scrollLeft, t = el.scrollTop; el.scrollBy(vx, vy); if (el.scrollLeft !== l || el.scrollTop !== t) again(last); }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return { track: (ev: PointerEvent) => { last = ev; }, stop: () => cancelAnimationFrame(raf) };
+  }
+
   function startDrag(e: React.PointerEvent, port: Port) {
     if (readOnly) return;
     e.preventDefault();
@@ -559,10 +582,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const move = (ev: PointerEvent) => {
       if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
       moved = true;
+      edge.track(ev);
       const p = toCanvas(ev.clientX, ev.clientY);
       setDrag({ port, x: p.x, y: p.y, over: overAt(ev) });
     };
+    const edge = edgeScroll((ev) => { const p = toCanvas(ev.clientX, ev.clientY); setDrag({ port, x: p.x, y: p.y, over: overAt(ev) }); });
     const up = (ev: PointerEvent) => {
+      edge.stop();
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
@@ -626,6 +652,38 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     return `${letter(w.option)} · ${o || `Option ${w.option + 1}`}`;
   };
   const drawn = wires.filter((w) => nodes.has(nodeOf(w.from)) && nodes.has(w.to));
+  // Each wire leaving a card gets its own lane (top answer nearest the card), so wires side by side don't sit on each other.
+  const laneOf = new Map<Wire, number>();
+  for (const nid of new Set(drawn.map((w) => nodeOf(w.from)))) {
+    drawn.filter((w) => nodeOf(w.from) === nid).sort((x, y) => portPos(x).y - portPos(y).y).forEach((w, i) => laneOf.set(w, i));
+  }
+  /**
+   * A wire's path at right angles: out of the answer's port into the gap right of the card, down into the gap below it
+   * (or, for a card further down, to just above that card), across, and into the target card's top. Never behind a card
+   * it leaves. Returns the path and where its label goes.
+   */
+  const route = (w: Wire) => {
+    const nid = nodeOf(w.from), n = nodes.get(nid)!, p = at(nid);
+    const a = portPos(w), b = inPos(w.to), k = laneOf.get(w) ?? 0;
+    if (b.y < p.y + n.h + 24) return { d: curve(a, b), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+    // The bottom of the source card's row (a taller card beside it reaches lower).
+    const rowBottom = Math.max(...[...nodes.values()].filter((o) => o.li === n.li && Math.abs(o.y - n.y) < 1).map((o) => at(o.m.id).y + o.h));
+    const gx = p.x + W + 18 + k * 7;
+    const under = rowBottom + 20 + k * 7;
+    const above = Math.max(under, b.y - 26 - k * 6);
+    // Straight into the next row: across the gap under the source's row, and down.
+    if (b.y - rowBottom <= VGAP + 24)
+      return { d: elbow([a, { x: gx, y: a.y }, { x: gx, y: under }, { x: b.x, y: under }, b]), mid: { x: (gx + b.x) / 2, y: under } };
+    // Further down: run down whichever gap between cards has the fewest cards in the way.
+    const hits = (x: number) => [...nodes.values()].filter((o) => { const q = at(o.m.id); return x > q.x - 6 && x < q.x + W + 6 && q.y + o.h > under && q.y < above; }).length;
+    const cands = [gx, b.x - W / 2 - 22 - k * 5, b.x + W / 2 + 22 + k * 5, ...[...nodes.values()].map((o) => at(o.m.id).x - HGAP / 2 + k * 5)];
+    let vx = gx, best = Infinity;
+    for (const x of cands) { const s = hits(x) * 100000 + Math.abs(x - gx) + Math.abs(x - b.x) * 0.5; if (s < best) { best = s; vx = x; } }
+    const pts = vx === gx
+      ? [a, { x: gx, y: a.y }, { x: gx, y: above }, { x: b.x, y: above }, b]
+      : [a, { x: gx, y: a.y }, { x: gx, y: under }, { x: vx, y: under }, { x: vx, y: above }, { x: b.x, y: above }, b];
+    return { d: elbow(pts), mid: { x: (vx + b.x) / 2, y: above } };
+  };
   const snap = drag?.over && canTarget(drag.port, drag.over) ? inPos(drag.over) : null;
   const nothing = !all.length;
 
@@ -758,8 +816,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                 <marker id="map-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={INK} /></marker>
               </defs>
               {drawn.map((w) => {
-                const a = portPos(w), b = inPos(w.to);
-                const d = curve(a, b);
+                const a = portPos(w);
+                const { d } = route(w);
                 const on = hot === w.from || hot === w.to || selected === w.from || selected === w.to;
                 const dim = !!(hot || selected) && !on;
                 const n = took(w);
@@ -791,10 +849,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
             })}
 
             {level !== "far" && !drag && drawn.filter((w) => hot === w.from || hot === w.to || selected === w.from || selected === w.to).map((w) => {
-              const a = portPos(w), b = inPos(w.to);
+              const { mid } = route(w);
               return (
                 <span key={`why-${w.from}-${w.q}-${w.option}`} className="pop pointer-events-none absolute z-20 max-w-[180px] -translate-x-1/2 -translate-y-1/2 truncate rounded-full border bg-white px-2.5 py-[3px] text-[11px] font-medium shadow-[0_6px_16px_-8px_rgba(20,20,18,0.45)]"
-                  style={{ left: (a.x + b.x) / 2, top: (a.y + b.y) / 2, color: colorOf(w), borderColor: `${colorOf(w)}55` }}>{whyOf(w)}</span>
+                  style={{ left: mid.x, top: mid.y, color: colorOf(w), borderColor: `${colorOf(w)}55` }}>{whyOf(w)}</span>
               );
             })}
 
@@ -1070,6 +1128,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       </div>
     </div>
   );
+}
+
+/** A path through these points at right angles, each corner rounded. */
+function elbow(pts: { x: number; y: number }[], r = 12) {
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [p, c, n] = [pts[i - 1], pts[i], pts[i + 1]];
+    const k = Math.min(r, Math.hypot(c.x - p.x, c.y - p.y) / 2, Math.hypot(n.x - c.x, n.y - c.y) / 2);
+    const u = (q: { x: number; y: number }) => { const l = Math.hypot(q.x - c.x, q.y - c.y) || 1; return { x: c.x + ((q.x - c.x) / l) * k, y: c.y + ((q.y - c.y) / l) * k }; };
+    const a = u(p), b = u(n);
+    d += ` L ${a.x} ${a.y} Q ${c.x} ${c.y}, ${b.x} ${b.y}`;
+  }
+  const last = pts[pts.length - 1];
+  return `${d} L ${last.x} ${last.y}`;
 }
 
 /** The rest of a card below its head and answers: its picture (or drawing) and the start of what to do, like a playing card's face. */

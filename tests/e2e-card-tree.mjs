@@ -164,16 +164,23 @@ check("map: an answer edited in place is saved, its wire kept", c1.weeks[0].less
 // Drag "Lesson 2 for everyone" (wired to nothing) into Lesson 1: allowed.
 const dragTo = async (id, toLessonTitle) => {
   const head = page.locator(`[data-node="${id}"] button[aria-label^="Edit"]`).first();
-  // The map may have scrolled (it brings a newly made card into view): bring this card back into view first.
+  // Lessons are rows, one under another: bring this card into view, then drag up to the map's edge (it scrolls) until
+  // the other lesson's row shows, and drop the card in it.
   await page.locator(".tree-canvas").evaluate((el) => el.scrollTo({ top: 0 }));
+  await head.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await settle(300);
   const hb = await head.boundingBox();
+  const map = await page.locator(".tree-canvas").boundingBox();
   const region = page.locator(".font-semibold", { hasText: new RegExp(`^${toLessonTitle}$`) }).first();
-  const rb = await region.boundingBox();
   await page.mouse.move(hb.x + hb.width / 2, hb.y + 20);
   await page.mouse.down();
   await page.mouse.move(hb.x + hb.width / 2 + 30, hb.y + 40, { steps: 5 });
-  await page.mouse.move(rb.x + 40, rb.y + 260, { steps: 15 });
+  let rb = await region.boundingBox();
+  if (rb.y < map.y + 10) {
+    await page.mouse.move(hb.x + hb.width / 2, map.y + 12, { steps: 10 });
+    for (let i = 0; i < 80 && (rb = await region.boundingBox()).y < map.y + 20; i++) await settle(100);
+  }
+  await page.mouse.move(rb.x + 40, rb.y + 140, { steps: 15 });
   await settle(300);
   await page.mouse.up();
   await settle();

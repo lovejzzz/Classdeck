@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.26",
+    date: "2026-11-21",
+    changes: [
+      "Wires on the course map run at right angles through the gaps between cards: out of an answer to the right, down, across, and into the top of the card it deals. A wire never hides behind the card it leaves, and a long wire into a later lesson finds a gap without cards in its way.",
+      "Drag a wire (or a card) to the edge of the map and it scrolls, so you can reach a card in a lesson further down.",
+      "See the whole course zooms out further, so a long course fits.",
+    ],
+  },
+  {
     version: "0.1.25",
     date: "2026-11-21",
     changes: [
