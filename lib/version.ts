@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.25",
+    date: "2026-11-21",
+    changes: [
+      "The course map reads like shelves: each lesson is a row, its cards side by side in order. What an answer deals hangs below the card that deals it, and the wire comes into the card's top. A card dealt from an earlier lesson gets its wire from the row above.",
+    ],
+  },
+  {
     version: "0.1.24",
     date: "2026-11-21",
     changes: [

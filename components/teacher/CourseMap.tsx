@@ -19,9 +19,9 @@ const FAR_H = 96; // a card zoomed out: its colour and a big title
 const SEC = 28; // a question's (or the score's) title row
 const ROW = 30; // one answer or one score band
 const PAD = 10;
-const COL = 120; // gap between columns inside a lesson
-const GAP = 22; // gap between cards in a column
-const REGION_GAP = 104; // gap between lessons
+const HGAP = 64; // gap between cards side by side (room for the wires leaving their right edge)
+const VGAP = 84; // gap between a card and the cards it deals below it
+const REGION_GAP = 56; // gap between lessons
 const TOP = 92; // room for each lesson's header
 // The two kinds of card you put down: Content, or a Question (it starts with choices; its form is set in the editor).
 const NEW_KINDS: CardKind[] = FAMILIES.map((f) => f.start);
@@ -70,17 +70,18 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
 }
 
 interface Node { m: Module; lessonId: string; li: number; x: number; y: number; h: number; ports: Map<string, number>; parent?: string; members?: Module[] }
-interface Region { lesson: Lesson; li: number; x: number; w: number }
+interface Region { lesson: Lesson; li: number; x: number; y: number; w: number; h: number }
 
 /**
- * The whole course, left to right: each lesson a region, its cards laid out as a tree inside it (cards everyone gets in
- * its first column, what their answers deal to the right). A card dealt from an earlier lesson starts its own lesson's
- * tree, with the wire coming in from the left.
+ * The whole course, top to bottom: each lesson a row, its cards side by side in their order (cards everyone gets on
+ * its first line), and what their answers deal hanging below the card that deals them, wired into its top. A card dealt
+ * from an earlier lesson starts its own lesson's row, with the wire coming down from above.
  */
 function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolean) {
   const nodes = new Map<string, Node>();
   const regions: Region[] = [];
-  let x = 40, height = 0;
+  const x0 = 40;
+  let y0 = 16, width = 0;
   lessons.forEach((lesson, li) => {
     // Cards in a group are drawn inside their group's node; a wire from one of them leaves from the group.
     const groupOf = new Map<string, string>();
@@ -111,34 +112,43 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
     const byId = new Map(lesson.modules.map((m) => [m.id, m]));
     const membersOf = (id: string) => (byId.get(id)?.members ?? []).map((x) => byId.get(x)).filter((x): x is Module => !!x);
     const size = (id: string) => rowsOf(byId.get(id)!, level, readOnly, membersOf(id));
+    // How wide each card's family is (the card, or what it deals side by side below it), and each card's depth.
     const span = new Map<string, number>();
     const depthOf = new Map<string, number>();
+    const rowH: number[] = [];
     const measure = (id: string, d: number): number => {
       depthOf.set(id, d);
+      rowH[d] = Math.max(rowH[d] ?? 0, size(id).h);
       const k = kids.get(id) ?? [];
-      const below = k.reduce((n, c) => n + measure(c, d + 1), 0) + Math.max(0, k.length - 1) * GAP;
-      const s = Math.max(size(id).h, below);
+      const below = k.reduce((n, c) => n + measure(c, d + 1), 0) + Math.max(0, k.length - 1) * HGAP;
+      const s = Math.max(W, below);
       span.set(id, s);
       return s;
     };
-    const place = (id: string, top: number) => {
+    const order = [...roots, ...loose];
+    for (const r of order) measure(r.id, 0);
+    const top = y0 + TOP;
+    const rowTop = (d: number) => top + rowH.slice(0, d).reduce((n, h) => n + h, 0) + d * VGAP;
+    const place = (id: string, left: number) => {
       const { h, ports } = size(id);
       const s = span.get(id)!;
       const k = kids.get(id) ?? [];
-      const below = k.reduce((n, c) => n + span.get(c)!, 0) + Math.max(0, k.length - 1) * GAP;
-      nodes.set(id, { m: byId.get(id)!, lessonId: lesson.id, li, x: x + depthOf.get(id)! * (W + COL), y: top + (s - h) / 2, h, ports, parent: parent.get(id), members: byId.get(id)!.type === "group" ? membersOf(id) : undefined });
-      let y = top + (s - below) / 2;
-      for (const c of k) { place(c, y); y += span.get(c)! + GAP; }
+      const below = k.reduce((n, c) => n + span.get(c)!, 0) + Math.max(0, k.length - 1) * HGAP;
+      nodes.set(id, { m: byId.get(id)!, lessonId: lesson.id, li, x: left + (s - W) / 2, y: rowTop(depthOf.get(id)!), h, ports, parent: parent.get(id), members: byId.get(id)!.type === "group" ? membersOf(id) : undefined });
+      let x = left + (s - below) / 2;
+      for (const c of k) { place(c, x); x += span.get(c)! + HGAP; }
     };
-    let top = TOP;
-    for (const r of [...roots, ...loose]) { measure(r.id, 0); place(r.id, top); top += span.get(r.id)! + GAP * (level === "far" ? 0.8 : 1.4); }
-    const depth = Math.max(0, ...[...depthOf.values()]);
-    const w = Math.max(W, (depth + 1) * (W + COL) - COL);
-    regions.push({ lesson, li, x, w });
-    height = Math.max(height, top + 40);
-    x += w + REGION_GAP;
+    let x = x0;
+    for (const r of order) { place(r.id, x); x += span.get(r.id)! + HGAP * (level === "far" ? 0.6 : 1); }
+    const w = Math.max(W * 2, x - HGAP - x0);
+    const h = (rowH.length ? rowTop(rowH.length) - VGAP : top + 120) - y0 + 36;
+    regions.push({ lesson, li, x: x0, y: y0, w, h });
+    width = Math.max(width, w);
+    y0 += h + REGION_GAP;
   });
-  return { nodes, regions, width: x + 40, height: Math.max(height, 420) };
+  // Every lesson's row is as wide as the widest, so they line up like shelves.
+  for (const r of regions) r.w = width;
+  return { nodes, regions, width: x0 + width + 60, height: Math.max(y0 + 60, 420) };
 }
 
 /** Positions that glide to their new place when the map changes (nodes and wires read the same numbers). */
@@ -290,13 +300,15 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const n = targets.get(id);
     const r = regions.find((x) => x.lesson.id === id);
     const px = n ? n.x + W / 2 : r ? r.x + Math.min(r.w, 700) / 2 : null;
-    const py = n ? n.y + 80 : r ? TOP + 120 : null;
+    const py = n ? n.y + 80 : r ? r.y + TOP + 120 : null;
     if (px == null || py == null) return;
     const panel = selected && window.innerWidth >= 900 ? 480 : 0;
     const room = el.clientWidth - panel;
     // A lesson wider than the view starts at its left edge (its name and first cards), not cut off in the middle.
     const left = r && !n && (r.w + 40) * z > room ? (r.x - 28) * z : px * z - room / 2;
-    el.scrollTo({ left: Math.max(0, left), top: Math.max(0, py * z - el.clientHeight / 2.4), behavior: "smooth" });
+    // A lesson starts at its top (its name and first row of cards).
+    const top = r && !n ? (r.y - 8) * z : py * z - el.clientHeight / 2.4;
+    el.scrollTo({ left: Math.max(0, left), top: Math.max(0, top), behavior: "smooth" });
   }
   useEffect(() => {
     if (focus) requestAnimationFrame(() => bringIntoView(focus.id));
@@ -331,7 +343,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const key = nid !== port.from ? `${port.from}|${port.q}:${port.option}` : `${port.q}:${port.option}`;
     return { x: p.x + W, y: p.y + (n.ports.get(key) ?? n.h / 2) };
   };
-  const inPos = (id: string) => { const p = at(id); return { x: p.x, y: p.y + (level === "far" ? FAR_H / 2 : HEAD / 2) }; };
+  // Wires come into the top of a card (what it deals hangs below it, and later lessons sit lower down).
+  const inPos = (id: string) => { const p = at(id); return { x: p.x + W / 2, y: p.y }; };
 
   /** Cards a port may deal: in its lesson or a later one, not the card itself, not class-wide, and no loops. */
   function targetsFor(port: Port) {
@@ -402,7 +415,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const l = lessons.find((x) => x.id === lessonId)!;
     const card = blank(type, `New ${familyName(type)} card`);
     const r = regions.find((x) => x.lesson.id === lessonId);
-    if (r) born.set(card.id, { x: r.x, y: TOP - 40 });
+    if (r) born.set(card.id, { x: r.x + r.w - W, y: r.y + TOP - 40 });
     setMenu(null);
     onChange({ ...l, modules: [...l.modules, card] });
     setFresh(card.id);
@@ -480,7 +493,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   };
 
   /** Which lesson's region a point on the canvas is over. */
-  const regionAt = (x: number) => regions.find((r) => x >= r.x - REGION_GAP / 2 && x <= r.x + r.w + REGION_GAP / 2)?.lesson.id;
+  const regionAt = (y: number) => regions.find((r) => y >= r.y - REGION_GAP / 2 && y <= r.y + r.h + REGION_GAP / 2)?.lesson.id;
 
   /** Why a card can't go to a lesson: wires only run forward, so it can't go before a card that deals it, or after one it deals. */
   function whyNot(id: string, to: string): string | null {
@@ -516,7 +529,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       clearTimeout(hold);
       on = true;
       const p = toCanvas(ev.clientX, ev.clientY);
-      setMoving({ id, x: p.x, y: p.y, to: regionAt(p.x) });
+      setMoving({ id, x: p.x, y: p.y, to: regionAt(p.y) });
     };
     const up = (ev: PointerEvent) => {
       window.removeEventListener("pointermove", move);
@@ -528,7 +541,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       if (!on) return;
       setDragged(true);
       setTimeout(() => setDragged(false), 0);
-      const to = regionAt(toCanvas(ev.clientX, ev.clientY).x);
+      const to = regionAt(toCanvas(ev.clientX, ev.clientY).y);
       if (to && ev.type === "pointerup") moveCard(id, to);
     };
     window.addEventListener("pointermove", move);
@@ -593,8 +606,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   }
 
   const curve = (a: { x: number; y: number }, b: { x: number; y: number }) => {
-    const dx = Math.max(48, Math.abs(b.x - a.x) / 2);
-    return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+    // Out of the answer's port to the right, then down into the top of the card it deals.
+    const dx = Math.max(56, Math.min(160, Math.abs(b.x - a.x) / 2));
+    const dy = Math.max(56, Math.abs(b.y - a.y) / 2);
+    return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x} ${b.y - dy}, ${b.x} ${b.y}`;
   };
   /** A wire's colour: its answer's (A, B, C…), or its score range's (low rose to high green). */
   const colorOf = (w: { from: string; q: string; option: number }) => {
@@ -710,7 +725,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               const today = r.lesson.id === todayId;
               const branches = wiresOf(r.lesson).length;
               return (
-                <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "tree-lesson-today" : "tree-lesson"}`} style={{ left: r.x - 20, top: 16, width: r.w + 40, height: height - 32 }}>
+                <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "tree-lesson-today" : "tree-lesson"}`} style={{ left: r.x - 20, top: r.y, width: r.w + 40, height: r.h }}>
                   <div className="flex min-w-0 items-center gap-2 px-5 pt-3.5" style={{ fontSize: level === "far" ? 22 : 13 }}>
                     <span className={`flex flex-none items-center justify-center rounded-full font-semibold ${today ? "bg-ok text-white" : "bg-ink text-white"} ${level === "far" ? "h-9 w-9 text-[17px]" : "h-[22px] w-[22px] text-[11px]"}`}>{regions.indexOf(r) + 1}</span>
                     {readOnly || level === "far" ? <span className="min-w-0 truncate font-semibold text-ink">{r.lesson.title}</span>
@@ -733,7 +748,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               );
             })}
             {!readOnly && onAddLesson && (
-              <button onClick={onAddLesson} className="press absolute flex items-center gap-1.5 rounded-2xl border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-3 hover:text-ink" style={{ left: width - REGION_GAP + 4, top: 36 }}>
+              <button onClick={onAddLesson} className="press absolute flex items-center gap-1.5 rounded-2xl border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-3 hover:text-ink" style={{ left: 40, top: height - 76 }}>
                 <Icon name="plus" size={13} /> Lesson
               </button>
             )}
@@ -821,7 +836,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       <span aria-hidden="true" className="absolute inset-0 -z-20 translate-x-[12px] translate-y-[12px] rounded-[18px] border border-line bg-white" />
                     </>
                   )}
-                  {inbound.length > 0 && <span className={`absolute -left-[6px] rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(255,255,255,0.6)] ${level === "far" ? "top-[20px] h-3.5 w-3.5" : "top-[30px] h-3 w-3"}`} style={{ background: colorOf(inbound[0]) }} />}
+                  {inbound.length > 0 && <span className={`absolute left-1/2 z-10 -translate-x-1/2 rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(255,255,255,0.6)] ${level === "far" ? "-top-[8px] h-3.5 w-3.5" : "-top-[7px] h-3 w-3"}`} style={{ background: colorOf(inbound[0]) }} />}
                   {here.length > 0 && (
                     <span className="absolute -bottom-3 left-3 z-10 flex -space-x-1.5" title={`${here.map((s) => s.name).join(", ")} ${here.length === 1 ? "is" : "are"} working on this${stuck ? ` (${stuck} for over 2 days)` : ""}`}>
                       {here.slice(0, 4).map((s) => (
