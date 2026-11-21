@@ -164,6 +164,9 @@ check("map: an answer edited in place is saved, its wire kept", c1.weeks[0].less
 // Drag "Lesson 2 for everyone" (wired to nothing) into Lesson 1: allowed.
 const dragTo = async (id, toLessonTitle) => {
   const head = page.locator(`[data-node="${id}"] button[aria-label^="Edit"]`).first();
+  // The map may have scrolled (it brings a newly made card into view): bring this card back into view first.
+  await page.locator(".tree-canvas").evaluate((el) => el.scrollTo({ top: 0 }));
+  await settle(300);
   const hb = await head.boundingBox();
   const region = page.locator("span.font-semibold", { hasText: new RegExp(`^${toLessonTitle}$`) }).first();
   const rb = await region.boundingBox();

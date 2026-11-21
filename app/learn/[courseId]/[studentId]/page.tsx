@@ -263,6 +263,15 @@ export default function LearnPage() {
 
   const openLesson = lift ? lessons.find((l) => l.id === lift.lessonId) : undefined;
   const openModule = lift && openLesson?.modules.find((m) => m.id === lift.id);
+  // A card in a card group: its place in the group, and the group's next card on this student's board.
+  const openGroup = (() => {
+    const d = openModule ? openLesson?.decks?.find((x) => x.members.includes(openModule.id)) : undefined;
+    if (!d || !openModule || !openLesson) return undefined;
+    const ids = d.members.filter((id) => openLesson.modules.some((m) => m.id === id));
+    const i = ids.indexOf(openModule.id);
+    const nm = openLesson.modules.find((m) => m.id === ids[i + 1]);
+    return { title: d.title, index: i + 1, total: ids.length, next: nm ? { title: nm.title, go: () => setLift((l) => (l ? { ...l, id: nm.id } : l)) } : undefined };
+  })();
   const openWeek = openLesson && course.weeks.find((w) => w.lessons.includes(openLesson));
 
   return (
@@ -659,6 +668,8 @@ export default function LearnPage() {
           }}
         >
           <CardDetail
+            key={openModule.id}
+            group={openGroup}
             courseId={courseId}
             lessonId={lift.lessonId}
             studentId={studentId}

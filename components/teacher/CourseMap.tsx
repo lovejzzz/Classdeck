@@ -204,7 +204,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const all = useMemo(() => lessons.flatMap((l, i) => l.modules.map((m) => ({ m, lessonId: l.id, at: i }))), [lessons]);
   const wires = useMemo(() => wiresOf(all.map((x) => x.m)), [all]);
   const scroller = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(0.85);
+  // Playing-card sized cards are tall: start a little zoomed out so a lesson shows several at once.
+  const [zoom, setZoom] = useState(0.7);
   const level = levelOf(zoom);
   const { nodes, regions, width, height } = useMemo(() => layout(lessons, wires, level, !!readOnly), [lessons, wires, level, readOnly]);
   const [drag, setDrag] = useState<{ port: Port; x: number; y: number; over?: string } | null>(null);
@@ -219,6 +220,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const [dragged, setDragged] = useState(false);
   // Cards picked to put in a card group: shift-click a card, or shift-drag a box around several.
   const [picks, setPicks] = useState<Set<string>>(new Set());
+  // "Group cards" from the toolbar: tapping a card picks it (shift-click does the same at any time).
+  const [picking, setPicking] = useState(false);
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const [live, setLive] = useState(false);
   // Hold a card (like an app on a phone's home screen): the cards jiggle and each shows a button to delete it.
@@ -427,6 +430,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const after = l.modules.filter((m) => !ordered.includes(m.id) && !before.includes(m));
     onChange({ ...l, modules: [...before, g, ...ordered.map((id) => l.modules.find((m) => m.id === id)!), ...after] });
     setPicks(new Set());
+    setPicking(false);
     setFresh(g.id);
     onEdit(l.id, g.id);
     toast(`Made a card group of ${ordered.length} cards`, { icon: "layers" });
@@ -614,12 +618,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           <button onClick={() => setJiggle(false)} className="btn btn-dark press h-8 px-4 text-[12.5px]">Done</button>
         </div>
       )}
-      {picks.size > 0 && (
+      {(picks.size > 0 || picking) && (
         <div className="pop absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 text-[13px] shadow-[0_16px_40px_-16px_rgba(20,20,18,0.4)]">
           <Icon name="layers" size={14} className="text-[#4b56a8]" />
-          <span>{picks.size} card{picks.size === 1 ? "" : "s"} picked</span>
+          <span>{picks.size ? `${picks.size} card${picks.size === 1 ? "" : "s"} picked` : "Tap the Question cards to put in a group"}</span>
           <button onClick={makeGroup} disabled={!!whyNoGroup([...picks])} title={whyNoGroup([...picks]) ?? "Put these cards in a card group"} className="btn btn-dark press h-8 px-3 text-[12.5px] disabled:opacity-40">Make a card group</button>
-          <button onClick={() => setPicks(new Set())} className="btn btn-quiet press h-8 px-2 text-[12.5px]">Clear</button>
+          <button onClick={() => { setPicks(new Set()); setPicking(false); }} className="btn btn-quiet press h-8 px-2 text-[12.5px]">Cancel</button>
         </div>
       )}
       <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex flex-wrap items-center gap-2">
@@ -637,6 +641,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           <option value="">Go to a lesson…</option>
           {lessons.map((l) => <option key={l.id} value={l.id}>{weekOf[l.id] ? `${weekOf[l.id]} · ` : ""}{l.title}</option>)}
         </select>
+        {!readOnly && (
+          <button onClick={() => { setPicking((v) => !v); setJiggle(false); }} aria-pressed={picking} title="Pick cards to answer together; their total score can deal cards"
+            className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${picking ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
+            <Icon name="layers" size={13} /> Group cards
+          </button>
+        )}
         {students.length > 0 && (
           <button onClick={() => setLive((v) => !v)} aria-pressed={live} className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${live ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
             <Icon name="users" size={13} /> Where students are
@@ -673,7 +683,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
             window.addEventListener("pointerup", done);
             return;
           }
-          if (picks.size) setPicks(new Set());
+          if (picks.size && !picking) setPicks(new Set());
           // Drag the background to move around.
           const el = scroller.current!;
           const s = { x: e.clientX, y: e.clientY, l: el.scrollLeft, t: el.scrollTop };
@@ -704,7 +714,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     {today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
                   </div>
                   <div className="flex items-center gap-2 px-5 pt-1.5">
-                    {level !== "far" && <span className="mono">{r.lesson.modules.filter((m) => m.type !== "group").length} card${r.lesson.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
+                    {level !== "far" && <span className="mono">{r.lesson.modules.filter((m) => m.type !== "group").length} card{r.lesson.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
                     <span className="flex-1" />
                     {!readOnly && level !== "far" && (
                       <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.left, b.bottom); setMenu({ add: r.lesson.id, x: p.x - 200, y: p.y + 4 }); }}
@@ -817,7 +827,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                   )}
                   <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onClick={(e: React.MouseEvent) => {
                     if (dragged || typing || jiggle) return;
-                    if (e.shiftKey && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
+                    if ((e.shiftKey || picking) && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
                     onEdit(nd.lessonId, m.id);
                   }} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none rounded-t-[18px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"} ${moving?.id === m.id ? "opacity-40" : ""}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
                     <span className="tree-bar block h-[5px] rounded-t-[18px]" style={{ "--bar": suit.tint } as React.CSSProperties} />

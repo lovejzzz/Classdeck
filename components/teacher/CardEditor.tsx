@@ -300,7 +300,7 @@ export function CardEditor({
               {kind === "choice" && !isPoll(m) && (
                 <>
                   <QuestionsEditor single questions={m.questions ?? []} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(questions) => set({ questions: questions.length ? questions : undefined })} />
-                  <p className="mt-2 text-[12px] text-ink-3">One question per card. To ask several and branch by the total score, shift-click Question cards on the map to put them in a card group.</p>
+                  <p className="mt-2 text-[12px] text-ink-3">One question per card. To ask several and branch by the total score, use Group cards on the map to put them in a card group.</p>
                 </>
               )}
               {isPoll(m) && <PollEditor question={m.questions?.[0]} cards={allCards ?? lesson.modules} onTree={onTree} onChange={(q) => set({ questions: [q] })} />}
@@ -401,7 +401,7 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, single }: { 
   const set = (id: string, patch: Partial<Question>) => onChange(questions.map((q) => (q.id === id ? { ...q, ...patch } : q)));
   return (
     <div className="space-y-2.5">
-      <p className="text-[12px] text-ink-3">Mark the right answer (or answers). For short answers, list every answer you’ll accept; for order questions, type the steps in order.</p>
+      <p className="text-[12px] text-ink-3">Tick the right answer (it starts as the first option). For a short answer, list every answer you’ll accept.</p>
       {questions.map((q, qi) => {
         const short = q.kind === "short";
         const multi = q.kind === "multi";
@@ -439,6 +439,8 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, single }: { 
                           : multi ? <input type="checkbox" checked={!!correct} onChange={() => set(q.id, { answerSet: correct ? (q.answerSet ?? []).filter((x) => x !== oi) : [...(q.answerSet ?? []), oi] })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />
                           : <input type="radio" name={`ans-${q.id}`} checked={q.answer === oi} onChange={() => set(q.id, { answer: oi })} aria-label={`Option ${oi + 1} is correct`} className="accent-[#247b46]" />}
                         <input value={opt} onChange={(e) => set(q.id, { options: q.options.map((o, k) => (k === oi ? e.target.value : o)) })} placeholder={ordered ? `Step ${oi + 1}` : `Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className={`field h-8 py-0 ${correct ? "border-ok/50" : ""}`} />
+                        {/* The right answer says so in words, not only with a filled circle, so a default isn't missed. */}
+                        {correct && <span className="chip h-6 flex-none gap-1 bg-ok/10 px-2 text-[11px] font-medium text-ok"><Icon name="check" size={11} />Right</span>}
                         {!ordered && q.next?.[oi] && (
                           <button onClick={onTree} title="Students who pick this get this card. Change it in the card tree." className="chip h-6 max-w-[40%] flex-none gap-1 truncate bg-[#eef0fb] px-2 text-[11px] text-[#4b56a8]">
                             <Icon name="split" size={11} /> <span className="truncate">{titleOf(q.next[oi]!)}</span>

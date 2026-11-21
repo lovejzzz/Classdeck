@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.17",
+    date: "2026-11-20",
+    changes: [
+      "In a card group, each card says where it is (“Light check · 2 of 3”) and has a Next button to the group’s next card; the last one has Finish the group.",
+      "A wrong answer that opens a card says so: “Your answer opened ‘Why the lower third’ to help”, with a link to it.",
+      "Group cards on the map’s toolbar: tap the Question cards to put together, then Make a card group (shift-click still works).",
+      "The map starts a little zoomed out, so a lesson shows more of its cards at once. Fixed “cards” showing as “card$s”.",
+      "In the question editor, the right answer is labelled Right, and the hint says it starts as the first option.",
+      "Students and teachers get the same media buttons: Record (audio, video, screen or photo), Upload, Draw and Link.",
+    ],
+  },
+  {
     version: "0.1.16",
     date: "2026-11-20",
     changes: [

@@ -44,6 +44,8 @@ export interface DetailProps {
   mine: Record<string, Progress>;
   studio: CourseState["studio"];
   plan?: Plan;
+  /** The card is one of a card group's: where it sits, and the group's next card to go to (none on the last). */
+  group?: { title: string; index: number; total: number; next?: { title: string; go: () => void } };
 }
 
 /** What's on the card once it's lifted out of the hand. */
@@ -401,6 +403,17 @@ export function CardDetail(p: DetailProps) {
             )}
           </div>
         )}
+        {p.group && (
+          // A card group's cards are answered one after another: say where this one is, and go on to the next.
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+            <span className="flex flex-1 items-center gap-1.5 text-[12.5px] text-ink-3"><Icon name="layers" size={13} />{p.group.title} · {p.group.index} of {p.group.total}</span>
+            {p.group.next ? (
+              <button onClick={p.group.next.go} className="btn btn-dark press h-9 px-4">Next: {p.group.next.title} <Icon name="arrow" size={13} /></button>
+            ) : (
+              <button onClick={() => p.onClose(p.progress?.status === "done")} className="btn btn-ghost press h-9 px-4">Finish the group</button>
+            )}
+          </div>
+        )}
       </div>
 
       {tools.length > 0 && !m.choice && (
@@ -426,6 +439,8 @@ function Questions(p: DetailProps) {
   const total = set.length;
   const [pending, setPending] = useState<Record<string, AnswerValue>>({});
   const [drafts, setDrafts] = useState<Record<string, AnswerValue>>({});
+  // The card each question's answer just opened (shown with a wrong answer, so "try again" doesn't hide it).
+  const [opened, setOpened] = useState<Record<string, { id: string; title: string }>>({});
   const answers: Record<string, AnswerValue> = { ...(progress?.answers ?? {}), ...pending };
   const results = progress?.results ?? {};
   const reveal = progress?.reveal ?? {};
@@ -460,6 +475,7 @@ function Questions(p: DetailProps) {
     const r = await op<{ ok: boolean; error?: string; dealt?: { id: string; title: string; lesson?: string }[] }>(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...payload });
     if (!r.ok) toast(r.error ?? "Couldn’t save that answer", { icon: "quiz", tone: "plain" });
     announceDealt(r.dealt);
+    if (r.dealt?.length) setOpened((x) => ({ ...x, [qid]: r.dealt![0] }));
     await p.onChanged();
     setPending((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== qid)));
   }
@@ -682,7 +698,15 @@ function Questions(p: DetailProps) {
             })()}
 
             {showResult && !right && !isQuiz && !m.poll && (!q.kind || q.kind === "choice" || q.kind === "short") && (
-              <p className="rise mt-1.5 text-[12.5px] text-bad">Not quite. Have another go.</p>
+              opened[q.id] ? (
+                <p className="rise mt-1.5 text-[12.5px] text-ink-2">
+                  <span className="text-bad">Not quite.</span> Your answer opened{" "}
+                  <button onClick={() => window.dispatchEvent(new CustomEvent("questhand:show-card", { detail: opened[q.id].id }))} className="font-medium text-[#4b56a8] underline underline-offset-2">“{opened[q.id].title}”</button>{" "}
+                  to help. You can also have another go here.
+                </p>
+              ) : (
+                <p className="rise mt-1.5 text-[12.5px] text-bad">Not quite. Have another go.</p>
+              )
             )}
             {submitted && q.kind === "short" && !right && rv?.accept && (
               <p className="rise mt-1.5 text-[12.5px] text-ink-2">Accepted answer: <span className="font-medium text-ok">{rv.accept}</span></p>
