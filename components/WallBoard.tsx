@@ -37,7 +37,7 @@ function replyLabel(work?: Attachment[]): string {
 const replyIcon = (work?: Attachment[]) => { const k = work?.[0]?.kind; return k === "video" ? "video" : k === "audio" ? "mic" : k === "image" ? "image" : k === "link" ? "link" : k ? "file" : "read"; };
 
 /** A reply to a post, shown as a small content card: words, a recording, or both. */
-function ReplyCard({ c, who, avatar }: { c: Comment; who: string; avatar: string }) {
+function ReplyCard({ c, who, avatar, onDelete }: { c: Comment; who: string; avatar: string; onDelete?: () => void }) {
   return (
     <div className="overflow-hidden rounded-xl border border-line bg-white">
       <div className="h-[3px] bg-[#3d68a6]" />
@@ -46,6 +46,7 @@ function ReplyCard({ c, who, avatar }: { c: Comment; who: string; avatar: string
           <span className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[#3d68a6]"><Icon name={replyIcon(c.work)} size={11} />{replyLabel(c.work)}</span>
           <span className="flex-1" />
           <Avatar name={avatar} size={16} /><span className="font-medium text-ink-2">{who}</span><span className="mono">{ago(c.at)}</span>
+          {onDelete && <button onClick={onDelete} aria-label="Delete this reply" className="press -mr-1 rounded p-1 hover:bg-black/5 hover:!text-bad"><Icon name="trash" size={12} /></button>}
         </div>
         {c.text && <p className="mt-1.5 whitespace-pre-wrap text-[13.5px] leading-relaxed">{c.text}</p>}
         {c.work?.map((a) => <div key={a.id} className="mt-2"><MediaView a={a} /></div>)}
@@ -93,6 +94,14 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
     if (!r.ok) return toast(r.error ?? "Couldn’t send your reply", { icon: "x", tone: "bad" });
     setText("");
     setReply(null);
+    onChanged();
+  }
+
+  async function removeReply(c: Comment) {
+    if (!confirm(c.from === me ? "Delete your reply?" : "Delete this reply for everyone?")) return;
+    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: teacher ? "teacher" : me, postId: post.id, remove: c.id });
+    if (!r.ok) return toast(r.error ?? "Couldn’t delete the reply", { icon: "x", tone: "bad" });
+    toast("Reply deleted", { icon: "trash", tone: "plain" });
     onChanged();
   }
 
@@ -174,7 +183,8 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
       <div className={`fold ${open ? "fold-open" : ""}`}>
         <div className="min-h-0 overflow-hidden">
           <div className="space-y-2.5 border-t border-line bg-[#fcfcfb] px-4 py-3">
-            {comments.map((c) => <ReplyCard key={c.id} c={c} who={c.from === me ? "You" : name(c.from)} avatar={name(c.from)} />)}
+            {comments.map((c) => <ReplyCard key={c.id} c={c} who={c.from === me ? "You" : name(c.from)} avatar={name(c.from)}
+              onDelete={teacher || c.from === me ? () => removeReply(c) : undefined} />)}
             {canComment && (
               <div className="space-y-2">
                 {reply && (

@@ -8,7 +8,7 @@ import { useShortcuts } from "@/lib/shortcuts";
 import { dueInfo, optionOrder, quizSet } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META, suitOfCard } from "@/lib/ui";
-import { faceMeta, familyOf, kindOf } from "@/lib/kinds";
+import { faceMeta, familyOf, isPoll, kindOf } from "@/lib/kinds";
 import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Plan, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
@@ -567,7 +567,8 @@ function Questions(p: DetailProps) {
         const right = results[q.id];
         const rv = reveal[q.id];
         const locked = submitted || (!isQuiz && right === true);
-        const order = optionOrder(q, p.studentId, !!m.shuffle);
+        // Questions with a right answer are always mixed per student, so the answer isn’t always the first option. Polls keep the teacher’s order.
+        const order = optionOrder(q, p.studentId, !!m.shuffle || !isPoll(m));
         return (
           <fieldset key={q.id}>
             <legend className={`font-medium ${p.big ? "text-[18px]" : "text-[15px]"}`}>

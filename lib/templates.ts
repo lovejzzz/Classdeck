@@ -27,7 +27,7 @@ export const CARD_TEMPLATES: CardTemplate[] = [
   },
   {
     id: "share", name: "Share and discuss", description: "Everyone posts their work and replies to classmates.",
-    make: () => base({ type: "wall", kind: "discussion", title: "Share and discuss", body: "Post your work and one question about it. Then reply to two classmates.", minutes: 15, wall: { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false } }),
+    make: () => base({ type: "wall", kind: "discussion", title: "Share and discuss", body: "Post your work and one question about it. Then reply to two classmates.", minutes: 15, wall: { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false, replies: 2 } }),
   },
   {
     id: "reflect", name: "Reflect and next goal", description: "What changed, what to keep, what’s next.",

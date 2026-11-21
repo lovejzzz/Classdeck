@@ -1170,6 +1170,19 @@ export async function POST(request: Request, { params }: Ctx) {
       if (!post) return fail("That post is gone");
       const w = wallOf(findModule(course, post.moduleId)?.mod ?? {});
       const who = String(body.who ?? "");
+      if (typeof body.remove === "string") {
+        // Take a reply back: its writer can, and the teacher can remove anyone's.
+        const c = (post.comments ?? []).find((x) => x.id === body.remove);
+        if (!c) return fail("That reply is gone");
+        if (c.from !== who && who !== "teacher") return fail("You can only delete your own replies");
+        post.comments = (post.comments ?? []).filter((x) => x.id !== c.id);
+        // Without that reply, a peer-review card may not be finished any more.
+        if (c.from !== "teacher" && (w.replies ?? 0) > 0 && course.students.some((st) => st.id === c.from)) {
+          const p = mine(c.from, post.moduleId);
+          if (p.status === "done" && !wallProgress(d.posts[courseId], post.moduleId, c.from, w.replies).done) { p.status = "doing"; p.updatedAt = Date.now(); }
+        }
+        break;
+      }
       if (!w.comments && who !== "teacher") return fail("Comments are off on this wall");
       const text = String(body.text ?? "").trim().slice(0, 600);
       const work = (Array.isArray(body.work) ? body.work : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 1);

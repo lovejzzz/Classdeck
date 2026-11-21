@@ -240,6 +240,31 @@ async function main() {
     const seen2 = modulesOf(courseOf(await S1.state(`${fresh.id}?as=${mia.id}`))).find((m) => m.id === empty.id);
     check("only-blank questions: card has none", !seen2?.questions, seen2?.questions);
   }
+  // Peer review on a wall: a reply finishes the card, and taking it back un-finishes it.
+  {
+    const cur = courseOf(await A.state(fresh.id));
+    const l0 = cur.weeks[0].lessons[0];
+    const wm = { id: `m-w-${run}`, type: "wall", kind: "discussion", title: "Video wall", body: "Post, then reply to one classmate.", audience: { kind: "all" }, tools: [], attachments: [],
+      wall: { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false, replies: 1 } };
+    await A.op(fresh.id, { op: "saveLesson", lesson: { ...l0, modules: [...l0.modules, wm] } });
+    await A.op(fresh.id, { op: "addPost", moduleId: wm.id, studentId: leo.id, text: "Leo's talk" });
+    await S1.op(fresh.id, { op: "addPost", moduleId: wm.id, studentId: mia.id, text: "Mia's talk" });
+    const statusOf = async () => (await S1.state(`${fresh.id}?as=${mia.id}`)).progress?.[mia.id]?.[wm.id]?.status;
+    check("posting alone leaves a peer-review card in progress", (await statusOf()) === "doing", await statusOf());
+    const postsOf = async () => (await S1.state(`${fresh.id}?as=${mia.id}`)).posts ?? [];
+    const leoPost = (await postsOf()).find((p) => p.text === "Leo's talk");
+    await S1.op(fresh.id, { op: "comment", who: mia.id, postId: leoPost.id, text: "Strong hook!" });
+    check("a reply finishes the card", (await statusOf()) === "done", await statusOf());
+    await A.op(fresh.id, { op: "comment", who: "teacher", postId: leoPost.id, text: "Agreed." });
+    const cs = (await postsOf()).find((p) => p.id === leoPost.id).comments;
+    const miaC = cs.find((c) => c.text === "Strong hook!"), tC = cs.find((c) => c.text === "Agreed.");
+    check("a student can't delete someone else's reply", (await S1.op(fresh.id, { op: "comment", who: mia.id, postId: leoPost.id, remove: tC.id })).ok === false);
+    const del = await S1.op(fresh.id, { op: "comment", who: mia.id, postId: leoPost.id, remove: miaC.id });
+    check("a student deletes her own reply", del.ok !== false && !(await postsOf()).find((p) => p.id === leoPost.id).comments.some((c) => c.id === miaC.id), del);
+    check("without the reply, the card is back in progress", (await statusOf()) === "doing", await statusOf());
+    const tdel = await A.op(fresh.id, { op: "comment", who: "teacher", postId: leoPost.id, remove: tC.id });
+    check("the teacher deletes a reply", tdel.ok !== false && !(await postsOf()).find((p) => p.id === leoPost.id).comments.length, tdel);
+  }
   check("unknown op refused", (await A.op(fresh.id, { op: "nope" })).ok === false);
   check("unknown card refused", (await S1.op(fresh.id, { op: "setProgress", studentId: mia.id, moduleId: "m-nope", status: "done" })).ok === false);
 

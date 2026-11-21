@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.24",
+    date: "2026-11-21",
+    changes: [
+      "Each student sees a question’s choices in a different order, so the right answer isn’t always the first one. Polls keep the order you wrote.",
+      "Delete a reply on a discussion: students can take back their own replies, and the teacher can remove anyone’s. If a student deletes the reply that finished a peer-review card, the card goes back to in progress.",
+      "The Share and discuss card from the Standard weeks template now asks each student to reply to two classmates, as its text says.",
+    ],
+  },
+  {
     version: "0.1.23",
     date: "2026-11-21",
     changes: [

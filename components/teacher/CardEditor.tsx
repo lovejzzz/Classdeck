@@ -420,7 +420,7 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, single }: { 
   const set = (id: string, patch: Partial<Question>) => onChange(questions.map((q) => (q.id === id ? { ...q, ...patch } : q)));
   return (
     <div className="space-y-2.5">
-      <p className="text-[12px] text-ink-3">Tick the right answer (it starts as the first option). For a short answer, list every answer you’ll accept.</p>
+      <p className="text-[12px] text-ink-3">Tick the right answer (it starts as the first option). Each student sees the options in a different order. For a short answer, list every answer you’ll accept.</p>
       {questions.map((q, qi) => {
         const short = q.kind === "short";
         const multi = q.kind === "multi";
