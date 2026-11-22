@@ -1118,7 +1118,16 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                   data-node={m.id}
                   onPointerEnter={() => setHot(m.id)}
                   onPointerLeave={() => setHot((h) => (h === m.id ? null : h))}
-                  className={`tree-node absolute flex flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? "isolate" : ""} ${jiggle ? "tree-jiggle" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
+                  // A click anywhere on the card opens it (the head's button too); its own buttons and boxes keep their clicks.
+                  onClick={(e: React.MouseEvent) => {
+                    const t = e.target as HTMLElement;
+                    const own = t.closest("button, a, input, textarea, select, label, [contenteditable]");
+                    if (own && !own.classList.contains("tree-head")) return;
+                    if (dragged || typing || jiggle || window.getSelection()?.toString()) return;
+                    if ((e.shiftKey || picking) && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
+                    onEdit(nd.lessonId, m.id);
+                  }}
+                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? "isolate" : ""} ${jiggle ? "tree-jiggle" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
                   style={{ left: p.x, top: p.y, width: W, height: nd.h, animationDelay: jiggle ? `${-(i % 5) * 70}ms` : `${Math.min(i, 14) * 25}ms` }}
                 >
                   {jiggle && onDelete && (
@@ -1143,11 +1152,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       {here.length > 4 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[9.5px] font-semibold text-white">+{here.length - 4}</span>}
                     </span>
                   )}
-                  <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onClick={(e: React.MouseEvent) => {
-                    if (dragged || typing || jiggle) return;
-                    if ((e.shiftKey || picking) && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
-                    onEdit(nd.lessonId, m.id);
-                  }} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none rounded-t-[18px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
+                  <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none rounded-t-[18px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
                     <span className="tree-bar block h-[5px] rounded-t-[18px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
                     {level === "far" ? (
                       <span className="line-clamp-2 px-4 pt-3 text-[26px] font-semibold leading-[1.15] text-ink">{m.title || "Untitled card"}</span>

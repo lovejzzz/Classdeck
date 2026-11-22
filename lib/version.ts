@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.37",
+    date: "2026-11-22",
+    changes: [
+      "On the course map, a click anywhere on a card opens it, not just its top. Its answers' dots, buttons and boxes keep working as before.",
+      "In the card panel, the card preview plays its media: a video plays in place with its controls and a full-screen button, and a recording plays and pauses right on the card, its waveform filling as it goes.",
+    ],
+  },
+  {
     version: "0.1.36",
     date: "2026-11-22",
     changes: [

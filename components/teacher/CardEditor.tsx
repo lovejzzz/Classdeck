@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CARD_SIZE, formatSize, hostOf } from "@/lib/cards";
+import { CARD_SIZE, formatSize, heroAttachment, hostOf } from "@/lib/cards";
 import { uid } from "@/lib/profile";
 import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { isoDay } from "@/lib/grading";
@@ -16,6 +16,7 @@ import { MathPreview } from "../MathText";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { CardFace } from "../cards/CardFace";
+import { playableArt } from "../cards/PlayArt";
 import { Avatar, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
 
@@ -26,11 +27,14 @@ const clock = () => Date.now();
 function TiltPreview({ m }: { m: Module }) {
   const ref = useRef<HTMLDivElement>(null);
   const { w, h } = CARD_SIZE.deck;
+  // A card whose video or recording plays here holds still, so its controls are easy to hit.
+  const still = playableArt(heroAttachment(m.attachments));
   return (
     <div
       className="mx-auto [perspective:900px]"
       style={{ width: w, height: h }}
       onPointerMove={(e) => {
+        if (still) return;
         const r = e.currentTarget.getBoundingClientRect();
         const x = (e.clientX - r.left) / r.width - 0.5;
         const y = (e.clientY - r.top) / r.height - 0.5;
@@ -41,7 +45,7 @@ function TiltPreview({ m }: { m: Module }) {
       }}
     >
       <div ref={ref} className="h-full w-full rounded-[14px] shadow-[0_18px_36px_-16px_rgba(20,20,18,0.35)] transition-transform duration-300 ease-[var(--ease-spring)]">
-        <CardFace m={m} index={0} />
+        <CardFace m={m} index={0} playable />
       </div>
     </div>
   );

@@ -4,12 +4,14 @@ import { suitOfCard } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
 import { Icon, StatusIcon } from "../Icon";
 import { KindArt } from "./KindArt";
+import { PlayArt, playableArt } from "./PlayArt";
 import { faceMeta, faceOf } from "@/lib/kinds";
 
 /** The artwork window: shows the card's main media, or a soft gradient with the type glyph. */
-function Art({ m, big }: { m: Module; big: boolean }) {
+function Art({ m, big, playable }: { m: Module; big: boolean; playable?: boolean }) {
   const meta = suitOfCard(m);
   const a = heroAttachment(m.attachments);
+  if (playable && a && playableArt(a)) return <PlayArt key={a.id} a={a} cover={meta.cover} />;
   const glyph = big ? 34 : 28;
   if (a?.kind === "image") {
     // eslint-disable-next-line @next/next/no-img-element
@@ -84,8 +86,10 @@ function Art({ m, big }: { m: Module; big: boolean }) {
  * corner index top-left, artwork window, title, content pips, mirrored corner bottom-right.
  */
 export function CardFace({
-  m, status, personal, badge, big = false, footer, due,
+  m, status, personal, badge, big = false, footer, due, playable = false,
 }: {
+  /** Let the card's video or recording play right on the face (the editor's preview). */
+  playable?: boolean;
   m: Module; status?: Status; index?: number; total?: number; personal?: boolean; badge?: string; big?: boolean; footer?: React.ReactNode;
   /** Shown in the corner instead of the time when the card is due soon or late. */
   due?: { label: string; tone: "late" | "soon" | "later" | "plain" };
@@ -112,7 +116,7 @@ export function CardFace({
       </div>
       {/* artwork */}
       <div className={`relative mx-2.5 mt-2 h-[44%] flex-none overflow-hidden rounded-[8px] border border-line/80 transition-[filter] duration-500 ${status === "done" ? "saturate-[0.35]" : ""}`}>
-        <Art m={m} big={big} />
+        <Art m={m} big={big} playable={playable} />
         {tag && <span className="pill absolute left-1.5 top-1.5 h-[18px] max-w-[85%] truncate px-1.5 text-[10px]">{tag}</span>}
       </div>
       {/* title */}
