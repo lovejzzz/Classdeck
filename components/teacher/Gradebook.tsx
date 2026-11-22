@@ -16,7 +16,7 @@ const WORK = new Set(["explore", "practice", "submit", "reflect"]);
  * The whole course per student: where the teacher placed them on each skill (from rubric
  * reviews) next to where they placed themselves, plus completion, late work, and quizzes.
  */
-export function Gradebook({ state }: { state: CourseState }) {
+export function Gradebook({ state, onReview }: { state: CourseState; onReview?: (studentId: string, lessonId: string, moduleId: string) => void }) {
   const { course, progress } = state;
   const skills = course.skills ?? [];
   const levels = course.levels ?? [];
@@ -27,7 +27,7 @@ export function Gradebook({ state }: { state: CourseState }) {
   const rows = course.students.map((st) => {
     const mine = progress[st.id] ?? {};
     const tree = treeView(course.weeks, mine);
-    const cards: { m: Module; week: string }[] = [];
+    const cards: { m: Module; week: string; lessonId: string }[] = [];
     for (const { w, l } of all) {
       const seen = new Set<string>();
       for (const m of visibleModules(l, st.id, state.choices[st.id], tree)) {
@@ -35,7 +35,7 @@ export function Gradebook({ state }: { state: CourseState }) {
           if (seen.has(m.choice.slot)) continue;
           seen.add(m.choice.slot);
         }
-        cards.push({ m, week: w.title });
+        cards.push({ m, week: w.title, lessonId: l.id });
       }
     }
     const done = cards.filter(({ m }) => isFinished(m, mine[m.id])).length;
@@ -51,7 +51,8 @@ export function Gradebook({ state }: { state: CourseState }) {
     ];
     const quizPct = scores.length ? scores.reduce((t, x) => t + x, 0) / scores.length : undefined;
     const reviews = cards.filter(({ m }) => mine[m.id]?.review).map(({ m, week }) => ({ m, week, r: mine[m.id].review! })).sort((a, b) => b.r.at - a.r.at);
-    const waiting = cards.filter(({ m }) => WORK.has(m.type) && !m.questions?.length && mine[m.id]?.status === "done" && !mine[m.id]?.review).length;
+    const toReview = cards.filter(({ m }) => WORK.has(m.type) && !m.questions?.length && mine[m.id]?.status === "done" && !mine[m.id]?.review);
+    const waiting = toReview.length;
     // Latest teacher level per skill, and the student's latest self-rating.
     // Teacher levels come from reviews and from forms (the teacher's card forms and Google Forms), latest wins.
     const teacher: Record<string, number> = {};
@@ -63,7 +64,7 @@ export function Gradebook({ state }: { state: CourseState }) {
     const self: Record<string, number> = {};
     const checks = cards.filter(({ m }) => m.type === "selfcheck" && mine[m.id]?.ratings).sort((a, b) => mine[a.m.id].updatedAt - mine[b.m.id].updatedAt);
     for (const { m } of checks) Object.assign(self, mine[m.id].ratings);
-    return { st, total: cards.length, done, late, quizPct, reviews, waiting, teacher, self };
+    return { st, total: cards.length, done, late, quizPct, reviews, waiting, toReview, teacher, self };
   });
 
   function exportCsv() {
@@ -132,7 +133,12 @@ export function Gradebook({ state }: { state: CourseState }) {
                       </td>
                     );
                   })}
-                  <td className={`border-b border-line/70 px-2 py-2 font-mono text-[12px] ${r.waiting ? "text-[#287670]" : "text-ink-3"}`}>{r.waiting || "–"}</td>
+                  <td className={`border-b border-line/70 px-2 py-2 font-mono text-[12px] ${r.waiting ? "text-[#287670]" : "text-ink-3"}`}>
+                    {r.waiting && onReview ? (
+                      // Straight to the first piece of work waiting, in its lesson.
+                      <button onClick={(e) => { e.stopPropagation(); const w = r.toReview[0]; onReview(r.st.id, w.lessonId, w.m.id); }} className="press rounded-md px-1.5 py-0.5 hover:bg-[#287670]/10" title="Review their work">{r.waiting} · Review</button>
+                    ) : r.waiting || "–"}
+                  </td>
                 </tr>
                 {open === r.st.id && (
                   <tr>
@@ -143,8 +149,23 @@ export function Gradebook({ state }: { state: CourseState }) {
                         { label: "You", values: r.teacher, style: "dash", color: "#ae502f" },
                       ]} />
                       <div>
+                      {r.toReview.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-[12px] font-medium uppercase tracking-[0.06em] text-[#287670]">Waiting for your feedback</p>
+                          <ul className="mt-1.5 space-y-1">
+                            {r.toReview.map(({ m, week, lessonId }) => (
+                              <li key={m.id}>
+                                <button onClick={() => onReview?.(r.st.id, lessonId, m.id)} disabled={!onReview} className="press flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-white">
+                                  <span className="font-medium">{m.title}</span><span className="text-ink-3">{week.split(" · ")[0]}</span>
+                                  <span className="flex-1" />{onReview && <span className="text-[12px] text-[#287670]">Review →</span>}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       {r.reviews.length === 0 ? (
-                        <p className="text-[13px] text-ink-3">No reviewed work yet. Review work from the Students tab, under “Ready for your feedback”.</p>
+                        <p className="text-[13px] text-ink-3">No reviewed work yet.</p>
                       ) : (
                         <ul className="rise space-y-2.5">
                           {r.reviews.map(({ m, week, r: rv }) => (

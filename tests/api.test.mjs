@@ -450,11 +450,18 @@ async function main() {
     check("a score on a threshold goes to the higher band", eve.dealt?.[0]?.id === "m-mid" && e.includes("m-mid") && !e.includes("m-low"), [eve, e]);
     const f = await ids("Fay");
     check("100% deals the top card only", f.includes("m-top") && !f.includes("m-mid") && !f.includes("m-low"), f);
+    // With a try left, a missed question's answer stays hidden (the next try would just copy it).
+    const eveId = sid("Eve Mid");
+    const eveRev = (await S.Eve.state(`${tid}?as=${eveId}`)).progress[eveId]["m-sq"].reveal ?? {};
+    check("with a try left, only the right answers are revealed", ["s1", "s2", "s3"].every((q) => eveRev[q]) && !eveRev.s4 && !eveRev.s5, eveRev);
     // A retake with a better score doesn't change the path.
     await S.Dee.op(tid, { op: "retakeQuiz", studentId: sid("Dee Low"), moduleId: "m-sq" });
     await take("Dee", 5);
     const d2 = await ids("Dee");
     check("the first submitted score decides (a retake doesn't change it)", d2.includes("m-low") && !d2.includes("m-top"), d2);
+    const deeId = sid("Dee Low");
+    const deeRev = (await S.Dee.state(`${tid}?as=${deeId}`)).progress[deeId]["m-sq"].reveal ?? {};
+    check("after the last try every answer is revealed", five.every((q) => deeRev[q.id]?.answer === 0), deeRev);
     // A drawn quiz scores against the questions this student got.
     const pq = modulesOf(courseOf(await S.Fay.state(`${tid}?as=${sid("Fay Top")}`))).find((m) => m.id === "m-pq");
     for (const q of pq.questions) await S.Fay.op(tid, { op: "answer", studentId: sid("Fay Top"), moduleId: "m-pq", qid: q.id, choice: 0 });

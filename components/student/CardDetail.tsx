@@ -46,7 +46,7 @@ export interface DetailProps {
   studio: CourseState["studio"];
   plan?: Plan;
   /** The card is one of a card group's: where it sits, and the group's next card to go to (none on the last). */
-  group?: { title: string; index: number; total: number; next?: { title: string; go: () => void } };
+  group?: { title: string; index: number; total: number; next?: { title: string; go: () => void }; score?: number; opened?: string[] };
 }
 
 /** What's on the card once it's lifted out of the hand. */
@@ -409,6 +409,12 @@ export function CardDetail(p: DetailProps) {
           // A card group's cards are answered one after another: say where this one is, and go on to the next.
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-line pt-4">
             <span className="flex flex-1 items-center gap-1.5 text-[12.5px] text-ink-3"><Icon name="layers" size={13} />{p.group.title} · {p.group.index} of {p.group.total}</span>
+            {!p.group.next && p.group.score !== undefined && (
+              <span className="basis-full text-[13px] text-ink-2 sm:order-first">
+                <span className="font-medium text-ink">Group score {p.group.score}%.</span>{" "}
+                {p.group.opened?.length ? <>It opened {p.group.opened.map((t, i) => <span key={t}>{i ? ", " : ""}“{t}”</span>)} on your board.</> : "Nothing extra to do: on to the next card."}
+              </span>
+            )}
             {p.group.next ? (
               <button onClick={p.group.next.go} className="btn btn-dark press h-9 px-4">Next: {p.group.next.title} <Icon name="arrow" size={13} /></button>
             ) : (
@@ -735,7 +741,10 @@ function Questions(p: DetailProps) {
             Score <span className="font-mono">{progress?.score ?? 0} / {total}</span>
           </span>
           {submitted && attempt < tries && (progress?.score ?? 0) < total && (
-            <button onClick={retake} className="btn btn-ghost press h-8"><Icon name="reset" size={13} /> Try again ({tries - attempt} left)</button>
+            <>
+              <button onClick={retake} className="btn btn-ghost press h-8"><Icon name="reset" size={13} /> Try again ({tries - attempt} left)</button>
+              <span className="basis-full text-[12.5px] text-ink-3">The answers to the ones you missed show after your last try.</span>
+            </>
           )}
         </div>
       )}

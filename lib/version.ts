@@ -3,6 +3,21 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.35",
+    date: "2026-11-22",
+    changes: [
+      "Quizzes with more than one try keep the answers to missed questions hidden until the last try, so the next try isn't copying. The quiz says so under “Try again”.",
+      "A student who falls behind sees “Catch up on …” with how many cards are left, instead of “You’re on track”. Once today's cards are done, the next card comes from earlier lessons before later ones, and a revision your teacher asked for always comes first.",
+      "The last card of a card group says the group's score and which cards it opened.",
+      "Class activity gives work handed in (an open answer, a note to the teacher) its own line with what the student wrote, instead of folding it into “Worked through N cards”.",
+      "In Students, a poll shows how many chose each option, not a score. A new “Low quiz scores” list shows who got under half on a quiz or card group in the lesson.",
+      "In Grades, work waiting for feedback opens straight in the review panel, in its lesson.",
+      "On a discussion, a classmate's post says “Reply” next to the reply count, so it's clear where to reply.",
+      "A student's My work page shows quiz scores, their quiz average, and the teacher's feedback under each piece of work.",
+      "On a phone, the student Map starts zoomed out a little more.",
+    ],
+  },
+  {
     version: "0.1.34",
     date: "2026-11-21",
     changes: [

@@ -7,7 +7,7 @@ import { invokeTool, op } from "@/lib/client";
 import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
-import { faceMeta } from "@/lib/kinds";
+import { faceMeta, isPoll } from "@/lib/kinds";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
 import type { Attachment, CourseState, Lesson, Level, Module, Review, Skill } from "@/lib/types";
 import { download, toCsv } from "@/lib/download";
@@ -21,7 +21,7 @@ import { Present } from "../Present";
 import { WallBoard } from "../WallBoard";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
-import { treeView } from "@/lib/branching";
+import { groupScore, treeView } from "@/lib/branching";
 
 export function Classroom({
   courseId, state, lesson, connectors, sel, setSel,
@@ -76,9 +76,18 @@ export function Classroom({
   const toReviewCell = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && reviewable(m) && progress[sid]?.[m.id]?.status === "done" && !progress[sid]?.[m.id]?.review)?.id;
   const toReview = course.students.filter((st) => !!toReviewCell(st.id));
   const firstVisible = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id))?.id;
+  // A quiz handed in (best try) or a card group finished, under half right.
+  const lowCell = (sid: string) => lesson.modules.find((m) => {
+    const pr = progress[sid]?.[m.id];
+    if (m.type === "quiz" && visible[sid].has(m.id) && pr?.status === "done" && m.questions?.length) return (pr.best ?? pr.score ?? 0) / Math.max(1, quizSet(m, sid, pr.attempt ?? 1).length) < 0.5;
+    if (m.type === "group" && m.members?.some((id) => visible[sid].has(id))) { const g = groupScore(m, lesson.modules, progress[sid] ?? {}); return g.done && g.right / Math.max(1, g.total) < 0.5; }
+    return false;
+  })?.id;
+  const low = course.students.filter((st) => !!lowCell(st.id));
   const attention: { key: string; icon: string; tint: string; title: string; hint: string; who: typeof course.students; cell: (sid: string) => string | undefined }[] = [
     { key: "late", icon: "clock", tint: "var(--color-bad)", title: "Overdue", hint: "A card past its due date isn’t done.", who: overdue, cell: lateCard },
     { key: "review", icon: "message", tint: "#287670", title: "Ready for your feedback", hint: "Finished work you haven’t reviewed yet.", who: toReview, cell: toReviewCell },
+    { key: "low", icon: "quiz", tint: "var(--color-warn)", title: "Low quiz scores", hint: "Under half right on a quiz or card group here.", who: low, cell: (sid) => { const id = lowCell(sid); const g = lesson.modules.find((m) => m.id === id); return g?.type === "group" ? g.members?.find((x) => visible[sid].has(x)) : id; } },
     { key: "start", icon: "clock", tint: "var(--color-ink-2)", title: "Haven’t started", hint: "No card opened in this lesson yet.", who: notStarted, cell: firstVisible },
     { key: "stall", icon: "timer", tint: "var(--color-warn)", title: "Stalled", hint: "Started, but nothing new for 2+ days.", who: stalled, cell: (sid) => lesson.modules.find((m) => progress[sid]?.[m.id]?.status === "doing")?.id },
     { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted to Collab Studio, no replies yet.", who: waiting, cell: () => studioId },
@@ -133,7 +142,7 @@ export function Classroom({
         const status = pr?.status ?? "todo";
         // Quizzes show the best try, out of the questions this student actually got.
         const best = m.type === "quiz" ? pr?.best ?? pr?.score : pr?.score;
-        return `${status === "done" ? "Done" : status === "doing" ? "In progress" : "Not started"}${m.questions && best !== undefined ? ` (${best}/${quizSet(m, st.id, pr?.attempt ?? 1).length})` : ""}`;
+        return `${status === "done" ? "Done" : status === "doing" ? "In progress" : "Not started"}${m.questions && !isPoll(m) && best !== undefined ? ` (${best}/${quizSet(m, st.id, pr?.attempt ?? 1).length})` : ""}`;
       }),
       ...(studioIds.size ? [feedbackGiven(st.id)] : []),
     ]);
@@ -283,7 +292,8 @@ export function Classroom({
                   const tools = toolUse[s.id]?.[m.id];
                   const active = sel?.sid === s.id && sel.mid === m.id;
                   const shown = m.type === "quiz" ? p?.best ?? p?.score : p?.score;
-                  const scored = m.questions && shown !== undefined && (status === "done" || p?.best !== undefined);
+                  // A poll has no right answer: no score.
+                  const scored = m.questions && !isPoll(m) && shown !== undefined && (status === "done" || p?.best !== undefined);
                   const late = isLate(m, p, now);
                   const rv = p?.review;
                   return (
@@ -412,7 +422,7 @@ export function Classroom({
                     <li key={q.id} className="flex items-center gap-2">
                       <span className="mono w-5">{String(i + 1).padStart(2, "0")}</span>
                       <span className="flex-1"><MathText text={q.text.trim() || selModule.title} /></span>
-                      {a === undefined ? <span className="text-ink-3">No answer</span> : (
+                      {a === undefined ? <span className="text-ink-3">No answer</span> : isPoll(selModule) ? <span className="text-ink-2">{answerText(q, a)}</span> : (
                         <span className={`flex items-center gap-1 ${ok ? "text-ok" : "text-bad"}`}><Icon name={ok ? "check" : "x"} size={13} strokeWidth={2.2} />{answerText(q, a)}</span>
                       )}
                     </li>
@@ -440,10 +450,31 @@ export function Classroom({
         <section key={m.id} className="card p-5">
           <h3 className="flex items-center gap-2 text-[14px] font-medium">
             <span style={{ color: suitOfCard(m).tint }}><Icon name={faceMeta(m).icon} size={14} /></span>
-            {m.title}<span className="font-normal text-ink-3">· correct by question</span>
+            {m.title}<span className="font-normal text-ink-3">· {isPoll(m) ? "votes" : "correct by question"}</span>
           </h3>
           <div className="mt-4 space-y-2.5">
-            {m.questions!.map((q, i) => {
+            {isPoll(m) ? m.questions!.map((q, i) => {
+              // A poll: how many chose each option (nothing is right or wrong).
+              const votes = course.students.map((s) => progress[s.id]?.[m.id]?.answers?.[q.id]).filter((a): a is number => typeof a === "number");
+              return (
+                <div key={q.id}>
+                  {m.questions!.length > 1 && <p className="mb-1.5 text-[13px]"><span className="mono mr-2">{String(i + 1).padStart(2, "0")}</span><MathText text={q.text.trim()} /></p>}
+                  {q.options.map((o, oi) => {
+                    const n = votes.filter((v) => v === oi).length;
+                    return (
+                      <div key={oi} className="grid items-center gap-3 py-0.5 text-[13px] sm:grid-cols-[1.5rem_1fr_10rem_6rem]">
+                        <span className="mono text-ink-3">{String.fromCharCode(65 + oi)}</span>
+                        <span className="truncate"><MathText text={o} /></span>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-lane">
+                          <div className="h-full rounded-full bg-[#4b56a8]/70 transition-[width] duration-700" style={{ width: `${votes.length ? (n / votes.length) * 100 : 0}%` }} />
+                        </div>
+                        <span className="mono text-right">{n} {n === 1 ? "vote" : "votes"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }) : m.questions!.map((q, i) => {
               const all = course.students.map((s) => progress[s.id]?.[m.id]?.results?.[q.id]).filter((x) => x !== undefined);
               const rate = all.length ? all.filter(Boolean).length / all.length : 0;
               return (

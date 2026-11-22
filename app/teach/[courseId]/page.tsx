@@ -90,8 +90,13 @@ export default function TeachPage() {
   const fresh = state.events.filter((e) => e.at > seenAt).sort((a, b) => a.at - b.at);
   const runs: ClassEvent[][] = [];
   const openRun = new Map<string, ClassEvent[]>();
+  // Work handed in for the teacher to read (an open answer, a note to the teacher) is never folded into a run.
+  const handIn = (e: ClassEvent) => {
+    const m = e.kind === "done" ? moduleOf(e.moduleId)?.m : undefined;
+    return !!m && ["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length;
+  };
   for (const e of fresh) {
-    if (e.kind !== "done" && e.kind !== "wrong") { runs.push([e]); continue; }
+    if ((e.kind !== "done" && e.kind !== "wrong") || handIn(e)) { runs.push([e]); continue; }
     // One run per student and lesson: catching up on several lessons stays several notes.
     const key = `${e.studentId}|${moduleOf(e.moduleId)?.l.id ?? ""}`;
     const r = openRun.get(key);
@@ -115,7 +120,14 @@ export default function TeachPage() {
       icon: KIND[wrong.length ? "wrong" : e.kind].icon,
       tint: KIND[wrong.length ? "wrong" : e.kind].tint,
       title: studentName(e.studentId),
-      text: r.length === 1 ? e.text
+      text: r.length === 1 && handIn(e) ? (() => {
+          // What they wrote, so a question to the teacher is read here, not found later.
+          const pr = state.progress[e.studentId]?.[e.moduleId];
+          const said = pr?.output?.trim();
+          const files = pr?.work?.length ?? 0;
+          return `Handed in${said ? `: “${said.length > 140 ? `${said.slice(0, 140)}…` : said}”` : ""}${files ? `${said ? " ·" : ""} ${files} file${files === 1 ? "" : "s"}` : said ? "" : " their work"}`;
+        })()
+        : r.length === 1 ? e.text
         : one ? wrong.map((x) => x.text).concat(r.some((x) => x.kind === "done") ? ["Finished"] : []).join(" · ")
         : `Worked through ${cards.length} cards${wrong.length ? ` · ${wrong.length} wrong: ${wrong.map((x) => `${moduleOf(x.moduleId)?.m.title ?? "a card"} (${x.text.replace(/^Q\d+: /, "")})`).join("; ")}` : ""}`,
     };
@@ -276,7 +288,7 @@ export default function TeachPage() {
           {(tab === "plan" || tab === "map") && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} view={tab === "map" ? "map" : "list"} onView={(v) => setTab(v === "map" ? "map" : "plan")} />}
           {tab === "students" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
           {tab === "students" && <div className={course.students.length ? "mt-8" : ""}><Settings part="students" course={course} readOnly={viewer} onInvite={() => setInviting(true)} onChanged={refresh} /></div>}
-          {tab === "grades" && (course.students.length > 0 || courseId === "demo") && <Gradebook state={state} />}
+          {tab === "grades" && (course.students.length > 0 || courseId === "demo") && <Gradebook state={state} onReview={(sid, lid, mid) => { setPicked(lid); setTab("students"); setSel({ sid, mid }); }} />}
           {tab === "settings" && !viewer && <Settings course={course} me={state.me} onChanged={refresh} />}
         </main>
       </div>

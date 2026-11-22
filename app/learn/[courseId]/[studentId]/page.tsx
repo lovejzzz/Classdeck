@@ -240,12 +240,18 @@ export default function LearnPage() {
   const weeksShown = profile.horizon === "week" ? [currentWeek] : course.weeks;
   const playable = (l: Lesson) => l.modules.filter((m) => statusOf(m.id) !== "done");
   const upNext = (() => {
+    // A revision the teacher asked for comes first, whichever lesson it's in.
+    for (const l of lessons) {
+      const r = playable(l).find((x) => revising(x.id));
+      if (r) return { lesson: l, m: r };
+    }
     const today = playable(current);
-    // Revisions first, then what's late, then what's already started.
-    const m = today.find((x) => revising(x.id)) ?? today.find((x) => x.due && dueInfo(x.due, now)?.tone === "late") ?? today.find((x) => statusOf(x.id) === "doing") ?? today[0];
+    // Then what's late, then what's already started, then today's next card.
+    const m = today.find((x) => x.due && dueInfo(x.due, now)?.tone === "late") ?? today.find((x) => statusOf(x.id) === "doing") ?? today[0];
     if (m) return { lesson: current, m };
-    const later = lessons.slice(lessons.indexOf(current) + 1);
-    for (const l of later) {
+    // Today's done: catch up on earlier lessons before getting ahead.
+    const at = lessons.indexOf(current);
+    for (const l of [...lessons.slice(0, at).filter((x) => !x.elective || x.chosen), ...lessons.slice(at + 1)]) {
       const first = playable(l)[0];
       if (first) return { lesson: l, m: first };
     }
@@ -290,7 +296,9 @@ export default function LearnPage() {
     const ids = d.members.filter((id) => openLesson.modules.some((m) => m.id === id));
     const i = ids.indexOf(openModule.id);
     const nm = openLesson.modules.find((m) => m.id === ids[i + 1]);
-    return { title: d.title, index: i + 1, total: ids.length, next: nm ? { title: nm.title, go: () => setLift((l) => (l ? { ...l, id: nm.id } : l)) } : undefined };
+    // Once the group's done: its score and the cards that score opened, said on its last card.
+    const opened = (d.paths ?? []).filter((x) => x.to).map((x) => lessons.flatMap((l) => l.modules).find((m) => m.id === x.to)?.title).filter((t): t is string => !!t);
+    return { title: d.title, index: i + 1, total: ids.length, next: nm ? { title: nm.title, go: () => setLift((l) => (l ? { ...l, id: nm.id } : l)) } : undefined, score: d.done ? d.score : undefined, opened };
   })();
   const openWeek = openLesson && course.weeks.find((w) => w.lessons.includes(openLesson));
 
@@ -459,7 +467,7 @@ export default function LearnPage() {
                 {upNext ? (
                   <>
                     <div className="order-2 min-w-0 text-left sm:order-1 sm:text-right">
-                      <div className="text-[12px] font-medium uppercase tracking-[0.1em] text-ink-3">{revising(upNext.m.id) ? "Your teacher asked for a revision" : dueInfo(upNext.m.due, now)?.tone === "late" ? "Overdue" : statusOf(upNext.m.id) === "doing" ? "Pick up where you left off" : upNext.lesson.id === current.id ? "Up next" : "Get ahead"}</div>
+                      <div className="text-[12px] font-medium uppercase tracking-[0.1em] text-ink-3">{revising(upNext.m.id) ? "Your teacher asked for a revision" : dueInfo(upNext.m.due, now)?.tone === "late" ? "Overdue" : statusOf(upNext.m.id) === "doing" ? "Pick up where you left off" : upNext.lesson.id === current.id ? "Up next" : lessons.indexOf(upNext.lesson) < lessons.indexOf(current) ? "Catch up" : currentWeek.lessons.includes(upNext.lesson) ? "Next lesson" : "Get ahead"}</div>
                       <div className="mt-1 max-w-[12rem] text-[15px] font-medium leading-snug">{upNext.m.title}</div>
                       <button onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)} className="btn btn-dark press mt-3 h-9 px-4">
                         {statusOf(upNext.m.id) === "doing" ? "Continue" : "Play this card"} <Icon name="arrow" size={13} />

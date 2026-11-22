@@ -45,6 +45,10 @@ export default function BoardPage() {
   };
   const done = all.filter((x) => mine[x.m.id]?.status === "done").length;
   const shown = tab;
+  // Quizzes handed in, by their best try.
+  const quizScores = all.filter((x) => x.m.type === "quiz" && x.m.questions?.length && mine[x.m.id]?.status === "done").map((x) => (mine[x.m.id].best ?? mine[x.m.id].score ?? 0) / x.m.questions!.length);
+  const quizAvg = quizScores.length ? Math.round((100 * quizScores.reduce((a, b) => a + b, 0)) / quizScores.length) : undefined;
+  const reviewed = all.filter((x) => mine[x.m.id]?.review).length;
   const takes = all.reduce((n, x) => n + (mine[x.m.id]?.work?.filter((w) => w.kind === "audio" || w.kind === "video").length ?? 0), 0);
 
   return (
@@ -68,7 +72,8 @@ export default function BoardPage() {
         </header>
 
         <div className="rise mt-6 grid grid-cols-3 gap-3" style={{ "--i": 1 } as React.CSSProperties}>
-          {[["Cards done", `${done}`], ["Recordings", `${takes}`], ["Feedback given", `${given}`]].map(([k, v]) => (
+          {/* A course without recordings or peer feedback shows quiz scores and the teacher's feedback instead. */}
+          {(takes || given ? [["Cards done", `${done}`], ["Recordings", `${takes}`], ["Feedback given", `${given}`]] : [["Cards done", `${done}`], ["Quiz average", quizAvg === undefined ? "–" : `${quizAvg}%`], ["Teacher feedback", `${reviewed}`]]).map(([k, v]) => (
             <div key={k} className="card px-4 py-3">
               <div className="text-[12px] text-ink-3">{k}</div>
               <div className="mt-1 font-mono text-[22px]">{v}</div>
@@ -103,6 +108,7 @@ export default function BoardPage() {
                         <div className="flex items-center gap-2">
                           <span style={{ color: suitOfCard(m).tint }}><Icon name={faceMeta(m).icon} size={14} /></span>
                           <h3 className="flex-1 text-[14px] font-medium">{m.title}</h3>
+                          {m.type === "quiz" && m.questions?.length && p?.status === "done" && <span className="mono text-[12px] text-ink-2">{p.best ?? p.score ?? 0}/{m.questions.length}</span>}
                           {p?.starred && <Icon name="star" size={13} className="text-[#d39b1f]" />}
                           <StatusIcon status={p?.status ?? "todo"} size={13} />
                         </div>
@@ -113,6 +119,9 @@ export default function BoardPage() {
                         )}
                         {p?.output && <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{p.output}</p>}
                         {p?.work?.length ? <div className="mt-3 space-y-2">{p.work.map((a) => <div key={a.id}><div className="mb-1 text-[12px] text-ink-3">{a.name}</div><MediaView a={a} /></div>)}</div> : null}
+                        {p?.review?.text && (
+                          <p className="mt-2 flex gap-2 rounded-lg bg-[#287670]/[0.06] px-3 py-2 text-[13px] leading-relaxed"><span className="flex-none font-medium text-[#287670]">{p.review.verdict === "revise" ? "Teacher asked for a revision:" : "Teacher:"}</span><span>{p.review.text}</span></p>
+                        )}
                         {wallPosts.map((wp) => (
                           <div key={wp.id} className="mt-3 rounded-lg bg-lane p-3">
                             <div className="text-[12px] text-ink-3">Posted to the class · {ago(wp.createdAt)}{wp.comments?.length ? ` · ${wp.comments.length} repl${wp.comments.length === 1 ? "y" : "ies"}` : ""}</div>

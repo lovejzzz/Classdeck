@@ -6,7 +6,7 @@ import type { Course, CourseState, Lesson, Module, Progress } from "./types";
 
 export interface Rec {
   id: string;
-  kind: "revise" | "overdue" | "soon" | "path" | "focus" | "mismatch" | "feedback" | "reflect";
+  kind: "revise" | "overdue" | "catchup" | "soon" | "path" | "focus" | "mismatch" | "feedback" | "reflect";
   title: string;
   text: string;
   moduleId?: string;
@@ -126,6 +126,21 @@ export function recommend(state: CourseState, studentId: string, now: number): R
   }
   const late = todos.filter((t) => !t.revise && isLate(t.m, mine[t.m.id], now));
   if (late.length) recs.push({ id: "late", kind: "overdue", title: late.length === 1 ? `“${late[0].m.title}” is overdue` : `${late.length} cards are overdue`, text: late.length === 1 ? `It was ${late[0].due?.label.toLowerCase()}. Finish it first.` : `Start with “${late[0].m.title}”.`, moduleId: late[0].m.id, lessonId: late[0].lesson.id });
+
+  // Cards left in lessons before today's: a student who fell behind hears about it, not "you're on track".
+  const lessonsInOrder = course.weeks.flatMap((w) => w.lessons);
+  const cur = Math.max(0, lessonsInOrder.findIndex((l) => l.id === course.currentLessonId));
+  const behind = todos.filter((t) => !t.revise && !isLate(t.m, mine[t.m.id], now) && !t.lesson.elective && lessonsInOrder.indexOf(t.lesson) < cur);
+  if (behind.length) {
+    const first = [...behind].sort((a, b) => lessonsInOrder.indexOf(a.lesson) - lessonsInOrder.indexOf(b.lesson) || a.lesson.modules.indexOf(a.m) - b.lesson.modules.indexOf(b.m))[0];
+    const lessonsBehind = new Set(behind.map((t) => t.lesson.id)).size;
+    recs.push({
+      id: "catchup", kind: "catchup",
+      title: lessonsBehind === 1 ? `Catch up on “${first.lesson.title}”` : `Catch up on ${lessonsBehind} earlier lessons`,
+      text: `${behind.length} card${behind.length === 1 ? "" : "s"} left${lessonsBehind === 1 ? ` from ${first.week.split(" · ")[0]}` : ""}. Start with “${first.m.title}”.`,
+      moduleId: first.m.id, lessonId: first.lesson.id,
+    });
+  }
 
   const { self, teacher, evidence } = skillPicture(mine);
   // When the student's sense of a skill and the teacher's evidence disagree by two levels or more.

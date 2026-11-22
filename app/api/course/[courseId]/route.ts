@@ -186,8 +186,11 @@ function view(request: Request, courseId: string): Response {
       if (mod?.questions?.length) {
         const reveal: NonNullable<Progress["reveal"]> = {};
         const inSet = new Set(quizSet(mod, as, p.attempt ?? 1).map((q) => q.id));
+        // While a quiz still has a try left, a missed question's answer (and its explanation) stays hidden, or the
+        // next try is just copying. Questions they got right can show their explanation.
+        const triesLeft = isQuiz && (mod.attempts ?? 1) > (p.attempt ?? 1);
         for (const q of mod.questions) {
-          const earned = isQuiz ? p.status === "done" && inSet.has(q.id) : p.results?.[q.id] === true;
+          const earned = isQuiz ? p.status === "done" && inSet.has(q.id) && (!triesLeft || p.results?.[q.id] === true) : p.results?.[q.id] === true;
           if (!earned) continue;
           reveal[q.id] = {
             explain: q.explain || undefined,

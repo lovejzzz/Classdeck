@@ -151,8 +151,10 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
           </button>
         )}
         {(canComment || comments.length > 0) && (
-          <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] text-ink-2 hover:bg-lane">
+          <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`${comments.length} ${comments.length === 1 ? "reply" : "replies"}${canComment ? ", reply" : ""}`} className="press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] text-ink-2 hover:bg-lane">
             <Icon name="message" size={14} /><span className="font-mono">{comments.length}</span>
+            {/* On a classmate's post, say it plainly: this is where you reply. */}
+            {canComment && !own && !teacher && !open && <span className="font-medium">{comments.length ? "· Reply" : "Reply"}</span>}
           </button>
         )}
         <span className="flex-1" />

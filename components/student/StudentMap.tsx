@@ -154,7 +154,8 @@ export function StudentMap({ lessons, weekOf: weekOfProp, todayId, statusOf, onO
   // The page builds this every render: keep it stable so the layout isn't redone each time.
   const weekKey = JSON.stringify(weekOfProp);
   const weekOf = useMemo(() => JSON.parse(weekKey) as Record<string, string>, [weekKey]);
-  const [zoom, setZoom] = useState(0.8);
+  // A phone starts further out, so a card and what it opened fit across the screen.
+  const [zoom, setZoom] = useState(() => (typeof window !== "undefined" && window.innerWidth < 640 ? 0.6 : 0.8));
   const far = zoom < FAR;
   const { nodes, edges, regions, width, height } = useMemo(() => layout(lessons, weekOf, far), [lessons, weekOf, far]);
 

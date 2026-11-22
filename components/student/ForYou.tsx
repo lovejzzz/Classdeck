@@ -9,6 +9,7 @@ import { Icon } from "../Icon";
 const KIND: Record<Rec["kind"], { icon: string; tint: string }> = {
   revise: { icon: "reset", tint: "var(--color-warn)" },
   overdue: { icon: "clock", tint: "var(--color-bad)" },
+  catchup: { icon: "layers", tint: "var(--color-warn)" },
   soon: { icon: "clock", tint: "var(--color-warn)" },
   path: { icon: "split", tint: "#4b56a8" },
   focus: { icon: "selfcheck", tint: "#367195" },
