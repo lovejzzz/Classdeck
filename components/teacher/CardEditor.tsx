@@ -15,6 +15,7 @@ import { clearOlder, olderSettings } from "@/lib/cardmodel";
 import { MathPreview } from "../MathText";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
+import { targetsOf } from "@/lib/branching";
 import { CardFace } from "../cards/CardFace";
 import { playableArt } from "../cards/PlayArt";
 import { Avatar, Icon } from "../Icon";
@@ -48,6 +49,22 @@ function TiltPreview({ m }: { m: Module }) {
         <CardFace m={m} index={0} playable />
       </div>
     </div>
+  );
+}
+
+/** The cards an answer deals, as chips: the first by name, any more as “+N” (each opens its card). */
+function Dealt({ ids, titleOf, onGo, onTree }: { ids: string[]; titleOf: (id: string) => string; onGo?: (id: string) => void; onTree?: () => void }) {
+  if (!ids.length) return null;
+  const go = (id: string) => (e: React.MouseEvent) => { e.preventDefault(); if (onGo) onGo(id); else onTree?.(); };
+  return (
+    <>
+      <button type="button" onClick={go(ids[0])} title={ids.length > 1 ? `Students who pick this get ${ids.map((x) => `“${titleOf(x)}”`).join(" and ")}. Click to open the first.` : "Students who pick this get this card. Click to open it."} className="chip h-6 max-w-[40%] flex-none gap-1 truncate bg-[#eef0fb] px-2 text-[11px] text-[#4b56a8]">
+        <Icon name="split" size={11} /> <span className="truncate">{titleOf(ids[0])}</span>
+      </button>
+      {ids.length > 1 && (
+        <button type="button" onClick={go(ids[1])} title={ids.slice(1).map((x) => titleOf(x)).join(", ")} className="chip h-6 flex-none bg-[#eef0fb] px-1.5 text-[11px] text-[#4b56a8]">+{ids.length - 1}</button>
+      )}
+    </>
   );
 }
 
@@ -168,7 +185,7 @@ export function CardEditor({
   async function toKind(k: CardKind) {
     if (k === kind) return;
     const losing = (m.questions ?? []).filter((q) => q.text.trim() || q.options.some((o) => o.trim()));
-    const deals = losing.reduce((n, q) => n + (q.next ?? []).filter(Boolean).length, 0);
+    const deals = losing.reduce((n, q) => n + q.options.reduce((k, _, i) => k + targetsOf(q, i).length, 0), 0);
     const parts: string[] = [];
     if (k !== "choice" && losing.length) parts.push(`Its question and choices go${deals ? `, and the ${deals === 1 ? "card an answer deals goes" : `${deals} cards its answers deal go`} to everyone` : ""}.`);
     if (started > 0) parts.push(`${started === 1 ? "1 student has" : `${started} students have`} already worked on this card. What they handed in stays where it is and won’t move.`);
@@ -477,11 +494,7 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, onGo, single
                         <input value={opt} onChange={(e) => set(q.id, { options: q.options.map((o, k) => (k === oi ? e.target.value : o)) })} placeholder={ordered ? `Step ${oi + 1}` : `Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className={`field h-8 py-0 ${correct ? "border-ok/50" : ""}`} />
                         {/* The right answer says so in words, not only with a filled circle, so a default isn't missed. */}
                         {correct && <span className="chip h-6 flex-none gap-1 bg-ok/10 px-2 text-[11px] font-medium text-ok"><Icon name="check" size={11} />Right</span>}
-                        {!ordered && q.next?.[oi] && (
-                          <button type="button" onClick={(e) => { e.preventDefault(); if (onGo) onGo(q.next![oi]!); else onTree?.(); }} title="Students who pick this get this card. Click to open it." className="chip h-6 max-w-[40%] flex-none gap-1 truncate bg-[#eef0fb] px-2 text-[11px] text-[#4b56a8]">
-                            <Icon name="split" size={11} /> <span className="truncate">{titleOf(q.next[oi]!)}</span>
-                          </button>
-                        )}
+                        {!ordered && <Dealt ids={targetsOf(q, oi)} titleOf={titleOf} onGo={onGo} onTree={onTree} />}
                         {q.options.length > 2 && (
                           <button onClick={() => set(q.id, { options: q.options.filter((_, k) => k !== oi), answer: q.answer !== undefined && q.answer > oi ? q.answer - 1 : q.answer === oi ? 0 : q.answer, answerSet: q.answerSet?.filter((x) => x !== oi).map((x) => (x > oi ? x - 1 : x)), next: q.next?.filter((_, k) => k !== oi) })} aria-label={`Remove option ${oi + 1}`} className="text-ink-3 hover:text-bad"><Icon name="x" size={12} /></button>
                         )}
@@ -528,11 +541,7 @@ function PollEditor({ question, onChange, cards = [], onTree, onGo }: { question
           <div key={oi} className="flex items-center gap-2">
             <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md bg-lane text-[10.5px] font-semibold text-ink-3">{String.fromCharCode(65 + oi)}</span>
             <input value={o} onChange={(e) => onChange({ ...q, options: q.options.map((x, k) => (k === oi ? e.target.value : x)) })} placeholder={`Option ${oi + 1}`} aria-label={`Option ${oi + 1}`} className="field h-8 py-0" />
-            {q.next?.[oi] && (
-              <button type="button" onClick={() => (onGo ? onGo(q.next![oi]!) : onTree?.())} title="Students who pick this get this card. Click to open it." className="chip h-6 max-w-[40%] flex-none gap-1 truncate bg-[#eef0fb] px-2 text-[11px] text-[#4b56a8]">
-                <Icon name="split" size={11} /> <span className="truncate">{titleOf(q.next[oi]!)}</span>
-              </button>
-            )}
+            <Dealt ids={targetsOf(q, oi)} titleOf={titleOf} onGo={onGo} onTree={onTree} />
             {q.options.length > 2 && (
               <button onClick={() => onChange({ ...q, options: q.options.filter((_, k) => k !== oi), next: q.next?.filter((_, k) => k !== oi) })} aria-label={`Remove choice ${oi + 1}`} className="text-ink-3 hover:text-bad"><Icon name="x" size={12} /></button>
             )}

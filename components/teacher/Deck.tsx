@@ -25,7 +25,7 @@ import { CardEditor } from "./CardEditor";
 import { CourseMap } from "./CourseMap";
 import { newCard, type CardKind } from "@/lib/kinds";
 import { NeighborGraph } from "./NeighborGraph";
-import { bandLabel, branchBelow, deleteCardIn, SCORE, treeView, wiresOf } from "@/lib/branching";
+import { bandLabel, branchBelow, deleteCardIn, SCORE, slotOf, targetsOf, treeView, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
 import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
 
@@ -282,10 +282,10 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
         if (m.id !== w.from) return m;
         if (w.q === SCORE) return m.bands?.[w.option] && !m.bands[w.option].next ? { ...m, bands: m.bands.map((b, i) => (i === w.option ? { ...b, next: w.to } : b)) } : m;
         return { ...m, questions: m.questions?.map((q) => {
-          if (q.id !== w.q || q.next?.[w.option]) return q;
+          if (q.id !== w.q || targetsOf(q, w.option).includes(w.to)) return q;
           const next = [...(q.next ?? [])];
           while (next.length < q.options.length) next.push(null);
-          next[w.option] = w.to;
+          next[w.option] = slotOf([...targetsOf(q, w.option), w.to]);
           return { ...q, next };
         }) };
       }) });
@@ -684,8 +684,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             const lid = allLessons().find((l) => l.modules.some((x) => x.id === id))?.id;
             if (!lid) return;
             const src = curModule;
-            const q = src.questions?.find((x) => x.next?.includes(id));
-            const oi = q?.next?.indexOf(id) ?? -1;
+            const q = src.questions?.find((x) => x.options.some((_, i) => targetsOf(x, i).includes(id)));
+            const oi = q ? q.options.findIndex((_, i) => targetsOf(q, i).includes(id)) : -1;
             const o = q && oi >= 0 ? q.options[oi]?.trim() : "";
             setCameFrom({ lessonId: cur.id, moduleId: src.id, to: id, note: oi >= 0 ? `answer ${String.fromCharCode(65 + oi)}${o ? `: ${o}` : ""}` : "an answer" });
             edit(lid, id);

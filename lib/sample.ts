@@ -2,6 +2,7 @@
 // day). It is small on purpose and shows the card tree: a quiz that branches by score (one branch reaches the next
 // lesson), and a question whose answer picks the next card.
 import { uid } from "./profile";
+import { mapSlot } from "./branching";
 import type { Module, Week } from "./types";
 
 const card = (id: string, m: Partial<Module> & Pick<Module, "type" | "title" | "body">): Module => ({
@@ -57,7 +58,7 @@ export function sampleWeeks(): Week[] {
       l.modules = l.modules.map((m) => ({
         ...m,
         id: ids.get(m.id)!,
-        questions: m.questions?.map((q) => (q.next ? { ...q, next: q.next.map(to) } : q)),
+        questions: m.questions?.map((q) => (q.next ? { ...q, next: q.next.map((s) => mapSlot(s, to)) } : q)),
         bands: m.bands?.map((b) => ({ ...b, next: to(b.next) })),
         members: m.members?.map((id) => ids.get(id)!),
       }));

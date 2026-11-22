@@ -1,10 +1,11 @@
-import { fileExt, hash, heroAttachment, hostOf } from "@/lib/cards";
+import { fileExt, heroAttachment, hostOf } from "@/lib/cards";
 import { videoEmbed } from "@/lib/media";
 import { suitOfCard } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
 import { Icon, StatusIcon } from "../Icon";
 import { KindArt } from "./KindArt";
 import { PlayArt, playableArt } from "./PlayArt";
+import { Waveform } from "./Waveform";
 import { faceMeta, faceOf } from "@/lib/kinds";
 
 /** The artwork window: shows the card's main media, or a soft gradient with the type glyph. */
@@ -31,16 +32,10 @@ function Art({ m, big, playable }: { m: Module; big: boolean; playable?: boolean
   }
   const backdrop = <div className="absolute inset-[-30%] blur-[16px]" style={{ background: meta.cover }} />;
   if (a?.kind === "audio") {
-    const seed = hash(a.id);
     return (
       <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
         {backdrop}
-        <div className="relative flex h-1/2 items-center gap-[3px]">
-          {Array.from({ length: 18 }, (_, i) => {
-            const h = 0.25 + Math.abs(Math.sin(i * 1.7 + seed * 9)) * 0.75;
-            return <span key={i} className="w-[3px] rounded-full bg-ink/70" style={{ height: `${h * 100}%` }} />;
-          })}
-        </div>
+        <Waveform url={a.url} seed={a.id} off="bg-ink/70" className="h-1/2" />
       </div>
     );
   }

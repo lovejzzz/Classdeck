@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, SCORE, SHARED_ONLY, wiresOf, type Wire } from "@/lib/branching";
+import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, picked, SCORE, SHARED_ONLY, slotOf, targetsOf, wiresOf, type Wire } from "@/lib/branching";
 import { bandTone, pathColor, suitOfCard, suitOfKind } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
 import { MathText, plainMath } from "../MathText";
-import type { AnswerValue, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
+import type { Attachment, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
+import { videoEmbed } from "@/lib/media";
+import { MediaLift } from "../cards/MediaLift";
+import { PlayDot, Recording } from "../cards/PlayArt";
 import { Icon } from "../Icon";
 import { elbow } from "../mapPath";
 import { toast } from "@/lib/toast";
+import { reducedMotion } from "@/lib/spring";
 import { ask } from "../Confirm";
 
 // Fixed sizes, so ports and wires are placed from numbers, not by measuring the page.
@@ -41,8 +45,6 @@ const wantsQuestion = (m: Module) => kindOf(m) === "choice" && !branchQs(m).leng
 /** Whether a card's node has anything under its head: answers, score ranges, its group's cards, or that invitation. */
 const hasBody = (m: Module) => branchQs(m).length > 0 || isQuiz(m) || wantsQuestion(m);
 const letter = (i: number) => String.fromCharCode(65 + i);
-const picked = (v: AnswerValue | undefined, w: Wire) =>
-  w.score ? typeof v === "number" && v >= w.score.min && v < w.score.max : Array.isArray(v) ? (v as number[]).includes(w.option) : v === w.option;
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 /** The rows on a card at a zoom level: its head, (zoomed in) a preview, then each question's answers and the score bands. */
@@ -319,7 +321,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const changed = applyMove(shownLessons, moving.id, moving.to, moving.before);
     if (!changed.length) return null;
     const by = new Map(changed.map((l) => [l.id, l]));
-    return layout(shownLessons.map((l) => by.get(l.id) ?? l), wires, level, !!readOnly, weeksOf);
+    const next = shownLessons.map((l) => by.get(l.id) ?? l);
+    // Cards from one answer sit in their lesson order, so a reorder among them shows in the wires' order too.
+    return layout(next, wiresOf(next.flatMap((l) => l.modules)), level, !!readOnly, weeksOf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moving?.id, moving?.to, moving?.before, moving?.trash, shownLessons, wires, level, readOnly]);
   const { nodes, regions, width, height } = preview ?? base;
@@ -342,7 +346,17 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const [live, setLive] = useState(false);
   // Hold a card (like an app on a phone's home screen): the cards jiggle and each shows a button to delete it.
   const [jiggle, setJiggle] = useState(false);
+  // The jiggle runs as its own animation on each card's `rotate`, so it never touches the cards' CSS animation: ending
+  // it doesn't replay their fade-in (the whole map used to flash on Done).
+  useEffect(() => {
+    if (!jiggle || reducedMotion()) return;
+    const els = [...(scroller.current?.querySelectorAll<HTMLElement>(".tree-node") ?? [])];
+    const runs = els.map((el, i) => el.animate([{ rotate: "-0.9deg" }, { rotate: "0.9deg" }], { duration: 260, iterations: Infinity, direction: "alternate", easing: "ease-in-out", delay: -(i % 5) * 70 }));
+    return () => runs.forEach((a) => a.cancel());
+  }, [jiggle, nodes.size]);
   const [now] = useState(() => Date.now());
+  // A card's video or picture, opened big from its thumbnail.
+  const [viewing, setViewing] = useState<{ a: Attachment; title: string; from: DOMRect; open: boolean } | null>(null);
   const [born] = useState(() => new Map<string, { x: number; y: number }>());
 
   const targets = useMemo(() => new Map([...nodes].map(([id, n]) => [id, { x: n.x, y: n.y }])), [nodes]);
@@ -548,20 +562,24 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const canTarget = (port: Port, id: string) => targetsFor(port).some((x) => x.m.id === id);
   const lessonWith = (id: string) => lessons.find((l) => l.modules.some((m) => m.id === id))!;
 
-  /** A lesson with one port pointed at `to`. */
-  function withWire(l: Lesson, port: Port, to: string | null): Lesson {
+  /**
+   * A lesson with a port changed: `to` added to the cards an answer deals (a score range deals one, so it's replaced),
+   * or, with `drop`, that one card taken off (null: all of them).
+   */
+  function withWire(l: Lesson, port: Port, to: string | null, drop = false): Lesson {
     return {
       ...l,
       modules: l.modules.map((m) => {
         if (m.id !== port.from) return m;
-        if (port.q === SCORE) return { ...m, bands: bandsOf(m).map(({ min, next }, i) => ({ min, next: i === port.option ? to : next })) };
+        if (port.q === SCORE) return { ...m, bands: bandsOf(m).map(({ min, next }, i) => ({ min, next: i !== port.option ? next : drop ? (to && next !== to ? next : null) : to })) };
         return {
           ...m,
           questions: m.questions?.map((q) => {
             if (q.id !== port.q) return q;
             const next = [...(q.next ?? [])];
             while (next.length < q.options.length) next.push(null);
-            next[port.option] = to;
+            const had = targetsOf(q, port.option);
+            next[port.option] = slotOf(drop ? (to ? had.filter((x) => x !== to) : []) : to ? [...had, to] : had);
             return { ...q, next: next.some(Boolean) ? next : undefined };
           }),
         };
@@ -573,6 +591,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
    * already started it keep it).
    */
   const wire = async (port: Port, to: string | null) => {
+    if (to && wires.some((w) => w.from === port.from && w.q === port.q && w.option === port.option && w.to === to)) return;
     if (to && !wires.some((w) => w.to === to)) {
       const m = all.find((x) => x.m.id === to)?.m;
       const started = students.filter((st) => { const p = progress[st.id]?.[to]; return !!p && p.status !== "todo"; }).length;
@@ -587,6 +606,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     fold(nodeOf(port.from), false);
     onChange(withWire(lessonWith(port.from), port, to));
   };
+  /** Take one card (null: every card) off what a port deals; it goes back to everyone unless another answer deals it. */
+  const unwire = (port: Port, to: string | null) => onChange(withWire(lessonWith(port.from), port, to, true));
   const setBands = (m: Module, bands: { min: number; next: string | null }[] | undefined) => {
     const l = lessonWith(m.id);
     onChange({ ...l, modules: l.modules.map((x) => (x.id === m.id ? { ...x, bands } : x)) });
@@ -758,8 +779,21 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     if (!to) return {};
     const from = lessonWith(id);
     if (to !== from?.id && whyNot(id, to)) return { to };
-    // A card an answer deals sits under that card; its place in the row isn't its own to choose.
-    if (to === from?.id && base.nodes.get(id)?.parent) return { to };
+    // A card an answer deals sits under that card. Beside other cards the same answer deals, it can trade places with
+    // them; otherwise its place isn't its own to choose.
+    if (to === from?.id && base.nodes.get(id)?.parent) {
+      const w = wires.find((x) => x.to === id && nodeOf(x.from) === base.nodes.get(id)!.parent);
+      const sibs = w ? wires.filter((x) => x.from === w.from && x.q === w.q && x.option === w.option && x.to !== id && base.nodes.get(x.to)?.lessonId === to).map((x) => base.nodes.get(x.to)!).sort((a, b) => a.x - b.x) : [];
+      if (!sibs.length || !from) return { to };
+      const next = sibs.find((n) => p.x < n.x + W / 2);
+      if (next) return { to, before: next.m.id };
+      // After the last of them: before whatever follows that card and what it deals in the lesson.
+      const last = sibs[sibs.length - 1].m.id;
+      const block = new Set([last, ...branchBelow(from.modules, last)]);
+      const end = Math.max(...from.modules.map((m, k) => (block.has(m.id) ? k : -1)));
+      const after = from.modules.slice(end + 1).find((m) => m.id !== id && !branchBelow(from.modules, id).includes(m.id));
+      return { to, before: after ? after.id : null };
+    }
     const row = [...base.nodes.values()].filter((n) => n.lessonId === to && !n.parent && n.m.id !== id).sort((a, b) => a.x - b.x);
     const next = row.find((n) => p.x < n.x + W / 2);
     return { to, before: next ? next.m.id : null };
@@ -929,9 +963,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 
   return (
     <div className="relative">
+      {viewing && (
+        <MediaLift a={viewing.a} title={viewing.title} from={viewing.from} open={viewing.open}
+          onClose={() => setViewing((v) => (v ? { ...v, open: false } : v))} onGone={() => setViewing(null)} />
+      )}
       {jiggle && (
-        <div className="pop absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-line bg-white py-1.5 pl-4 pr-1.5 text-[13px] shadow-[0_16px_40px_-16px_rgba(20,20,18,0.4)]">
-          <span className="text-ink-2">Tap <span className="inline-flex h-4 w-4 translate-y-[3px] items-center justify-center rounded-full bg-[#6f6f6c]"><span className="block h-[2px] w-2 rounded-full bg-white" /></span> to delete a card</span>
+        // In the map's top-right corner, where it stays while the map scrolls under it.
+        <div className="pop absolute top-2.5 z-30 flex items-center gap-3 rounded-2xl border border-line bg-white py-1.5 pl-4 pr-1.5 text-[13px] shadow-[0_16px_40px_-16px_rgba(20,20,18,0.4)]" style={{ right: gap + 10, transition: "right 0.45s cubic-bezier(0.22, 1, 0.36, 1)" }}>
+          <span className="text-ink-2">Tap <span className="inline-flex h-4 w-4 -translate-y-[1px] align-middle items-center justify-center rounded-full bg-[#6f6f6c]"><span className="block h-[2px] w-2 rounded-full bg-white" /></span> to delete a card</span>
           <button onClick={() => setJiggle(false)} className="btn btn-dark press h-8 px-4 text-[12.5px]">Done</button>
         </div>
       )}
@@ -1091,7 +1130,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
             {level !== "far" && !drag && drawn.filter((w) => hot === w.from || hot === w.to || selected === w.from || selected === w.to).map((w) => {
               const { mid } = route(w);
               return (
-                <span key={`why-${w.from}-${w.q}-${w.option}`} className="pop pointer-events-none absolute z-20 max-w-[180px] -translate-x-1/2 -translate-y-1/2 truncate rounded-full border bg-white px-2.5 py-[3px] text-[11px] font-medium shadow-[0_6px_16px_-8px_rgba(20,20,18,0.45)]"
+                <span key={`why-${w.from}-${w.q}-${w.option}-${w.to}`} className="pop pointer-events-none absolute z-20 max-w-[180px] -translate-x-1/2 -translate-y-1/2 truncate rounded-full border bg-white px-2.5 py-[3px] text-[11px] font-medium shadow-[0_6px_16px_-8px_rgba(20,20,18,0.45)]"
                   style={{ left: mid.x, top: mid.y, color: colorOf(w), borderColor: `${colorOf(w)}55` }}>{whyOf(w)}</span>
               );
             })}
@@ -1121,14 +1160,16 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                   // A click anywhere on the card opens it (the head's button too); its own buttons and boxes keep their clicks.
                   onClick={(e: React.MouseEvent) => {
                     const t = e.target as HTMLElement;
-                    const own = t.closest("button, a, input, textarea, select, label, [contenteditable]");
-                    if (own && !own.classList.contains("tree-head")) return;
+                    const own = t.closest("button, a, input, textarea, select, label, [contenteditable], [role=button]") as HTMLElement | null;
+                    // Picking cards for a group, or deleting, a click on the card's picture counts as a click on the card.
+                    const passes = own?.dataset.art !== undefined && (e.shiftKey || picking || jiggle);
+                    if (own && !own.classList.contains("tree-head") && !passes) return;
                     if (dragged || typing || jiggle || window.getSelection()?.toString()) return;
                     if ((e.shiftKey || picking) && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
                     onEdit(nd.lessonId, m.id);
                   }}
-                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? "isolate" : ""} ${jiggle ? "tree-jiggle" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
-                  style={{ left: p.x, top: p.y, width: W, height: nd.h, animationDelay: jiggle ? `${-(i % 5) * 70}ms` : `${Math.min(i, 14) * 25}ms` }}
+                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? "isolate" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
+                  style={{ left: p.x, top: p.y, width: W, height: nd.h, animationDelay: `${Math.min(i, 14) * 25}ms` }}
                 >
                   {jiggle && onDelete && (
                     <button onClick={(e) => { e.stopPropagation(); onDelete(m); }} onPointerDown={(e) => e.stopPropagation()} aria-label={`Delete ${m.title || "this card"}`}
@@ -1185,13 +1226,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                             <span className={`text-[10.5px] ${unfinished(c) ? "text-[#a0561f]" : "text-ink-3"}`}>{unfinished(c) ? "No question yet" : faceMeta(c).name}</span>
                           </button>
                           {branchQs(c).map((q) => q.options.map((o, oi) => {
-                            const to = q.next?.[oi];
+                            const to = targetsOf(q, oi).length > 0;
                             return (
                               <div key={`${q.id}-${oi}`} className="relative flex items-center gap-2 pl-9 pr-3.5" style={{ height: ROW }}>
                                 <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined}>{letter(oi)}</span>
                                 <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">{o.trim() ? <MathText text={o.trim()} /> : `Option ${oi + 1}`}</span>
                                 {wentBadge(c.id, q.id, oi)}
-                                <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `${c.title}: answer ${letter(oi)} deals a card. Change it` : `${c.title}: deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: c.id, q: q.id, option: oi })} />
+                                <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `${c.title}: answer ${letter(oi)} deals ${targetsOf(q, oi).length > 1 ? `${targetsOf(q, oi).length} cards` : "a card"}. Add or change` : `${c.title}: deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: c.id, q: q.id, option: oi })} />
                               </div>
                             );
                           }))}
@@ -1203,7 +1244,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                             ? <div className="flex items-center px-2" style={{ height: SEC }}>{typeBox("h-6 text-[11.5px]")}</div>
                             : <div onDoubleClick={startTyping(m.id, `q:${q.id}`, q.text)} className="truncate px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }} title={readOnly ? undefined : "Double-click to edit"}><MathText text={q.text.trim() || m.title || "Question"} /></div>}
                           {q.options.map((o, oi) => {
-                            const to = q.next?.[oi];
+                            const to = targetsOf(q, oi).length > 0;
                             return (
                               <div key={oi} className="relative flex items-center gap-2 px-3.5" style={{ height: ROW }}>
                                 <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined} title={q.answer === oi && !m.poll ? "The right answer" : undefined}>{letter(oi)}</span>
@@ -1211,7 +1252,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                                   ? <span className="min-w-0 flex-1 pr-3">{typeBox("h-6 text-[12.5px]")}</span>
                                   : <span onDoubleClick={startTyping(m.id, `o:${q.id}:${oi}`, o)} className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2" title={readOnly ? undefined : "Double-click to edit"}>{o.trim() ? <MathText text={o.trim()} /> : `Option ${oi + 1}`}</span>}
                                 {wentBadge(m.id, q.id, oi)}
-                                <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `Answer ${letter(oi)} deals a card. Change it` : `Deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: q.id, option: oi })} />
+                                <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `Answer ${letter(oi)} deals ${targetsOf(q, oi).length > 1 ? `${targetsOf(q, oi).length} cards` : "a card"}. Add or change` : `Deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: m.id, q: q.id, option: oi })} />
                               </div>
                             );
                           })}
@@ -1271,7 +1312,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       )}
                     </div>
                   )}
-                  {!nd.members && <CardRest m={m} far={level === "far"} art={level === "far" || !hasBody(m)} tint={suit.tint} cover={suit.cover} />}
+                  {!nd.members && <CardRest m={m} far={level === "far"} art={level === "far" || !hasBody(m)} tint={suit.tint} cover={suit.cover}
+                    onMedia={(a, el, e) => { if (e.shiftKey || picking || jiggle || dragged) return; e.stopPropagation(); setViewing({ a, title: m.title, from: el.getBoundingClientRect(), open: true }); }} />}
                   {dealsSome(m.id) && (() => {
                     // Fold this card's follow-ups away to see just this card, or bring them back.
                     const shut = folded.has(m.id);
@@ -1332,8 +1374,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               const isScore = menu.port.q === SCORE;
               const band = isScore && src ? bandsOf(src)[menu.port.option] : undefined;
               const q = !isScore ? src?.questions?.find((x) => x.id === menu.port.q) : undefined;
-              const to = isScore ? band?.next : q?.next?.[menu.port.option];
-              const others = targetsFor(menu.port).filter((x) => x.m.id !== to);
+              const dealt = isScore ? (band?.next ? [band.next] : []) : q ? targetsOf(q, menu.port.option) : [];
+              const others = targetsFor(menu.port).filter((x) => !dealt.includes(x.m.id));
               const fromLi = lessonIndex(lessonWith(menu.port.from).id);
               const later = lessons.slice(fromLi, fromLi + 4);
               const groups = lessons.map((l) => ({ l, cards: others.filter((x) => x.lessonId === l.id) })).filter((g) => g.cards.length);
@@ -1359,9 +1401,25 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       </button>
                     ))}
                   </div>
+                  {menu.mode === "port" && dealt.length > 0 && (
+                    <>
+                      <div className="px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">{isScore ? "Deals" : dealt.length > 1 ? `Deals ${dealt.length} cards` : "Deals"}</div>
+                      {dealt.map((id) => {
+                        const c = all.find((x) => x.m.id === id)?.m;
+                        return (
+                          <div key={id} className="flex items-center gap-2 rounded-lg px-2 py-1 text-[12.5px]">
+                            <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: c ? suitOfCard(c).tint : INK }} />
+                            <span className="min-w-0 flex-1 truncate">{c?.title || "Untitled card"}</span>
+                            <button onClick={() => { unwire(menu.port, id); if (dealt.length === 1) setMenu(null); }} title="Disconnect: students who pick this no longer get it" aria-label={`Disconnect “${c?.title || "this card"}”`}
+                              className="press flex h-6 w-6 flex-none items-center justify-center rounded-md text-ink-3 hover:bg-lane hover:text-bad"><Icon name="x" size={12} /></button>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
                   {menu.mode === "port" && groups.length > 0 && (
                     <>
-                      <div className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">Deal a card already made</div>
+                      <div className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">{isScore ? "Deal a card already made" : dealt.length ? "Also deal a card already made" : "Deal a card already made"}</div>
                       <div className="max-h-44 overflow-auto">
                         {groups.map((g) => (
                           <div key={g.l.id}>
@@ -1376,9 +1434,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       </div>
                     </>
                   )}
-                  {menu.mode === "port" && to && (
-                    <button onClick={() => { wire(menu.port, null); setMenu(null); }} className="press mt-1 block w-full rounded-lg border-t border-line px-2 py-1.5 text-left text-[12.5px] text-bad hover:bg-lane">
-                      Disconnect (the card goes to everyone)
+                  {menu.mode === "port" && dealt.length > 1 && (
+                    <button onClick={() => { unwire(menu.port, null); setMenu(null); }} className="press mt-1 block w-full rounded-lg border-t border-line px-2 py-1.5 text-left text-[12.5px] text-bad hover:bg-lane">
+                      Disconnect all (the cards go to everyone)
                     </button>
                   )}
                 </div>
@@ -1400,17 +1458,33 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 
 /** A path through these points at right angles, each corner rounded. */
 /** The rest of a card below its head and answers: its picture (or drawing) and the start of what to do, like a playing card's face. */
-function CardRest({ m, far, art, tint, cover }: { m: Module; far: boolean; art: boolean; tint: string; cover: string }) {
+function CardRest({ m, far, art, tint, cover, onMedia }: { m: Module; far: boolean; art: boolean; tint: string; cover: string; onMedia?: (a: Attachment, el: HTMLElement, e: React.MouseEvent) => void }) {
   const first = m.attachments?.[0];
+  const yt = first?.kind === "link" ? videoEmbed(first.url)?.src.match(/youtube[^/]*\/embed\/([\w-]+)/)?.[1] : undefined;
+  // A video or a picture opens big (the media area is its own button, so the card's click leaves it be); a recording
+  // plays right here.
+  const open = (e: React.MouseEvent<HTMLElement>) => first && onMedia?.(first, e.currentTarget, e);
   const body = m.body.trim();
   return (
     <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-hidden ${far ? "px-4 pb-4 pt-1" : "px-3.5 pb-3.5 pt-1.5"}`}>
       {art && (
         <div className="relative min-h-[3rem] flex-1 overflow-hidden rounded-[12px]" style={{ background: cover }}>
-          {first?.kind === "image"
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={first.url} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" />
-            : <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />}
+          {first?.kind === "image" ? (
+            <button type="button" data-art onClick={open} aria-label={`Open the picture on “${m.title}”`} className="absolute inset-0 cursor-zoom-in">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={first.url} alt="" draggable={false} className="h-full w-full object-cover" />
+            </button>
+          ) : first?.kind === "video" || yt ? (
+            <button type="button" data-art onClick={open} aria-label={`Play the video on “${m.title}”`} className="group absolute inset-0 bg-[#dfe6ec]">
+              {first?.kind === "video"
+                ? <video src={`${first.url}#t=1.5`} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                // eslint-disable-next-line @next/next/no-img-element
+                : <img src={`https://i.ytimg.com/vi/${yt}/hqdefault.jpg`} alt="" draggable={false} className="h-full w-full object-cover" />}
+              <span className="absolute inset-0 flex items-center justify-center"><PlayDot /></span>
+            </button>
+          ) : first?.kind === "audio" ? (
+            <div className="absolute inset-0"><Recording a={first} cover={cover} /></div>
+          ) : <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />}
         </div>
       )}
       {!far && body && <p className={`flex-none text-[12px] leading-[1.45] text-ink-2 ${art ? "line-clamp-3" : "line-clamp-[8]"}`}><MathText text={body} /></p>}

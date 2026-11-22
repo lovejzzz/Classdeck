@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.38",
+    date: "2026-11-22",
+    changes: [
+      "One answer can deal more than one card. Drag an answer to a second card and it's added beside the first, each with its own line, instead of replacing it. The answer's menu lists every card it deals, each with its own Disconnect.",
+      "Cards dealt by the same answer can be dragged to reorder them among themselves.",
+      "On the course map, a card's video shows a frame of it; click it and the video grows out of the card and plays, full screen too. A picture opens large the same way. A recording plays right on the card.",
+      "Recordings show their real waveform, on the map, on students' cards and in the card panel.",
+      "Holding a card to delete cards: the “Tap to delete” bar sits in the map's top-right corner, and pressing Done no longer makes the whole map flash.",
+      "Fixed: with Where students are on, a quiz's score ranges again count the students who went each way (they showed none since 0.1.36).",
+    ],
+  },
+  {
     version: "0.1.37",
     date: "2026-11-22",
     changes: [

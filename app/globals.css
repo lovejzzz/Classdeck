@@ -225,6 +225,3 @@ button:disabled { cursor: not-allowed; }
 .hero-wire { stroke-dasharray: 1; animation: tree-draw 0.8s var(--ease-out) backwards; }
 @media (prefers-reduced-motion: reduce) { .hero-student { display: none; } }
 /* Cards on the map after a long press: a gentle jiggle, like apps on a phone's home screen ready to be deleted. */
-@keyframes tree-jiggle { from { transform: rotate(-0.9deg); } to { transform: rotate(0.9deg); } }
-.tree-node.tree-jiggle { animation: tree-jiggle 0.26s ease-in-out infinite alternate; }
-@media (prefers-reduced-motion: reduce) { .tree-node.tree-jiggle { animation: none; } }

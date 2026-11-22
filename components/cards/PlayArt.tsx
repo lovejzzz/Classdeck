@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { hash } from "@/lib/cards";
+import { Waveform } from "./Waveform";
 import { videoEmbed } from "@/lib/media";
 import type { Attachment } from "@/lib/types";
 
@@ -9,7 +9,7 @@ import type { Attachment } from "@/lib/types";
 export const playableArt = (a?: Attachment) =>
   !!a && (a.kind === "video" || a.kind === "audio" || (a.kind === "link" && !!videoEmbed(a.url)?.src.includes("youtube")));
 
-const PlayDot = ({ playing = false }: { playing?: boolean }) => (
+export const PlayDot = ({ playing = false }: { playing?: boolean }) => (
   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 shadow-[0_2px_10px_rgba(0,0,0,0.2)] transition-transform group-hover:scale-110">
     {playing
       ? <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h2.4v9H2.5zM7.1 1.5h2.4v9H7.1z" fill="#1b1b1a" /></svg>
@@ -82,13 +82,12 @@ function FullButton() {
   );
 }
 
-function Recording({ a, cover }: { a: Attachment; cover: string }) {
+export function Recording({ a, cover }: { a: Attachment; cover: string }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [at, setAt] = useState(0);
   const [len, setLen] = useState(0);
   useEffect(() => () => ref.current?.pause(), []);
-  const seed = hash(a.id);
   const done = len ? at / len : 0;
   const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
   const toggle = (e: React.MouseEvent) => {
@@ -102,12 +101,7 @@ function Recording({ a, cover }: { a: Attachment; cover: string }) {
       role="button" aria-label={playing ? "Pause the recording" : "Play the recording"} tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(e as unknown as React.MouseEvent); } }}>
       <div className="absolute inset-[-30%] blur-[16px]" style={{ background: cover }} />
-      <div className="relative flex h-1/2 items-center gap-[3px]">
-        {Array.from({ length: 18 }, (_, i) => {
-          const h = 0.25 + Math.abs(Math.sin(i * 1.7 + seed * 9)) * 0.75;
-          return <span key={i} className={`w-[3px] rounded-full transition-colors ${i / 18 < done ? "bg-[#4b56a8]" : "bg-ink/40"}`} style={{ height: `${h * 100}%` }} />;
-        })}
-      </div>
+      <Waveform url={a.url} seed={a.id} done={done} off="bg-ink/45" className="h-1/2" />
       <span className="absolute inset-0 flex items-center justify-center"><PlayDot playing={playing} /></span>
       {(playing || at > 0) && len > 0 && (
         <span className="mono absolute bottom-1.5 right-2 rounded bg-white/80 px-1 text-[10px] text-ink-2">{clock(at)} / {clock(len)}</span>

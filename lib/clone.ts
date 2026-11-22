@@ -1,4 +1,5 @@
 import { uid } from "./profile";
+import { mapSlot } from "./branching";
 import type { Lesson, Module, Week } from "./types";
 
 /**
@@ -19,7 +20,7 @@ export function cloneLesson(src: Lesson, title?: string, ids?: Map<string, strin
   l.modules = l.modules.map((m): Module => ({
     ...m,
     id: map.get(m.id)!,
-    questions: m.questions?.map((q) => (q.next ? { ...q, next: q.next.map(to) } : q)),
+    questions: m.questions?.map((q) => (q.next ? { ...q, next: q.next.map((s) => mapSlot(s, to)) } : q)),
     bands: m.bands?.map((b) => ({ ...b, next: to(b.next) })),
     members: m.members?.map((id) => map.get(id) ?? id),
     // A copy starts without a due date; the old date would make every copied card overdue at once.

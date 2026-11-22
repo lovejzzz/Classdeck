@@ -1,10 +1,10 @@
 // Card-tree rules, checked without a server: npx tsx tests/branching.test.ts
-import { bandRight, bandsOf, cleanGroups, snapBands, scoreCount, cleanCourseWiring, dealtTo, deleteCardIn, orphansOf, treeView, wiresOf, SCORE } from "../lib/branching";
+import { bandRight, bandsOf, cleanGroups, snapBands, scoreCount, cleanCourseWiring, dealtTo, deleteCardIn, orphansOf, treeView, unwire, wiresOf, SCORE } from "../lib/branching";
 import { cloneWeek } from "../lib/clone";
 import type { Lesson, Module, Progress, Week } from "../lib/types";
 
 const card = (id: string, extra: Partial<Module> = {}): Module => ({ id, type: "read", title: id, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
-const ask = (id: string, next: (string | null)[]) => ({ id, text: id, options: next.map((_, i) => `o${i}`), answer: 0, next });
+const ask = (id: string, next: (string | string[] | null)[]) => ({ id, text: id, options: next.map((_, i) => `o${i}`), answer: 0, next });
 const lesson = (id: string, modules: Module[]): Lesson => ({ id, title: id, modules, branches: {} });
 const prog = (dealt: Record<string, Record<string, number | number[]>>): Record<string, Progress> =>
   Object.fromEntries(Object.entries(dealt).map(([m, d]) => [m, { status: "done", dealt: d, updatedAt: 0 } as Progress]));
@@ -125,6 +125,26 @@ const course = () => [
   check("cleaning a group snaps its ranges", JSON.stringify(bs.map((b) => b.min)) === "[0,75,100]");
   check("ranges read as questions right", bandRight(bs[0], 4) === "0–2 of 4 right" && bandRight(bs[1], 4) === "3 of 4 right" && bandRight(bs[2], 4) === "4 of 4 right");
   check("a range no score lands in says so", bandRight({ min: 80, max: 90 }, 3) === null);
+}
+
+// One answer can deal several cards.
+{
+  const many = () => [lesson("L1", [card("src", { type: "practice", questions: [ask("q", [["B", "A"], "C"])] }), card("A"), card("B"), card("C")])];
+  const w = wiresOf(many()[0]);
+  check("an answer with two cards makes two wires", w.filter((x) => x.option === 0).length === 2);
+  check("…in the cards' order in the lesson, not the order they were added", w.filter((x) => x.option === 0).map((x) => x.to).join() === "A,B");
+  const all = many()[0].modules;
+  const d = dealtTo(all, prog({ src: { q: 0 } }));
+  check("picking it deals both cards", d.has("A") && d.has("B") && !d.has("C"));
+  const weeks: Week[] = [{ id: "w", title: "w", lessons: many() }];
+  cleanCourseWiring(weeks);
+  check("cleaning keeps both cards on the answer", JSON.stringify(weeks[0].lessons[0].modules[0].questions![0].next![0]) === JSON.stringify(["B", "A"]));
+  const one = unwire(many()[0], "A").modules[0].questions![0].next!;
+  check("deleting one of them keeps the other (as a single card again)", one[0] === "B" && one[1] === "C");
+  const ls = many();
+  const { after } = deleteCardIn(ls, "B");
+  const src = after.flatMap((l) => l.modules).find((m) => m.id === "src");
+  check("deleting a card from an answer of two keeps the other wired", src?.questions![0].next![0] === "A");
 }
 
 const failed = rows.filter(([, ok]) => !ok);

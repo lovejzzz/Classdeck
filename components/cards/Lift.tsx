@@ -9,8 +9,12 @@ import { clamp, lerp, onFrame, reducedMotion, Spring } from "@/lib/spring";
  * into wherever the card should land when it closes (its slot, or the done pile).
  */
 export function Lift({
-  from, open, landing, onGone, children, label, onBackdrop,
+  from, open, landing, onGone, children, label, onBackdrop, z = 40, wide = "max-w-5xl",
 }: {
+  /** Stacking order (above an editor panel, say). */
+  z?: number;
+  /** The panel's widest. */
+  wide?: string;
   from: DOMRect;
   open: boolean;
   /** Where to land on close. Called at close time so it reflects the latest layout. */
@@ -78,7 +82,7 @@ export function Lift({
   }, [open, onGone]);
 
   return (
-    <div className="fixed inset-0 z-40">
+    <div className="fixed inset-0" style={{ zIndex: z }}>
       <div ref={scrim} className="absolute inset-0 bg-[rgba(24,24,22,0.28)] opacity-0 backdrop-blur-[3px]" onClick={onBackdrop} />
       <div className="pointer-events-none absolute inset-0 flex items-start justify-center overflow-y-auto p-3 sm:p-8">
         <div
@@ -86,7 +90,7 @@ export function Lift({
           role="dialog"
           aria-modal="true"
           aria-label={label}
-          className="pointer-events-auto relative my-auto w-full max-w-5xl origin-center overflow-clip border border-line bg-white shadow-[0_30px_80px_-24px_rgba(20,20,18,0.45)] will-change-transform"
+          className={`pointer-events-auto relative my-auto w-full ${wide} origin-center overflow-clip border border-line bg-white shadow-[0_30px_80px_-24px_rgba(20,20,18,0.45)] will-change-transform`}
           style={{ transform: "scale(0.2)", borderRadius: 22 }}
         >
           <div ref={content} style={{ opacity: 0 }}>{children}</div>

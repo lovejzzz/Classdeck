@@ -148,6 +148,20 @@ const made = now.src?.questions?.[0]?.next?.[0];
 check("tree: a new Lesson 2 card wired from a Lesson 1 answer is saved, wire and all", !!made && now.l2.includes(made) && now.l2.length === 4, now);
 check("tree: the new card is hidden from the student until dealt", !(await studentSees()).includes(made));
 
+// 4b) One answer, a second card: it's added beside the first (not swapped for it), and can be taken off on its own.
+await page.locator('[data-node="m-src"]').getByRole("button", { name: "Answer A deals a card. Add or change" }).click();
+await page.locator(".pop").getByRole("button", { name: /Lesson 2 for everyone/ }).click();
+await page.getByRole("button", { name: "Deal it by this answer" }).click();
+await settle(1200);
+now = await server();
+check("tree: a second card on one answer is added, the first kept", JSON.stringify([...(now.src?.questions?.[0]?.next?.[0] ?? [])].sort()) === JSON.stringify([made, "m-all2"].sort()), now.src?.questions);
+await page.locator('[data-node="m-src"]').getByRole("button", { name: "Answer A deals 2 cards. Add or change" }).click();
+await page.locator(".pop").getByRole("button", { name: /Disconnect “Lesson 2 for everyone”/ }).click();
+await page.keyboard.press("Escape");
+await settle(1200);
+now = await server();
+check("tree: disconnecting one of two keeps the other", now.src?.questions?.[0]?.next?.[0] === made, now.src?.questions);
+
 // 5) On the map: rename a card and an answer in place (double-click), then drag cards between lessons.
 const titleOnMap = page.locator('[data-node="m-all1"] span', { hasText: "Lesson 1 for everyone" }).first();
 await titleOnMap.dblclick();

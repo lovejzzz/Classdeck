@@ -398,6 +398,14 @@ async function main() {
     const cq = copy?.modules.find((m) => m.title === "Which feels harder?");
     const targets = cq?.questions?.[0]?.next ?? [];
     check("a copied lesson keeps its tree on the copied cards", targets.length === 2 && targets.every((t) => copy.modules.some((m) => m.id === t) && !["m-tx", "m-ty"].includes(t)), targets);
+    // One answer can deal several cards: they're kept as a list and all dealt.
+    const two = { ...lesson, modules: lesson.modules.map((m) => (m.id === "m-tq" ? { ...m, questions: [{ ...m.questions[0], next: [["m-tx", "m-tz"], "m-ty"] }] } : m)) };
+    await A.op(tid, { op: "saveLesson", lesson: two });
+    const kept = courseOf(await A.state(tid)).weeks[0].lessons.find((l) => l.id === base.id).modules.find((m) => m.id === "m-tq").questions[0].next;
+    check("an answer that deals two cards is saved with both", JSON.stringify(kept) === JSON.stringify([["m-tx", "m-tz"], "m-ty"]), kept);
+    const rc = await SC.op(tid, { op: "answer", studentId: sid("Cal Three"), moduleId: "m-tq", qid: "q1", choice: 0 });
+    const c2 = await ids(SC, "Cal Three");
+    check("picking it deals both cards", c2.includes("m-tx") && c2.includes("m-tz") && !c2.includes("m-ty") && rc.dealt?.length === 2, [c2, rc.dealt]);
     await A.del("/api/courses", { id: tid, confirm: `Tree ${run}` });
   }
 

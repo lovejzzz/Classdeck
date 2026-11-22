@@ -1,7 +1,7 @@
 // Card trees: answers (and quiz scores) deal follow-up cards.
 //
 // Two kinds of wire, both stored on the card that deals:
-//  - an answer: question.next[i] is the card dealt to a student who picks option i;
+//  - an answer: question.next[i] is the card (or the cards, a list) dealt to a student who picks option i;
 //  - a score band (quiz cards): module.bands[i] = { min, next }: a student whose score is at least `min` percent, and
 //    below the next band's min, gets `next`.
 // A card that some wire deals is a follow-up: it stays off every board until a student is dealt it. Targets can be in
@@ -20,6 +20,17 @@ export const SHARED_ONLY = new Set(["studio", "wall"]);
 /** progress.dealt key that holds a quiz's submitted scores, in percent: a number (one) or a list (every try). A card group's
  *  single score is a number. */
 export const SCORE = "#score";
+
+/** What an answer deals: one card, several, or none. */
+export type Slot = string | string[] | null | undefined;
+/** The cards in an answer's slot. */
+export const idsIn = (s: Slot): string[] => (Array.isArray(s) ? s.filter((x): x is string => typeof x === "string" && !!x) : typeof s === "string" && s ? [s] : []);
+/** A slot holding these cards: none is null, one is the card's id, more is a list (so a single card stays as it always was). */
+export const slotOf = (ids: string[]): string | string[] | null => { const u = [...new Set(ids.filter(Boolean))]; return u.length === 0 ? null : u.length === 1 ? u[0] : u; };
+/** The cards answer i of a question deals. */
+export const targetsOf = (q: Pick<Question, "next">, i: number) => idsIn(q.next?.[i]);
+/** A slot with each card swapped by `f` (null drops it). */
+export const mapSlot = (s: Slot, f: (id: string) => string | null | undefined) => slotOf(idsIn(s).map((x) => f(x) ?? "").filter(Boolean));
 
 /** One wire: from an answer or a score band on a card, to the card it deals. */
 export interface Wire { from: string; q: string; option: number; to: string; score?: { min: number; max: number } }
@@ -46,9 +57,14 @@ export const scored = (m: Pick<Module, "type">) => m.type === "quiz" || m.type =
 export function wiresOf(scope: HasModules | Module[]): Wire[] {
   const modules = Array.isArray(scope) ? scope : scope.modules;
   const out: Wire[] = [];
+  // Several cards from one answer go in their order in the course (so the map, the List and the board agree).
+  const order = new Map(modules.map((m, i) => [m.id, i]));
+  const at = (id: string) => order.get(id) ?? Infinity;
   for (const m of modules) {
     for (const q of m.questions ?? [])
-      if (canBranch(q)) (q.next ?? []).forEach((to, option) => { if (to && option < q.options.length) out.push({ from: m.id, q: q.id, option, to }); });
+      if (canBranch(q)) (q.next ?? []).forEach((slot, option) => {
+        if (option < q.options.length) for (const to of [...idsIn(slot)].sort((a, b) => at(a) - at(b))) out.push({ from: m.id, q: q.id, option, to });
+      });
     if (scored(m)) bandsOf(m).forEach((b, option) => { if (b.next) out.push({ from: m.id, q: SCORE, option, to: b.next, score: { min: b.min, max: b.max } }); });
   }
   return out;
@@ -57,7 +73,8 @@ export function wiresOf(scope: HasModules | Module[]): Wire[] {
 /** The cards that are dealt by an answer or a score (and so are hidden until then). */
 export const followUps = (scope: HasModules | Module[]) => new Set(wiresOf(scope).map((w) => w.to));
 
-const picked = (v: AnswerValue | undefined, w: Wire) =>
+/** Whether this answer (or score) takes the student down this wire. */
+export const picked = (v: AnswerValue | undefined, w: Wire) =>
   w.score ? scoresIn(v).some((x) => x >= w.score!.min && x < w.score!.max) : Array.isArray(v) ? (v as number[]).includes(w.option) : v === w.option;
 
 /** Every score kept under SCORE, oldest first. */
@@ -110,7 +127,7 @@ export function treeView(weeks: { lessons: Lesson[] }[], prog: Record<string, Pr
 }
 
 /** Whether this question deals any card (so its first answer should be kept). */
-export const deals = (q: Question) => canBranch(q) && (q.next ?? []).some(Boolean);
+export const deals = (q: Question) => canBranch(q) && (q.next ?? []).some((s) => idsIn(s).length > 0);
 /** Whether this quiz deals cards by score. */
 export const dealsByScore = (m: Module) => scored(m) && (m.bands ?? []).some((b) => b.next);
 
@@ -132,7 +149,7 @@ export function cleanCourseWiring(weeks: Week[]): void {
     const m = c.m;
     for (const q of m.questions ?? []) {
       if (!canBranch(q) || !Array.isArray(q.next)) { delete q.next; continue; }
-      q.next = q.next.slice(0, q.options.length).map((to) => ok(c, to));
+      q.next = q.next.slice(0, q.options.length).map((slot) => mapSlot(slot as Slot, (to) => ok(c, to)));
       if (!q.next.some(Boolean)) delete q.next;
     }
     if (!scored(m) || !Array.isArray(m.bands)) { delete m.bands; continue; }
@@ -153,7 +170,7 @@ export function cleanCourseWiring(weeks: Week[]): void {
   const cut = (w: Wire) => {
     const m = byId.get(w.from)!;
     if (w.q === SCORE) { const b = [...(m.bands ?? [])].sort((x, y) => x.min - y.min)[w.option]; if (b) b.next = null; }
-    else { const q = m.questions?.find((x) => x.id === w.q); if (q?.next) q.next[w.option] = null; }
+    else { const q = m.questions?.find((x) => x.id === w.q); if (q?.next) q.next[w.option] = mapSlot(q.next[w.option], (x) => (x === w.to ? null : x)); }
   };
   const visit = (id: string) => {
     state.set(id, 1);
@@ -171,13 +188,14 @@ export function cleanCourseWiring(weeks: Week[]): void {
 /** Remove a card from the wiring of a lesson (it was deleted). */
 export function unwire(lesson: Lesson, ids: Set<string> | string): Lesson {
   const gone = typeof ids === "string" ? new Set([ids]) : ids;
-  const touches = (m: Module) => m.questions?.some((q) => q.next?.some((x) => x && gone.has(x))) || m.bands?.some((b) => b.next && gone.has(b.next));
+  const hit = (q: Question) => !!q.next?.some((s) => idsIn(s).some((x) => gone.has(x)));
+  const touches = (m: Module) => m.questions?.some(hit) || m.bands?.some((b) => b.next && gone.has(b.next));
   if (!lesson.modules.some(touches)) return lesson;
   return {
     ...lesson,
     modules: lesson.modules.map((m) => !touches(m) ? m : {
       ...m,
-      questions: m.questions?.map((q) => (q.next?.some((x) => x && gone.has(x)) ? { ...q, next: q.next.map((x) => (x && gone.has(x) ? null : x)) } : q)),
+      questions: m.questions?.map((q) => (hit(q) ? { ...q, next: q.next!.map((s) => mapSlot(s, (x) => (gone.has(x) ? null : x))) } : q)),
       bands: m.bands?.map((b) => (b.next && gone.has(b.next) ? { ...b, next: null } : b)),
     }),
   };

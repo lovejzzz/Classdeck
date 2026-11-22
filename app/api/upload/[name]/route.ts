@@ -15,7 +15,15 @@ export async function GET(request: Request, { params }: Ctx) {
     buf = await fs.readFile(path.join(/*turbopackIgnore: true*/ UPLOAD_DIR, name));
   } catch {
     // Online, files live in R2: send the browser a short-lived link. (Files from before R2 stay on disk and are served above.)
-    if (r2Ready()) return new Response(null, { status: 302, headers: { Location: await presignGet(name), "Cache-Control": "private, max-age=600" } });
+    if (r2Ready()) {
+      // A recording's waveform is drawn from its sound, which a page can only read from this site: pass it through.
+      if (new URL(request.url).searchParams.has("wave") && /^(mp3|m4a|wav|ogg|weba|webm|aac|flac|mp4|mov)$/.test(ext)) {
+        const r = await fetch(await presignGet(name));
+        if (!r.ok || !r.body) return new Response("not found", { status: 404 });
+        return new Response(r.body, { headers: { "Content-Type": TYPES[ext] ?? "application/octet-stream", "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" } });
+      }
+      return new Response(null, { status: 302, headers: { Location: await presignGet(name), "Cache-Control": "private, max-age=600" } });
+    }
     return new Response("not found", { status: 404 });
   }
   const type = TYPES[ext] ?? "application/octet-stream";
