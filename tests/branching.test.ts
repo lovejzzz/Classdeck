@@ -80,6 +80,9 @@ const course = () => [
   check("60% (on the line) is the middle band", at(60) === "mid");
   check("89% is the middle band", at(89) === "mid");
   check("90% and 100% are the top band", at(90) === "hi" && at(100) === "hi");
+  const tries = [...dealtTo(pool, prog({ qz: { [SCORE]: [40, 95] } }))].sort().join();
+  check("every kept score deals its band (a better retake adds, never removes)", tries === "hi,lo");
+  check("an old single number still works", at(59) === "lo");
 }
 
 // Cleaning: forward only, no loops, no class-wide targets, bands tidied.

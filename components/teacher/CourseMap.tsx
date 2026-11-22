@@ -1215,7 +1215,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       {isQuiz(m) && (
                         <div>
                           <div className="flex items-center justify-between px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }}>
-                            <span>Score (first try)</span>
+                            <span>Score (best try)</span>
                             {!readOnly && bands.length > 0 && (
                               <span className="flex gap-2">
                                 {bands.length < 5 && bands[bands.length - 1].min < 99 && (

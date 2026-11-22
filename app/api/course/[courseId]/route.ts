@@ -7,7 +7,7 @@ import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
 import { kindWeeks, withKind } from "@/lib/kinds";
-import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, orphansOf, pathsFor, SCORE, treeView } from "@/lib/branching";
+import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, orphansOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate, revokeInvites } from "@/lib/hooks";
@@ -926,7 +926,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const quiz = findModule(course, body.moduleId)?.mod;
       const set = quiz ? quizSet(quiz, body.studentId, p.attempt ?? 1) : [];
       p.score = set.filter((x) => p.results?.[x.id]).length;
-      // Card tree: the first submitted answers, and the first submitted score, decide which follow-ups this student gets.
+      // Card tree: the first submitted answers decide which follow-ups this student gets. Every submitted score is kept, so a
+      // better retake also deals the card for its band (what was dealt before stays).
       let dealtNow: string[] = [];
       if (quiz) {
         const before = treeOf(course, body.studentId).dealt;
@@ -935,7 +936,10 @@ async function change(request: Request, courseId: string, body: Record<string, a
           if (deals(q) && (p.dealt ??= {})[q.id] === undefined && (Array.isArray(a) ? a.length > 0 : Number.isInteger(a))) p.dealt[q.id] = a!;
         }
         // The score is a percent of the questions this student was given (so a random draw from a bank works too).
-        if (dealsByScore(quiz) && set.length && (p.dealt ??= {})[SCORE] === undefined) p.dealt[SCORE] = Math.round((p.score * 100) / set.length);
+        if (dealsByScore(quiz) && set.length) {
+          const pct = Math.round((p.score * 100) / set.length), had = scoresIn((p.dealt ??= {})[SCORE]);
+          if (!had.includes(pct)) p.dealt[SCORE] = [...had, pct];
+        }
         dealtNow = [...treeOf(course, body.studentId).dealt].filter((id) => !before.has(id));
       }
       if (p.status !== "done") {

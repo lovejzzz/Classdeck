@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.36",
+    date: "2026-11-22",
+    changes: [
+      "A quiz that deals cards by score now goes by the student's best try: a better retake also deals the card for its new score range, and the cards from earlier tries stay. On the map the score ports read “Score (best try)”.",
+    ],
+  },
+  {
     version: "0.1.35",
     date: "2026-11-22",
     changes: [

@@ -5,8 +5,9 @@
 //  - a score band (quiz cards): module.bands[i] = { min, next }: a student whose score is at least `min` percent, and
 //    below the next band's min, gets `next`.
 // A card that some wire deals is a follow-up: it stays off every board until a student is dealt it. Targets can be in
-// the same lesson or any later lesson of the course. What decides a student's path is fixed the first time: their first
-// answer to a question, and their first submitted score on a quiz (progress.dealt), so retakes never take a card away.
+// the same lesson or any later lesson of the course. An answer is fixed the first time (their first answer to a question).
+// A quiz keeps every submitted score (progress.dealt): a better retake deals the card for its band too, and nothing dealt
+// earlier is taken away.
 import type { AnswerValue, Lesson, Module, Progress, Question, ScoreBand, Week } from "./types";
 import { isAsked } from "./grading";
 
@@ -16,7 +17,8 @@ export const canBranch = (q: Question) => !q.kind || q.kind === "choice" || q.ki
 /** Card types that can't be dealt to some students only: they assume the whole class or group has them. */
 export const SHARED_ONLY = new Set(["studio", "wall"]);
 
-/** progress.dealt key that holds a quiz's first submitted score, in percent. */
+/** progress.dealt key that holds a quiz's submitted scores, in percent: a number (one) or a list (every try). A card group's
+ *  single score is a number. */
 export const SCORE = "#score";
 
 /** One wire: from an answer or a score band on a card, to the card it deals. */
@@ -56,7 +58,13 @@ export function wiresOf(scope: HasModules | Module[]): Wire[] {
 export const followUps = (scope: HasModules | Module[]) => new Set(wiresOf(scope).map((w) => w.to));
 
 const picked = (v: AnswerValue | undefined, w: Wire) =>
-  w.score ? typeof v === "number" && v >= w.score.min && v < w.score.max : Array.isArray(v) ? (v as number[]).includes(w.option) : v === w.option;
+  w.score ? scoresIn(v).some((x) => x >= w.score!.min && x < w.score!.max) : Array.isArray(v) ? (v as number[]).includes(w.option) : v === w.option;
+
+/** Every score kept under SCORE, oldest first. */
+export const scoresIn = (v: AnswerValue | undefined): number[] =>
+  typeof v === "number" ? [v] : Array.isArray(v) ? (v as unknown[]).filter((x): x is number => typeof x === "number") : [];
+/** The best score kept under SCORE, if any. */
+export const bestScore = (v: AnswerValue | undefined) => { const s = scoresIn(v); return s.length ? Math.max(...s) : undefined; };
 
 /**
  * The follow-up cards this student has been dealt. A card counts only once the card that deals it is on their board,

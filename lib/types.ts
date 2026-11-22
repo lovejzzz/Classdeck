@@ -161,7 +161,7 @@ export interface Nudge {
 
 export type AnswerValue = number | string | number[] | string[];
 
-/** Card tree, quiz cards: students whose first submitted score is at least `min` percent (and below the next band) get `next`. */
+/** Card tree, quiz cards: students with a submitted score (any try) at least `min` percent (and below the next band) get `next`. */
 export interface ScoreBand { min: number; next: string | null }
 
 export type Audience =

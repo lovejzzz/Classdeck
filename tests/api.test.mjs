@@ -454,11 +454,11 @@ async function main() {
     const eveId = sid("Eve Mid");
     const eveRev = (await S.Eve.state(`${tid}?as=${eveId}`)).progress[eveId]["m-sq"].reveal ?? {};
     check("with a try left, only the right answers are revealed", ["s1", "s2", "s3"].every((q) => eveRev[q]) && !eveRev.s4 && !eveRev.s5, eveRev);
-    // A retake with a better score doesn't change the path.
+    // A better retake deals the card for its band too, and keeps what was dealt before.
     await S.Dee.op(tid, { op: "retakeQuiz", studentId: sid("Dee Low"), moduleId: "m-sq" });
-    await take("Dee", 5);
+    const dee2 = await take("Dee", 5);
     const d2 = await ids("Dee");
-    check("the first submitted score decides (a retake doesn't change it)", d2.includes("m-low") && !d2.includes("m-top"), d2);
+    check("a better retake deals its band's card and keeps the earlier one", d2.includes("m-low") && d2.includes("m-top") && dee2.dealt?.[0]?.id === "m-top", [d2, dee2]);
     const deeId = sid("Dee Low");
     const deeRev = (await S.Dee.state(`${tid}?as=${deeId}`)).progress[deeId]["m-sq"].reveal ?? {};
     check("after the last try every answer is revealed", five.every((q) => deeRev[q.id]?.answer === 0), deeRev);
