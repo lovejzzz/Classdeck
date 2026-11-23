@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.67",
+    date: "2026-11-23",
+    changes: [
+      "Map: each lesson's band is as wide as its own cards, with + Card right after them, instead of as wide as the longest lesson.",
+      "Adding a card: the menu is called Add a card and says which lesson it goes in. Content and Question are two small cards to pick from, and your saved cards are a stack under them.",
+      "Map: a new Question card with no question yet no longer shows its empty options and the Add its question line at once.",
+    ],
+  },
+  {
     version: "0.1.66",
     date: "2026-11-23",
     changes: [

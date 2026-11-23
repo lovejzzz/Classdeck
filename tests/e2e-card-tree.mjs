@@ -143,7 +143,7 @@ await settle(800);
 await unfold();
 await page.getByRole("button", { name: "Deal a card for answer A" }).click();
 await page.locator(".pop").getByRole("button", { name: /^Week 1: Lesson 2$/ }).click();
-await page.locator(".pop").getByRole("button", { name: "Content", exact: true }).click();
+await page.locator(".pop").getByRole("button", { name: "New Content card", exact: true }).click();
 await settle();
 await page.keyboard.press("Escape");
 await settle(1200);

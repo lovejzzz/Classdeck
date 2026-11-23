@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, mapSlot, picked, SCORE, SHARED_ONLY, slotOf, targetsOf, wiresOf, type Wire } from "@/lib/branching";
-import { bandTone, pathColor, suitOfCard, suitOfKind } from "@/lib/ui";
+import { bandTone, pathColor, suitOfCard } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
+import { KindCard } from "../cards/KindCard";
 import { MathText, plainMath } from "../MathText";
 import { plainText } from "@/lib/markdown";
 import { isAsked } from "@/lib/grading";
@@ -53,7 +54,7 @@ const isRight = (q: { kind?: string; answer?: number; answerSet?: number[] }, i:
 /** Cards that branch by score: a quiz, and a card group. */
 /** A card with a score that can deal cards: a quiz, or a card group with question cards in it (`cards`: its lesson's). */
 const isQuiz = (m: Module, cards?: Module[]) => m.type === "quiz" || (m.type === "group" && (!cards || scoreCount(m, cards) > 0));
-const wantsQuestion = (m: Module) => kindOf(m) === "choice" && !(m.questions ?? []).some(isAsked) && m.type !== "quiz";
+const wantsQuestion = (m: Module) => kindOf(m) === "choice" && !branchQs(m).length && !otherQs(m).length && m.type !== "quiz";
 /** Whether a card's node has anything under its head: answers, score ranges, its group's cards, or that invitation. */
 const hasBody = (m: Module) => branchQs(m).length > 0 || otherQs(m).length > 0 || isQuiz(m) || wantsQuestion(m);
 /** A card whose answers fill its face still shows its media, in a strip above them. */
@@ -186,8 +187,7 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
     endColumn();
     return { nodes, regions, width: x0 - REGION_GAP + 60, height: Math.max(height + 60, 420) };
   }
-  // Every lesson's row is as wide as the widest, so they line up like shelves.
-  for (const r of regions) r.w = width;
+  // Each lesson's band is as wide as its own cards (its + Card button sits right after them), not the widest lesson's.
   return { nodes, regions, width: x0 + width + 60, height: Math.max(y0 + 60, 420) };
 }
 
@@ -816,17 +816,33 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         )}
       </div>
     );
+    // The two kinds as two small cards, like the ones they put down; the teacher's saved cards as a stack under them.
     return (
-      <div className="grid grid-cols-2 gap-0.5">
-        {NEW_KINDS.map((t) => (
-          <button key={t} onClick={() => onKind(t)} className="press flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
-            <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{familyName(t)}
-          </button>
-        ))}
-        <button onClick={() => menu && setMenu({ ...menu, saved: true })} className="press col-span-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
-          <Icon name="star" size={12} className="flex-none text-ink-3" /><span className="flex-1">Saved cards</span>
-          {saved.length > 0 && <span className="mono text-[11px] text-ink-3">{saved.length}</span>}
-          <Icon name="chevron" size={12} className="-rotate-90 text-ink-3" />
+      <div>
+        <div className="flex justify-center gap-2.5">
+          {NEW_KINDS.map((t) => (
+            <button key={t} onClick={() => onKind(t)} aria-label={`New ${familyName(t)} card`} className="press rounded-[12px] transition-transform hover:-translate-y-1 focus-visible:-translate-y-1">
+              <KindCard kind={t} />
+            </button>
+          ))}
+        </div>
+        <button onClick={() => menu && setMenu({ ...menu, saved: true })} className="press mt-2.5 flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-lane">
+          <span className="relative h-[44px] w-[44px] flex-none" aria-hidden="true">
+            {(saved.length ? saved.slice(0, 3) : [null, null, null]).map((sc, i, list) => {
+              const suit = sc ? suitOfCard(sc.module as Module) : null;
+              return (
+                <span key={i} className={`absolute top-0 h-[42px] w-[30px] rounded-[6px] border bg-white shadow-sm ${suit ? "" : "border-dashed border-line-strong"}`}
+                  style={{ left: 4 + i * 5, transform: `rotate(${(i - (list.length - 1) / 2) * 7}deg)`, borderColor: suit ? `${suit.tint}55` : undefined }}>
+                  {suit && <span className="mx-[3px] mt-[5px] block h-[16px] rounded-[3px]" style={{ background: suit.cover }} />}
+                </span>
+              );
+            })}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12.5px] font-medium text-ink">Saved cards</span>
+            <span className="block truncate text-[11px] text-ink-3">{saved.length ? `${saved.length} card${saved.length === 1 ? "" : "s"} you saved, from any course` : "Cards you save show up here"}</span>
+          </span>
+          <Icon name="chevron" size={13} className="-rotate-90 flex-none text-ink-3" />
         </button>
       </div>
     );
@@ -1329,7 +1345,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     {level !== "far" && <span className="mono flex-none">{full.modules.filter((m) => m.type !== "group").length} card{full.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
                     <span className="flex-1" />
                     {!readOnly && level !== "far" && (
-                      <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.left, b.bottom); setMenu({ add: r.lesson.id, x: p.x - 200, y: p.y + 4 }); }}
+                      <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.left, b.bottom); setMenu({ add: r.lesson.id, x: p.x - 232, y: p.y + 4 }); }}
                         className="press flex h-7 items-center gap-1 rounded-lg bg-white px-2 text-[12px] text-ink-2 shadow-sm hover:text-ink"><Icon name="plus" size={12} /> Card</button>
                     )}
                   </div>
@@ -1584,8 +1600,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                         </div>
                       )}
                       {wantsQuestion(m) && (
-                        <div className="px-3.5 text-[11.5px] leading-[34px] text-ink-3">
-                          {readOnly ? "No question yet" : <button onClick={() => onEdit(nd.lessonId, m.id)} className="hover:text-ink">Add its question to branch from the answers</button>}
+                        <div className="truncate px-3.5 text-[11.5px] leading-[34px] text-ink-3">
+                          {readOnly ? "No question yet" : <button onClick={() => onEdit(nd.lessonId, m.id)} className="hover:text-ink">Add its question</button>}
                         </div>
                       )}
                     </div>
@@ -1635,8 +1651,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               );
             })()}
             {menu && "add" in menu && (
-              <div ref={keepInView} className="pop absolute z-20 w-64 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
-                <div className="px-2 pb-1.5 pt-0.5 text-[12px] font-medium text-ink">New card for everyone in {lessons.find((l) => l.id === menu.add)?.title}</div>
+              <div ref={keepInView} className="pop absolute z-20 w-[296px] rounded-2xl border border-line bg-white p-3 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
+                <div className="px-1 pb-3">
+                  <div className="text-[13.5px] font-semibold text-ink">Add a card</div>
+                  <div className="truncate text-[11.5px] text-ink-3">to {lessons.find((l) => l.id === menu.add)?.title} · every student gets it</div>
+                </div>
                 {kindPicker((t) => addCard(menu.add, t), (sc) => addCard(menu.add, "content", sc))}
               </div>
             )}
