@@ -99,7 +99,7 @@
        "id": "m-q1tpl-your-students",
        "type": "read",
        "title": "What your students see",
-       "body": "Students get a board with today's lesson on top and the next card to play. Cards they've finished go on the Done pile; the rest wait in their hand.\n\nAt the top: For you (what needs them now), To-do, and Starred, for cards they starred to come back to. A card to read has Done, and Later to keep it for another time. My progress shows their scores and your feedback.\n\nThey never see a card that isn't meant for them. You'll try this yourself in Week 4 with Student View.",
+       "body": "Students get a board with today's lesson on top and the next card to play. Cards they've finished go on the Done pile; the rest wait in their hand.\n\nUnder the lesson's progress, small tags show only what needs them: cards to revise, overdue, due soon, to catch up, or an elective to choose. Starred cards are on My board. A card to read has Done, and Later to keep it for another time. My progress shows their scores and your feedback.\n\nThey never see a card that isn't meant for them. You'll try this yourself in Week 4 with Student View.",
        "audience": {
         "kind": "all"
        },
@@ -392,7 +392,7 @@
        "id": "m-q1tpl-dates",
        "type": "read",
        "title": "Dates and today's lesson",
-       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nTo date them all at once, open a lesson's ⋯ menu → Schedule lessons from here…: pick the first class, the days class meets and any days off, and every lesson from there gets its date.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too (under Access: Today, +3 days, +1 week). Students see what's due in To-do, and a card past its date shows as Overdue.",
+       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nTo date them all at once, open a lesson's ⋯ menu → Schedule lessons from here…: pick the first class, the days class meets and any days off, and every lesson from there gets its date.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too (under Access: Today, +3 days, +1 week). Students see it on the card, and a tag on their board says when something is due soon or overdue.",
        "audience": {
         "kind": "all"
        },
@@ -1070,7 +1070,7 @@
        "id": "m-q1tpl-why-elective",
        "type": "read",
        "title": "Why an elective?",
-       "body": "An elective is a lesson students choose to take (or not). Make one from a lesson's ⋯ menu: Make it an elective. Students choose from the Electives shelf on their board.\n\nIn Students → Electives, set how many electives each student takes.",
+       "body": "An elective is a lesson students choose to take (or not). Make one from a lesson's ⋯ menu: Make it an elective. Students see it in its week on their board, with its cards face down, and press Choose.\n\nIn Students → Electives, set how many electives each student takes.",
        "audience": {
         "kind": "all"
        },

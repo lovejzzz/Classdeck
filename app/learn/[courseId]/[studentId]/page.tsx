@@ -23,8 +23,8 @@ import { useInbox } from "@/components/student/useInbox";
 import { MarksContext } from "@/components/Marks";
 import { SignInNeeded } from "@/components/SignInNeeded";
 import { StudentLive } from "@/components/LiveClass";
-import { ForYou } from "@/components/student/ForYou";
-import { Electives } from "@/components/student/Electives";
+import { NeedsYou } from "@/components/student/NeedsYou";
+import { ElectiveRow, chooseElective } from "@/components/student/Electives";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
 import { setPreview, useConnectors, useCourse, useQuery } from "@/lib/client";
@@ -90,7 +90,7 @@ export default function LearnPage() {
   const [burst, setBurst] = useState<{ x: number; y: number; colors: string[]; key: number } | null>(null);
   const [now] = useState(() => Date.now());
 
-  // Electives the student hasn't chosen live on the electives shelf, not in their weeks.
+  // Electives the student hasn't chosen aren't in their lessons yet (they show in their week, to choose).
   const course = state && {
     ...state.course,
     weeks: state.course.weeks.map((w) => ({ ...w, lessons: w.lessons.filter((l) => !l.elective || l.chosen) })).filter((w) => w.lessons.length),
@@ -271,7 +271,15 @@ export default function LearnPage() {
 
   // The next card to play: something already started, else the first open card today, else the next week's first.
   const currentWeek = course.weeks.find((w) => w.lessons.some((l) => l.id === current.id)) ?? course.weeks[0];
-  const weeksShown = profile.horizon === "week" ? [currentWeek] : course.weeks;
+  // The weeks as shown: with the electives not chosen yet, in their place, to choose.
+  const weeksShown = profile.horizon === "week" ? [currentWeek] : state.course.weeks.filter((w) => w.lessons.length);
+  const toElectives = () => {
+    const wk = state.course.weeks.find((w) => w.lessons.some((l) => l.elective && !l.chosen));
+    const l = wk?.lessons.find((x) => x.elective && !x.chosen);
+    if (!wk || !l) return;
+    setOpenWeeks((o) => new Set(o).add(wk.id));
+    setTimeout(() => document.getElementById(`elective-${l.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+  };
   // A discussion you've posted on, with no classmate's post left to reply to yet: you're waiting on others, so it
   // isn't your next card (it would hold up everything after it). It comes back once someone posts.
   const waitingOnClass = (m: Module) => {
@@ -286,6 +294,11 @@ export default function LearnPage() {
     for (const l of lessons) {
       const r = playable(l).find((x) => revising(x.id));
       if (r) return { lesson: l, m: r };
+    }
+    // Then anything overdue, in any lesson (earliest first).
+    for (const l of lessons) {
+      const late = playable(l).find((x) => x.due && dueInfo(x.due, now)?.tone === "late");
+      if (late) return { lesson: l, m: late };
     }
     const today = playable(current);
     // Then what's late, then what's already started, then today's next card.
@@ -491,6 +504,9 @@ export default function LearnPage() {
                   <span><span className="font-mono text-ink">{doneCount(current)}</span> of {countable(current).length} cards done</span>
                   {current.session && <span className="flex items-center gap-1"><Icon name="studio" size={12} />Class session · {current.session.minutes} min</span>}
                 </div>
+                {/* What needs the student, only when something does: to revise, overdue, due soon, to catch up, electives. */}
+                <NeedsYou state={state} studentId={studentId} onElectives={toElectives}
+                  onOpen={(lessonId, mid) => { const el = els.current.get(mid) ?? heroRef.current; if (el) open(lessonId, mid, el); }} />
                 {studioNudge && (
                   <button
                     onClick={() => {
@@ -546,14 +562,6 @@ export default function LearnPage() {
             </div>
           </section>
 
-          {(
-            <ForYou state={state} studentId={studentId} onChanged={synced} onBoard={() => router.push(`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`)}
-              onOpen={(lessonId, mid) => {
-                const el = els.current.get(mid) ?? heroRef.current;
-                if (el) open(lessonId, mid, el);
-              }} />
-          )}
-          <Electives state={state} studentId={studentId} onChanged={synced} />
           <TipBar />
 
           {/* —— Week navigator —— */}
@@ -574,7 +582,8 @@ export default function LearnPage() {
           <div className="mt-6 space-y-4 pb-16 sm:space-y-8">
             {weeksShown.map((week) => {
               const ms = week.lessons.flatMap((l) => l.modules);
-              const finished = ms.length > 0 && ms.every((m) => statusOf(m.id) === "done");
+              // A week with an elective still to choose isn't folded away as finished.
+              const finished = ms.length > 0 && ms.every((m) => statusOf(m.id) === "done") && !week.lessons.some((l) => l.elective && !l.chosen);
               const isNow = week.lessons.some((l) => l.id === current.id);
               const folded = finished && !isNow && !openWeeks.has(week.id);
               return (
@@ -615,6 +624,13 @@ export default function LearnPage() {
                     // One row per lesson: a week's lessons stack, each scrolling sideways on its own when it has many cards.
                     <div className="mt-1 space-y-1 sm:space-y-2">
                         {week.lessons.map((l) => {
+                          if (l.elective && !l.chosen) return (
+                            <HScroll key={l.id}>
+                              <div className="pb-1 pt-2 sm:pb-4 sm:pt-3" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
+                                <ElectiveRow state={state} studentId={studentId} lesson={l} size={size} onChanged={synced} />
+                              </div>
+                            </HScroll>
+                          );
                           const isToday = l.id === current.id;
                           const rowWidth = Math.max(l.modules.length, 1) * (size.w + 14) - 14;
                           return (
@@ -624,8 +640,10 @@ export default function LearnPage() {
                               <div className="flex flex-wrap items-center gap-2 text-[13px]" style={{ maxWidth: Math.max(rowWidth, 280) }}>
                                 <span className="font-medium">{l.title}</span>
                                 {isToday && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
+                                {l.elective && <span className="chip h-5 bg-[#eef0fb] text-[11px] text-[#4b56a8]"><Icon name="split" size={10} />Elective</span>}
                                 <span className="mono">{doneCount(l)}/{countable(l).length}</span>
                                 {l.session && <span className="chip h-5 text-[11px]"><Icon name="studio" size={11} />Class session · {l.session.minutes} min</span>}
+                                {l.elective && doneCount(l) === 0 && <button onClick={() => chooseElective(courseId, studentId, l, false, synced)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">Drop</button>}
                               </div>
                               {l.goal && !isToday && <p className="mt-1 text-[12.5px] text-ink-3" style={{ maxWidth: Math.min(Math.max(rowWidth, 280), 576) }}>{l.goal}</p>}
                               {l.modules.length ? (

@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.73",
+    date: "2026-11-23",
+    changes: [
+      "A calmer board for students: the For you / To-do / Starred panel and the Electives shelf are gone.",
+      "Under the lesson's progress, small tags show only what needs the student: cards to revise, overdue, due soon, to catch up, and electives to choose. Click one to open its card (or see the list).",
+      "Up next puts a revision first, then anything overdue in any lesson, then where you left off.",
+      "Electives sit in their own week, cards face down, with Choose. A chosen one is a lesson like the others, marked Elective, with Drop until you start it.",
+      "My board has Starred and Suggestions (skills to focus on, feedback to try). Turn on reminders is in the menu under your photo.",
+    ],
+  },
+  {
     version: "0.1.72",
     date: "2026-11-23",
     changes: [

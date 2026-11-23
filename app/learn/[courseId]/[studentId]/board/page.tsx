@@ -13,6 +13,7 @@ import { ago } from "@/lib/time";
 import { suitOfCard } from "@/lib/ui";
 import { faceMeta, writesOwn } from "@/lib/kinds";
 import { RichText } from "@/components/RichText";
+import { recommend } from "@/lib/coach";
 import type { Module, Progress } from "@/lib/types";
 
 /** A student's own board: everything they made, and the feedback they got. */
@@ -23,10 +24,11 @@ export default function BoardPage() {
   const testing = useSearchParams().has("preview");
   if (typeof window !== "undefined") setPreview(testing ? studentId : null);
   const { state, error, needAuth, refresh } = useCourse(courseId, studentId, 8000);
-  const [tab, setTab] = useState<"work" | "feedback">(() => {
+  const [tab, setTab] = useState<"work" | "feedback" | "starred" | "next">(() => {
     const h = typeof window === "undefined" ? "" : window.location.hash.slice(1);
-    return (["work", "feedback"] as const).find((t) => t === h) ?? "work";
+    return (["work", "feedback", "starred", "next"] as const).find((t) => t === h) ?? "work";
   });
+  const [now] = useState(() => Date.now());
   const query = useQuery();
   if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}/board`} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
@@ -46,6 +48,10 @@ export default function BoardPage() {
     return !!p && (p.status === "done" || !!p.output || !!p.work?.length || posts.some((x) => x.moduleId === m.id));
   };
   const done = all.filter((x) => mine[x.m.id]?.status === "done").length;
+  const starred = all.filter((x) => mine[x.m.id]?.starred);
+  // What's due and to revise is on the cards page; here, the suggestions about how to get better.
+  const suggestions = recommend(state, studentId, now).filter((r) => ["focus", "mismatch", "feedback", "reflect"].includes(r.kind) || (r.kind === "path" && r.id !== "electives"));
+  const cardLink = (mid: string) => `/learn/${courseId}/${studentId}?card=${mid}${testing ? "&preview=1" : ""}`;
   const shown = tab;
   // Quizzes handed in, by their best try.
   const quizScores = all.filter((x) => x.m.type === "quiz" && x.m.questions?.length && mine[x.m.id]?.status === "done").map((x) => (mine[x.m.id].best ?? mine[x.m.id].score ?? 0) / x.m.questions!.length);
@@ -84,13 +90,62 @@ export default function BoardPage() {
         </div>
 
         <div className="no-print mt-6 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Board sections">
-          {([["work", "My work"], ["feedback", "Feedback"]] as const).map(([k, label]) => (
+          {([["work", "My work"], ["feedback", "Feedback"], ["starred", "Starred"], ["next", "Suggestions"]] as const).map(([k, label]) => (
             <button key={k} role="tab" aria-selected={shown === k} onClick={() => { setTab(k); history.replaceState(null, "", `#${k}`); }}
               className={`press -mb-px h-10 flex-none border-b-2 px-3 text-[13.5px] ${shown === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
           ))}
         </div>
 
         {shown === "feedback" && <section className="rise mt-6"><FeedbackInbox state={state} studentId={studentId} onChanged={refresh} /></section>}
+
+        {/* Cards the student starred to come back to, in course order. */}
+        {shown === "starred" && (
+          <section className="rise mt-6">
+            {starred.length ? (
+              <ul className="card divide-y divide-line overflow-hidden">
+                {starred.map(({ w, l, m }) => (
+                  <li key={m.id}>
+                    <Link href={cardLink(m.id)} className="press flex items-center gap-3 px-4 py-3 hover:bg-[#fafaf9]">
+                      <Icon name="star" size={14} className="flex-none text-[#d39b1f]" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[14px]">{m.title}</span>
+                        <span className="block text-[12px] text-ink-3">{w.title.split(" · ")[0]} · {l.title}{mine[m.id]?.status === "done" ? " · done" : ""}</span>
+                      </span>
+                      <Icon name="arrow" size={13} className="flex-none text-ink-3" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-[13.5px] text-ink-3">Star a card (the ☆ at the top of it) to find it here later.</p>}
+          </section>
+        )}
+
+        {/* Suggestions from the student's own data: skills to focus on, where they and their teacher see a skill differently, feedback to try, paths. */}
+        {shown === "next" && (
+          <section className="rise mt-6">
+            {suggestions.length ? (
+              <ul className="card divide-y divide-line overflow-hidden">
+                {suggestions.map((r) => {
+                  const body = (
+                    <>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14px] font-medium">{r.title}</span>
+                        <span className="block text-[12.5px] leading-snug text-ink-2">{r.text}</span>
+                      </span>
+                      {r.moduleId && <Icon name="arrow" size={13} className="flex-none text-ink-3" />}
+                    </>
+                  );
+                  return (
+                    <li key={r.id}>
+                      {r.moduleId ? <Link href={cardLink(r.moduleId)} className="press flex items-center gap-3 px-4 py-3 hover:bg-[#fafaf9]">{body}</Link>
+                        : <div className="flex items-center gap-3 px-4 py-3">{body}</div>}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : <p className="text-[13.5px] text-ink-3">Nothing to suggest yet. Suggestions come from your self-checks, your teacher’s feedback and your skills.</p>}
+          </section>
+        )}
 
         {shown === "work" && <section className="mt-6 space-y-6">
           {course.weeks.map((w) => {
