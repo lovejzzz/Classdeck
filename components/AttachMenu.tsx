@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { uploadFile } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import type { Attachment } from "@/lib/types";
@@ -30,10 +31,13 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
   const [link, setLink] = useState("");
   const file = useRef<HTMLInputElement>(null);
   const menu = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  // Where the Record menu opens: above its button, on the page itself, so a card or post around it never clips it.
+  const [at, setAt] = useState<{ left: number; bottom: number } | null>(null);
 
   useEffect(() => {
     if (!more) return;
-    const off = (e: PointerEvent) => !menu.current?.contains(e.target as Node) && setMore(false);
+    const off = (e: PointerEvent) => !menu.current?.contains(e.target as Node) && !list.current?.contains(e.target as Node) && setMore(false);
     window.addEventListener("pointerdown", off);
     return () => window.removeEventListener("pointerdown", off);
   }, [more]);
@@ -96,16 +100,18 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
   const drawBtn = <button key="draw" onClick={() => setMode("draw")} className={btn}><Icon name="practice" size={13} /> Draw</button>;
   const recordMenu = (
     <div key="record" ref={menu} className="relative">
-      <button onClick={() => setMore((m) => !m)} aria-expanded={more} aria-haspopup="menu" className={btn}><Icon name="mic" size={13} /> Record <Icon name="chevron" size={12} className={`transition-transform duration-300 ${more ? "rotate-180" : ""}`} /></button>
-      {more && (
-        <div className="pop absolute bottom-full left-0 z-20 mb-1.5 w-40 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]" role="menu">
+      <button onClick={(e) => { const b = e.currentTarget.getBoundingClientRect(); setAt({ left: Math.min(b.left, window.innerWidth - 168), bottom: window.innerHeight - b.top + 6 }); setMore((m) => !m); }}
+        aria-expanded={more} aria-haspopup="menu" className={btn}><Icon name="mic" size={13} /> Record <Icon name="chevron" size={12} className={`transition-transform duration-300 ${more ? "rotate-180" : ""}`} /></button>
+      {more && at && createPortal(
+        <div ref={list} className="pop fixed z-[95] w-40 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]" style={{ left: at.left, bottom: at.bottom }} role="menu">
           {options.map((o, i) => (
             <button key={o.mode} role="menuitem" onClick={() => { setMore(false); setMode(o.mode); }} style={{ "--i": i } as React.CSSProperties}
               className="rise press flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-lane">
               <Icon name={o.icon} size={14} className="text-ink-2" />{o.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

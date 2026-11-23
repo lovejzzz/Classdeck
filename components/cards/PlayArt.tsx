@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Waveform } from "./Waveform";
-import { videoEmbed } from "@/lib/media";
+import { knowLength, videoEmbed } from "@/lib/media";
 import type { Attachment } from "@/lib/types";
 
 /** Whether a card's main media can be played right on its face (a video, a recording, a YouTube link). */
@@ -29,7 +29,7 @@ export function PlayArt({ a, cover }: { a: Attachment; cover: string }) {
     if (on) {
       return (
         <div className="relative h-full w-full bg-black" onPointerDown={stop} onClick={stop}>
-          <video src={a.url} controls autoPlay playsInline className="h-full w-full object-contain" />
+          <video src={a.url} controls autoPlay playsInline onLoadedMetadata={(e) => knowLength(e.currentTarget)} className="h-full w-full object-contain" />
           <FullButton />
         </div>
       );
@@ -109,7 +109,8 @@ export function Recording({ a, cover }: { a: Attachment; cover: string }) {
       <audio ref={ref} src={a.url} preload="metadata"
         onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
         onEnded={() => { setPlaying(false); setAt(0); }}
-        onLoadedMetadata={(e) => setLen(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
+        onLoadedMetadata={(e) => { knowLength(e.currentTarget); setLen(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0); }}
+        onDurationChange={(e) => setLen(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
         onTimeUpdate={(e) => setAt(e.currentTarget.currentTime)} />
     </div>
   );

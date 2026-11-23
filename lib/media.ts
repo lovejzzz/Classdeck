@@ -36,3 +36,18 @@ export function videoEmbed(url: string, start?: number, end?: number): { provide
   } catch {}
   return null;
 }
+
+/**
+ * A recording made in a browser (webm) often carries no length, so a player shows 0:00 and can't seek. Ask the
+ * browser to find its end once (it reads the file to get there), then go back to the start.
+ */
+export function knowLength(el: HTMLMediaElement) {
+  if (el.duration !== Infinity) return;
+  const back = () => {
+    if (!Number.isFinite(el.duration)) return;
+    el.removeEventListener("durationchange", back);
+    el.currentTime = 0;
+  };
+  el.addEventListener("durationchange", back);
+  el.currentTime = 1e101;
+}

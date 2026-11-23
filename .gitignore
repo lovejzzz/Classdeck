@@ -42,3 +42,7 @@ next-env.d.ts
 .data
 !.env.example
 .claude/
+
+# Local notes with secrets
+api.env.md
+*.env.md

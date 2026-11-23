@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { videoEmbed } from "@/lib/media";
+import { knowLength, videoEmbed } from "@/lib/media";
 import type { Attachment } from "@/lib/types";
 import { Icon } from "../Icon";
 import { Lift } from "./Lift";
@@ -34,7 +34,7 @@ export function MediaLift({ a, title, from, open, onClose, onGone }: {
       <div className="bg-black">
         {a.kind === "video" && (
           <video ref={video} src={a.url} controls autoPlay playsInline className="mx-auto block max-h-[78vh] w-full bg-black"
-            onLoadedMetadata={(e) => { if (a.start) e.currentTarget.currentTime = a.start; }}
+            onLoadedMetadata={(e) => { if (e.currentTarget.duration === Infinity) knowLength(e.currentTarget); else if (a.start) e.currentTarget.currentTime = a.start; }}
             onTimeUpdate={(e) => { if (a.end && e.currentTarget.currentTime >= a.end) e.currentTarget.pause(); }} />
         )}
         {a.kind === "image" && (

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { fileExt, formatSize, hash, hostOf } from "@/lib/cards";
-import { fmtTime, videoEmbed } from "@/lib/media";
+import { fmtTime, knowLength, videoEmbed } from "@/lib/media";
 import type { Attachment } from "@/lib/types";
 import { Icon } from "../Icon";
 import { useWaveform } from "./Waveform";
@@ -45,7 +45,8 @@ export function AudioPlayer({ a, onMedia, pins = [] }: { a: Attachment; onMedia?
     el.addEventListener("play", on);
     el.addEventListener("pause", off);
     el.addEventListener("ended", off);
-    el.addEventListener("loadedmetadata", () => setDur(el.duration));
+    el.addEventListener("loadedmetadata", () => { knowLength(el); setDur(el.duration); });
+    el.addEventListener("durationchange", () => setDur(el.duration));
     return () => {
       cancelAnimationFrame(raf);
       el.removeEventListener("play", on);
@@ -151,6 +152,7 @@ function SegmentVideo({ a }: { a: Attachment }) {
     const v = ref.current;
     if (!v) return;
     const onMeta = () => {
+      if (v.duration === Infinity) { knowLength(v); return; }
       if (a.start) v.currentTime = a.start;
     };
     const onTime = () => {

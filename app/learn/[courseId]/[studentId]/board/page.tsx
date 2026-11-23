@@ -120,8 +120,12 @@ export default function BoardPage() {
                         )}
                         {p?.output && <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{p.output}</p>}
                         {p?.work?.length ? <div className="mt-3 space-y-2">{p.work.map((a) => <div key={a.id}><div className="mb-1 text-[12px] text-ink-3">{a.name}</div><MediaView a={a} /></div>)}</div> : null}
-                        {p?.review?.text && (
-                          <p className="mt-2 flex gap-2 rounded-lg bg-[#287670]/[0.06] px-3 py-2 text-[13px] leading-relaxed"><span className="flex-none font-medium text-[#287670]">{p.review.verdict === "revise" ? "Teacher asked for a revision:" : "Teacher:"}</span><span>{p.review.text}</span></p>
+                        {(p?.review?.text || p?.review?.attachments?.length) && (
+                          // The teacher's feedback: their words, and anything they attached (a voice note, a drawing, a file).
+                          <div className="mt-2 rounded-lg bg-[#287670]/[0.06] px-3 py-2 text-[13px] leading-relaxed">
+                            <p className="flex gap-2"><span className="flex-none font-medium text-[#287670]">{p.review!.verdict === "revise" ? "Teacher asked for a revision:" : "Teacher:"}</span><span>{p.review!.text}</span></p>
+                            {p.review!.attachments?.map((a) => <div key={a.id} className="mt-2"><MediaView a={a} /></div>)}
+                          </div>
                         )}
                         {wallPosts.map((wp) => (
                           <div key={wp.id} className="mt-3 rounded-lg bg-lane p-3">

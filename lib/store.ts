@@ -253,7 +253,7 @@ export function reset() {
   for (const k of gone) delete d.uploads[k];
   // Remove the files themselves in the background; a leftover file only takes up space.
   for (const k of gone) (r2Ready() ? removeBlob(k) : fs.promises.unlink(path.join(DIR, "uploads", k))).catch(() => {});
-  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges", "plans", "pins"] as const) {
+  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges", "plans", "pins", "demo"] as const) {
     (d[k] as Record<string, unknown>).demo = (f[k] as Record<string, unknown>).demo;
   }
   save();

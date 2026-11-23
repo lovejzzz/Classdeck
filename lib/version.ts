@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.50",
+    date: "2026-11-23",
+    changes: [
+      "The open demo course (/teach/demo) is new: Questhand 101, with a class part-way through it. Six students on different paths, one waiting to be let in, work waiting for feedback, a revision asked for, a voice note from the teacher, a reminder, a discussion, due dates, a class session, an elective, and every kind of question. It resets every night. The sign-in page links to it.",
+      "Questhand 101's videos and voice notes have new, more natural narration.",
+      "Replying to a classmate's post: the Record menu (Audio, Video, Screen, Photo) was cut off inside the post, so only Photo showed. It now opens above everything.",
+      "Recordings made in the browser show their real length and can be skipped through (they showed 0:00 before).",
+      "A student's My work page plays the teacher's voice notes and shows files attached to feedback, not only the words.",
+    ],
+  },
+  {
     version: "0.1.49",
     date: "2026-11-22",
     changes: [
