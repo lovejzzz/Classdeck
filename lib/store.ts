@@ -7,7 +7,7 @@ import { foldWeeks } from "./cardmodel";
 import { kindWeeks } from "./kinds";
 import { todayLessonId } from "./dates";
 import { seedChoices, seedCourse, seedEvents, seedMarks, seedNudges, seedPlans, seedPosts, seedProgress, seedStudio, seedUptake } from "./seed";
-import type { Module, ClassEvent, Course, Feedback, Live, Mark, Nudge, Plan, Post, ProgressMap, StudioPost, ToolLogEntry } from "./types";
+import type { Module, ClassEvent, Course, Feedback, Live, Mark, Nudge, Plan, Post, Progress, ProgressMap, StudioPost, ToolLogEntry } from "./types";
 import type { Manifest } from "./connectors/types";
 
 
@@ -58,6 +58,8 @@ export interface DB {
   uptake: Record<string, Record<string, Record<string, number>>>;
   nudges: Record<string, Nudge[]>;
   plans: Record<string, Record<string, Plan>>;
+  /** Student View's demo student: their progress in each course (module → progress), kept between tests. */
+  demo: Record<string, Record<string, Progress>>;
   /** Student PIN hashes: course → student → "salt:hash". Never sent to a browser. */
   pins: Record<string, Record<string, string>>;
   users: Record<string, User>;
@@ -75,7 +77,7 @@ const FILE = path.join(DIR, "questhand.db");
 /** The database's name before the product was renamed Questhand; moved to FILE on first start. */
 const OLD_FILE = path.join(DIR, "classdeck.db");
 const LEGACY = path.join(DIR, "db.json");
-const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans"] as const;
+const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo"] as const;
 const GLOBAL = ["users", "sessions", "customConnectors", "uploads"] as const;
 
 const g = globalThis as unknown as { __lmsdb?: DB; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string>; __preview?: DB; __previews?: Map<string, { at: number; data: Record<string, unknown> }> };
@@ -96,6 +98,7 @@ function fresh(custom: Manifest[] = []): DB {
     uptake: { [course.id]: seedUptake() },
     nudges: { [course.id]: seedNudges() },
     plans: { [course.id]: seedPlans() },
+    demo: {},
     pins: {},
     users: {},
     sessions: {},
@@ -295,7 +298,11 @@ export function logEvent(courseId: string, e: Omit<ClassEvent, "id" | "at">) {
  * (an async function is fine as long as it doesn't await before it's done with the data).
  * The sandbox lasts until reset (`endPreview`) or two hours without use.
  */
-export function runPreview<T>(key: string, courseId: string, fn: () => T, testStudent?: { id: string; name: string }): T {
+/**
+ * Run a request inside a Student View test. `testStudent` is a student who exists only in tests; with `keep`, their
+ * progress is kept for next time (the demo student), while everything else they do stays in the test.
+ */
+export function runPreview<T>(key: string, courseId: string, fn: () => T, testStudent?: { id: string; name: string }, keep = false): T {
   const real = db();
   const all = (g.__previews ??= new Map());
   const now = Date.now();
@@ -315,16 +322,28 @@ export function runPreview<T>(key: string, courseId: string, fn: () => T, testSt
   }
   // A blank student who exists only in this test (to try the course before anyone has joined).
   if (testStudent) (box.courses[courseId] as unknown as Course).students.push({ ...testStudent } as Course["students"][number]);
+  // The demo student starts from where they left off.
+  const progressBox = (box.progress[courseId] ??= {}) as ProgressMap;
+  if (testStudent && keep) progressBox[testStudent.id] = structuredClone(real.demo?.[courseId] ?? {});
   g.__preview = box as unknown as DB;
   try {
     return fn();
   } finally {
     for (const k of PER_COURSE) if (k !== "courses") entry.data[k] = box[k][courseId];
     g.__preview = undefined;
+    if (testStudent && keep) {
+      const mine = (box.progress[courseId] as ProgressMap | undefined)?.[testStudent.id] ?? {};
+      if (JSON.stringify(mine) !== JSON.stringify(real.demo?.[courseId] ?? {})) {
+        (real.demo ??= {})[courseId] = structuredClone(mine);
+        save();
+      }
+    }
   }
 }
 
 /** Start a Student View test over: the next request copies the class's real data again. */
-export function endPreview(key: string) {
+export function endPreview(key: string, courseId?: string, demo = false) {
   g.__previews?.delete(key);
+  // Starting over as the demo student clears what they had done.
+  if (demo && courseId && db().demo?.[courseId]) { delete db().demo[courseId]; save(); }
 }

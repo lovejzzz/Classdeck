@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.40",
+    date: "2026-11-22",
+    changes: [
+      "Every course has a Demo student in Student View, even before anyone joins. Their progress is kept between tests, so you can walk through the course over several days and pick up where you left off. They're never in your class list, grades or notifications, and Start over clears their work.",
+      "Fixed: opening Student View from the course page first asked for the student's real board (and briefly failed) before switching to the test.",
+    ],
+  },
+  {
     version: "0.1.39",
     date: "2026-11-22",
     changes: [

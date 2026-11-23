@@ -48,8 +48,10 @@ function client() {
 
 async function teacher(tag) {
   const c = client();
-  const r = await c.post("/api/auth", { action: "signup", email: `t-${tag}-${run}@example.test`, name: `Teacher ${tag}`, password: randomBytes(12).toString("hex") });
+  const email = `t-${tag}-${run}@example.test`, password = randomBytes(12).toString("hex");
+  const r = await c.post("/api/auth", { action: "signup", email, name: `Teacher ${tag}`, password });
   check(`signup ${tag}`, r.ok === true, r);
+  c.creds = { email, password };
   return c;
 }
 
@@ -287,6 +289,17 @@ async function main() {
     const tv = await A.state(`${fresh.id}?as=s-test&preview=1`);
     check("Student View: a new test student sees the course with no work", modulesOf(courseOf(tv)).some((m) => m.id === qv.id) && !Object.keys(tv.progress?.["s-test"] ?? {}).length);
     check("Student View: the test student isn't in the real class", !courseOf(await A.state(fresh.id)).students.some((s) => s.id === "s-test"));
+    // The demo student: in every course, never in the class list; their progress is kept for the next test.
+    const dm = await A.op(fresh.id, { op: "answer", preview: true, as: "s-demo", studentId: "s-demo", moduleId: qv.id, qid: "q-sv", choice: 1 });
+    check("Student View: the demo student can answer", dm.ok !== false, dm);
+    check("Student View: the demo student isn't in the real class", !courseOf(await A.state(fresh.id)).students.some((s) => s.id === "s-demo"));
+    check("Student View: the demo student is in no real progress", !(await A.state(fresh.id)).progress?.["s-demo"]);
+    const A2 = client();
+    await A2.post("/api/auth", { action: "login", ...A.creds });
+    const later = await A2.state(`${fresh.id}?as=s-demo&preview=1`);
+    check("Student View: the demo student's progress is kept for a new test", later.progress?.["s-demo"]?.[qv.id]?.status === "done" && modulesOf(courseOf(later)).some((m) => m.id === xv.id), later.progress?.["s-demo"]);
+    await A2.op(fresh.id, { op: "endPreview", as: "s-demo" });
+    check("Student View: Start over clears the demo student", !(await A.state(`${fresh.id}?as=s-demo&preview=1`)).progress?.["s-demo"]?.[qv.id]);
     await A.op(fresh.id, { op: "endPreview", as: mia.id });
     const again = await A.state(`${fresh.id}?as=${mia.id}&preview=1`);
     check("Student View: Start over goes back to the real progress", !again.progress[mia.id]?.[qv.id] && !modulesOf(courseOf(again)).some((m) => m.id === xv.id));

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Avatar, Icon } from "../Icon";
-import { TEST_STUDENT_ID } from "../student/PreviewBar";
+import { DEMO_STUDENT_ID, TEST_STUDENT_ID } from "../student/PreviewBar";
 
 /**
  * "Student View" in the teacher's top bar: pick a student (each has their own cards, from their own answers) or a new
@@ -29,14 +29,18 @@ export function StudentViewButton({ courseId, students }: { courseId: string; st
       </button>
       {open && (
         <div role="menu" className="pop absolute right-0 top-9 z-40 w-72 rounded-2xl border border-line bg-white p-2 shadow-[0_20px_50px_-18px_rgba(20,20,18,0.3)]">
-          <div className="px-2 pb-1.5 pt-1 text-[12px] text-ink-3">See and try the course as a student. It’s only a test: nothing is saved or graded, and no one is notified.</div>
+          <div className="px-2 pb-1.5 pt-1 text-[12px] text-ink-3">See and try the course as a student. It’s only a test: nothing is graded, and no one is notified.</div>
+          <Link role="menuitem" href={href(DEMO_STUDENT_ID)} className="press flex items-center gap-2.5 rounded-xl px-2 py-2 text-[13px] hover:bg-lane">
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#eef0fb] text-[#4b56a8]"><Icon name="eye" size={12} /></span>
+            <span className="min-w-0 flex-1"><span className="block font-medium">Demo student</span><span className="block text-[11.5px] text-ink-3">Always here. Their progress is kept, so you can pick up where you left off</span></span>
+          </Link>
           <Link role="menuitem" href={href(TEST_STUDENT_ID)} className="press flex items-center gap-2.5 rounded-xl px-2 py-2 text-[13px] hover:bg-lane">
             <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-3"><Icon name="plus" size={12} /></span>
             <span className="min-w-0 flex-1"><span className="block font-medium">New student</span><span className="block text-[11.5px] text-ink-3">Starts with no work, like someone who just joined</span></span>
           </Link>
           {students.length > 0 && <div className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">As a student in your class</div>}
           <div className="max-h-64 overflow-auto">
-            {students.map((s) => (
+            {students.filter((s) => s.id !== DEMO_STUDENT_ID && s.id !== TEST_STUDENT_ID).map((s) => (
               <Link role="menuitem" key={s.id} href={href(s.id)} className="press flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-[13px] hover:bg-lane">
                 <Avatar name={s.name} size={24} />
                 <span className="min-w-0 flex-1 truncate">{s.name}</span>

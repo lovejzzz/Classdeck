@@ -117,7 +117,9 @@ const previewKey = (session: { key: string }, courseId: string, studentId: strin
 const PREVIEW_OPS = new Set([...STUDENT_OPS, "addPost", "comment", "react", "addMark", "removeMark"]);
 /** Student View's blank student: in no class list, only in the test's sandbox. */
 const TEST_STUDENT = { id: "s-test", name: "Test student" };
-const testStudentFor = (sid: string) => (sid === TEST_STUDENT.id ? TEST_STUDENT : undefined);
+/** Student View's demo student: every course has one, in no class list or grades; their progress is kept between tests. */
+const DEMO_STUDENT = { id: "s-demo", name: "Demo student" };
+const testStudentFor = (sid: string) => (sid === TEST_STUDENT.id ? TEST_STUDENT : sid === DEMO_STUDENT.id ? DEMO_STUDENT : undefined);
 
 export async function GET(request: Request, { params }: Ctx) {
   const { courseId } = await params;
@@ -130,7 +132,7 @@ export async function GET(request: Request, { params }: Ctx) {
     if (!course) return Response.json({ error: "No such course" }, { status: 404 });
     if (!session || !canTeach(session, course)) return unauthorized("teacher");
     if (!testStudentFor(as) && !course.students.some((s) => s.id === as)) return Response.json({ error: "That student isn’t in this class" }, { status: 404 });
-    return runPreview(previewKey(session, courseId, as), courseId, () => view(request, courseId), testStudentFor(as));
+    return runPreview(previewKey(session, courseId, as), courseId, () => view(request, courseId), testStudentFor(as), as === DEMO_STUDENT.id);
   }
   return view(request, courseId);
 }
@@ -324,11 +326,11 @@ export async function POST(request: Request, { params }: Ctx) {
     if (!session || !canTeach(session, course)) return unauthorized("teacher");
     const sid = typeof body.studentId === "string" ? body.studentId : typeof body.as === "string" ? body.as : "";
     if (!testStudentFor(sid) && !course.students.some((s) => s.id === sid)) return Response.json({ ok: false, error: "That student isn’t in this class" }, { status: 400 });
-    if (body.op === "endPreview") { endPreview(previewKey(session, courseId, sid)); return Response.json({ ok: true }); }
+    if (body.op === "endPreview") { endPreview(previewKey(session, courseId, sid), courseId, sid === DEMO_STUDENT.id); return Response.json({ ok: true }); }
     if (!PREVIEW_OPS.has(body.op)) return Response.json({ ok: false, error: "That isn’t something a student does, so it can’t be tried in Student View" }, { status: 400 });
     // react and comment name the student in `who`; the rest in `studentId`.
     if ((body.op === "react" || body.op === "comment") && body.who !== sid) return Response.json({ ok: false, error: "In Student View you act as the student you picked" }, { status: 400 });
-    return runPreview(previewKey(session, courseId, sid), courseId, () => change(request, courseId, body), testStudentFor(sid));
+    return runPreview(previewKey(session, courseId, sid), courseId, () => change(request, courseId, body), testStudentFor(sid), sid === DEMO_STUDENT.id);
   }
   return change(request, courseId, body);
 }

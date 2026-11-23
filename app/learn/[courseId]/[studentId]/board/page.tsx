@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { MediaView } from "@/components/cards/Media";
 import { SignInNeeded } from "@/components/SignInNeeded";
@@ -18,7 +18,8 @@ import type { Module, Progress } from "@/lib/types";
 export default function BoardPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
   // Student View (a teacher testing as this student): every request is a test, nothing is saved.
-  const testing = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("preview");
+  // From the router, not window.location: arriving by a link, the address bar still shows the page we came from.
+  const testing = useSearchParams().has("preview");
   if (typeof window !== "undefined") setPreview(testing ? studentId : null);
   const { state, error, needAuth, refresh } = useCourse(courseId, studentId, 8000);
   const [tab, setTab] = useState<"work" | "feedback">(() => {

@@ -4,7 +4,7 @@ import { BackCloses } from "@/components/BackCloses";
 import { AccountMenu } from "@/components/AccountMenu";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CardBack, CardFace } from "@/components/cards/CardFace";
 import { CardTable, type TableCard } from "@/components/cards/CardTable";
@@ -68,7 +68,8 @@ const FIXED_PROFILE: Profile = { preset: "custom", density: "comfortable", auton
 export default function LearnPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
   // Student View (a teacher testing as this student): set before the course is read, so every request is a test.
-  const testing = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("preview");
+  // From the router, not window.location: arriving by a link, the address bar still shows the page we came from.
+  const testing = useSearchParams().has("preview");
   if (typeof window !== "undefined") setPreview(testing ? studentId : null);
   const { state, error, refresh, needAuth } = useCourse(courseId, studentId);
   const { connectors } = useConnectors();
