@@ -61,6 +61,8 @@ interface LiftState {
   from: DOMRect;
   open: boolean;
   completed: boolean;
+  /** The card it was opened from, so it can turn into the open card. */
+  el?: HTMLElement;
 }
 
 const FIXED_PROFILE: Profile = { preset: "custom", density: "comfortable", autonomy: "free", horizon: "term", entry: "code" };
@@ -185,7 +187,7 @@ export default function LearnPage() {
   };
 
   function open(lessonId: string, id: string, el: HTMLElement) {
-    setLift({ id, lessonId, from: el.getBoundingClientRect(), open: true, completed: false });
+    setLift({ id, lessonId, from: el.getBoundingClientRect(), open: true, completed: false, el });
   }
   function close(completed = false) {
     setLift((l) => (l ? { ...l, open: false, completed } : l));
@@ -683,6 +685,7 @@ export default function LearnPage() {
         <Lift
           from={lift.from}
           open={lift.open}
+          source={lift.el}
           label={openModule.title}
           onBackdrop={() => close()}
           landing={() => {

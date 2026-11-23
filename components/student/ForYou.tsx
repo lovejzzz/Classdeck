@@ -26,10 +26,12 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
   state: CourseState; studentId: string; onOpen: (lessonId: string, moduleId: string) => void; onBoard: () => void; onChanged?: () => void;
 }) {
   const [now] = useState(() => Date.now());
-  const [tab, setTab] = useState<"next" | "todo">("next");
+  const [tab, setTab] = useState<"next" | "todo" | "starred">("next");
   const recs = recommend(state, studentId, now);
   const mine = state.progress[studentId] ?? {};
   const todos = todoList(state.course, mine, now);
+  // Cards the student starred to come back to, in course order.
+  const starred = state.course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.filter((m) => mine[m.id]?.starred).map((m) => ({ m, lesson: l, week: w.title }))));
   const nudges = (state.nudges ?? []).filter((n) => n.studentId === studentId && now - n.at < 7 * 86400_000).sort((a, b) => b.at - a.at);
   const [canNotify, setCanNotify] = useState(() => typeof Notification !== "undefined" && Notification.permission === "granted");
   const seen = useRef<number>(nudges[0]?.at ?? 0);
@@ -42,7 +44,7 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
     if (canNotify && document.hidden) new Notification("Reminder from your teacher", { body: newest.text });
   }, [nudges, canNotify]);
 
-  if (!recs.length && !todos.length && !nudges.length) return null;
+  if (!recs.length && !todos.length && !nudges.length && !starred.length) return null;
 
   return (
     <div className="mx-auto max-w-6xl px-4">
@@ -58,7 +60,7 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
         </div>
       )}
       <div className="flex items-center gap-1 border-b border-line px-2 pt-1.5">
-        {([["next", "For you", recs.length], ["todo", "To-do", todos.length]] as const).map(([k, label, n]) => (
+        {([["next", "For you", recs.length], ["todo", "To-do", todos.length], ["starred", "Starred", starred.length]] as const).map(([k, label, n]) => (
           <button key={k} onClick={() => setTab(k)} aria-pressed={tab === k}
             className={`press -mb-px flex h-9 flex-none items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-[13px] ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>
             {label}<span className="mono text-[11px]">{n}</span>
@@ -86,6 +88,23 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
                     <span className="block text-[12.5px] leading-snug text-ink-2">{r.text}</span>
                   </span>
                   {(r.moduleId || r.anchor || r.id === "focus" || r.id === "obj") && <Icon name="arrow" size={13} className="mt-1.5 flex-none text-ink-3" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
+      ) : tab === "starred" ? (
+        starred.length === 0 ? <p className="px-4 py-4 text-[13px] text-ink-3">Star a card (the ☆ at the top of it) to find it here later.</p> : (
+          <ul className="max-h-80 divide-y divide-line overflow-y-auto">
+            {starred.map((t) => (
+              <li key={t.m.id}>
+                <button onClick={() => onOpen(t.lesson.id, t.m.id)} className="press flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-[#fafaf9]">
+                  <Icon name="star" size={14} className="flex-none text-[#d39b1f]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px]">{t.m.title}</span>
+                    <span className="block text-[11.5px] text-ink-3">{t.week} · {t.lesson.title}{mine[t.m.id]?.status === "done" ? " · done" : ""}</span>
+                  </span>
+                  <Icon name="arrow" size={13} className="flex-none text-ink-3" />
                 </button>
               </li>
             ))}

@@ -873,6 +873,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
         : q.kind === "order" ? (Array.isArray(body.order) ? body.order : []).map(String).filter((x: string) => q.options.includes(x)).slice(0, q.options.length)
         : Number(body.choice);
       // A poll has no right answer: every vote counts.
+      // A vote is final once it's in.
+      if (found.mod.poll && p.answers?.[q.id] !== undefined) return fail("Your vote is already in");
       const right = found.mod.poll ? true : isCorrect(q, given);
       (p.answers ??= {})[q.id] = given;
       // Card tree: the first answer decides which follow-up cards this student gets; later answers don't change it.

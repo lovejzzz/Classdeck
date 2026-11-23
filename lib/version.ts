@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.41",
+    date: "2026-11-22",
+    changes: [
+      "A card to read or watch says Done, and has a Later button beside it: close the card without finishing, and it stays in your hand for another time.",
+      "Opening and closing a card is smoother: the card itself grows into the open card and shrinks back, instead of a blank white sheet growing out of it.",
+      "On a student's Map, a question they haven't answered shows one question-mark card, not one for every answer (they'd only ever get some of them). Once answered, only the card it opened shows.",
+      "Polls: pick an option (pick it again to clear it), then Submit vote. Once it's in, it can't be changed. Then Done closes the card; closing it without Done still counts it as done.",
+      "Students can star cards to come back to: they're listed under Starred, next to To-do at the top of the board.",
+    ],
+  },
+  {
     version: "0.1.40",
     date: "2026-11-22",
     changes: [

@@ -546,12 +546,12 @@ async function main() {
     const gid = courseOf(await A.state(tid)).students[0].id;
     const srcOf = async () => modulesOf(courseOf(await G.state(`${tid}?as=${gid}`))).find((m) => m.id === "m-src");
     const before = await srcOf();
-    check("before answering: two anonymous card backs", before.paths?.length === 2 && before.paths.every((p) => !p.to && !p.title && !p.why), before.paths);
+    check("before answering: one anonymous card back, however many answers", before.paths?.length === 1 && before.paths.every((p) => !p.to && !p.title && !p.why), before.paths);
     await G.op(tid, { op: "answer", studentId: gid, moduleId: "m-src", qid: "q", choice: 0 });
     const after = await srcOf();
     const taken = after.paths?.find((p) => p.to === "m-left");
     check("the path taken points at its card and says why", taken?.why === "You chose “Left”", after.paths);
-    check("the path not taken stays a card back (no title leaks)", after.paths.some((p) => !p.to && !p.title) && !JSON.stringify(after).includes("Secret right card"));
+    check("after answering, only the card it opened shows (no card back, no title leaks)", after.paths.length === 1 && !JSON.stringify(after).includes("Secret right card"), after.paths);
     await A.op(tid, { op: "saveLesson", lesson: { ...courseOf(await A.state(tid)).weeks[0].lessons[0], openPaths: true } });
     const open = await srcOf();
     check("with every path shown, the other path has its title and condition", open.paths.some((p) => !p.to && p.title === "Secret right card" && p.why === "If you choose “Right”"), open.paths);
@@ -584,6 +584,8 @@ async function main() {
     await i.c.op(tid, { op: "answer", studentId: i.id, moduleId: "m-poll", qid: "p", choice: 1 });
     const seen = modulesOf(courseOf(await i.c.state(`${tid}?as=${i.id}`))).find((m) => m.id === "m-poll");
     check("students see the class tally", JSON.stringify(seen.tally) === "[1,1]", seen.tally);
+    const again = await i.c.op(tid, { op: "answer", studentId: i.id, moduleId: "m-poll", qid: "p", choice: 0 });
+    check("a vote can't be changed once it's in", again.ok === false && JSON.stringify(modulesOf(courseOf(await i.c.state(`${tid}?as=${i.id}`))).find((m) => m.id === "m-poll").tally) === "[1,1]", again);
     check("a Choice card with no question yet is hidden from students", !modulesOf(courseOf(await i.c.state(`${tid}?as=${i.id}`))).some((m) => m.id === "m-blank"));
     check("but the teacher still has it", modulesOf(courseOf(await A.state(tid))).some((m) => m.id === "m-blank"));
     check("the other choice deals nothing", !modulesOf(courseOf(await i.c.state(`${tid}?as=${i.id}`))).some((m) => m.id === "m-ear"));

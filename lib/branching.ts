@@ -325,6 +325,13 @@ export function pathsFor(weeks: { lessons: Lesson[] }[], prog: Record<string, Pr
     if (list.some((x) => x.to === w.to)) continue;
     list.push(src.lesson.openPaths ? { title: dst.m.title, type: dst.m.type, why: w.score ? cond : `If you choose ${cond}` } : {});
   }
+  // Paths kept secret show as one question-mark card per card, however many answers it has (a student only ever
+  // gets some of them), and none once their answer has opened a card.
+  for (const [from, list] of out) {
+    const shown = list.filter((x) => x.to || x.title);
+    const secret = list.length - shown.length;
+    out.set(from, secret && !list.some((x) => x.to) ? [...shown, {}] : shown);
+  }
   return out;
 }
 

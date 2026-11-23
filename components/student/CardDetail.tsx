@@ -96,7 +96,7 @@ export function CardDetail(p: DetailProps) {
     if (!r.ok) return toast(r.error ?? "Couldn’t star", { icon: "star", tone: "plain" });
     p.optimistic({ starred: !starred });
     p.onChanged();
-    toast(starred ? "Removed from your selected works" : "Kept as a selected work", { icon: "star" });
+    toast(starred ? "Unstarred" : "Starred: find it under Starred at the top of your board", { icon: "star" });
   }
 
 
@@ -201,7 +201,7 @@ export function CardDetail(p: DetailProps) {
             <h2 className={`mt-2 font-semibold tracking-tight ${p.big ? "text-[28px]" : "text-[22px]"}`}>{m.title}</h2>
           </div>
           {!m.choice && (
-            <button onClick={star} aria-pressed={starred} aria-label={starred ? "Unstar" : "Keep as a selected work"} title={starred ? "One of your selected works" : "Keep as a selected work"}
+            <button onClick={star} aria-pressed={starred} aria-label={starred ? "Unstar" : "Star this card"} title={starred ? "Starred: it's under Starred on your board" : "Star it to find it later under Starred"}
               className={`btn press -mt-1 h-9 w-9 justify-center px-0 ${starred ? "text-[#d39b1f]" : "btn-quiet"}`}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill={starred ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden="true"><path d="M11.5 2.8a.6.6 0 0 1 1 0l2.6 5.3 5.8.8a.6.6 0 0 1 .3 1l-4.2 4.1 1 5.8a.6.6 0 0 1-.8.6L12 17.7l-5.2 2.7a.6.6 0 0 1-.8-.6l1-5.8-4.2-4.1a.6.6 0 0 1 .3-1l5.8-.8z" /></svg>
             </button>
@@ -395,11 +395,17 @@ export function CardDetail(p: DetailProps) {
             <button onClick={() => save("done")} disabled={finishing} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>
               <Icon name="check" size={14} /> {doneOnly ? (p.progress?.status === "done" ? "Done" : meta.doneLabel) : p.progress?.status === "done" ? "Save changes" : review?.verdict === "revise" ? "Hand in revision" : meta.doneLabel}
             </button>
+            {p.progress?.status !== "done" && (
+              // Not now: close it without finishing (anything written is kept). It stays in your hand for later.
+              <button onClick={() => { if (hasOutput) save(); p.onClose(false); }} className={`btn btn-ghost press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`} title="Close it for now; it stays in your hand, not done">
+                <Icon name="clock" size={14} /> Later
+              </button>
+            )}
             {checklist.length > 0 && p.progress?.status !== "done" && (
               <span className={`mono text-[11.5px] ${checks.length === checklist.length ? "text-ok" : ""}`}>{checks.length}/{checklist.length} steps</span>
             )}
             {p.progress?.status === "done" ? (
-              <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> {doneOnly ? "Done" : "Done. You can still edit."}</span>
+              doneOnly ? null : <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> Done. You can still edit.</span>
             ) : doneOnly ? null : (
               <span className="text-[12.5px] text-ink-3">Saves as you type<span className="[@media(pointer:coarse)]:hidden"> · {typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "⌘" : "Ctrl"}↵ to finish</span></span>
             )}
@@ -679,27 +685,38 @@ function Questions(p: DetailProps) {
               <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
                 {order.map((oi) => {
                   const opt = q.options[oi];
-                  const isPicked = picked === oi;
+                  // A poll: pick (pick it again to clear it), then submit. Once in, the vote can't change.
+                  const voted = m.poll && progress?.answers?.[q.id] !== undefined;
+                  const isPicked = m.poll ? (voted ? progress!.answers![q.id] === oi : drafts[q.id] === oi) : picked === oi;
                   const isKey = submitted && rv?.answer === oi && !isPicked;
                   let tone = "";
-                  if (m.poll) tone = isPicked ? "border-[#4b56a8]/50 bg-[#eef0fb]" : "";
+                  if (m.poll) tone = isPicked ? "border-[#4b56a8]/50 bg-[#eef0fb]" : voted ? "opacity-60" : "";
                   else if (isPicked && showResult) tone = right ? "border-ok/50 bg-ok/[0.06]" : "border-bad/45 bg-bad/[0.05] shake";
                   else if (isKey) tone = "border-dashed border-ok/60 bg-white";
                   return (
-                    <button key={`${oi}-${isPicked && showResult ? (right ? "y" : "n") : ""}`} onClick={() => answer(q.id, oi)} disabled={locked && !m.poll} aria-pressed={isPicked} className={optBtn(isPicked, tone)}>
+                    <button key={`${oi}-${isPicked && showResult && !m.poll ? (right ? "y" : "n") : ""}`}
+                      onClick={() => (m.poll ? !voted && setDrafts((d) => { const n = { ...d }; if (n[q.id] === oi) delete n[q.id]; else n[q.id] = oi; return n; }) : answer(q.id, oi))}
+                      disabled={m.poll ? voted : locked} aria-pressed={isPicked} className={optBtn(isPicked, tone)}>
                       <span className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border ${isPicked ? "border-ink bg-ink" : "border-line-strong"}`}>
                         {isPicked && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </span>
                       <span className="flex-1"><MathText text={opt} /></span>
                       {isPicked && showResult && !m.poll && <span className={`pop ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={15} strokeWidth={2.2} /></span>}
-                      {isPicked && m.poll && <span className="pop text-[11.5px] font-medium text-[#4b56a8]">Your vote</span>}
+                      {isPicked && voted && <span className="text-[11.5px] font-medium text-[#4b56a8]">Your vote</span>}
                       {isKey && <span className="text-[11.5px] text-ok">Answer</span>}
                     </button>
                   );
                 })}
               </div>
             )}
-            {m.poll && has(picked) && m.tally && (() => {
+            {m.poll && (!q.kind || q.kind === "choice") && progress?.answers?.[q.id] === undefined && (
+              <div className="mt-2.5 flex items-center gap-3">
+                <button onClick={() => { const v = drafts[q.id]; if (typeof v === "number") answer(q.id, v); }} disabled={typeof drafts[q.id] !== "number" || q.id in pending}
+                  className="btn btn-dark press h-9 px-4">{q.id in pending ? "Sending…" : "Submit vote"}</button>
+                <span className="text-[12.5px] text-ink-3">{typeof drafts[q.id] === "number" ? "You can't change it once it's in." : "Pick one. Pick it again to clear it."}</span>
+              </div>
+            )}
+            {m.poll && progress?.answers?.[q.id] !== undefined && m.tally && (() => {
               // How the class voted, once you have.
               const tally = m.tally!, all = Math.max(1, tally.reduce((a, b) => a + b, 0));
               return (
@@ -747,6 +764,13 @@ function Questions(p: DetailProps) {
         <div className="flex items-center gap-3">
           <button onClick={() => submit()} disabled={answeredCount < total} className="btn btn-dark press h-9 px-4">Submit</button>
           <span className="mono text-[11.5px]">{answeredCount}/{total} answered</span>
+        </div>
+      )}
+      {m.poll && set.every((q) => progress?.answers?.[q.id] !== undefined) && (
+        // All voted: the card is done (closing it ticks it too); Done just closes it.
+        <div className="flex items-center gap-3">
+          <button onClick={() => p.onClose(true)} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}><Icon name="check" size={14} /> Done</button>
+          <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> Your vote is in</span>
         </div>
       )}
       {!m.poll && (submitted || (!isQuiz && progress?.status === "done")) && (

@@ -9,8 +9,11 @@ import { clamp, lerp, onFrame, reducedMotion, Spring } from "@/lib/spring";
  * into wherever the card should land when it closes (its slot, or the done pile).
  */
 export function Lift({
-  from, open, landing, onGone, children, label, onBackdrop, z = 40, wide = "max-w-5xl",
+  from, open, landing, onGone, children, label, onBackdrop, z = 40, wide = "max-w-5xl", source,
 }: {
+  /** The card it opens from: a copy of it rides along and fades into the panel (and back out on close), so the card
+   *  turns into the panel instead of a blank sheet growing out of it. */
+  source?: HTMLElement | null;
   /** Stacking order (above an editor panel, say). */
   z?: number;
   /** The panel's widest. */
@@ -27,6 +30,19 @@ export function Lift({
   const panel = useRef<HTMLDivElement>(null);
   const scrim = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
+  const ghostBox = useRef<HTMLDivElement>(null);
+  // A still copy of the card, made once as it opens.
+  useLayoutEffect(() => {
+    const box = ghostBox.current;
+    if (!box || !source) return;
+    const copy = source.cloneNode(true) as HTMLElement;
+    copy.removeAttribute("id");
+    copy.querySelectorAll("[id]").forEach((x) => x.removeAttribute("id"));
+    copy.style.cssText += ";position:absolute;inset:0;width:100%;height:100%;margin:0;transform:none;transition:none;animation:none;opacity:1;visibility:visible";
+    box.appendChild(copy);
+    return () => { copy.remove(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const spring = useRef(new Spring(0, 170, 19));
   const target = useRef(from);
   const gone = useRef(false);
@@ -72,7 +88,17 @@ export function Lift({
       const dy = (C.top + C.height / 2 - (P.top + P.height / 2)) * inv;
       el.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${sx}, ${sy}) rotate(${inv * -2}deg)`;
       el.style.borderRadius = `${lerp(14 / Math.min(sx, sy), 22, clamp(p, 0, 1))}px`;
-      if (content.current) content.current.style.opacity = String(clamp((p - 0.45) * 2.4, 0, 1));
+      // With the card's copy riding along, the panel fades in under it as the copy fades out: no bare white sheet.
+      const g = ghostBox.current;
+      if (g && source) {
+        const w = P.width * sx, h = P.height * sy;
+        const cx = P.left + P.width / 2 + dx, cy = P.top + P.height / 2 + dy;
+        const k = Math.min(w / from.width, h / from.height);
+        g.style.transform = `translate3d(${cx - (from.left + from.width / 2)}px, ${cy - (from.top + from.height / 2)}px, 0) scale(${k}) rotate(${inv * -2}deg)`;
+        g.style.opacity = String(clamp(1 - (p - 0.08) / 0.32, 0, 1));
+        el.style.opacity = String(clamp(p / 0.28, 0, 1));
+      }
+      if (content.current) content.current.style.opacity = String(clamp((p - (source ? 0.3 : 0.45)) * 2.4, 0, 1));
       if (scrim.current) scrim.current.style.opacity = String(clamp(p, 0, 1));
       if (!open && p < 0.015 && Math.abs(s.v) < 0.5 && !gone.current) {
         gone.current = true;
@@ -84,6 +110,10 @@ export function Lift({
   return (
     <div className="fixed inset-0" style={{ zIndex: z }}>
       <div ref={scrim} className="absolute inset-0 bg-[rgba(24,24,22,0.28)] opacity-0 backdrop-blur-[3px]" onClick={onBackdrop} />
+      {source && (
+        <div ref={ghostBox} aria-hidden="true" className="pointer-events-none fixed z-10 origin-center will-change-transform"
+          style={{ left: from.left, top: from.top, width: from.width, height: from.height }} />
+      )}
       <div className="pointer-events-none absolute inset-0 flex items-start justify-center overflow-y-auto p-3 sm:p-8">
         <div
           ref={panel}

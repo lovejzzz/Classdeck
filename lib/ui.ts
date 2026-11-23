@@ -35,7 +35,7 @@ const variant = (t: ModuleType, v: Omit<Meta, "tint" | "cover">): Meta => {
 
 /** Each variant: its name, a one-line hint for the editor, and the suit's colour. */
 export const TYPE_META: Record<ModuleType, Meta> = {
-  read: variant("read", { label: "Read", name: "Read", hint: "Text, a handout, or a link", outputLabel: "Your thoughts (optional)", doneLabel: "Done reading" }),
+  read: variant("read", { label: "Read", name: "Read", hint: "Text, a handout, or a link", outputLabel: "Your thoughts (optional)", doneLabel: "Done" }),
   explore: variant("explore", { label: "Watch", name: "Watch & listen", hint: "A video or recording with things to notice", outputLabel: "What you found", doneLabel: "Done" }),
   quiz: variant("quiz", { label: "Quiz", name: "Quiz", hint: "Quick questions to check understanding", doneLabel: "Submit" }),
   practice: variant("practice", { label: "Practice", name: "Practice", hint: "Steps to try, a timer, a recording", outputLabel: "Your practice notes", doneLabel: "Done" }),
