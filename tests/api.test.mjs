@@ -771,6 +771,38 @@ async function main() {
     check("an empty message is refused", (await A.op(mc, { op: "message", studentId: ola.id, text: "  " })).ok === false);
   }
 
+  // ---- The inbox: every conversation of an account, across courses; students message each other unless turned off
+  {
+    const ic = (await A.post("/api/courses", { title: `Inbox ${run}`, start: "blank" })).id;
+    made["inbox"] = ic;
+    await A.op(ic, { op: "addStudents", names: "Rae\nSol\nTam" });
+    const links = (await A.op(ic, { op: "setupLinks" })).links;
+    const [rae, sol, tam] = await Promise.all(["Rae", "Sol", "Tam"].map((n) => invited(ic, links.find((x) => x.name === n).link, n)));
+    const send = (who, me, other, text) => who.post("/api/inbox", { action: "send", course: ic, me, with: other, text });
+    check("a student writes to the teacher from the inbox", (await send(rae.c, rae.id, "teacher", "Question about the task")).ok);
+    check("a student writes to a classmate", (await send(rae.c, rae.id, sol.id, "Want to work together?")).ok);
+    check("a student can't write as someone else", (await send(rae.c, sol.id, tam.id, "fake")).ok !== true);
+    const solBox = await sol.c.get("/api/inbox");
+    const t = solBox.threads?.find((x) => x.course === ic && x.with === rae.id);
+    check("the classmate sees it, unread", t?.unread === 1 && t.last?.text === "Want to work together?", solBox.threads);
+    check("classmates are contacts", solBox.contacts?.some((x) => x.course === ic && x.with === tam.id) && solBox.contacts?.some((x) => x.course === ic && x.with === "teacher"));
+    check("a third student can't read their conversation", (await tam.c.get(`/api/inbox?course=${ic}&me=${rae.id}&with=${sol.id}`)).status === 403);
+    await sol.c.post("/api/inbox", { action: "read", course: ic, me: sol.id, with: rae.id });
+    check("reading clears the unread count", ((await sol.c.get("/api/inbox")).threads.find((x) => x.course === ic && x.with === rae.id))?.unread === 0);
+    const tBox = await A.get("/api/inbox");
+    check("the teacher's inbox has the student's message", tBox.threads?.some((x) => x.course === ic && x.me === "teacher" && x.with === rae.id && x.unread === 1));
+    check("the teacher doesn't see messages between students", !tBox.threads?.some((x) => x.course === ic && x.with === sol.id && x.last?.text === "Want to work together?"));
+    check("the teacher replies from the inbox", (await A.post("/api/inbox", { action: "send", course: ic, me: "teacher", with: rae.id, text: "Ask me in class" })).ok);
+    check("the student gets the reply", ((await rae.c.get(`/api/inbox?course=${ic}&me=${rae.id}&with=teacher`)).messages ?? []).some((m) => m.text === "Ask me in class" && !m.mine));
+    check("a student can't turn messages off", (await rae.c.op(ic, { op: "setPeerMessages", on: false })).ok !== true);
+    await A.op(ic, { op: "setPeerMessages", on: false });
+    check("turned off: students can't write to each other", (await send(rae.c, rae.id, sol.id, "still there?")).ok !== true);
+    check("turned off: they can still write to the teacher", (await send(rae.c, rae.id, "teacher", "ok")).ok);
+    check("turned off: classmates aren't contacts", !((await rae.c.get("/api/inbox")).contacts ?? []).some((x) => x.course === ic && x.with === sol.id));
+    await A.op(ic, { op: "setPeerMessages", on: true });
+    check("signed out: no inbox", (await anon.get("/api/inbox")).status === 401);
+  }
+
   // ---- New teachers start with Questhand 101
   {
     const N = await teacher("new");

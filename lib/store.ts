@@ -7,7 +7,7 @@ import { foldWeeks } from "./cardmodel";
 import { kindWeeks } from "./kinds";
 import { todayLessonId } from "./dates";
 import { seedChoices, seedCourse, seedEvents, seedMarks, seedNudges, seedPlans, seedPosts, seedProgress, seedStudio, seedUptake } from "./seed";
-import type { Module, ClassEvent, Course, Feedback, Live, Mark, Nudge, Plan, Post, Progress, ProgressMap, StudioPost, ToolLogEntry } from "./types";
+import type { Module, ClassEvent, Course, DirectMessage, Feedback, Live, Mark, Nudge, Plan, Post, Progress, ProgressMap, StudioPost, ToolLogEntry } from "./types";
 import type { Manifest } from "./connectors/types";
 
 
@@ -66,6 +66,8 @@ export interface DB {
   plans: Record<string, Record<string, Plan>>;
   /** Student View's demo student: their progress in each course (module → progress), kept between tests. */
   demo: Record<string, Record<string, Progress>>;
+  /** Messages between two students of a course (teacher ↔ student messages are in nudges). */
+  dms: Record<string, DirectMessage[]>;
   /** Student PIN hashes: course → student → "salt:hash". Never sent to a browser. */
   pins: Record<string, Record<string, string>>;
   users: Record<string, User>;
@@ -83,7 +85,7 @@ const FILE = path.join(DIR, "questhand.db");
 /** The database's name before the product was renamed Questhand; moved to FILE on first start. */
 const OLD_FILE = path.join(DIR, "classdeck.db");
 const LEGACY = path.join(DIR, "db.json");
-const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo"] as const;
+const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo", "dms"] as const;
 const GLOBAL = ["users", "sessions", "customConnectors", "uploads"] as const;
 
 const g = globalThis as unknown as { __lmsdb?: DB; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string>; __preview?: DB; __previews?: Map<string, { at: number; data: Record<string, unknown> }> };
@@ -105,6 +107,7 @@ function fresh(custom: Manifest[] = []): DB {
     nudges: { [course.id]: seedNudges() },
     plans: { [course.id]: seedPlans() },
     demo: {},
+    dms: { [course.id]: [] },
     pins: {},
     users: {},
     sessions: {},
@@ -256,7 +259,7 @@ export function reset() {
   for (const k of gone) delete d.uploads[k];
   // Remove the files themselves in the background; a leftover file only takes up space.
   for (const k of gone) (r2Ready() ? removeBlob(k) : fs.promises.unlink(path.join(DIR, "uploads", k))).catch(() => {});
-  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges", "plans", "pins", "demo"] as const) {
+  for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges", "plans", "pins", "demo", "dms"] as const) {
     (d[k] as Record<string, unknown>).demo = (f[k] as Record<string, unknown>).demo;
   }
   save();

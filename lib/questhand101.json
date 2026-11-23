@@ -1087,6 +1087,19 @@
        "suit": "content"
       },
       {
+       "id": "m-q1tpl-inbox",
+       "type": "read",
+       "title": "Messages",
+       "body": "Every conversation is in your **Inbox**: click your photo at the top right. A red number on the photo says how many messages are new.\n\n- Press **New message** and pick a student, from any of your courses. Or use **Message** beside a student in Students.\n- Students write to you the same way, from the Inbox under their photo.\n- Students can also message each other. To turn that off for a class, untick **Students can message each other** in Students. Messages between students are private to them.\n\n> A message is private to the two people in it. For something the whole class should see, post it on a Discussion card.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
        "id": "m-q1tpl-access",
        "type": "read",
        "title": "Who can join",
@@ -1103,7 +1116,7 @@
        "id": "m-q1tpl-class-list",
        "type": "read",
        "title": "Your class list",
-       "body": "In Students, each student has Message (a private conversation: only that student sees it, and they can write back from their board), Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nDiscussion groups: Auto-group, or tap a student to move them to another group.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
+       "body": "In Students, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nDiscussion groups: Auto-group, or tap a student to move them to another group.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
        "audience": {
         "kind": "all"
        },

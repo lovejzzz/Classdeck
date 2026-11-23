@@ -1093,6 +1093,10 @@ async function change(request: Request, courseId: string, body: Record<string, a
       extra = { message: msg };
       break;
     }
+    case "setPeerMessages":
+      // —— teacher —— Students may message each other (the default) or only the teacher.
+      course.peerMessages = body.on === false ? false : undefined;
+      break;
     case "readMessages":
     case "readMyMessages": {
       // The teacher has read a student's messages ("readMessages"), or the student has read the teacher's.

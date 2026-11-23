@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.59",
+    date: "2026-11-23",
+    changes: [
+      "Inbox: click your photo at the top right. Every conversation is there, from all your courses, newest first; a red number on your photo counts new messages. New message picks who to write to.",
+      "Students write to their teacher from the same Inbox, and to classmates too. A teacher can turn messages between students off for a class (Students → Students can message each other; it's on to start). Messages between students are private to them.",
+      "Message beside a student in Students opens the same conversation. The Messages button on the student board moved into the Inbox.",
+      "Questhand 101 has a card on messages.",
+    ],
+  },
+  {
     version: "0.1.58",
     date: "2026-11-23",
     changes: [

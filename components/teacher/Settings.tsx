@@ -126,6 +126,20 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
         )}
       </section>
 
+      {/* Messages: students write to the teacher (always), and to each other (the teacher's choice, on by default). */}
+      <section className="card flex flex-wrap items-center gap-3 p-6">
+        <span className="min-w-[14rem] flex-1">
+          <span className="block text-[15px] font-medium">Messages</span>
+          <span className="block text-[13px] text-ink-3">Students can always message you from the Inbox under their photo. Messages between students are private to them.</span>
+        </span>
+        <label className="inline-flex items-center gap-2 text-[13.5px]">
+          <input type="checkbox" disabled={readOnly} checked={course.peerMessages !== false} aria-label="Students can message each other"
+            onChange={async (e) => { await op(course.id, { op: "setPeerMessages", on: e.target.checked }); onChanged(); toast(e.target.checked ? "Students can message each other" : "Students can only message you now", { icon: "message" }); }}
+            className="h-4 w-4 accent-[#1b1b1a]" />
+          Students can message each other
+        </label>
+      </section>
+
       {/* Groups matter only to a discussion run in groups: show them once a course has one, or already has groups. */}
       {(course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => m.type === "studio"))) || (course.groups?.length ?? 0) > 1) && (
       <section className="card p-6">

@@ -23,7 +23,7 @@ import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
 import { StudentViewButton } from "@/components/teacher/StudentViewButton";
 import { SiteFooter } from "@/components/SiteFooter";
-import { MessageThread } from "@/components/MessageThread";
+import { Conversation } from "@/components/MessageThread";
 
 // Map (the course as a card tree) is the default; List is the same cards in rows of weeks.
 const TABS = [["map", "Map"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
@@ -312,10 +312,7 @@ export default function TeachPage() {
         const st = course.students.find((x) => x.id === talkingTo);
         if (!st) return null;
         return (
-          <MessageThread me="teacher" title={st.name} subtitle="Only this student sees these messages." messages={(state.nudges ?? []).filter((n) => n.studentId === st.id)}
-            onClose={() => setTalkingTo(null)}
-            onRead={() => { void op(courseId, { op: "readMessages", studentId: st.id }).then(refresh); }}
-            onSend={async (text) => { const r = await op<{ ok?: boolean; error?: string }>(courseId, { op: "message", studentId: st.id, text }); if (r.ok === false) { toast(r.error ?? "Couldn’t send it", { icon: "x", tone: "bad" }); return false; } await refresh(); return true; }} />
+          <Conversation c={{ course: courseId, me: "teacher", with: st.id, name: st.name, subtitle: `Your student · ${course.title}` }} onClose={() => { setTalkingTo(null); void refresh(); }} onChanged={refresh} />
         );
       })()}
       {inviting && <InviteStudents course={course} me={state.me} onClose={() => setInviting(false)} onChanged={refresh} />}

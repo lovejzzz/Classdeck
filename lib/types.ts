@@ -167,6 +167,16 @@ export interface Nudge {
   read?: boolean;
 }
 
+/** A message from one student to another in the same course (when the teacher allows it). */
+export interface DirectMessage {
+  id: string;
+  from: string;
+  to: string;
+  text: string;
+  at: number;
+  read?: boolean;
+}
+
 export type AnswerValue = number | string | number[] | string[];
 
 /** Card tree, quiz cards: students with a submitted score (any try) at least `min` percent (and below the next band) get `next`. */
@@ -378,6 +388,8 @@ export interface Course {
   levels?: Level[];
   groups?: Group[];
   joinCode: string;
+  /** Students may message each other (Students → "Students can message each other"). Unset: yes. */
+  peerMessages?: boolean;
   access?: { joinOpen: boolean; passcode?: string; guestToken?: string;
     /** Students not on the class list may add themselves: straight in, or after the teacher lets them in. Unset: they can't. */
     selfJoin?: "open" | "approve" };
