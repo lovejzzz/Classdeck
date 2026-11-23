@@ -225,3 +225,9 @@ button:disabled { cursor: not-allowed; }
 .hero-wire { stroke-dasharray: 1; animation: tree-draw 0.8s var(--ease-out) backwards; }
 @media (prefers-reduced-motion: reduce) { .hero-student { display: none; } }
 /* Cards on the map after a long press: a gentle jiggle, like apps on a phone's home screen ready to be deleted. */
+
+/* While the card panel (30rem, on the right) is open, the course page's top bar and tab row move their right-hand
+   controls in from under it, at the same pace as the panel. How far is worked out in the page (Deck) and set here. */
+.panel-shift-head, .panel-shift-row { transition: padding-right 0.5s var(--ease-out); }
+body[data-panel="open"] .panel-shift-head { padding-right: var(--panel-head, 1rem); }
+body[data-panel="open"] .panel-shift-row { padding-right: var(--panel-row, 0px); }

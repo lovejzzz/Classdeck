@@ -41,6 +41,19 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   /** Show a card or lesson on the course map. */
   const showOnMap = (id: string) => { setMapFocus({ id, at: clock() }); if (view !== "map") onView?.("map"); };
   const [editorOpen, setEditorOpen] = useState(false);
+  // The page's top bar and tabs make room for the card panel while it's open (see .panel-shift-* in globals.css).
+  useEffect(() => {
+    const b = document.body;
+    const fit = () => {
+      // The page's content is centred in up to 72rem; the panel is 480px wide. Room enough for the controls to end
+      // just left of it (not on a phone, where the panel covers the page anyway).
+      const w = window.innerWidth, side = (w - Math.min(w, 1152)) / 2;
+      b.style.setProperty("--panel-head", w < 900 ? "1rem" : `${Math.max(16, 492 - side)}px`);
+      b.style.setProperty("--panel-row", w < 900 ? "0px" : `${Math.max(0, 476 - side)}px`);
+    };
+    if (editorOpen) { fit(); b.dataset.panel = "open"; window.addEventListener("resize", fit); } else delete b.dataset.panel;
+    return () => { delete b.dataset.panel; window.removeEventListener("resize", fit); };
+  }, [editorOpen]);
   const [saving, setSaving] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());

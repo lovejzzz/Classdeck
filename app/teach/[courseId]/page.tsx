@@ -56,6 +56,8 @@ export default function TeachPage() {
   // Every tab change is its own Back step, including going back to the map.
   const setTab = (t: Tab) => setTabParam(t === "map" ? null : t, { push: true, drop: ["run", "qr", ...(t === "map" ? [] : ["card"])] });
   const [picked, setPicked] = useState<string | null>(null);
+  // The "No students yet" box, closed by the teacher (remembered per course on this device).
+  const [hideStart, setHideStart] = useState(() => { try { return typeof window !== "undefined" && localStorage.getItem(`hide-start:${courseId}`) === "1"; } catch { return false; } });
   const [sel, setSel] = useState<{ sid: string; mid: string } | null>(null);
   const seenKey = `seen-at:teacher:${courseId}`;
   const [seenAt, setSeenAt] = useState(() => (typeof window === "undefined" ? 0 : readSeen(seenKey)));
@@ -138,7 +140,7 @@ export default function TeachPage() {
     <div className="flex-1 overflow-x-clip">
       {courseId !== "demo" && <ConnectionBanner needAuth={needAuth} error={error} signInHref={`/login?next=/teach/${courseId}`} />}
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
+        <div className="panel-shift-head mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
           <Link href="/" className="flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink">
             <LogoMark size={15} />Questhand
           </Link>
@@ -209,7 +211,7 @@ export default function TeachPage() {
       </header>
 
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="panel-shift-row flex flex-wrap items-center gap-2.5">
           <div className="relative flex max-w-full overflow-x-auto rounded-lg bg-lane p-0.5 [--tab:4.25rem] [scrollbar-width:none] sm:[--tab:5rem]" role="tablist">
             <span
               className="absolute inset-y-0.5 left-0.5 w-[var(--tab)] rounded-md bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-[var(--ease-out)]"
@@ -263,8 +265,13 @@ export default function TeachPage() {
           {viewer && (
             <p className="mb-5 rounded-xl bg-lane px-4 py-2.5 text-[13px] text-ink-2">You can view this course. Only its owner and editors can change it.</p>
           )}
-          {course.students.length === 0 && courseId !== "demo" && tab !== "settings" && (
-            <section aria-label="Getting started" className="card mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 p-5">
+          {course.students.length === 0 && courseId !== "demo" && tab !== "settings" && (!hideStart || !!course.waiting?.length) && (
+            <section aria-label="Getting started" className="card relative mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 p-5 pr-12">
+              {!course.waiting?.length && (
+                // Closed for this course on this device; anyone waiting to be let in still shows.
+                <button onClick={() => { setHideStart(true); try { localStorage.setItem(`hide-start:${courseId}`, "1"); } catch {} }} aria-label="Close" title="Close"
+                  className="btn btn-quiet press absolute right-2 top-2 h-8 w-8 justify-center px-0"><Icon name="x" size={14} /></button>
+              )}
               <div className="min-w-[14rem] flex-1">
                 <h2 className="text-[15px] font-medium">{course.waiting?.length ? `${course.waiting.length} student${course.waiting.length === 1 ? " is" : "s are"} waiting to be let in` : "No students yet"}</h2>
                 <p className="mt-1 text-[13px] text-ink-2">{course.waiting?.length ? `${course.waiting.map((w) => w.name).slice(0, 3).join(", ")}${course.waiting.length > 3 ? " and others" : ""} joined with the class code. Let them in or turn them away.` : "Invite students by email, or share the class link or QR code."}</p>

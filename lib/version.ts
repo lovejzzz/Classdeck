@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.47",
+    date: "2026-11-22",
+    changes: [
+      "With a card's panel open, the course page's top bar (class code, Student View, notifications) and the tab row's Saved and undo move left so the panel doesn't cover them, sliding with the panel.",
+      "The “No students yet” box can be closed with the ✕ in its corner (remembered for that course on this device). Students waiting to be let in still show.",
+    ],
+  },
+  {
     version: "0.1.46",
     date: "2026-11-22",
     changes: [
