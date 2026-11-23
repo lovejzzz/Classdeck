@@ -355,6 +355,8 @@ export interface Week {
 export interface Student {
   id: string;
   name: string;
+  /** One of the course's two demo students: added by the teacher to try the course as; what they do is kept. */
+  demo?: boolean;
   /** The student's email (from an invitation or their account). */
   email?: string;
   /** An older single sign-in link, from before links could be reused. Only its SHA-256 is stored. */

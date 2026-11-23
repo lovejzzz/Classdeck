@@ -8,7 +8,7 @@ import type { Attachment } from "@/lib/types";
 import { Icon } from "./Icon";
 import { MediaCapture } from "./MediaCapture";
 import { PhotoCapture } from "./PhotoCapture";
-import { SketchPad } from "./SketchPad";
+import { ImageEditor } from "./ImageEditor";
 
 type Mode = "audio" | "video" | "screen" | "photo" | "draw" | "link";
 
@@ -118,7 +118,7 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
     <div className="flex flex-wrap items-center gap-1.5">
       {/* The same four buttons for everyone. Students hand work in, so Record comes first for them. */}
       {teacher ? [linkBtn, uploadBtn, drawBtn, recordMenu] : [recordMenu, uploadBtn, drawBtn, linkBtn]}
-      {mode === "draw" && <DrawPanel onKeep={(f) => { setMode(null); upload(f, `Drawing · ${stamp()}`); }} onCancel={() => setMode(null)} />}
+      {mode === "draw" && <ImageEditor title="Draw" onKeep={(f) => { setMode(null); upload(f, `Drawing · ${stamp()}`); }} onCancel={() => setMode(null)} />}
       <input ref={file} type="file" className="hidden" accept={accept}
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -129,24 +129,3 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
   );
 }
 
-/** Draw in a large panel of its own, over the page: room to draw, and Esc closes only this. */
-function DrawPanel({ onKeep, onCancel }: { onKeep: (file: File) => void; onCancel: () => void }) {
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopImmediatePropagation(); e.preventDefault(); onCancel(); } };
-    window.addEventListener("keydown", k, true);
-    return () => window.removeEventListener("keydown", k, true);
-  }, [onCancel]);
-  return createPortal(
-    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-ink/40 p-4 backdrop-blur-[2px] sm:p-8" onPointerDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div role="dialog" aria-modal="true" aria-label="Draw" className="pop w-full max-w-[min(72rem,calc((100dvh-10rem)*1.6))] overflow-hidden rounded-2xl bg-white shadow-[0_40px_100px_-30px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center gap-3 border-b border-line px-4 py-2.5">
-          <Icon name="practice" size={15} className="text-ink-2" />
-          <span className="flex-1 text-[14px] font-semibold">Draw</span>
-          <button onClick={onCancel} aria-label="Close" className="btn btn-quiet press h-9 w-9 justify-center px-0"><Icon name="x" size={17} /></button>
-        </div>
-        <SketchPad big onKeep={onKeep} onCancel={onCancel} />
-      </div>
-    </div>,
-    document.body,
-  );
-}

@@ -13,7 +13,7 @@ import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
-import { DEFAULT_GROUPING, groupFor, signupGroupId, signupGroupingId } from "@/lib/shared";
+import { DEFAULT_GROUPING, DEMO_STUDENTS, groupFor, isDemoStudent, signupGroupId, signupGroupingId } from "@/lib/shared";
 
 /**
  * A sign-up poll's grouping, kept in step with the card: its name is the card's title and there's a group for each
@@ -170,6 +170,8 @@ export async function GET(request: Request, { params }: Ctx) {
     if (!course) return Response.json({ error: "No such course" }, { status: 404 });
     if (!session || !canTeach(session, course)) return unauthorized("teacher");
     if (!testStudentFor(as) && !course.students.some((s) => s.id === as)) return Response.json({ error: "That student isn’t in this class" }, { status: 404 });
+    // A demo student on the class list is the teacher's own: what they do is real (kept, in Grades), not a sandbox.
+    if (isDemoStudent(as)) return view(request, courseId);
     return runPreview(previewKey(session, courseId, as), courseId, () => view(request, courseId), testStudentFor(as), as === DEMO_STUDENT.id);
   }
   return view(request, courseId);
@@ -368,10 +370,22 @@ export async function POST(request: Request, { params }: Ctx) {
     if (!session || !canTeach(session, course)) return unauthorized("teacher");
     const sid = typeof body.studentId === "string" ? body.studentId : typeof body.as === "string" ? body.as : "";
     if (!testStudentFor(sid) && !course.students.some((s) => s.id === sid)) return Response.json({ ok: false, error: "That student isn’t in this class" }, { status: 400 });
-    if (body.op === "endPreview") { endPreview(previewKey(session, courseId, sid), courseId, sid === DEMO_STUDENT.id); return Response.json({ ok: true }); }
+    if (body.op === "endPreview") {
+      // Starting over as a demo student clears their real work.
+      if (isDemoStudent(sid)) {
+        const d = db();
+        delete d.progress[courseId]?.[sid];
+        delete d.choices[courseId]?.[sid];
+        save();
+        return Response.json({ ok: true });
+      }
+      endPreview(previewKey(session, courseId, sid), courseId, sid === DEMO_STUDENT.id);
+      return Response.json({ ok: true });
+    }
     if (!PREVIEW_OPS.has(body.op)) return Response.json({ ok: false, error: "That isn’t something a student does, so it can’t be tried in Student View" }, { status: 400 });
     // react and comment name the student in `who`; the rest in `studentId`.
     if ((body.op === "react" || body.op === "comment") && body.who !== sid) return Response.json({ ok: false, error: "In Student View you act as the student you picked" }, { status: 400 });
+    if (isDemoStudent(sid)) return change(request, courseId, body);
     return runPreview(previewKey(session, courseId, sid), courseId, () => change(request, courseId, body), testStudentFor(sid), sid === DEMO_STUDENT.id);
   }
   return change(request, courseId, body);
@@ -411,6 +425,21 @@ async function change(request: Request, courseId: string, body: Record<string, a
     return Object.hasOwn(row, mid) ? row[mid] : (row[mid] = { status: "todo", updatedAt: Date.now() });
   };
   let extra: Record<string, unknown> = {};
+  /** Take a student off the class list, and out of every group: the course's, the ones made on cards and by sign-up polls, and a raised hand. */
+  function dropStudent(gone: string) {
+    course!.students = course!.students.filter((x) => x.id !== gone);
+    course!.groups = course!.groups?.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x !== gone) }));
+    for (const gs of course!.groupings ?? []) for (const g of gs.groups) g.studentIds = g.studentIds.filter((x) => x !== gone);
+    if (d.live[courseId]?.hands) delete d.live[courseId].hands[gone];
+  }
+  /** Everything a (demo) student did: their progress, choices and posts. */
+  function clearWork(sid: string) {
+    delete d.progress[courseId]?.[sid];
+    delete d.choices[courseId]?.[sid];
+    if (d.posts[courseId]) d.posts[courseId] = d.posts[courseId].filter((x) => x.studentId !== sid);
+    const st = d.studio[courseId];
+    if (st) { st.posts = st.posts.filter((x) => x.studentId !== sid); st.feedback = st.feedback.filter((x) => x.fromId !== sid); }
+  }
 
   /** A studio card is done once you've posted and given feedback to enough peers. */
   function studioStatus(studentId: string, moduleId: string) {
@@ -592,12 +621,21 @@ async function change(request: Request, courseId: string, body: Record<string, a
       break;
     }
     case "removeStudent": {
-      const gone = String(body.studentId ?? "");
-      course.students = course.students.filter((x) => x.id !== gone);
-      // Out of every group too: the course's groups, the ones made on cards and by sign-up polls, and a raised hand.
-      course.groups = course.groups?.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x !== gone) }));
-      for (const gs of course.groupings ?? []) for (const g of gs.groups) g.studentIds = g.studentIds.filter((x) => x !== gone);
-      if (d.live[courseId]?.hands) delete d.live[courseId].hands[gone];
+      dropStudent(String(body.studentId ?? ""));
+      break;
+    }
+    case "setDemoStudents": {
+      // The two demo students: on the class list (to try the course as, their work kept), or gone with their work.
+      if (body.on) {
+        for (const ds of DEMO_STUDENTS) {
+          if (course.students.some((x) => x.id === ds.id)) continue;
+          if ([...course.students, ...(course.waiting ?? [])].some((x) => x.name.toLowerCase() === ds.name.toLowerCase())) return fail(`A student in this class is already called ${ds.name}`);
+          course.students.push({ id: ds.id, name: ds.name, demo: true });
+          if (course.groups?.length) [...course.groups].sort((a, b) => a.studentIds.length - b.studentIds.length)[0].studentIds.push(ds.id);
+        }
+      } else {
+        for (const ds of DEMO_STUDENTS) { dropStudent(ds.id); clearWork(ds.id); }
+      }
       break;
     }
     case "renameWeek": {

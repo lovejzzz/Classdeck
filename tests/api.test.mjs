@@ -972,6 +972,24 @@ async function main() {
     check("a reply mentioning the teacher tells them too", ((await A.state(nc)).events ?? []).some((e) => e.text === "Mentioned you: Thanks @Teacher"));
   }
 
+  // ---- Demo students: added by the teacher, tried as in Student View; their work is real
+  {
+    const dc = made["template/writing"];
+    const roster = async () => courseOf(await A.state(dc)).students;
+    check("no demo students until the teacher adds them", !(await roster()).some((x) => x.demo));
+    check("add the demo students", (await A.op(dc, { op: "setDemoStudents", on: true })).ok);
+    const demos = (await roster()).filter((x) => x.demo);
+    check("two demo students, with their fixed names", demos.map((x) => x.name).sort().join() === "Caspian Thornbury,Odessa Brightwell", demos);
+    check("adding them again doesn't double them", (await A.op(dc, { op: "setDemoStudents", on: true })).ok && (await roster()).filter((x) => x.demo).length === 2);
+    const od = demos.find((x) => x.name === "Odessa Brightwell");
+    const card = courseOf(await A.state(dc)).weeks.flatMap((w) => w.lessons).flatMap((l) => l.modules).find((m) => m.type !== "group" && m.audience.kind === "all");
+    const done = await A.post(`/api/course/${dc}`, { op: "setProgress", preview: true, studentId: od.id, moduleId: card.id, status: "done" });
+    check("acting as a demo student in Student View", done.ok, done);
+    check("…is kept for real (it's in the teacher's view)", (await A.state(dc)).progress?.[od.id]?.[card.id]?.status === "done");
+    check("starting over clears a demo student's work", (await A.post(`/api/course/${dc}`, { op: "endPreview", as: od.id })).ok && !(await A.state(dc)).progress?.[od.id]?.[card.id]);
+    check("remove the demo students", (await A.op(dc, { op: "setDemoStudents", on: false })).ok && !(await roster()).some((x) => x.demo));
+  }
+
   // ---- New teachers start with Questhand 101
   {
     const N = await teacher("new");

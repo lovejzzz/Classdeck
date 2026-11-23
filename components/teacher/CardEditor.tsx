@@ -21,6 +21,8 @@ import { SCORE, targetsOf, wiresOf } from "@/lib/branching";
 import { CardFace } from "../cards/CardFace";
 import { AudioPlayer } from "../cards/Media";
 import { MediaLift } from "../cards/MediaLift";
+import { ImageEditor } from "../ImageEditor";
+import { uploadFile } from "@/lib/client";
 import { playableArt } from "../cards/PlayArt";
 import { Avatar, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
@@ -190,6 +192,15 @@ export function CardEditor({
   // An attachment opened to check it: a video or picture grown big, or a recording playing under its row.
   const [viewing, setViewing] = useState<{ a: Attachment; from: DOMRect; open: boolean } | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
+  // A picture being edited (crop, text, drawing on it); saving uploads the result in its place.
+  const [editing, setEditing] = useState<Attachment | null>(null);
+  async function saveEdited(x: Attachment, f: File) {
+    setEditing(null);
+    const r = await uploadFile(f);
+    if (!r.ok) return toast(r.error, { icon: "x", tone: "bad" });
+    set({ attachments: (lessonRef.current.modules.find((c) => c.id === m.id)?.attachments ?? attachments).map((y) => (y.id === x.id ? { ...y, url: r.url, size: r.size } : y)) });
+    toast(`Saved ${x.name || "the picture"}`, { icon: "image" });
+  }
   const playNow = useCallback((el: HTMLMediaElement | null) => { el?.play().catch(() => {}); }, []);
   const openAttachment = (x: Attachment, el: HTMLElement) => {
     if (x.kind === "audio") return setPlaying((p) => (p === x.id ? null : x.id));
@@ -305,6 +316,9 @@ export function CardEditor({
                         className="block w-full truncate rounded border border-transparent bg-transparent px-1 text-[13px] hover:border-line focus:border-line-strong focus:bg-white focus:outline-none" /></Clearable>
                       <span className="mono block truncate px-1 text-[11px]">{x.kind}{x.size ? ` · ${formatSize(x.size)}` : ""}{i === 0 ? " · cover" : ""}</span>
                     </span>
+                    {x.kind === "image" && (
+                      <button onClick={() => setEditing(x)} className="btn btn-quiet press h-7 px-2 text-[11.5px]" title="Crop it, add text, or draw on it"><Icon name="practice" size={11} /> Edit</button>
+                    )}
                     {i > 0 && (
                       <button onClick={() => set({ attachments: [x, ...attachments.filter((y) => y.id !== x.id)] })} className="btn btn-quiet press h-7 px-2 text-[11.5px]" title="Use as the card's artwork">Make cover</button>
                     )}
@@ -540,6 +554,7 @@ export function CardEditor({
           )}
         </div>
       </div>
+      {editing && <ImageEditor source={editing.url} title={`Edit ${editing.name || "picture"}`} onKeep={(f) => saveEdited(editing, f)} onCancel={() => setEditing(null)} />}
       {viewing && <MediaLift a={viewing.a} title={viewing.a.name || m.title} from={viewing.from} open={viewing.open} onClose={() => setViewing((v) => v && { ...v, open: false })} onGone={() => setViewing(null)} />}
     </aside>,
     document.body,

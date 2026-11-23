@@ -55,3 +55,13 @@ export const cardOf = (key: string) => key.split(":")[0];
 /** The grouping a sign-up poll makes: one group per option, named after it. */
 export const signupGroupingId = (moduleId: string) => `gs-${moduleId}`;
 export const signupGroupId = (moduleId: string, option: number) => `${moduleId}-o${option}`;
+
+/**
+ * The two demo students a teacher can add to the class list, to try the course as. Fixed names, unlikely to be a real
+ * student's. Their ids are the same in every course.
+ */
+export const DEMO_STUDENTS = [
+  { id: "s-demo-odessa", name: "Odessa Brightwell" },
+  { id: "s-demo-caspian", name: "Caspian Thornbury" },
+] as const;
+export const isDemoStudent = (id: string) => DEMO_STUDENTS.some((d) => d.id === id);

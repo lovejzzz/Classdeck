@@ -13,6 +13,7 @@ import { DeleteCourse } from "./DeleteCourse";
 import type { Course, CourseState, Nudge } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { GroupingsList } from "./Groupings";
+import { DEMO_STUDENTS } from "@/lib/shared";
 
 /** The Settings tab (part "settings") and the Students tab (part "students") share this component and its helpers. */
 export function Settings({ course, onChanged, part = "settings", readOnly = false, onInvite, me, nudges = [], onMessage }: {
@@ -57,9 +58,10 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
               <li key={st.id} className="group flex items-center gap-3 py-2">
                 <Avatar name={st.name} size={34} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px]">{st.name}</span>
-                  <span className="block truncate text-[12.5px] text-ink-3">{st.userId ? `${st.email ?? "Has an account"} · joined` : `${st.email ? `${st.email} · ` : ""}not joined yet`}</span>
+                  <span className="flex items-center gap-1.5 truncate text-[14px]">{st.name}{st.demo && <span className="chip h-5 flex-none bg-[#fff2c7] text-[10.5px] font-medium text-[#7a5a00]">Demo</span>}</span>
+                  <span className="block truncate text-[12.5px] text-ink-3">{st.demo ? "For you to try the course as. What you do as them is kept." : st.userId ? `${st.email ?? "Has an account"} · joined` : `${st.email ? `${st.email} · ` : ""}not joined yet`}</span>
                 </span>
+                {st.demo && <a href={`/learn/${course.id}/${st.id}?preview=1`} className="btn btn-ghost press h-8 px-2.5 text-[12px]"><Icon name="eye" size={12} /> Try as {st.name.split(" ")[0]}</a>}
                 {onMessage && (() => {
                   const unread = nudges.filter((n) => n.studentId === st.id && n.from === "student" && !n.read).length;
                   return (
@@ -69,7 +71,7 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
                     </button>
                   );
                 })()}
-                {!readOnly && (
+                {!readOnly && !st.demo && (
                   <span className="flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
                     {!st.userId && (
                       // Their own invitation link, to send however you like: opening it signed in links their account.
@@ -111,6 +113,30 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
           </details>
         )}
       </section>
+
+      {/* Demo students: two made-up students on the class list, for the teacher to try the course as. Off by default. */}
+      {!readOnly && (
+        <section className="card flex flex-wrap items-center gap-3 p-6">
+          <span className="min-w-[14rem] flex-1">
+            <span className="block text-[15px] font-medium">Demo students</span>
+            <span className="block text-[13px] text-ink-3">Add {DEMO_STUDENTS.map((d) => d.name).join(" and ")} to the class list, to try the course as them in Student View. What you do as them is kept, like a real student’s: it shows in Grades and Students, in groups and discussions, for you to review.</span>
+          </span>
+          {(() => {
+            const on = course.students.some((x) => x.demo);
+            return (
+              <button onClick={async () => {
+                if (on && !(await ask({ title: "Remove the demo students?", body: "Their work goes with them.", confirm: "Remove", danger: true }))) return;
+                const r = await op(course.id, { op: "setDemoStudents", on: !on });
+                if (r.ok === false) return toast(String(r.error ?? "That didn’t work"), { icon: "x", tone: "bad" });
+                onChanged();
+                toast(on ? "Removed the demo students" : "Added two demo students", { icon: "users" });
+              }} className={`btn press h-9 ${on ? "btn-quiet" : "btn-ghost"}`}>
+                <Icon name={on ? "x" : "plus"} size={13} /> {on ? "Remove demo students" : "Add demo students"}
+              </button>
+            );
+          })()}
+        </section>
+      )}
 
       {/* Messages: students write to the teacher (always), and to each other (the teacher's choice, on by default). */}
       <section className="card flex flex-wrap items-center gap-3 p-6">

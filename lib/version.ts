@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.71",
+    date: "2026-11-23",
+    changes: [
+      "Edit a picture on a card: crop it, add text, and draw on it with pens in different colours and sizes. Save puts the edited picture in its place.",
+      "Draw has layers: drawing layers, text, and pictures. Add a picture with Add a picture or by dropping it on the page; move it, resize it from its corner, or erase parts of it. Hide, reorder or delete layers; Undo (⌘Z) steps back.",
+      "Demo students: add Odessa Brightwell and Caspian Thornbury to the class list (Students, or the Student View menu) to try the course as them. What you do as them is kept and shows in Grades; Start over clears it. Remove them any time.",
+      "Student View's menu lists the demo students first, then the quick test students, then the class.",
+    ],
+  },
+  {
     version: "0.1.70",
     date: "2026-11-23",
     changes: [
