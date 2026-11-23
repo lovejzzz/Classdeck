@@ -480,11 +480,6 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             onEdit={(lid, id) => { if (!readOnly) edit(lid, id); }}
             onAddLesson={course.weeks.length ? () => addLesson(course.weeks[course.weeks.length - 1].id) : undefined}
             lessonBar={(lid) => lessonBar(lid)}
-            lessonGoal={(lid) => { const l = lessonOf(lid); return (
-              <input value={l.goal ?? ""} readOnly={readOnly} onChange={(e) => change({ ...l, goal: e.target.value || undefined })}
-                onPointerDown={(e) => e.stopPropagation()} placeholder={readOnly ? "" : "Add a one-line goal for this lesson"} aria-label="Lesson goal"
-                className="-ml-1.5 block w-full min-w-0 truncate rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[12.5px] text-ink-3 placeholder:text-ink-3/70 hover:border-line focus:border-line-strong focus:bg-white focus:text-ink-2 focus:outline-none" />
-            ); }}
             footer={readOnly ? undefined : <NewWeek n={nextWeek} onBlank={async () => {
               await op(course.id, { op: "addWeek", title: `Week ${nextWeek}` });
               onRefresh();

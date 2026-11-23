@@ -236,15 +236,13 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new" } | { add: 
  * lesson or into a later one). Zoomed out, cards shrink to their titles; zoomed in, they show what to do. Drag from a
  * port onto a card to deal it, or into empty space for a new card. Click a card to edit it in the panel.
  */
-export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, lessonGoal, footer, weekNames = {}, onDeleteMany }: {
+export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, footer, weekNames = {}, onDeleteMany }: {
   /** Delete several picked cards at once (it asks first, and offers Undo). */
   onDeleteMany?: (ms: Module[]) => void;
   /** Lesson id → its week's full title, for the contents panel. */
   weekNames?: Record<string, string>;
   /** Beside a lesson's name: its date and a menu of lesson and week actions (the course page fills it in). */
   lessonBar?: (lessonId: string) => React.ReactNode;
-  /** Under a lesson's name: its one-line goal. */
-  lessonGoal?: (lessonId: string) => React.ReactNode;
   /** Below the last lesson, beside “+ Lesson”: adding a week. */
   footer?: React.ReactNode;
   /** Deleted cards, to put back from the trash bin. */
@@ -277,7 +275,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const wires = useMemo(() => wiresOf(all.map((x) => x.m)), [all]);
   const scroller = useRef<HTMLDivElement>(null);
   // Playing-card sized cards are tall: start a little zoomed out so a lesson shows several at once.
-  const [zoom, setZoom] = useState(0.7);
+  const [zoom, setZoom] = useState(1);
   const level = levelOf(zoom);
   // A card inside a group has its ports on the group's node.
   const groupOf = useMemo(() => new Map(all.flatMap((x) => (x.m.type === "group" ? (x.m.members ?? []).map((id) => [id, x.m.id] as const) : []))), [all]);
@@ -468,6 +466,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gap, selected]);
 
+  // The contents panel opens while the pointer is over the map's left edge or the panel (it closes a moment after).
+  const [toc, setToc] = useState(false);
+  const tocTimer = useRef<number>(0);
+  const openToc = () => { window.clearTimeout(tocTimer.current); setToc(true); };
+  const closeToc = () => { window.clearTimeout(tocTimer.current); tocTimer.current = window.setTimeout(() => setToc(false), 280); };
   // The lesson in the middle of the view, for the contents panel.
   const [inView, setInView] = useState<string | null>(null);
   useEffect(() => {
@@ -1017,7 +1020,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   return (
     <div className="flex items-start gap-3">
       {/* Contents: every week and its lessons. Click one to go there on the map. */}
-      <nav aria-label="Course contents" className="sticky top-3 hidden w-56 flex-none overflow-y-auto rounded-2xl border border-line bg-white/70 py-2 lg:block" style={{ height: fill ?? undefined }}>
+      {/* Hidden until the pointer reaches the map's left edge; it slides in and pushes the map over. */}
+      <div className="relative flex-none" onMouseEnter={openToc} onMouseLeave={closeToc} onFocus={openToc} onBlur={closeToc}
+        style={{ width: toc ? 232 : 0, marginRight: toc ? 0 : -12, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1), margin-right 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
+        <div aria-hidden="true" className="group absolute -left-4 top-0 z-30 flex w-6 items-center justify-center" style={{ height: fill ?? undefined, pointerEvents: toc ? "none" : "auto" }}>
+          <span className={`h-16 w-1 rounded-full bg-ink/15 transition-opacity duration-300 group-hover:bg-ink/30 ${toc ? "opacity-0" : "opacity-100"}`} />
+        </div>
+      <nav aria-label="Course contents" className="w-[232px] overflow-y-auto overflow-x-hidden rounded-2xl border border-line bg-white/80 py-2"
+        style={{ height: fill ?? undefined, opacity: toc ? 1 : 0, transform: toc ? "none" : "translateX(-24px)", transition: "opacity 0.3s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)", pointerEvents: toc ? "auto" : "none" }}>
         {contents.map((c, ci) => (
           <div key={ci} className="px-2 pb-2">
             {c.week && <div className="truncate px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3" title={c.week}>{c.week}</div>}
@@ -1039,6 +1049,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           </div>
         ))}
       </nav>
+      </div>
       <div className="relative min-w-0 flex-1">
       {viewing && (
         <MediaLift a={viewing.a} title={viewing.title} from={viewing.from} open={viewing.open}
@@ -1103,7 +1114,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         className="tree-canvas relative overscroll-contain h-[calc(100dvh-11.75rem)] sm:h-[calc(100dvh-9.5rem)] min-h-[30rem] overflow-auto rounded-2xl border border-line bg-canvas outline-none focus-visible:ring-2 focus-visible:ring-[#4b56a8]/30"
         style={{ backgroundSize: `${22 * zoom}px ${22 * zoom}px`, height: fill ?? undefined, marginRight: gap, transition: "margin-right 0.45s cubic-bezier(0.22, 1, 0.36, 1)" }}
         onPointerDown={(e) => {
-          if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.canvas) return;
+          // Only empty space starts a box or a drag: the map's background, a lesson's band and the words in its header
+          // (not a card, a button, a box to type in, or a menu).
+          const t = e.target as HTMLElement;
+          if (t !== e.currentTarget && !t.dataset.canvas && (t.closest("[data-node], button, input, textarea, select, a, label, [role=menu], .pop") || !t.closest("[data-canvas]"))) return;
           setMenu(null);
           if (jiggle) setJiggle(false);
           // With a mouse, dragging on empty space draws a box that picks every card it touches (Shift adds to what's
@@ -1162,9 +1176,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       : today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
                   </div>
                   <div className="flex items-center gap-2 px-5 pt-1.5">
-                    {lessonGoal && level !== "far" && <span className="min-w-0 flex-1">{lessonGoal(r.lesson.id)}</span>}
                     {level !== "far" && <span className="mono flex-none">{full.modules.filter((m) => m.type !== "group").length} card{full.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
-                    {!(lessonGoal && level !== "far") && <span className="flex-1" />}
+                    <span className="flex-1" />
                     {!readOnly && level !== "far" && (
                       <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.left, b.bottom); setMenu({ add: r.lesson.id, x: p.x - 200, y: p.y + 4 }); }}
                         className="press flex h-7 items-center gap-1 rounded-lg bg-white px-2 text-[12px] text-ink-2 shadow-sm hover:text-ink"><Icon name="plus" size={12} /> Card</button>

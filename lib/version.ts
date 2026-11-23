@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.45",
+    date: "2026-11-22",
+    changes: [
+      "The course map fills the page and starts at 100%. The contents panel stays out of the way until the pointer reaches the map's left edge; then it slides in and pushes the map over. The card panel pushes it from the right, so with both open the map sits between them.",
+      "Lessons on the map no longer have a one-line goal box.",
+      "A box to pick cards can start anywhere on a lesson's empty space, its header row included.",
+    ],
+  },
+  {
     version: "0.1.44",
     date: "2026-11-22",
     changes: [
