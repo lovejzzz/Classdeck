@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.65",
+    date: "2026-11-23",
+    changes: [
+      "Removing a student now takes them out of every set of groups too, including a sign-up poll's (it no longer counted them, or showed a blank name).",
+      "A student can't be renamed to a classmate's name.",
+      "A live poll no longer blocks the top bar: students can open their account menu, Inbox, notifications and board while it shows. It sits below the bar, a poll they close stays closed, and a closed poll's results stop showing a few hours after class.",
+      "Grades: a student's details list each quiz and card group with its score (and tries), and use the full width when the course has no skills.",
+      "Students → Groups counts every card using a set of groups (discussions in groups and the sign-up poll too). Removing a sign-up poll's groups makes it a plain poll.",
+      "Writing boxes are named for screen readers (“Your copy of …”, “Shared text”).",
+    ],
+  },
+  {
     version: "0.1.64",
     date: "2026-11-23",
     changes: [

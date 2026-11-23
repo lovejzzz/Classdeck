@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { op } from "@/lib/client";
-import { DEFAULT_GROUPING, groupingsOf } from "@/lib/shared";
+import { DEFAULT_GROUPING, groupingsOf, signupGroupingId } from "@/lib/shared";
 import { toast } from "@/lib/toast";
 import type { Course, Group, Grouping } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 
 const newId = () => `g-${Math.random().toString(36).slice(2, 9)}`;
 /** How many cards use a grouping. */
-const usedBy = (course: Course, id: string) => course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules)).filter((m) => (m.grouping ?? DEFAULT_GROUPING) === id && (m.writers === "group" || m.type === "studio")).length;
+/** How many cards use a grouping: written in groups, discussed in groups, or the sign-up poll that makes it. */
+const usedBy = (course: Course, id: string) => course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules)).filter((m) =>
+  ((m.grouping ?? DEFAULT_GROUPING) === id && (m.writers === "group" || m.type === "studio" || !!m.wall?.byGroup)) || (!!m.signup && signupGroupingId(m.id) === id)).length;
 
 /**
  * Make or change a grouping: its name, its named groups, and who is in each. Tap a group to choose it, then tap

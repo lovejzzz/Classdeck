@@ -585,12 +585,19 @@ async function change(request: Request, courseId: string, body: Record<string, a
     }
     case "renameStudent": {
       const st = course.students.find((x) => x.id === body.studentId);
-      if (st && String(body.name ?? "").trim()) st.name = String(body.name).trim().slice(0, 60);
+      const name = String(body.name ?? "").trim().slice(0, 60);
+      // Names are unique in a class (classmates find each other by name).
+      if (st && name && [...course.students, ...(course.waiting ?? [])].some((x) => x.id !== st.id && x.name.trim().toLowerCase() === name.toLowerCase())) return fail(`Another student is already called ${name}`);
+      if (st && name) st.name = name;
       break;
     }
     case "removeStudent": {
-      course.students = course.students.filter((x) => x.id !== body.studentId);
-      course.groups = course.groups?.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x !== body.studentId) }));
+      const gone = String(body.studentId ?? "");
+      course.students = course.students.filter((x) => x.id !== gone);
+      // Out of every group too: the course's groups, the ones made on cards and by sign-up polls, and a raised hand.
+      course.groups = course.groups?.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x !== gone) }));
+      for (const gs of course.groupings ?? []) for (const g of gs.groups) g.studentIds = g.studentIds.filter((x) => x !== gone);
+      if (d.live[courseId]?.hands) delete d.live[courseId].hands[gone];
       break;
     }
     case "renameWeek": {
@@ -727,7 +734,11 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const id = String(body.id ?? "");
       course.groupings = (course.groupings ?? []).filter((x) => x.id !== id);
       if (!course.groupings.length) course.groupings = undefined;
-      for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) if (m.grouping === id) m.grouping = undefined;
+      for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) {
+        if (m.grouping === id) m.grouping = undefined;
+        // A sign-up poll's groups removed: it's a plain poll again (or saving it would make them anew, empty).
+        if (m.signup && signupGroupingId(m.id) === id) m.signup = undefined;
+      }
       break;
     }
     case "setGroups":

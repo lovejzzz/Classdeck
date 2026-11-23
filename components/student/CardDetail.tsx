@@ -391,7 +391,7 @@ export function CardDetail(p: DetailProps) {
         {personal && !m.choice && (
           <div className="mt-6">
             <div className="eyebrow mb-1.5">Your copy · it saves as you go</div>
-            <RichBodyEditor value={output} onChange={setOutput} placeholder="Write here." />
+            <RichBodyEditor value={output} onChange={setOutput} placeholder="Write here." label={`Your copy of ${m.title}`} />
             <DocNotes notes={p.progress?.notes ?? []} me="student" courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onChanged={p.onChanged} />
           </div>
         )}

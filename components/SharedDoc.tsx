@@ -180,7 +180,7 @@ export function SharedDoc({ courseId, docKey, template, name, readOnly, onText }
           ) : <p className="px-2 py-1.5 text-[12.5px] text-ink-3">No versions yet. One is kept every few minutes while people write.</p>}
         </div>
       )}
-      <RichBodyEditor placeholder="Write here, together." collab={{
+      <RichBodyEditor placeholder="Write here, together." label={readOnly ? "Shared text" : "Shared text, written together"} collab={{
         doc: setup.doc,
         provider: setup.provider,
         user: { name, color: colorOf(name) },

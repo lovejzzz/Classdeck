@@ -44,11 +44,13 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
     const quizzes = cards.filter(({ m }) => m.type === "quiz" && m.questions?.length && isFinished(m, mine[m.id]));
     // A card group of questions counts too, once all its questions are answered, by its first answers.
     const shown = new Set(cards.map(({ m }) => m.id));
-    const groups = all.flatMap(({ l }) => l.modules.filter((g) => g.type === "group" && g.members?.some((id) => shown.has(id))).map((g) => groupScore(g, l.modules, mine)).filter((g) => g.done));
-    const scores = [
-      ...quizzes.map(({ m }) => (mine[m.id].best ?? mine[m.id].score ?? 0) / Math.max(1, quizSet(m, st.id, mine[m.id].attempt ?? 1).length)),
-      ...groups.map((g) => g.right / g.total),
+    const groups = all.flatMap(({ w, l }) => l.modules.filter((g) => g.type === "group" && g.members?.some((id) => shown.has(id))).map((g) => ({ g, week: w.title, s: groupScore(g, l.modules, mine) })).filter((x) => x.s.done));
+    // Each score, to list under the student: the quiz or card group, its week, right of total, and tries used.
+    const scored = [
+      ...quizzes.map(({ m, week }) => ({ id: m.id, title: m.title, week, right: mine[m.id].best ?? mine[m.id].score ?? 0, total: Math.max(1, quizSet(m, st.id, mine[m.id].attempt ?? 1).length), tries: mine[m.id].attempt ?? 1 })),
+      ...groups.map(({ g, week, s: x }) => ({ id: g.id, title: g.title, week, right: x.right, total: x.total, tries: undefined as number | undefined })),
     ];
+    const scores = scored.map((x) => x.right / x.total);
     const quizPct = scores.length ? scores.reduce((t, x) => t + x, 0) / scores.length : undefined;
     const reviews = cards.filter(({ m }) => mine[m.id]?.review).map(({ m, week }) => ({ m, week, r: mine[m.id].review! })).sort((a, b) => b.r.at - a.r.at);
     const toReview = cards.filter(({ m }) => reviewableCard(m) && mine[m.id]?.status === "done" && !mine[m.id]?.review);
@@ -64,7 +66,7 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
     const self: Record<string, number> = {};
     const checks = cards.filter(({ m }) => m.type === "selfcheck" && mine[m.id]?.ratings).sort((a, b) => mine[a.m.id].updatedAt - mine[b.m.id].updatedAt);
     for (const { m } of checks) Object.assign(self, mine[m.id].ratings);
-    return { st, total: cards.length, done, late, quizPct, reviews, waiting, toReview, teacher, self };
+    return { st, total: cards.length, done, late, quizPct, scored, reviews, waiting, toReview, teacher, self };
   });
 
   function exportCsv() {
@@ -143,11 +145,11 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
                 {open === r.st.id && (
                   <tr>
                     <td colSpan={5 + skills.length} className="border-b border-line bg-[#fafaf9] px-6 py-4">
-                      <div className="grid items-start gap-6 lg:grid-cols-[22rem_1fr]">
-                      <SkillRadar skills={skills} size={240} series={[
+                      <div className={`grid items-start gap-6 ${skills.length ? "lg:grid-cols-[22rem_1fr]" : ""}`}>
+                      {skills.length > 0 && <SkillRadar skills={skills} size={240} series={[
                         { label: "Self", values: r.self, style: "fill", color: "#1b1b1a" },
                         { label: "You", values: r.teacher, style: "dash", color: "#ae502f" },
-                      ]} />
+                      ]} />}
                       <div>
                       {r.toReview.length > 0 && (
                         <div className="mb-4">
@@ -159,6 +161,21 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
                                   <span className="font-medium">{m.title}</span><span className="text-ink-3">{week.split(" · ")[0]}</span>
                                   <span className="flex-1" />{onReview && <span className="text-[12px] text-[#287670]">Review →</span>}
                                 </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {r.scored.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-[12px] font-medium uppercase tracking-[0.06em] text-ink-3">Scores</p>
+                          <ul className="mt-1.5 space-y-1">
+                            {r.scored.map((x) => (
+                              <li key={x.id} className="flex items-center gap-2 px-2 text-[13px]">
+                                <span className="font-medium">{x.title}</span><span className="text-ink-3">{x.week.split(" · ")[0]}</span>
+                                <span className="flex-1" />
+                                {x.tries && x.tries > 1 && <span className="text-[12px] text-ink-3">best of {x.tries} tries</span>}
+                                <span className={`font-mono text-[12px] ${x.right / x.total < 0.6 ? "text-bad" : "text-ink-2"}`}>{x.right}/{x.total} · {Math.round((x.right / x.total) * 100)}%</span>
                               </li>
                             ))}
                           </ul>

@@ -185,7 +185,10 @@ export function StudentLive({ courseId, studentId, state, onChanged }: { courseI
   const hand = live.hands[studentId];
   const [menu, setMenu] = useState(false);
   const [note, setNote] = useState("");
-  const [dismissed, setDismissed] = useState<string | null>(null);
+  // A poll closed with × stays closed on this device; a closed poll's results stop showing a few hours after it ran.
+  const [dismissed, setDismissedState] = useState<string | null>(() => { try { return localStorage.getItem(`poll-seen:${courseId}`); } catch { return null; } });
+  const setDismissed = (id: string | null) => { setDismissedState(id); try { if (id) localStorage.setItem(`poll-seen:${courseId}`, id); } catch {} };
+  const [now] = useState(() => Date.now());
 
   async function vote(i: number) {
     const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "vote", studentId, pollId: poll!.id, choice: i });
@@ -202,9 +205,9 @@ export function StudentLive({ courseId, studentId, state, onChanged }: { courseI
 
   return (
     <>
-      {poll && dismissed !== poll.id && (poll.open || live.counts) && (
-        <div className="fixed inset-x-0 top-3 z-40 flex justify-center px-4" role="dialog" aria-label="Poll from your teacher">
-          <div className="pop w-full max-w-md rounded-2xl border border-line bg-white p-4 shadow-[0_24px_60px_-24px_rgba(20,20,18,0.45)]" aria-live="polite">
+      {poll && dismissed !== poll.id && (poll.open || (live.counts && now - poll.at < 3 * 3600_000)) && (
+        <div className="pointer-events-none fixed inset-x-0 top-16 z-40 flex justify-center px-4" role="dialog" aria-label="Poll from your teacher">
+          <div className="pop pointer-events-auto w-full max-w-md rounded-2xl border border-line bg-white p-4 shadow-[0_24px_60px_-24px_rgba(20,20,18,0.45)]" aria-live="polite">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 animate-pulse rounded-full bg-bad" />
               <span className="flex-1 text-[11.5px] font-medium uppercase tracking-[0.08em] text-ink-3">Poll from your teacher{!poll.open ? " · closed" : ""}</span>
