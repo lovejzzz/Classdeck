@@ -7,7 +7,11 @@ import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table
 import { Markdown } from "@tiptap/markdown";
 import { Placeholder } from "@tiptap/extensions";
 import { mergeAttributes, Node, nodeInputRule } from "@tiptap/core";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import type { Doc } from "yjs";
 import { Icon } from "../Icon";
+import { RichText } from "../RichText";
 
 // $…$ and $$…$$ (as MathText reads them; "$5 and $10" stays money).
 const MATH_AT_START = /^(?:\$\$[\s\S]+?\$\$|\$(?=[^\s$])(?:\\\$|[^$\n])*?[^\s\\$]\$(?!\d))/;
@@ -62,6 +66,29 @@ function Toolbar({ editor }: { editor: Editor }) {
     }),
   });
   const c = () => editor.chain().focus();
+  /** The table the cursor is in: where it starts, and the node. */
+  const tableHere = () => {
+    const { $from } = editor.state.selection;
+    for (let d = $from.depth; d > 0; d--) if ($from.node(d).type.name === "table") return { pos: $from.before(d), node: $from.node(d) };
+    return null;
+  };
+  // A row at the end that adds up each column (=SUM), which students see worked out.
+  const addTotal = () => {
+    const t = tableHere();
+    if (!t) return;
+    const { tableRow, tableCell, paragraph } = editor.state.schema.nodes;
+    const cols = t.node.firstChild?.childCount ?? 1;
+    const cell = (text: string) => tableCell.create(null, paragraph.create(null, editor.state.schema.text(text)));
+    const row = tableRow.create(null, Array.from({ length: cols }, (_, i) => cell(i === 0 ? "Total" : "=SUM")));
+    editor.view.dispatch(editor.state.tr.insert(t.pos + t.node.nodeSize - 1, row));
+  };
+  // A chart of the table, right under it.
+  const addChart = (kind: "bar" | "line" | "pie") => {
+    const t = tableHere();
+    if (!t) return;
+    const { paragraph } = editor.state.schema.nodes;
+    editor.view.dispatch(editor.state.tr.insert(t.pos + t.node.nodeSize, paragraph.create(null, editor.state.schema.text(`[chart: ${kind}]`))));
+  };
   const link = () => {
     if (st.link) return c().unsetLink().run();
     const url = window.prompt("Link to (https://…)", "https://");
@@ -88,6 +115,10 @@ function Toolbar({ editor }: { editor: Editor }) {
           <Tool label="Add a column" onClick={() => c().addColumnAfter().run()}>+ Column</Tool>
           <Tool label="Delete this row" onClick={() => c().deleteRow().run()}>− Row</Tool>
           <Tool label="Delete this column" onClick={() => c().deleteColumn().run()}>− Column</Tool>
+          <Tool label="Add a total row" title="A row that adds up each column (=SUM). Change it to =AVERAGE, =COUNT, =MIN or =MAX" onClick={addTotal}>Σ Total</Tool>
+          <Tool label="Bar chart of this table" title="A bar chart of this table, under it" onClick={() => addChart("bar")}><Icon name="chart" size={12} /> Bar</Tool>
+          <Tool label="Line chart of this table" onClick={() => addChart("line")}>Line</Tool>
+          <Tool label="Pie chart of this table" onClick={() => addChart("pie")}>Pie</Tool>
           <Tool label="Delete the table" onClick={() => c().deleteTable().run()}><Icon name="trash" size={12} /></Tool>
         </span>
       )}
@@ -100,19 +131,38 @@ function Toolbar({ editor }: { editor: Editor }) {
  * (paste one from Google Sheets, Excel or Docs and it stays a table). It's stored as Markdown, so plain text from
  * before needs no change, and $math$ still works.
  */
-export function RichBodyEditor({ value, onChange, placeholder }: { value: string; onChange: (md: string) => void; placeholder?: string }) {
+/** Writing together: the shared Yjs doc, its provider (with everyone's cursors), and who this writer is. */
+export type CollabSetup = {
+  doc: Doc;
+  provider: { awareness: unknown };
+  user: { name: string; color: string };
+  /** The editor is ready (to put the starting text in, or to restore a version). */
+  onReady?: (editor: Editor) => void;
+  /** This writer changed the text. */
+  onLocalChange?: (editor: Editor) => void;
+  /** Read only (a viewer). */
+  readOnly?: boolean;
+};
+
+export function RichBodyEditor({ value = "", onChange, placeholder, collab }: { value?: string; onChange?: (md: string) => void; placeholder?: string; collab?: CollabSetup }) {
   // What this editor last sent, so a change from outside (undo in the card panel, another card) is told apart.
   const sent = useRef(value);
   const [focused, setFocused] = useState(false);
+  const [preview, setPreview] = useState("");
+  const previewTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const showPreview = (e: Editor) => { clearTimeout(previewTimer.current); previewTimer.current = setTimeout(() => setPreview(e.getMarkdown()), 400); };
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false, underline: false, link: { openOnClick: false, autolink: true, protocols: ["mailto"] } }),
+      // Writing together, undo is the shared doc's own (each writer undoes only their own changes).
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false, underline: false, link: { openOnClick: false, autolink: true, protocols: ["mailto"] }, ...(collab ? { undoRedo: false } : {}) }),
       Table.configure({ resizable: false }), TableRow, TableHeader, TableCell,
       MathInline,
       Markdown,
       Placeholder.configure({ placeholder: placeholder ?? "" }),
+      ...(collab ? [Collaboration.configure({ document: collab.doc }), CollaborationCaret.configure({ provider: collab.provider, user: collab.user })] : []),
     ],
-    content: value,
+    editable: !collab?.readOnly,
+    ...(collab ? {} : { content: value }),
     contentType: "markdown",
     immediatelyRender: false,
     editorProps: {
@@ -130,18 +180,27 @@ export function RichBodyEditor({ value, onChange, placeholder }: { value: string
         return true;
       },
     },
-    onUpdate: ({ editor: e }) => {
+    onCreate: ({ editor: e }) => { collab?.onReady?.(e); showPreview(e); },
+    onUpdate: ({ editor: e, transaction }) => {
+      showPreview(e);
+      if (collab) {
+        // Only this writer's own changes (not ones arriving from the others).
+        if (!transaction.getMeta("y-sync$")) collab.onLocalChange?.(e);
+        return;
+      }
       const md = e.getMarkdown();
       sent.current = md;
-      onChange(md);
+      onChange?.(md);
     },
     onFocus: () => setFocused(true),
     onBlur: () => setFocused(false),
   });
   useEffect(() => {
-    if (!editor || value === sent.current) return;
+    if (!editor || collab || value === sent.current) return;
     sent.current = value;
     editor.commands.setContent(value, { contentType: "markdown", emitUpdate: false });
+    // `collab` is set once, when the editor is made.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, value]);
   return (
     <div className={`rich-editor overflow-hidden rounded-xl border bg-white transition-colors ${focused ? "border-[#4b56a8]/50 ring-2 ring-[#4b56a8]/15" : "border-line"}`}>
@@ -149,6 +208,12 @@ export function RichBodyEditor({ value, onChange, placeholder }: { value: string
       <div className="max-h-[28rem] overflow-y-auto text-[13.5px] leading-relaxed">
         <EditorContent editor={editor} />
       </div>
+      {/(^|\|)\s*=(SUM|AVERAGE|AVG|COUNT|MIN|MAX)\s*(\||$)|\\?\[chart/im.test(preview) && (
+        <div className="border-t border-line bg-lane/40 px-3 py-2.5">
+          <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">How it looks</div>
+          <RichText text={preview} className="text-[13px] leading-relaxed" />
+        </div>
+      )}
     </div>
   );
 }

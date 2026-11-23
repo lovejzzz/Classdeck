@@ -251,3 +251,8 @@ body[data-panel="open"] .panel-shift-row { padding-right: var(--panel-row, 0px);
 .rich-editor-content .selectedCell { background: rgba(75, 86, 168, 0.08); }
 .rich-editor-content p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #a3a19b; float: left; height: 0; pointer-events: none; }
 .rich-editor-content .math-chip { display: inline-block; padding: 0 0.35em; margin: 0 0.05em; border-radius: 6px; background: #eef0fb; color: #3d4794; font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.88em; cursor: pointer; }
+
+/* Writing together: each writer's cursor, with their name. */
+.collaboration-carets__caret { position: relative; margin-left: -1px; margin-right: -1px; border-left: 1px solid #0d0d0d; border-right: 1px solid #0d0d0d; word-break: normal; pointer-events: none; }
+.collaboration-carets__label { position: absolute; top: -1.4em; left: -1px; padding: 0.1rem 0.35rem; border-radius: 4px 4px 4px 0; color: #fff; font-size: 11px; font-weight: 600; line-height: normal; white-space: nowrap; user-select: none; }
+.collaboration-carets__selection { background: rgba(75, 86, 168, 0.12); }

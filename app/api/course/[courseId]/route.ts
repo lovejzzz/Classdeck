@@ -11,6 +11,7 @@ import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, orphansOf,
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
+import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
@@ -23,7 +24,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 const STUDENT_OPS = new Set([
   "savePlan", "drill", "feel", "saveFlow", "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
   "retakeQuiz", "rehearse", "fillForm", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
-  "messageTeacher", "readMyMessages", "docReply",
+  "messageTeacher", "readMyMessages", "docReply", "handInShared",
 ]);
 
 const AUTO_LESSON = /^Lesson \d+$/;
@@ -1215,6 +1216,24 @@ async function change(request: Request, courseId: string, body: Record<string, a
       notes.push(note);
       if (notes.length > 300) notes.splice(0, notes.length - 300);
       extra = { note };
+      break;
+    }
+    case "handInShared": {
+      // A shared Text card is handed in: a group's copy for everyone in the group (each gets the same text), the
+      // class's copy for the student who pressed it. The text is also kept as a version.
+      const found = findModule(course, body.moduleId);
+      const key = found && docKey(course, found.mod, body.studentId);
+      if (!found || !key) return fail("This card isn’t shared");
+      const md = entryOf(courseId, key)?.md ?? "";
+      if (!md.trim()) return fail("Write something first");
+      setText(courseId, key, md, true);
+      const who = found.mod.writers === "group" ? writersOf(course, key) : [body.studentId];
+      for (const sid of who) {
+        const p = mine(sid, body.moduleId);
+        p.output = md;
+        p.status = "done";
+      }
+      extra = { handedIn: who.length };
       break;
     }
     case "docNoteDelete": {

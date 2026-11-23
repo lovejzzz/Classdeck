@@ -1,5 +1,5 @@
 // Card text as Markdown, checked without a server: npx tsx tests/markdown.test.ts
-import { blocks, inline, isRich, plainText } from "../lib/markdown";
+import { blocks, chartData, computed, inline, isRich, plainText } from "../lib/markdown";
 
 const rows: [string, boolean][] = [];
 const check = (name: string, ok: boolean) => rows.push([name, ok]);
@@ -35,6 +35,18 @@ check("a table inside a list item is still a table", inList.some((b) => b.k === 
 const ol = plainText("1. first\n   - inner\n2. second");
 check("nested items don't take a number", ol.includes("2. second") && !ol.includes("3."));
 check("quotes, headings and dividers", blocks("## H\n\n> tip\n\n---").map((b) => b.k).join() === "h,quote,hr");
+
+// Tables that add up, and charts of tables.
+const tb = blocks("| Trial | Time | Note |\n|---|---|---|\n| 1 | 4.2 s | ok |\n| 2 | 3.8 | |\n| 3 | | |\n| Total | =SUM | =COUNT |\n| Mean | =AVERAGE | |\n\n\\[chart: line\\]");
+const tt = tb[0].k === "table" ? computed(tb[0]) : null;
+check("=SUM adds the numbers above (units ignored)", tt?.rows[3][1] === "8");
+check("=COUNT counts the numbers above", tt?.rows[3][2] === "0");
+check("=AVERAGE skips the total row above it", tt?.rows[4][1] === "4");
+check("an escaped [chart: line] after a table is a chart", tb[1]?.k === "chart" && tb[1].kind === "line");
+const cd = tb[0].k === "table" ? chartData(tb[0]) : null;
+check("a chart leaves out the total rows and empty columns", cd?.labels.join() === "1,2,3" && cd.series.length === 1 && cd.series[0].values.join() === "4.2,3.8,");
+check("a [chart] line alone isn't a chart", blocks("[chart: bar]")[0].k === "p");
+check("plain text shows the worked-out total", plainText("| a | b |\n|---|---|\n| x | 2 |\n| y | 3 |\n| t | =SUM |").includes("t · 5"));
 
 for (const [name, ok] of rows) console.log(`${ok ? "✓" : "✗"} ${name}`);
 const failed = rows.filter(([, ok]) => !ok).length;

@@ -9,7 +9,8 @@ export type Block =
   | { k: "ul" | "ol"; items: { t: string; d: number }[]; start?: number }
   | { k: "quote"; lines: string[] }
   | { k: "hr" }
-  | { k: "table"; head: string[]; rows: string[][]; align: ("left" | "center" | "right" | null)[] };
+  | { k: "table"; head: string[]; rows: string[][]; align: ("left" | "center" | "right" | null)[] }
+  | { k: "chart"; kind: "bar" | "line" | "pie"; table: Extract<Block, { k: "table" }> };
 
 const TABLE_RULE = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
 const cells = (line: string) => {
@@ -79,9 +80,53 @@ export function blocks(src: string): Block[] {
       p.push(lines[i]);
       i++;
     }
+    // "[chart: bar]" (or line, or pie) on its own line right after a table: a chart of that table.
+    // (The editor may write it with its brackets escaped: \[chart: bar\].)
+    const chart = p.length === 1 ? p[0].trim().replace(/\\/g, "").match(CHART) : null;
+    const prev = out[out.length - 1];
+    if (chart && prev?.k === "table") { out.push({ k: "chart", kind: (chart[1]?.toLowerCase() ?? "bar") as "bar" | "line" | "pie", table: prev }); continue; }
     out.push({ k: "p", lines: p });
   }
   return out;
+}
+
+const CHART = /^\[chart(?::\s*(bar|line|pie))?\]$/i;
+
+// —— Tables that add up: a cell that is just =SUM (or =AVERAGE, =COUNT, =MIN, =MAX) works out the numbers above it ——
+export const FORMULA = /^=(SUM|AVERAGE|AVG|COUNT|MIN|MAX)$/i;
+/** A cell's number, if it starts with one ("4.2", "4.2 s", "1,200", "-3"). */
+export const numberIn = (cell: string): number | null => {
+  const m = cell.replace(/\*\*|__/g, "").trim().match(/^-?\d[\d,]*(\.\d+)?/);
+  if (!m) return null;
+  const n = Number(m[0].replace(/,/g, ""));
+  return Number.isFinite(n) ? n : null;
+};
+const round = (n: number) => (Math.abs(n) >= 100 ? Math.round(n * 10) / 10 : Math.round(n * 100) / 100);
+
+/** The table with its formula cells worked out, and which cells those were. */
+export function computed(t: Extract<Block, { k: "table" }>): { rows: string[][]; formula: boolean[][] } {
+  const formula = t.rows.map((r) => r.map((c) => FORMULA.test(c.trim())));
+  const rows = t.rows.map((r, ri) => r.map((c, ci) => {
+    const f = c.trim().match(FORMULA);
+    if (!f) return c;
+    const nums = t.rows.slice(0, ri).filter((_, i) => !formula[i][ci]).map((x) => numberIn(x[ci] ?? "")).filter((n): n is number => n !== null);
+    const op = f[1].toUpperCase();
+    if (op === "COUNT") return String(nums.length);
+    if (!nums.length) return "–";
+    const v = op === "SUM" ? nums.reduce((a, b) => a + b, 0) : op === "MIN" ? Math.min(...nums) : op === "MAX" ? Math.max(...nums) : nums.reduce((a, b) => a + b, 0) / nums.length;
+    return String(round(v));
+  }));
+  return { rows, formula };
+}
+
+/** What a chart of a table shows: the first column names the points; each column of numbers is a series. Rows of totals are left out. */
+export function chartData(t: Extract<Block, { k: "table" }>): { labels: string[]; series: { name: string; values: (number | null)[] }[] } {
+  const { formula } = computed(t);
+  const rows = t.rows.filter((r, i) => !formula[i].some(Boolean) && r.some((c) => c.trim()));
+  const labels = rows.map((r) => r[0]?.replace(/\*\*|__/g, "").trim() ?? "");
+  const series = t.head.slice(1).map((name, i) => ({ name: name.replace(/\*\*|__/g, "").trim(), values: rows.map((r) => numberIn(r[i + 1] ?? "")) }))
+    .filter((x) => x.values.some((v) => v !== null));
+  return { labels, series };
 }
 
 const SAFE_URL = /^(https?:\/\/|mailto:)/i;
@@ -150,7 +195,8 @@ export function plainText(src: string): string {
       case "ul": case "ol": { let n = (b.start ?? 1) - 1; return b.items.map((x) => `${"  ".repeat(x.d)}${b.k === "ol" && !x.d ? `${++n}.` : "•"} ${flat(x.t)}`).join("\n"); }
       case "quote": return b.lines.map(flat).join("\n");
       case "hr": return "";
-      case "table": return [b.head, ...b.rows].map((r) => r.map(flat).join(" · ")).join("\n");
+      case "table": return [b.head, ...computed(b).rows].map((r) => r.map(flat).join(" · ")).join("\n");
+      case "chart": return "";
     }
   }).filter(Boolean).join("\n\n");
 }

@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.61",
+    date: "2026-11-23",
+    changes: [
+      "Write together: Who writes in a Text card can be Each group (every discussion group shares one copy) or Whole class (everyone shares one). They write at the same time, live, each cursor showing its writer's name, with who's there above the text.",
+      "History on a shared copy: a version is kept every few minutes, with who wrote in it. Look at any version, or go back to it.",
+      "In a group, anyone can Hand in for the whole group; each member gets it handed in, and it waits for your feedback. In Students you can watch a group's or the class's copy as it's written, and write in it too.",
+      "Tables that add up: Σ Total adds a row that adds up each column (write =AVERAGE, =COUNT, =MIN or =MAX instead of =SUM for those), and Bar, Line or Pie puts a chart of the table under it. Both keep up as the table is filled in. The editor shows how they look under the text.",
+      "Questhand 101 has a card on writing together, and a class table to try it.",
+    ],
+  },
+  {
     version: "0.1.60",
     date: "2026-11-23",
     changes: [

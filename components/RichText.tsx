@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, Fragment, useContext, useMemo } from "react";
-import { blocks, inline, type Block } from "@/lib/markdown";
+import { blocks, computed, inline, type Block } from "@/lib/markdown";
+import { TableChart } from "./TableChart";
 import { MathText } from "./MathText";
 
 /** Passages to mark (the words a comment is about), found within a run of text. */
@@ -66,22 +67,27 @@ function BlockView({ b }: { b: Block }) {
     }
     case "quote": return <div className="rounded-xl border-l-4 border-[#4b56a8]/50 bg-[#eef0fb]/70 px-4 py-2.5"><Lines lines={b.lines} /></div>;
     case "hr": return <hr className="border-line" />;
-    case "table": return (
+    case "chart": return <TableChart table={b.table} kind={b.kind} />;
+    case "table": {
+      // Cells that add up (=SUM, =AVERAGE…) show their result, in bold.
+      const { rows, formula } = computed(b);
+      return (
       <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse text-[0.92em]">
           <thead className="bg-lane/70">
             <tr>{b.head.map((c, i) => <th key={i} className="border-b border-line px-3 py-2 text-left font-semibold text-ink" style={{ textAlign: b.align[i] ?? undefined }}><Line text={c} /></th>)}</tr>
           </thead>
           <tbody>
-            {b.rows.map((r, ri) => (
-              <tr key={ri} className="even:bg-lane/30">
-                {r.map((c, i) => <td key={i} className="border-t border-line/70 px-3 py-1.5 align-top" style={{ textAlign: b.align[i] ?? undefined }}><Line text={c} /></td>)}
+            {rows.map((r, ri) => (
+              <tr key={ri} className={formula[ri].some(Boolean) ? "bg-lane/60" : "even:bg-lane/30"}>
+                {r.map((c, i) => <td key={i} className={`border-t border-line/70 px-3 py-1.5 align-top ${formula[ri][i] ? "font-semibold text-ink" : ""}`} style={{ textAlign: b.align[i] ?? undefined }} title={formula[ri][i] ? b.rows[ri][i].trim().toUpperCase().replace("=", "") + " of the column above" : undefined}><Line text={c} /></td>)}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    );
+      );
+    }
   }
 }
 

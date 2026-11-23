@@ -7,7 +7,9 @@ import { invokeTool, op } from "@/lib/client";
 import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
-import { faceMeta, isPoll, reviewableCard, writesOwn } from "@/lib/kinds";
+import { faceMeta, isPoll, reviewableCard, sharedDoc, writesOwn } from "@/lib/kinds";
+import { docKey } from "@/lib/shared";
+import { SharedDoc } from "../SharedDoc";
 import { DocReview } from "./DocReview";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
 import type { Attachment, CourseState, Lesson, Level, Module, Review, Skill } from "@/lib/types";
@@ -406,7 +408,17 @@ export function Classroom({
                 ))}
               </div>
             ) : null}
-            {selProgress?.output && writesOwn(selModule) ? (
+            {sharedDoc(selModule) && (() => {
+              // A shared copy: the live document (the teacher can watch it being written, and write in it too).
+              const key = docKey(course, selModule, sel!.sid);
+              return key ? (
+                <details className="mt-3 rounded-lg border border-line px-3 py-2" open={!selProgress?.output}>
+                  <summary className="cursor-pointer text-[12.5px] font-medium text-ink-2">{selModule.writers === "class" ? "The class’s live copy" : "This group’s live copy"}</summary>
+                  <div className="mt-2"><SharedDoc courseId={courseId} docKey={key} template={selModule.body} name="Teacher" /></div>
+                </details>
+              ) : null;
+            })()}
+            {selProgress?.output && (writesOwn(selModule) || sharedDoc(selModule)) ? (
               // Their own copy of a Text card: formatted, and open to comments on any passage.
               <DocReview doc={selProgress.output} notes={selProgress.notes ?? []} courseId={courseId} studentId={sel!.sid} moduleId={selModule.id} onChanged={() => {}} />
             ) : selProgress?.output ? (

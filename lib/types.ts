@@ -211,9 +211,10 @@ export interface Module {
   wall?: WallSettings;
   /**
    * Who writes in a Text card's text. Unset: only the teacher (students read it). "each": every student gets their own
-   * copy, starting from the teacher's text, to write in and hand in.
+   * copy, starting from the teacher's text, to write in and hand in. "group": each group shares one copy and writes in
+   * it together, live; "class": the whole class shares one.
    */
-  writers?: "each";
+  writers?: "each" | "group" | "class";
   /** 为真时，必须先完成前面的模块才能打开（覆盖课程的自主权设置）。 */
   gate?: boolean;
   /** 只在发给学生时设置：这张卡片不是全班共有的（分支或个人模块）。 */

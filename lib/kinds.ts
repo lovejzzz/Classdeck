@@ -219,9 +219,15 @@ export function addNextQuestion<L extends { modules: Module[] }>(lesson: L, card
 /** A Text card each student writes in, in their own copy of it (Who writes: Each student). */
 export const writesOwn = (m: KindFields & Pick<Module, "writers">) => kindOf(m) === "content" && m.writers === "each";
 
-/** Work a student hands in for the teacher to read and give feedback on: an open answer, or their own copy of a Text card. */
+/** A Text card a group (or the whole class) writes in together, in one shared copy. */
+export const sharedDoc = (m: KindFields & Pick<Module, "writers">) => kindOf(m) === "content" && (m.writers === "group" || m.writers === "class");
+
+/**
+ * Work a student hands in for the teacher to read and give feedback on: an open answer, their own copy of a Text
+ * card, or their group's shared copy.
+ */
 export const reviewableCard = (m: KindFields & Pick<Module, "writers" | "choice">) =>
-  (["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && !m.choice) || writesOwn(m);
+  (["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && !m.choice) || writesOwn(m) || (kindOf(m) === "content" && m.writers === "group");
 
 /** A card with choices that has neither words nor options yet: students don't see it until the teacher writes them. */
 export const unasked = (m: KindFields) => kindOf(m) === "choice" && !(m.questions ?? []).some(isAsked);

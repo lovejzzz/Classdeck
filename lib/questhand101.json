@@ -894,7 +894,7 @@
        "id": "m-q1tpl-who-writes",
        "type": "read",
        "title": "Who writes in a card",
-       "body": "Under a Text card's text box, **Who writes in it** has two choices:\n\n- **Only you**: students read it. This is every card you've seen so far.\n- **Each student, in their own copy**: your text is where each student starts, like a worksheet. They write in their copy (tables too) and press **Hand in**.\n\nTheir copy then waits for your feedback in Grades and Students. Select any words in it and press **Comment**: the student sees your comment on those words and can reply.\n\n> The next card is one. Try it.",
+       "body": "Under a Text card's text box, **Who writes in it** has four choices:\n\n- **Only you**: students read it. This is every card you've seen so far.\n- **Each student**: your text is where each student starts, like a worksheet. They write in their own copy (tables too) and press **Hand in**.\n- **Each group** and **Whole class**: one shared copy, written together. More on the card after next.\n\nTheir copy then waits for your feedback in Grades and Students. Select any words in it and press **Comment**: the student sees your comment on those words and can reply.\n\n> The next card is one. Try it.",
        "audience": {
         "kind": "all"
        },
@@ -917,6 +917,33 @@
        "suit": "content",
        "writers": "each",
        "minutes": 8
+      },
+      {
+       "id": "m-q1tpl-together",
+       "type": "read",
+       "title": "Writing together",
+       "body": "With **Each group**, every discussion group (Students → Discussion groups) shares one copy. With **Whole class**, everyone shares one.\n\n- They write in it at the same time, live: each person's cursor shows with their name, and who's there shows above the text.\n- **History** keeps a version every few minutes, with who wrote in it. Look at any version, or go back to it.\n- In a group, anyone can **Hand in** for the whole group. In Students you can watch a group's copy as it's written, and write in it too.\n\n## Tables that add up\n\nIn a table, **Σ Total** adds a row that adds up each column. Write =AVERAGE, =COUNT, =MIN or =MAX in a cell instead of =SUM for those. **Bar**, **Line** and **Pie** put a chart of the table under it. Both update as students fill the table in.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-class-table",
+       "type": "read",
+       "title": "Our class in numbers",
+       "body": "## How long did this course take?\n\nClick in the Example row and press **+ Row**, then write your name and about how many minutes you've spent on Questhand 101 so far. Everyone in the class writes in this one table; the total, the average and the chart keep up.\n\n| Name | Minutes |\n| --- | --- |\n| Example | 30 |\n| Total | =SUM |\n| Average | =AVERAGE |\n\n[chart: bar]",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content",
+       "writers": "class"
       },
       {
        "id": "m-q1tpl-media",

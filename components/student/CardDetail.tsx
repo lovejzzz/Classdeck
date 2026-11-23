@@ -8,7 +8,9 @@ import { useShortcuts } from "@/lib/shortcuts";
 import { dueInfo, optionOrder, quizSet } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META, suitOfCard } from "@/lib/ui";
-import { faceMeta, familyOf, isPoll, kindOf, writesOwn } from "@/lib/kinds";
+import { faceMeta, familyOf, isPoll, kindOf, sharedDoc, writesOwn } from "@/lib/kinds";
+import { docKey } from "@/lib/shared";
+import { SharedDoc } from "../SharedDoc";
 import { RichBodyEditor } from "../teacher/RichBodyEditor";
 import { DocNotes } from "./DocNotes";
 import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Plan, Post, Progress, Student } from "@/lib/types";
@@ -59,6 +61,9 @@ export function CardDetail(p: DetailProps) {
   const meta = TYPE_META[m.type];
   // A Text card each student writes in: their own copy, starting from the teacher's text.
   const personal = writesOwn(m);
+  // A Text card a group (or the class) writes in together: one shared copy, live.
+  const shared = sharedDoc(m);
+  const sharedKey = shared ? docKey(p.course, m, p.studentId) : null;
   const [output, setOutput] = useState(p.progress?.output ?? (personal ? m.body : ""));
   const prompts = m.prompts?.filter((x) => x.trim()) ?? [];
   const [responses, setResponses] = useState<string[]>(p.progress?.responses ?? []);
@@ -79,7 +84,7 @@ export function CardDetail(p: DetailProps) {
   // Only a Q&A card has a box to write in. A Content card is to take in (it gets a plain Done button), and a Choice
   // card is done once it's answered.
   const hasOutput = (!!meta.outputLabel && m.type !== "selfcheck" && kind === "answer") || personal;
-  const doneOnly = familyOf(kind) === "content" && !personal;
+  const doneOnly = familyOf(kind) === "content" && !personal && !shared;
   // A vote or a multiple-choice answer is the whole response: no recording or file box under it.
   const showWork = WORK_TYPES.has(m.type) && !m.choice && kind !== "choice";
   const skills = (m.skills ?? []).map((id) => p.course.skills?.find((s) => s.id === id)?.name).filter(Boolean);
@@ -129,6 +134,17 @@ export function CardDetail(p: DetailProps) {
     setChecks(next);
     p.optimistic({ checks: next });
     op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, checks: next }).then(p.onChanged);
+  }
+
+  async function handInShared() {
+    setFinishing(true);
+    const r = await op<{ ok?: boolean; error?: string; handedIn?: number }>(p.courseId, { op: "handInShared", studentId: p.studentId, moduleId: m.id });
+    setFinishing(false);
+    if (r.ok === false) return toast(r.error ?? "Couldn’t hand it in", { icon: "x", tone: "plain" });
+    p.optimistic({ status: "done" });
+    await p.onChanged();
+    p.onClose(true);
+    toast(m.writers === "group" && (r.handedIn ?? 1) > 1 ? `Handed in “${m.title}” for your group` : `Handed in “${m.title}”`);
   }
 
   function save(status?: "done") {
@@ -268,7 +284,7 @@ export function CardDetail(p: DetailProps) {
           <div key={a.id} className="mt-5"><MediaView a={a} /></div>
         ))}
 
-        {m.body && !m.choice && !personal && (
+        {m.body && !m.choice && !personal && !shared && (
           <>
             <div className="mt-5"><ReadAloud text={`${m.title}. ${plainMath(plainText(m.body))}`} big={p.big} /></div>
             <div className="mt-3">
@@ -363,6 +379,14 @@ export function CardDetail(p: DetailProps) {
           </div>
         )}
 
+        {shared && sharedKey && !m.choice && (
+          <div className="mt-6">
+            <div className="eyebrow mb-1.5">{m.writers === "class" ? "The class’s copy · everyone writes in it" : "Your group’s copy · you write in it together"}</div>
+            <SharedDoc courseId={p.courseId} docKey={sharedKey} template={m.body} name={p.course.students.find((x) => x.id === p.studentId)?.name ?? "A student"} />
+            <DocNotes notes={p.progress?.notes ?? []} me="student" courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onChanged={p.onChanged} />
+          </div>
+        )}
+
         {personal && !m.choice && (
           <div className="mt-6">
             <div className="eyebrow mb-1.5">Your copy · it saves as you go</div>
@@ -403,11 +427,11 @@ export function CardDetail(p: DetailProps) {
           </div>
         )}
 
-        {(hasOutput || doneOnly) && !m.choice && (
+        {(hasOutput || doneOnly || shared) && !m.choice && (
           // Stays in view at the bottom of the card while you scroll through long content.
           <div className="sticky -bottom-3 z-10 -mx-6 -mb-6 mt-7 flex flex-wrap items-center gap-3 rounded-b-[inherit] border-t border-line bg-white/95 px-6 pb-6 pt-3 backdrop-blur sm:-bottom-8 sm:-mx-8 sm:-mb-8 sm:px-8 sm:pb-11">
-            <button onClick={() => save("done")} disabled={finishing} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>
-              <Icon name="check" size={14} /> {doneOnly ? (p.progress?.status === "done" ? "Done" : meta.doneLabel) : p.progress?.status === "done" ? "Save changes" : review?.verdict === "revise" ? "Hand in revision" : personal ? "Hand in" : meta.doneLabel}
+            <button onClick={() => (shared ? void handInShared() : save("done"))} disabled={finishing} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>
+              <Icon name="check" size={14} /> {doneOnly ? (p.progress?.status === "done" ? "Done" : meta.doneLabel) : p.progress?.status === "done" ? "Save changes" : review?.verdict === "revise" ? "Hand in revision" : personal || shared ? "Hand in" : meta.doneLabel}
             </button>
             {p.progress?.status !== "done" && (
               // Not now: close it without finishing (anything written is kept). It stays in your hand for later.

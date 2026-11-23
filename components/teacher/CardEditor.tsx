@@ -252,15 +252,22 @@ export function CardEditor({
               <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[12.5px]">
                 <span className="text-ink-2">Who writes in it</span>
                 <span className="flex rounded-lg bg-lane p-0.5" role="radiogroup" aria-label="Who writes in it">
-                  {([["teacher", "Only you"], ["each", "Each student, in their own copy"]] as const).map(([v, label]) => {
+                  {([["teacher", "Only you"], ["each", "Each student"], ["group", "Each group"], ["class", "Whole class"]] as const).map(([v, label]) => {
                     const on = (m.writers ?? "teacher") === v;
                     return (
-                      <button key={v} type="button" role="radio" aria-checked={on} onClick={() => set({ writers: v === "each" ? "each" : undefined })}
+                      <button key={v} type="button" role="radio" aria-checked={on} onClick={() => set({ writers: v === "teacher" ? undefined : v })}
                         className={`press h-7 rounded-md px-2.5 transition-colors ${on ? "bg-white font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>{label}</button>
                     );
                   })}
                 </span>
-                {m.writers === "each" && <span className="basis-full text-[12px] text-ink-3">Your text is where each student starts. They write in their own copy and hand it in; it waits for your feedback in Grades and Students, where you can comment on any passage.</span>}
+                {m.writers && (
+                  <span className="basis-full text-[12px] text-ink-3">
+                    {m.writers === "each" ? "Your text is where each student starts. They write in their own copy and hand it in; it waits for your feedback in Grades and Students, where you can comment on any passage."
+                      : m.writers === "group" ? "Each discussion group (Students → Discussion groups) shares one copy and writes in it together, live, each with their cursor and name. Anyone in the group hands it in for the whole group."
+                      : "The whole class shares one copy and writes in it together, live: good for a class table of results. Each student presses Hand in for themselves."}
+                    {" "}History keeps a version every few minutes, with who wrote in it.
+                  </span>
+                )}
               </div>
             )}
             <div className="mt-3">
