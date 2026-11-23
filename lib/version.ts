@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.78",
+    date: "2026-11-23",
+    changes: [
+      "Map: a card’s coloured top bar follows the card’s rounded corners (it stuck out past the border), also on a card being dragged; the card’s type (Multiple choice…) stays on one line.",
+      "Map: room under the last lesson for the floating toolbar, so it no longer covers + Lesson and the week buttons; on a phone the toolbar is one row of icons.",
+      "Map: a card’s preview keeps its line breaks (a heading no longer runs into the text after it).",
+      "Students: a line saying what the page shows sits beside Export. Grades: a student’s details label Your feedback. My board is called “Name’s board”. Avatars always show a capital letter.",
+    ],
+  },
+  {
     version: "0.1.77",
     date: "2026-11-23",
     changes: [

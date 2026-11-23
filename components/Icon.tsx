@@ -142,7 +142,8 @@ export function Avatar({ name, size = 20 }: { name: string; size?: number }) {
       style={{ width: size, height: size, fontSize: size * 0.48 }}
       aria-hidden="true"
     >
-      {name.slice(0, 1)}
+      {/* The first letter (skipping a leading @ or symbol), always a capital. */}
+      {(name.match(/\p{L}|\p{N}/u)?.[0] ?? "?").toUpperCase()}
     </span>
   );
 }

@@ -1268,9 +1268,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           }, 480);
         }} />
         {!readOnly && (
-          <button onClick={() => { setPicking((v) => !v); setJiggle(false); }} aria-pressed={picking} title="Put cards together as one card group (any kind of card). With question cards in it, its score can deal cards"
+          <button onClick={() => { setPicking((v) => !v); setJiggle(false); }} aria-pressed={picking} aria-label="Group cards" title="Put cards together as one card group (any kind of card). With question cards in it, its score can deal cards"
             className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${picking ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
-            <Icon name="layers" size={13} /> Group cards
+            <Icon name="layers" size={13} /><span className="hidden sm:inline">Group cards</span>
           </button>
         )}
         {wires.length > 0 && (
@@ -1280,15 +1280,16 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               setFolded(folded.size ? new Set<string>() : new Set(all));
             }}
             title={folded.size ? "Show every card again" : "Fold away every card an answer deals, to see the main path"}
+            aria-label={folded.size ? "Unfold all" : "Fold all"}
             className="pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-2.5 text-[12.5px] text-ink-2 shadow-sm"
           >
-            <Icon name="chevron" size={13} className={folded.size ? "-rotate-90" : ""} /> {folded.size ? "Unfold all" : "Fold all"}
+            <Icon name="chevron" size={13} className={folded.size ? "-rotate-90" : ""} /><span className="hidden sm:inline">{folded.size ? "Unfold all" : "Fold all"}</span>
           </button>
         )}
         {!readOnly && onDelete && <TrashBin entries={trash} hot={!!moving?.trash} dragging={!!moving} onRestore={onRestore} onForget={onForget} />}
         {students.length > 0 && (
-          <button onClick={() => setLive((v) => !v)} aria-pressed={live} className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${live ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
-            <Icon name="users" size={13} /> Where students are
+          <button onClick={() => setLive((v) => !v)} aria-pressed={live} aria-label="Where students are" title="Where students are" className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${live ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
+            <Icon name="users" size={13} /><span className="hidden sm:inline">Where students are</span>
           </button>
         )}
       </div>
@@ -1345,8 +1346,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         }}
       >
         {/* While Add a card is open beside the last card of the widest lesson, the map makes room for it on the right. */}
-        <div data-canvas="1" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0) * zoom, height: height * zoom }} className="relative">
-          <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0), height, transform: `scale(${zoom})` }}>
+        {/* Room under the last row for the floating toolbar, so it never sits on the Lesson / week buttons. */}
+        <div data-canvas="1" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0) * zoom, height: (height + 64) * zoom }} className="relative">
+          <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0), height: height + 64, transform: `scale(${zoom})` }}>
             {/* Lessons: a quiet band each, with its name and a way to add a card. */}
             {regions.map((r) => {
               const today = r.lesson.id === todayId;
@@ -1483,14 +1485,15 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       {here.length > 4 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[9.5px] font-semibold text-white">+{here.length - 4}</span>}
                     </span>
                   )}
-                  <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none rounded-t-[18px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
-                    <span className="tree-bar block h-[5px] rounded-t-[18px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
+                  <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none overflow-hidden rounded-t-[17px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
+                    {/* Clipped by the head's corners (the card's inner radius), so it follows the border's curve. */}
+                    <span className="tree-bar block h-[5px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
                     {level === "far" ? (
                       <span className="line-clamp-2 px-4 pt-3 text-[26px] font-semibold leading-[1.15] text-ink">{m.title || "Untitled card"}</span>
                     ) : (
                       <>
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
-                          <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[6px]" style={{ background: `${suit.tint}16` }}><Icon name={faceMeta(m).icon} size={11} /></span>{faceMeta(m).name}
+                          <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[6px]" style={{ background: `${suit.tint}16` }}><Icon name={faceMeta(m).icon} size={11} /></span><span className="flex-none whitespace-nowrap">{faceMeta(m).name}</span>
                           <span className="truncate normal-case tracking-normal text-ink-3">
                             · {unfinished(m) ? <span className="text-[#a0561f]">{blankContent(m) ? "hidden until it has something in it" : "hidden until it has a question"}</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : m.audience.kind === "student" ? (studentsOf(m.audience).length === 1 ? "1 student" : `${studentsOf(m.audience).length} students`) : "everyone"}
                           </span>
@@ -1661,8 +1664,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               if (!m) return null;
               const bad = moving.to && moving.to !== lessonWith(moving.id)?.id ? whyNot(moving.id, moving.to) : null;
               return (
-                <div className="pointer-events-none absolute z-30 rotate-[2deg] rounded-[18px] border border-[#4b56a8] bg-white shadow-[0_24px_50px_-18px_rgba(20,20,18,0.55)]" style={{ left: moving.x - W / 2, top: moving.y - 20, width: W }}>
-                  <span className="block h-1.5 rounded-t-[18px]" style={{ background: suitOfCard(m).tint }} />
+                <div className="pointer-events-none absolute z-30 rotate-[2deg] overflow-hidden rounded-[18px] border border-[#4b56a8] bg-white shadow-[0_24px_50px_-18px_rgba(20,20,18,0.55)]" style={{ left: moving.x - W / 2, top: moving.y - 20, width: W }}>
+                  <span className="block h-1.5" style={{ background: suitOfCard(m).tint }} />
                   <span className="block truncate px-3.5 pb-3 pt-2 text-[14px] font-semibold text-ink">{m.title || "Untitled card"}</span>
                   {moving.trash ? (
                     <span className="block border-t border-line px-3.5 py-1.5 text-[11.5px] text-bad">Drop to delete</span>
@@ -1816,7 +1819,8 @@ function CardRest({ m, far, art, tint, cover, onMedia }: { m: Module; far: boole
           <MapArt m={m} tint={tint} cover={cover} onMedia={onMedia} />
         </div>
       )}
-      {!far && body && <p className={`flex-none text-[12px] leading-[1.45] text-ink-2 ${art ? "line-clamp-3" : "line-clamp-[8]"}`}><MathText text={body} /></p>}
+      {/* Line breaks kept (a heading, then its text), with blank lines between blocks closed up. */}
+      {!far && body && <p className={`flex-none whitespace-pre-line text-[12px] leading-[1.45] text-ink-2 ${art ? "line-clamp-3" : "line-clamp-[8]"}`}><MathText text={body.replace(/\n{2,}/g, "\n")} /></p>}
       {/* Nothing more to say: the card's drawing fills the rest of its face, as on a playing card. */}
       {!far && !body && !art && (
         <div className="relative min-h-0 flex-1 overflow-hidden rounded-[12px] opacity-80" style={{ background: cover }}>
@@ -1886,7 +1890,7 @@ function TrashBin({ entries, hot, dragging, onRestore, onForget }: { entries: Tr
       <button data-trash="1" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={`Trash${entries.length ? `, ${entries.length} deleted` : ""}`}
         title="Drag a card here to delete it. Click to see deleted cards and put them back."
         className={`press relative flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm transition-[transform,background-color,border-color,color] duration-200 ${hot ? "scale-110 border-bad bg-bad text-white" : dragging ? "border-bad/40 bg-white text-bad" : "border-line bg-white/95 text-ink-2"}`}>
-        <Icon name="trash" size={13} /> Trash
+        <Icon name="trash" size={13} /><span className="hidden sm:inline">Trash</span>
         {entries.length > 0 && !hot && <span className="mono rounded-full bg-lane px-1.5 text-[10.5px] text-ink-3">{entries.length}</span>}
       </button>
       {open && (
@@ -1947,7 +1951,7 @@ function MapSearch({ cards, lessons, open, onOpen, onPick }: {
   if (!open) return (
     <button onClick={() => onOpen(true)} title="Find a card (/)" aria-label="Search cards"
       className="pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-2.5 text-[12.5px] text-ink-2 shadow-sm">
-      <Icon name="search" size={13} /> Search
+      <Icon name="search" size={13} /><span className="hidden sm:inline">Search</span>
     </button>
   );
   return (

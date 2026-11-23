@@ -183,6 +183,7 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
                           </ul>
                         </div>
                       )}
+                      <p className="mb-2 text-[12px] font-medium uppercase tracking-[0.06em] text-ink-3">Your feedback</p>
                       {r.reviews.length === 0 ? (
                         <p className="text-[13px] text-ink-3">No reviewed work yet.</p>
                       ) : (

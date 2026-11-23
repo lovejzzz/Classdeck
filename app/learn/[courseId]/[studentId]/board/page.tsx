@@ -76,7 +76,7 @@ export default function BoardPage() {
           <Avatar name={student.name} size={48} />
           <div>
             <div className="eyebrow">{course.title}{course.subtitle ? ` · ${course.subtitle}` : ""}</div>
-            <h1 className="text-[26px] font-semibold tracking-tight">{student.name}’s practice board</h1>
+            <h1 className="text-[26px] font-semibold tracking-tight">{student.name}’s board</h1>
           </div>
         </header>
 

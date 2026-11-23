@@ -223,7 +223,8 @@ export function Classroom({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <p className="flex-1 text-[13px] text-ink-3">{lesson.goal}</p>
+        {/* What this page is, when the lesson has no goal of its own to show (as Grades says what it shows). */}
+        <p className="flex-1 text-[13px] text-ink-3">{lesson.goal || "Where each student is in this lesson, and who needs you. Click a card under a student to see their work."}</p>
         <ExportMenu items={[
           ["This lesson (CSV)", exportCsv],
           ["All weeks (CSV)", exportAll],
