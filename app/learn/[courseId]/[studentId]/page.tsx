@@ -77,7 +77,7 @@ export default function LearnPage() {
   const query = useQuery();
   const narrow = useNarrow();
   const router = useRouter();
-  const inbox = useInbox(state?.course, studentId, state?.progress[studentId], state?.nudges);
+  const inbox = useInbox(state?.course, studentId, state?.progress[studentId], state?.nudges, state?.posts);
   const [view, setView] = useState<"hand" | "done">("hand");
   const [lift, setLift] = useState<LiftState | null>(null);
   const [local, setLocal] = useState<Record<string, Partial<Progress>>>({});
@@ -371,7 +371,8 @@ export default function LearnPage() {
               onClear={inbox.clear}
               onPick={(n) => {
                 if (!n.id.startsWith("m:")) return;
-                const id = n.id.slice(2);
+                // "m:<card>" or, for a reply in a discussion, "m:<card>#<reply>".
+                const id = n.id.slice(2).split("#")[0];
                 setTimeout(() => {
                   const el = els.current.get(id);
                   const l = lessons.find((x) => x.modules.some((m) => m.id === id));

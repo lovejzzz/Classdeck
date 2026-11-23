@@ -144,11 +144,21 @@ export type CollabSetup = {
   readOnly?: boolean;
 };
 
-export function RichBodyEditor({ value = "", onChange, placeholder, collab }: { value?: string; onChange?: (md: string) => void; placeholder?: string; collab?: CollabSetup }) {
+export function RichBodyEditor({ value = "", onChange, placeholder, collab, compact = false, label = "Body", onSubmit }: {
+  value?: string; onChange?: (md: string) => void; placeholder?: string; collab?: CollabSetup;
+  /** A smaller box (a post or a reply). */
+  compact?: boolean;
+  label?: string;
+  /** ⌘/Ctrl + Enter. */
+  onSubmit?: () => void;
+}) {
   // What this editor last sent, so a change from outside (undo in the card panel, another card) is told apart.
   const sent = useRef(value);
   const [focused, setFocused] = useState(false);
   const [preview, setPreview] = useState("");
+  // The latest ⌘↵ handler (the editor is made once).
+  const submit = useRef(onSubmit);
+  useEffect(() => { submit.current = onSubmit; });
   const previewTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const showPreview = (e: Editor) => { clearTimeout(previewTimer.current); previewTimer.current = setTimeout(() => setPreview(e.getMarkdown()), 400); };
   const editor = useEditor({
@@ -166,7 +176,8 @@ export function RichBodyEditor({ value = "", onChange, placeholder, collab }: { 
     contentType: "markdown",
     immediatelyRender: false,
     editorProps: {
-      attributes: { "aria-label": "Body", class: "rich-editor-content min-h-[7.5rem] px-3 py-2.5 outline-none" },
+      attributes: { "aria-label": label, class: `rich-editor-content ${compact ? "min-h-[3.25rem]" : "min-h-[7.5rem]"} px-3 py-2.5 outline-none` },
+      handleKeyDown: (_view, e) => { if (submit.current && e.key === "Enter" && (e.metaKey || e.ctrlKey)) { submit.current(); return true; } return false; },
       // Click a math chip to change its source.
       handleClickOn: (view, pos, node) => {
         if (node.type.name !== "mathInline") return false;

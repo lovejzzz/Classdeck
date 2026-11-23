@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { Note } from "../NotificationCenter";
-import type { Course, Nudge, Progress } from "@/lib/types";
+import type { Course, Nudge, Post, Progress } from "@/lib/types";
+import { plainText } from "@/lib/markdown";
 
 // 学生端的通知：老师给你加了新卡片、换了今天的课。
 // 在浏览器里记住上次看到的模块，和这次对比。这只是给这台设备的便利，丢了也不影响学习。
@@ -14,7 +15,7 @@ interface Saved {
   seenAt: number;
 }
 
-export function useInbox(course: Course | undefined, studentId: string, progress?: Record<string, Progress>, nudges: Nudge[] = []) {
+export function useInbox(course: Course | undefined, studentId: string, progress?: Record<string, Progress>, nudges: Nudge[] = [], posts: Post[] = []) {
   const key = course ? `inbox:v2:${course.id}:${studentId}` : "";
   const [saved, setSaved] = useState<Saved | null>(null);
 
@@ -80,6 +81,20 @@ export function useInbox(course: Course | undefined, studentId: string, progress
   }
   // The teacher's reminders and messages (not the student's own messages to them).
   for (const n of nudges) if (!n.from) reviews.push({ id: `n:${n.id}`, at: n.at, group: "teacher", groupLabel: "Your teacher", source: n.moduleId ? "Reminder" : "Message", icon: "message", title: "From your teacher", text: n.text });
+  // Replies in discussions: to your posts, and to your replies.
+  const nameOf = (id: string) => (id === "teacher" ? "Your teacher" : course?.students.find((s) => s.id === id)?.name ?? "A classmate");
+  const cardTitle = (id: string) => course?.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules)).find((m) => m.id === id)?.title ?? "A discussion";
+  for (const p of posts) {
+    const mine = p.mine || p.studentId === studentId;
+    for (const c of p.comments ?? []) {
+      if (c.from === studentId) continue;
+      const toMyReply = c.replyTo && p.comments?.find((x) => x.id === c.replyTo)?.from === studentId;
+      if (!(toMyReply || (mine && !c.replyTo))) continue;
+      const words = plainText(c.text).replace(/\s+/g, " ").trim();
+      reviews.push({ id: `m:${p.moduleId}#${c.id}`, at: c.at, group: p.moduleId, groupLabel: cardTitle(p.moduleId), source: cardTitle(p.moduleId), icon: "message",
+        title: `${nameOf(c.from)} replied to your ${toMyReply ? "reply" : "post"}`, text: words ? (words.length > 140 ? `${words.slice(0, 140)}…` : words) : "A recording or a file" });
+    }
+  }
   const unread = [...(saved?.notes ?? []), ...reviews].filter((n) => n.at > (saved?.seenAt ?? 0)).sort((a, b) => b.at - a.at);
   function clear() {
     if (!saved) return;

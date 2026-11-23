@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.63",
+    date: "2026-11-23",
+    changes: [
+      "Discussion cards are a conversation now, like a forum: one feed of posts, Newest or Top first, each post with its replies, and replies to replies as threads.",
+      "Posts and replies are written like a card: formatting, lists, tables and math, and Record (audio, video, screen, photo), Upload, Draw and Link. Students can select words in the card's text and quote them in a post.",
+      "Topics (instead of columns): give two or more and students tag each post with one; everyone filters the feed by topic.",
+      "Each group is a feed per group, using the groups picked on the card: students see their group's posts and the teacher's; the teacher sees every group's, each marked with its group. Older group discussions (Collab Studio) stay as they were until changed.",
+      "Students are told when someone replies to their post or to their reply.",
+      "Fixed: a teacher couldn't post in a discussion (the post was refused).",
+    ],
+  },
+  {
     version: "0.1.62",
     date: "2026-11-23",
     changes: [

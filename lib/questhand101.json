@@ -990,7 +990,7 @@
        "id": "m-q1tpl-walls",
        "type": "read",
        "title": "Setting up a discussion",
-       "body": "A Discussion card is a shared wall. In its panel:\n\n- Who discusses: The whole class, or Each group.\n- Reactions: Likes, Votes or None.\n- Hide names from classmates.\n- Each student replies to: No one, or 1 to 3 classmates. The card is done once they've posted and replied.\n- I approve posts before others see them.\n\nReplies can be words, a voice note, a video or a picture.",
+       "body": "A Discussion card is a conversation, like a forum: a feed of posts, each with its replies, and replies to replies.\n\n- Posts and replies are written like a card: formatting, lists, tables and math, and Record, Upload, Draw or Link.\n- Students can select words in the card's text and **Quote** them in a post.\n\nIn its panel:\n\n- **Who discusses**: The whole class, or Each group (each group gets its own feed; pick or make the groups there).\n- **Reactions**: Likes, Votes or None. Sort the feed by Newest or Top.\n- **Topics**: give two or more (e.g. Questions, Ideas), and students tag each post with one; everyone can filter by topic.\n- **Each student replies to**: No one, or 1 to 3 classmates. The card is done once they've posted and replied.\n- Hide names from classmates, and I approve posts before others see them.\n\nStudents are told when someone replies to them.",
        "audience": {
         "kind": "all"
        },

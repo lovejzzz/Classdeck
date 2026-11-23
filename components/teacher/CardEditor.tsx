@@ -384,10 +384,13 @@ export function CardEditor({
                 <div className="space-y-2.5 text-[12.5px]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-ink-2">Who discusses</span>
-                    <Seg value={m.type === "studio" ? "groups" : "class"} options={[["class", "The whole class"], ["groups", "Each group"]]}
-                      onPick={(v) => set(asKind({ ...m, type: v === "groups" ? "studio" : "wall", submitTo: v === "groups" ? "studio" : undefined }, "discussion"))} />
+                    {/* One kind of discussion: a feed for the whole class, or one feed per group. (Older group discussions,
+                        "Collab Studio", become a feed per group when changed here.) */}
+                    <Seg value={m.type === "studio" || m.wall?.byGroup ? "groups" : "class"} options={[["class", "The whole class"], ["groups", "Each group"]]}
+                      onPick={(v) => set(asKind({ ...m, type: "wall", submitTo: undefined, wall: { ...wallDefaults, ...m.wall, byGroup: v === "groups" || undefined } }, "discussion"))} />
                   </div>
-                  {m.type === "studio" && course && <GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} />}
+                  {(m.type === "studio" || m.wall?.byGroup) && course && <GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} />}
+                  {m.wall?.byGroup && <p className="-mt-1 text-ink-3">Each group has its own feed; students see their group’s posts and yours. You see every group’s.</p>}
                   {m.type === "wall" && (
                     <>
                       <div className="flex flex-wrap items-center gap-2">
@@ -401,9 +404,16 @@ export function CardEditor({
                       </div>
                       {(m.wall?.replies ?? 0) > 0 && <p className="-mt-1 text-ink-3">The card counts as done once a student has posted and replied to {m.wall!.replies} classmate{m.wall!.replies === 1 ? "" : "s"}. Replies can be words, a video, a voice recording or a file.</p>}
                       <label className="flex items-center gap-2"><input type="checkbox" checked={!!m.wall?.approval} onChange={(e) => set({ wall: { ...wallDefaults, ...m.wall, approval: e.target.checked } })} className="accent-[#4b56a8]" /> I approve posts before others see them</label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-ink-2">Topics</span>
+                        <input defaultValue={(m.wall?.sections ?? []).join(", ")} placeholder="Optional, e.g. Questions, Ideas, What worked" aria-label="Topics, separated by commas"
+                          onBlur={(e) => { const t = e.target.value.split(",").map((x) => x.trim().replace(/^#/, "")).filter(Boolean).slice(0, 8); set({ wall: { ...wallDefaults, ...m.wall, sections: t.length > 1 ? t : undefined } }); }}
+                          className="field h-8 min-w-[14rem] flex-1 py-0" />
+                      </div>
+                      <p className="-mt-1 text-ink-3">With two or more topics, students pick one for each post, and everyone can filter the discussion by topic.</p>
                     </>
                   )}
-                  {m.type === "studio" && <p className="text-ink-3">Each group posts and gives each other feedback. Run the group session (timer, round-robin) from the lesson’s ⋯ menu.</p>}
+                  {m.type === "studio" && <p className="text-ink-3">This is an older group discussion (Collab Studio). Pick The whole class or Each group above to make it a discussion feed.</p>}
                 </div>
               )}
             </div>

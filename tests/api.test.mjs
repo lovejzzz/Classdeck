@@ -856,6 +856,45 @@ async function main() {
     check("removing groups: the cards go back to the course's groups", !(after.groupings ?? []).length && modulesOf(after).every((m) => !m.grouping));
   }
 
+  // ---- Discussions: posts written like cards, threaded replies, and a feed per group
+  {
+    const dc = (await A.post("/api/courses", { title: `Discuss ${run}`, start: "blank" })).id;
+    made["discuss"] = dc;
+    await A.op(dc, { op: "addStudents", names: "Ida\nJon\nKip" });
+    const st = Object.fromEntries(courseOf(await A.state(dc)).students.map((s) => [s.name, s.id]));
+    const gs = await A.op(dc, { op: "saveGrouping", grouping: { name: "Pairs", groups: [{ name: "One", studentIds: [st.Ida, st.Jon] }, { name: "Two", studentIds: [st.Kip] }] } });
+    const l0 = courseOf(await A.state(dc)).weeks[0].lessons[0];
+    const wall = (id, byGroup) => ({ id, type: "wall", kind: "discussion", title: id, body: "Discuss **this**.", audience: { kind: "all" }, tools: [], attachments: [], grouping: byGroup ? gs.id : undefined, wall: { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false, byGroup } });
+    await A.op(dc, { op: "saveLesson", lesson: { ...l0, modules: [wall("m-all", false), wall("m-grp", true)] } });
+    const links = (await A.op(dc, { op: "setupLinks" })).links;
+    const [ida, jon, kip] = await Promise.all(["Ida", "Jon", "Kip"].map((n) => invited(dc, links.find((x) => x.name === n).link, n)));
+    const md = "## My idea\n\n> Discuss this.\n\n| a | b |\n|---|---|\n| 1 | 2 |";
+    const p1 = await ida.c.op(dc, { op: "addPost", studentId: ida.id, moduleId: "m-all", text: md });
+    check("a post keeps its formatting", p1.ok && p1.post?.text === md);
+    const r1 = await jon.c.op(dc, { op: "comment", who: jon.id, postId: p1.post.id, text: "**Nice** table" });
+    check("a reply to a post", r1.ok);
+    const c1 = (await jon.c.get(`/api/course/${dc}?as=${jon.id}`)).posts.find((p) => p.id === p1.post.id).comments[0];
+    const r2 = await ida.c.op(dc, { op: "comment", who: ida.id, postId: p1.post.id, text: "Thanks!", replyTo: c1.id });
+    check("a reply to a reply (a thread)", r2.ok);
+    const thread = (await kip.c.get(`/api/course/${dc}?as=${kip.id}`)).posts.find((p) => p.id === p1.post.id).comments;
+    check("the thread keeps who it answers", thread.length === 2 && thread[1].replyTo === c1.id);
+    check("a reply to a reply that isn't there is refused", (await kip.c.op(dc, { op: "comment", who: kip.id, postId: p1.post.id, text: "x", replyTo: "c-nope" })).ok !== true);
+    await jon.c.op(dc, { op: "comment", who: jon.id, postId: p1.post.id, remove: c1.id });
+    check("deleting a reply takes its replies with it", !((await A.state(dc)).posts.find((p) => p.id === p1.post.id).comments ?? []).length);
+    // A feed per group.
+    const g1 = await ida.c.op(dc, { op: "addPost", studentId: ida.id, moduleId: "m-grp", text: "Group one idea" });
+    const g2 = await kip.c.op(dc, { op: "addPost", studentId: kip.id, moduleId: "m-grp", text: "Group two idea" });
+    const seen = (who) => who.c.get(`/api/course/${dc}?as=${who.id}`).then((s) => s.posts.filter((p) => p.moduleId === "m-grp").map((p) => p.text));
+    check("a group member sees their group's posts", (await seen(jon)).join() === "Group one idea");
+    check("the other group doesn't", !(await seen(kip)).includes("Group one idea"));
+    check("the teacher sees every group's posts", (await A.state(dc)).posts.filter((p) => p.moduleId === "m-grp").length === 2);
+    check("a student can't reply in another group", (await kip.c.op(dc, { op: "comment", who: kip.id, postId: g1.post.id, text: "hi" })).ok !== true);
+    const tp = await A.op(dc, { op: "addPost", studentId: "teacher", moduleId: "m-grp", text: "For everyone" });
+    check("the teacher's post is in every group's feed", tp.ok && (await seen(kip)).includes("For everyone") && (await seen(jon)).includes("For everyone"));
+    check("posts can be long now", (await ida.c.op(dc, { op: "addPost", studentId: ida.id, moduleId: "m-all", text: "x".repeat(5000) })).ok);
+    void g2;
+  }
+
   // ---- New teachers start with Questhand 101
   {
     const N = await teacher("new");

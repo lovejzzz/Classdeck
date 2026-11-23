@@ -8,7 +8,7 @@ import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { faceMeta, isPoll, reviewableCard, sharedDoc, writesOwn } from "@/lib/kinds";
-import { docKey } from "@/lib/shared";
+import { docKey, groupingOf } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { DocReview } from "./DocReview";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
@@ -556,6 +556,7 @@ function WallPanel({ courseId, module: m, state, aiReady }: { courseId: string; 
         posts={state.posts}
         students={course.students}
         onChanged={() => {}}
+        groupName={(id) => groupingOf(course, m)?.groups.find((g) => g.id === id)?.name ?? "A group"}
         header={
           <div className="mb-4">
             <div className="flex flex-wrap items-center gap-2">

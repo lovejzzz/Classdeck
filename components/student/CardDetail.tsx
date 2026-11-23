@@ -287,7 +287,8 @@ export function CardDetail(p: DetailProps) {
         {m.body && !m.choice && !personal && !shared && (
           <>
             <div className="mt-5"><ReadAloud text={`${m.title}. ${plainMath(plainText(m.body))}`} big={p.big} /></div>
-            <div className="mt-3">
+            {/* data-prompt: words selected here can be quoted in a discussion post or reply. */}
+            <div className="mt-3" data-prompt>
               {/* Math is typeset; highlighting works on plain text, so a card with math shows it without highlights. */}
               {isRich(m.body) ? <RichText text={m.body} className={`leading-[1.7] text-[#353532] ${body}`} /> : hasMath(m.body) ? <div className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}><MathText text={m.body} /></div> : <HighlightableText text={m.body} highlights={highlights} className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}
                 onChange={(h) => {

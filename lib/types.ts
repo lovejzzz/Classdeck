@@ -66,6 +66,8 @@ export interface WallSettings {
   sections?: string[];
   /** Peer review: how many classmates' posts each student replies to before the card counts as done (0 or unset: posting is enough). */
   replies?: number;
+  /** Each group has its own feed (the card's grouping): students see their group's posts, and the teacher's. */
+  byGroup?: boolean;
 }
 
 export interface Comment {
@@ -76,6 +78,8 @@ export interface Comment {
   at: number;
   /** A reply can be a small content card: a video or audio recording, a picture, a file or a link, with or without words. */
   work?: Attachment[];
+  /** The reply it answers (a thread); unset: it answers the post. */
+  replyTo?: string;
 }
 
 export interface Question {
@@ -545,9 +549,11 @@ export interface Post {
   mine?: boolean;
   /** Set by the teacher. */
   pinned?: boolean;
-  /** Which column it's in, when the wall has columns. */
+  /** Which topic it's under, when the discussion has topics. */
   section?: string;
   editedAt?: number;
+  /** In a discussion by groups: the group it's in (a teacher's post without one is for everyone). */
+  groupId?: string;
 }
 
 export interface ToolLogEntry {

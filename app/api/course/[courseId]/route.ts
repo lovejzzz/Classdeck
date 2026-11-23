@@ -218,9 +218,15 @@ function view(request: Request, courseId: string): Response {
   }
   const allPosts = d.posts[courseId] ?? [];
   // Students don't see others' posts that await approval, or who wrote an anonymous post.
+  // In a discussion by groups, a student sees their own group's posts (and the teacher's posts for everyone).
+  const inMyFeed = (p: Post) => {
+    if (!p.groupId || p.studentId === as) return true;
+    const mod = findModule(course, p.moduleId)?.mod;
+    return groupFor(course, mod, as!)?.id === p.groupId;
+  };
   const posts: Post[] = as
     ? allPosts
-        .filter((p) => p.approved !== false || p.studentId === as)
+        .filter((p) => (p.approved !== false || p.studentId === as) && inMyFeed(p))
         .map((p) => ({ ...p, mine: p.studentId === as, studentId: p.anonymous && p.studentId !== as && p.studentId !== "teacher" ? "" : p.studentId }))
     : allPosts;
   const state: CourseState = {
@@ -355,7 +361,9 @@ async function change(request: Request, courseId: string, body: Record<string, a
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
   // Ids in the request must be real: a card in this course, a student in this class.
   const isStudent = (sid: unknown) => typeof sid === "string" && course.students.some((st) => st.id === sid);
-  if (body.studentId !== undefined && body.studentId !== null && !isStudent(body.studentId)) return fail("No such student");
+  // (A teacher posts in a discussion as "teacher".)
+  const teacherPost = body.op === "addPost" && body.studentId === "teacher";
+  if (body.studentId !== undefined && body.studentId !== null && !teacherPost && !isStudent(body.studentId)) return fail("No such student");
   if (body.moduleId !== undefined && body.moduleId !== null && body.moduleId !== "" && !(typeof body.moduleId === "string" && findModule(course, body.moduleId))) return fail("No such card");
   // A student only acts on cards that are on their own board.
   if (actor && actor !== "teacher" && typeof body.moduleId === "string" && body.moduleId && !canTeach(session, course) && !onBoard(course, actor, body.moduleId)) return fail("That card isn’t on your board");
@@ -1284,15 +1292,19 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const w = wallOf(found.mod);
       const teacher = body.studentId === "teacher";
       if (!teacher && w.posting === "teacher") return fail("Only your teacher can post on this wall");
-      const text = String(body.text ?? "").trim().slice(0, 1000);
-      const work = (Array.isArray(body.work) ? body.work : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 4);
+      // A post is written like a card (formatting, tables, math) and can carry media.
+      const text = String(body.text ?? "").trim().slice(0, 8000);
+      const work = (Array.isArray(body.work) ? body.work : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 6);
       if (!text && !work.length) return fail("Write something or attach something first");
+      // A discussion by groups: a student's post goes to their group's feed; a teacher's to the group they chose, or to all.
+      const groupId = w.byGroup ? (teacher ? (typeof body.groupId === "string" && body.groupId ? body.groupId : undefined) : groupFor(course, found.mod, body.studentId)?.id) : undefined;
       const sections = w.sections?.filter((x) => x.trim()) ?? [];
       const section = sections.includes(body.section) ? String(body.section) : sections[0];
       const post: Post = {
         id: uid("p-"), moduleId: body.moduleId, studentId: teacher ? "teacher" : body.studentId, text, work, createdAt: Date.now(), section,
         anonymous: !teacher && w.anonymous ? true : undefined,
         approved: !teacher && w.approval ? false : undefined,
+        groupId,
       };
       (d.posts[courseId] ??= []).push(post);
       if (!teacher) {
@@ -1335,7 +1347,10 @@ async function change(request: Request, courseId: string, body: Record<string, a
         const c = (post.comments ?? []).find((x) => x.id === body.remove);
         if (!c) return fail("That reply is gone");
         if (c.from !== who && who !== "teacher") return fail("You can only delete your own replies");
-        post.comments = (post.comments ?? []).filter((x) => x.id !== c.id);
+        // The replies under it go with it.
+        const gone = new Set([c.id]);
+        for (let more = true; more;) { more = false; for (const x of post.comments ?? []) if (x.replyTo && gone.has(x.replyTo) && !gone.has(x.id)) { gone.add(x.id); more = true; } }
+        post.comments = (post.comments ?? []).filter((x) => !gone.has(x.id));
         // Without that reply, a peer-review card may not be finished any more.
         if (c.from !== "teacher" && (w.replies ?? 0) > 0 && course.students.some((st) => st.id === c.from)) {
           const p = mine(c.from, post.moduleId);
@@ -1344,10 +1359,15 @@ async function change(request: Request, courseId: string, body: Record<string, a
         break;
       }
       if (!w.comments && who !== "teacher") return fail("Comments are off on this wall");
-      const text = String(body.text ?? "").trim().slice(0, 600);
-      const work = (Array.isArray(body.work) ? body.work : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 1);
+      // In a discussion by groups, students reply only within their group (and to the teacher's posts).
+      if (who !== "teacher" && post.groupId && post.studentId !== who && groupFor(course, findModule(course, post.moduleId)?.mod, who)?.id !== post.groupId) return fail("You can only reply in your own group");
+      const text = String(body.text ?? "").trim().slice(0, 4000);
+      const work = (Array.isArray(body.work) ? body.work : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 4);
       if (!text && !work.length) return fail("Write a reply or record one first");
-      (post.comments ??= []).push({ id: uid("c-"), from: who, text, at: Date.now(), work: work.length ? work : undefined });
+      // A reply to a reply makes a thread.
+      const replyTo = typeof body.replyTo === "string" && body.replyTo ? body.replyTo : undefined;
+      if (replyTo && !(post.comments ?? []).some((x) => x.id === replyTo)) return fail("That reply is gone");
+      (post.comments ??= []).push({ id: uid("c-"), from: who, text, at: Date.now(), work: work.length ? work : undefined, replyTo });
       // A reply can be what finishes a peer-review card.
       if (who !== "teacher" && (w.replies ?? 0) > 0 && course.students.some((st) => st.id === who)) {
         const prog = wallProgress(d.posts[courseId], post.moduleId, who, w.replies);
@@ -1375,7 +1395,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
         d.posts[courseId] = list.filter((p) => p.id !== post.id);
         break;
       }
-      const text = String(body.text ?? "").trim().slice(0, 1000);
+      const text = String(body.text ?? "").trim().slice(0, 8000);
       if (!text && !post.work?.length) return fail("A post can’t be empty");
       post.text = text;
       post.editedAt = Date.now();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { op } from "@/lib/client";
 import { wallOf } from "@/lib/profile";
 import { wallProgress } from "@/lib/grading";
@@ -10,8 +10,11 @@ import type { Attachment, Comment, Module, Post, Student } from "@/lib/types";
 import { AttachMenu } from "./AttachMenu";
 import { MediaView } from "./cards/Media";
 import { Avatar, Icon } from "./Icon";
+import { RichText } from "./RichText";
+import { RichBodyEditor } from "./teacher/RichBodyEditor";
 
 type Who = string; // a student id, or "teacher"
+type Draft = Omit<Attachment, "id"> & { id?: string };
 
 function Heart({ on }: { on: boolean }) {
   return (
@@ -28,42 +31,153 @@ function Up({ on }: { on: boolean }) {
   );
 }
 
-/** What kind of reply it is, named like a card's face. */
-function replyLabel(work?: Attachment[]): string {
-  const a = work?.[0];
-  if (!a) return "Text";
-  return a.kind === "video" ? "Video reply" : a.kind === "audio" ? "Voice reply" : a.kind === "image" ? "Picture" : a.kind === "link" ? "Link" : "File";
+/** The words a student selected in the card's prompt (marked data-prompt), to quote in a post or a reply. */
+function usePromptSelection() {
+  const [quote, setQuote] = useState("");
+  useEffect(() => {
+    const on = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+      const node = sel.getRangeAt(0).commonAncestorContainer;
+      const el = node instanceof Element ? node : node.parentElement;
+      if (!el?.closest("[data-prompt]")) return;
+      const t = sel.toString().replace(/\s+/g, " ").trim();
+      if (t.length >= 3) setQuote(t.slice(0, 400));
+    };
+    document.addEventListener("selectionchange", on);
+    return () => document.removeEventListener("selectionchange", on);
+  }, []);
+  return [quote, setQuote] as const;
 }
-const replyIcon = (work?: Attachment[]) => { const k = work?.[0]?.kind; return k === "video" ? "video" : k === "audio" ? "mic" : k === "image" ? "image" : k === "link" ? "link" : k ? "file" : "read"; };
 
-/** A reply to a post, shown as a small content card: words, a recording, or both. */
-function ReplyCard({ c, who, avatar, onDelete }: { c: Comment; who: string; avatar: string; onDelete?: () => void }) {
+/**
+ * Write a post or a reply: the same text box as a card (formatting, lists, tables, math), and media (record audio,
+ * video or the screen, a photo, upload, draw, a link). It can quote the words selected in the card's prompt.
+ */
+function Composer({ placeholder, onSend, compact, topics, onCancel, autoFocusLabel }: {
+  placeholder: string;
+  onSend: (text: string, work: Draft[], topic?: string) => Promise<boolean>;
+  compact?: boolean;
+  topics?: string[];
+  onCancel?: () => void;
+  autoFocusLabel?: string;
+}) {
+  const [text, setText] = useState("");
+  const [work, setWork] = useState<Draft[]>([]);
+  const [topic, setTopic] = useState(topics?.[0]);
+  const [busy, setBusy] = useState(false);
+  const [quote, setQuote] = usePromptSelection();
+  const empty = !text.trim() && !work.length;
+  async function send() {
+    if (empty || busy) return;
+    setBusy(true);
+    const ok = await onSend(text, work, topic);
+    setBusy(false);
+    if (ok) { setText(""); setWork([]); }
+  }
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-white">
-      <div className="h-[3px] bg-[#3d68a6]" />
-      <div className="px-3 py-2.5">
-        <div className="flex items-center gap-2 text-[12px] text-ink-3">
-          <span className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[#3d68a6]"><Icon name={replyIcon(c.work)} size={11} />{replyLabel(c.work)}</span>
-          <span className="flex-1" />
-          <Avatar name={avatar} size={16} /><span className="font-medium text-ink-2">{who}</span><span className="mono">{ago(c.at)}</span>
-          {onDelete && <button onClick={onDelete} aria-label="Delete this reply" className="press -mr-1 rounded p-1 hover:bg-black/5 hover:!text-bad"><Icon name="trash" size={12} /></button>}
+    <div className={compact ? "" : "rounded-xl border border-line bg-white p-2.5"}>
+      <RichBodyEditor value={text} onChange={setText} placeholder={placeholder} compact label={autoFocusLabel ?? "Write a post"} onSubmit={() => void send()} />
+      {work.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {work.map((a, i) => (
+            <div key={i} className="rounded-xl border border-line bg-white p-2">
+              <div className="mb-1.5 flex items-center gap-2 text-[12px] text-ink-3">
+                <span className="min-w-0 flex-1 truncate">{a.name ?? a.kind}</span>
+                <button onClick={() => setWork(work.filter((_, k) => k !== i))} aria-label="Remove this attachment" className="hover:text-bad"><Icon name="x" size={12} /></button>
+              </div>
+              <MediaView a={{ ...a, id: a.id ?? `w-${i}` } as Attachment} />
+            </div>
+          ))}
         </div>
-        {c.text && <p className="mt-1.5 whitespace-pre-wrap text-[13.5px] leading-relaxed">{c.text}</p>}
-        {c.work?.map((a) => <div key={a.id} className="mt-2"><MediaView a={a} /></div>)}
+      )}
+      {topics && topics.length > 1 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-3">
+          Topic
+          {topics.map((x) => (
+            <button key={x} onClick={() => setTopic(x)} aria-pressed={topic === x}
+              className={`press h-6 rounded-full border px-2.5 pointer-coarse:h-9 ${topic === x ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>#{x}</button>
+          ))}
+        </div>
+      )}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <AttachMenu compact onAdd={(a) => setWork((x) => [...x, a].slice(0, 6))} />
+        {quote && (
+          <button onClick={() => { setText((t) => `> ${quote}\n\n${t}`); setQuote(""); window.getSelection()?.removeAllRanges(); }} title={`Quote: “${quote}”`}
+            className="btn btn-quiet press h-8 max-w-[14rem] px-2 text-[12px]"><Icon name="sparkles" size={12} /><span className="truncate">Quote “{quote}”</span></button>
+        )}
+        <span className="flex-1" />
+        {onCancel && <button onClick={onCancel} className="btn btn-quiet press h-8 px-2.5 text-[12.5px]">Cancel</button>}
+        <button onClick={() => void send()} disabled={busy || empty} className="btn btn-dark press h-8 px-4">{busy ? "Sending…" : compact ? "Reply" : "Post"}</button>
       </div>
     </div>
   );
 }
 
-function PostCard({ post, me, teacher, module: m, students, courseId, onChanged, index }: {
-  post: Post; me: Who; teacher: boolean; module: Module; students: Student[]; courseId: string; onChanged: () => void; index: number;
+/** Text and media of a post or a reply. */
+function Body({ text, work, edited }: { text: string; work?: Attachment[]; edited?: number }) {
+  return (
+    <>
+      {text && <RichText text={text} className="text-[14px] leading-relaxed text-[#2a2a28]" />}
+      {edited && <span className="text-[11px] text-ink-3">(edited)</span>}
+      {work?.map((a) => <div key={a.id} className="mt-2"><MediaView a={a} /></div>)}
+    </>
+  );
+}
+
+/** A reply, with the replies under it (a thread), as deep as it goes. */
+function Reply({ c, all, depth, ctx }: { c: Comment; all: Comment[]; depth: number; ctx: ThreadCtx }) {
+  const [replying, setReplying] = useState(false);
+  const under = all.filter((x) => x.replyTo === c.id).sort((a, b) => a.at - b.at);
+  const who = c.from === ctx.me ? "You" : ctx.name(c.from);
+  return (
+    <div className="relative">
+      <div className="flex gap-2.5">
+        <div className="flex flex-col items-center">
+          <Avatar name={ctx.name(c.from)} size={26} />
+          {(under.length > 0 || replying) && <span className="mt-1 w-px flex-1 bg-line" />}
+        </div>
+        <div className="min-w-0 flex-1 pb-3">
+          <div className="flex items-center gap-2 text-[12px] text-ink-3">
+            <span className="font-medium text-ink-2">{who}</span>
+            {c.from === "teacher" && <span className="chip h-4 text-[10px]">Teacher</span>}
+            <span className="mono">{ago(c.at)}</span>
+          </div>
+          <div className="mt-0.5"><Body text={c.text} work={c.work} /></div>
+          <div className="mt-1 flex items-center gap-1">
+            {ctx.canReply && <button onClick={() => setReplying((r) => !r)} className="press flex h-7 items-center gap-1 rounded-md px-1.5 text-[12px] text-ink-3 hover:bg-lane hover:text-ink"><Icon name="message" size={12} /> Reply</button>}
+            {(ctx.teacher || c.from === ctx.me) && (
+              <button onClick={() => ctx.remove(c)} aria-label="Delete this reply" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-3 hover:bg-lane hover:text-bad"><Icon name="trash" size={12} /></button>
+            )}
+          </div>
+          {replying && (
+            <div className="mt-1.5">
+              <Composer compact placeholder={`Reply to ${who === "You" ? "yourself" : who}…`} autoFocusLabel="Write a reply" onCancel={() => setReplying(false)}
+                onSend={async (text, work) => { const ok = await ctx.send(text, work, c.id); if (ok) setReplying(false); return ok; }} />
+            </div>
+          )}
+        </div>
+      </div>
+      {under.length > 0 && (
+        // Deep threads stop indenting after a few levels, so a long back-and-forth stays readable.
+        <div className={depth < 3 ? "pl-[2.1rem]" : ""}>
+          {under.map((x) => <Reply key={x.id} c={x} all={all} depth={depth + 1} ctx={ctx} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type ThreadCtx = { me: Who; teacher: boolean; canReply: boolean; name: (id: string) => string; send: (text: string, work: Draft[], replyTo?: string) => Promise<boolean>; remove: (c: Comment) => void };
+
+/** One post in the feed: who wrote it, its text and media, reactions, and its replies as threads. */
+function PostCard({ post, me, teacher, module: m, students, courseId, onChanged, index, groupName }: {
+  post: Post; me: Who; teacher: boolean; module: Module; students: Student[]; courseId: string; onChanged: () => void; index: number; groupName?: (id: string) => string;
 }) {
   const w = wallOf(m);
   const [local, setLocal] = useState<{ likes?: string[]; votes?: string[] }>({});
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [reply, setReply] = useState<Attachment | null>(null);
-  const [sending, setSending] = useState(false);
+  const [replying, setReplying] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const own = !teacher && (post.mine || post.studentId === me);
   const sections = w.sections?.filter((x) => x.trim()) ?? [];
@@ -72,6 +186,8 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
   const name = (id: string) => (id === "teacher" ? "Teacher" : students.find((s) => s.id === id)?.name ?? "Classmate");
   const author = post.studentId === "teacher" ? "Teacher" : post.mine ? "You" : post.studentId ? name(post.studentId) : "Anonymous";
   const comments = post.comments ?? [];
+  const top = comments.filter((c) => !c.replyTo || !comments.some((x) => x.id === c.replyTo)).sort((a, b) => a.at - b.at);
+  const shown = showAll || top.length <= 3 ? top : top.slice(-2);
   const showLikes = w.reactions === "likes" || w.reactions === "both";
   const showVotes = w.reactions === "votes" || w.reactions === "both";
   const canComment = w.comments || teacher;
@@ -85,26 +201,23 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
     await onChanged();
     setLocal({});
   }
-
-  async function comment() {
-    if ((!text.trim() && !reply) || sending) return;
-    setSending(true);
-    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: me, postId: post.id, text, work: reply ? [reply] : undefined });
-    setSending(false);
-    if (!r.ok) return toast(r.error ?? "Couldn’t send your reply", { icon: "x", tone: "bad" });
-    setText("");
-    setReply(null);
-    onChanged();
-  }
-
-  async function removeReply(c: Comment) {
-    if (!confirm(c.from === me ? "Delete your reply?" : "Delete this reply for everyone?")) return;
-    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: teacher ? "teacher" : me, postId: post.id, remove: c.id });
-    if (!r.ok) return toast(r.error ?? "Couldn’t delete the reply", { icon: "x", tone: "bad" });
-    toast("Reply deleted", { icon: "trash", tone: "plain" });
-    onChanged();
-  }
-
+  const ctx: ThreadCtx = {
+    me, teacher, canReply: canComment, name,
+    async send(text, work, replyTo) {
+      const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: me, postId: post.id, text, work, replyTo });
+      if (!r.ok) { toast(r.error ?? "Couldn’t send your reply", { icon: "x", tone: "bad" }); return false; }
+      setShowAll(true);
+      onChanged();
+      return true;
+    },
+    async remove(c) {
+      if (!confirm(c.from === me ? "Delete your reply (and the replies to it)?" : "Delete this reply (and the replies to it) for everyone?")) return;
+      const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: teacher ? "teacher" : me, postId: post.id, remove: c.id });
+      if (!r.ok) return toast(r.error ?? "Couldn’t delete the reply", { icon: "x", tone: "bad" });
+      toast("Reply deleted", { icon: "trash", tone: "plain" });
+      onChanged();
+    },
+  };
   const moderate = async (patch: Record<string, unknown>, note: string) => {
     await op(courseId, { op: "moderatePost", postId: post.id, ...patch });
     onChanged();
@@ -112,131 +225,125 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
   };
 
   return (
-    <article className={`pop card mb-3 break-inside-avoid overflow-hidden ${post.approved === false ? "border-dashed border-warn/60" : ""} ${post.pinned ? "ring-1 ring-[#d39b1f]/60" : ""}`} style={{ "--i": Math.min(index, 8) } as React.CSSProperties}>
-      <div className="px-4 pt-3.5">
-        <div className="flex items-center gap-2 text-[12px] text-ink-3">
-          {post.studentId && post.studentId !== "teacher" ? <Avatar name={author === "You" ? name(post.studentId) : author} size={20} /> : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-lane"><Icon name={post.studentId === "teacher" ? "user" : "eye"} size={11} /></span>}
-          <span className="font-medium text-ink-2">{author}</span>
-          {teacher && post.anonymous && <span className="chip h-5 text-[10.5px]">anonymous to class</span>}
-          <span className="mono">{ago(post.createdAt)}</span>
-          <span className="flex-1" />
-          {post.pinned && <span className="chip h-5 bg-[#fbf3dd] text-[10.5px] text-[#8f630b]">Pinned</span>}
-          {post.approved === false && <span className="chip h-5 bg-warn/10 text-[10.5px] text-warn">Waiting for approval</span>}
-        </div>
-        {editing !== null ? (
-          <form className="mt-2" onSubmit={async (e) => {
-            e.preventDefault();
-            const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "editPost", postId: post.id, studentId: me, text: editing });
-            if (!r.ok) return toast(r.error ?? "Couldn’t save", { icon: "x", tone: "bad" });
-            setEditing(null);
-            onChanged();
-          }}>
-            <textarea autoFocus value={editing} onChange={(e) => setEditing(e.target.value)} rows={3} aria-label="Edit your post" className="field resize-y text-[14px] leading-relaxed" />
-            <div className="mt-1.5 flex gap-1.5"><button className="btn btn-dark press h-7 px-3 text-[12px]">Save</button><button type="button" onClick={() => setEditing(null)} className="btn btn-quiet press h-7 px-2 text-[12px]">Cancel</button></div>
-          </form>
-        ) : post.text && <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed">{post.text}{post.editedAt && <span className="ml-1.5 text-[11px] text-ink-3">(edited)</span>}</p>}
-        {post.work?.map((a) => <div key={a.id} className="mt-2.5"><MediaView a={a} /></div>)}
-      </div>
-      <div className="mt-2 flex items-center gap-1 px-2.5 pb-2">
-        {showVotes && (
-          <button onClick={() => react("vote")} aria-pressed={votes.includes(me)} aria-label="Vote"
-            className={`press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] ${votes.includes(me) ? "bg-[#eef0fb] text-[#4b56a8]" : "text-ink-2 hover:bg-lane"}`}>
-            <span key={votes.length} className="pop"><Up on={votes.includes(me)} /></span><span className="font-mono">{votes.length}</span>
-          </button>
-        )}
-        {showLikes && (
-          <button onClick={() => react("like")} aria-pressed={likes.includes(me)} aria-label="Like"
-            className={`press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] ${likes.includes(me) ? "text-[#bf3f39]" : "text-ink-2 hover:bg-lane"}`}>
-            <span key={likes.length} className="pop"><Heart on={likes.includes(me)} /></span><span className="font-mono">{likes.length}</span>
-          </button>
-        )}
-        {(canComment || comments.length > 0) && (
-          <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`${comments.length} ${comments.length === 1 ? "reply" : "replies"}${canComment ? ", reply" : ""}`} className="press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] text-ink-2 hover:bg-lane">
-            <Icon name="message" size={14} /><span className="font-mono">{comments.length}</span>
-            {/* On a classmate's post, say it plainly: this is where you reply. */}
-            {canComment && !own && !teacher && !open && <span className="font-medium">{comments.length ? "· Reply" : "Reply"}</span>}
-          </button>
-        )}
-        <span className="flex-1" />
-        {own && editing === null && (
-          <span className="flex items-center gap-0.5">
-            <button onClick={() => setEditing(post.text)} className="btn btn-quiet press h-7 px-2 text-[12px]">Edit</button>
-            <button onClick={async () => {
-              if (!confirm("Delete your post?")) return;
-              await op(courseId, { op: "editPost", postId: post.id, studentId: me, remove: true });
-              onChanged();
-              toast("Post deleted", { icon: "trash", tone: "plain" });
-            }} aria-label="Delete your post" className="btn btn-quiet press h-7 w-7 justify-center px-0 hover:!text-bad"><Icon name="trash" size={13} /></button>
-          </span>
-        )}
-        {teacher && (
-          <span className="flex items-center gap-0.5">
-            {sections.length > 1 && (
-              <select value={post.section ?? sections[0]} onChange={(e) => moderate({ section: e.target.value }, `Moved to “${e.target.value}”`)} aria-label="Move to column" className="h-7 max-w-28 rounded-md bg-transparent px-1 text-[12px] text-ink-2 outline-none hover:bg-lane">
-                {sections.map((x) => <option key={x} value={x}>{x}</option>)}
-              </select>
-            )}
-            {post.approved === false && <button onClick={() => moderate({ approved: true }, "Approved")} className="btn btn-dark press h-7 px-2.5 text-[12px]">Approve</button>}
-            <button onClick={() => moderate({ pinned: !post.pinned }, post.pinned ? "Unpinned" : "Pinned to the top")} className="btn btn-quiet press h-7 px-2 text-[12px]">{post.pinned ? "Unpin" : "Pin"}</button>
-            <button onClick={() => confirm("Delete this post for everyone?") && moderate({ remove: true }, "Post deleted")} aria-label="Delete post" className="btn btn-quiet press h-7 w-7 justify-center px-0 hover:!text-bad"><Icon name="trash" size={13} /></button>
-          </span>
-        )}
-      </div>
-      <div className={`fold ${open ? "fold-open" : ""}`}>
-        <div className="min-h-0 overflow-hidden">
-          <div className="space-y-2.5 border-t border-line bg-[#fcfcfb] px-4 py-3">
-            {comments.map((c) => <ReplyCard key={c.id} c={c} who={c.from === me ? "You" : name(c.from)} avatar={name(c.from)}
-              onDelete={teacher || c.from === me ? () => removeReply(c) : undefined} />)}
-            {canComment && (
-              <div className="space-y-2">
-                {reply && (
-                  <div className="rise rounded-xl border border-line bg-white p-2">
-                    <div className="mb-1.5 flex items-center gap-2 text-[12px] text-ink-3"><span className="min-w-0 flex-1 truncate">Your reply: {reply.name ?? replyLabel([reply])}</span>
-                      <button onClick={() => setReply(null)} aria-label="Remove this recording" className="hover:text-bad"><Icon name="x" size={12} /></button></div>
-                    <MediaView a={reply} />
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && comment()} placeholder={reply ? "Add a few words (optional)…" : "Write a reply…"} aria-label="Reply" className="field h-8 py-0" />
-                  <button onClick={comment} disabled={(!text.trim() && !reply) || sending} className="btn btn-dark press h-8">{sending ? "Sending…" : "Send"}</button>
-                </div>
-                {!reply && <AttachMenu compact label="Record your reply: what worked, and one thing to try next." onAdd={(a) => setReply({ ...a, id: `r-${Math.random().toString(36).slice(2, 9)}` })} />}
+    <article className={`pop border-b border-line px-4 py-4 last:border-b-0 ${post.approved === false ? "bg-warn/[0.04]" : ""} ${post.pinned ? "bg-[#fbf3dd]/50" : ""}`} style={{ "--i": Math.min(index, 8) } as React.CSSProperties}>
+      <div className="flex gap-3">
+        {post.studentId && post.studentId !== "teacher" ? <Avatar name={author === "You" ? name(post.studentId) : author} size={36} /> : <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-lane"><Icon name={post.studentId === "teacher" ? "user" : "eye"} size={15} /></span>}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-ink-3">
+            <span className="font-semibold text-ink">{author}</span>
+            {post.studentId === "teacher" && <span className="chip h-4 text-[10px]">Teacher</span>}
+            {teacher && post.anonymous && <span className="chip h-5 text-[10.5px]">anonymous to class</span>}
+            {teacher && post.groupId && groupName && <span className="chip h-5 bg-[#eef0fb] text-[10.5px] text-[#4b56a8]">{groupName(post.groupId)}</span>}
+            <span className="mono">{ago(post.createdAt)}</span>
+            {sections.length > 1 && post.section && <span className="text-[#4b56a8]">#{post.section}</span>}
+            <span className="flex-1" />
+            {post.pinned && <span className="chip h-5 bg-[#fbf3dd] text-[10.5px] text-[#8f630b]">Pinned</span>}
+            {post.approved === false && <span className="chip h-5 bg-warn/10 text-[10.5px] text-warn">Waiting for approval</span>}
+          </div>
+          {editing !== null ? (
+            <div className="mt-2">
+              <RichBodyEditor value={editing} onChange={setEditing} compact label="Edit your post" />
+              <div className="mt-1.5 flex gap-1.5">
+                <button onClick={async () => {
+                  const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "editPost", postId: post.id, studentId: me, text: editing });
+                  if (!r.ok) return toast(r.error ?? "Couldn’t save", { icon: "x", tone: "bad" });
+                  setEditing(null);
+                  onChanged();
+                }} className="btn btn-dark press h-7 px-3 text-[12px]">Save</button>
+                <button onClick={() => setEditing(null)} className="btn btn-quiet press h-7 px-2 text-[12px]">Cancel</button>
               </div>
+            </div>
+          ) : <div className="mt-1"><Body text={post.text} work={post.work} edited={post.editedAt} /></div>}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {canComment && (
+              <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className="press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] text-ink-2 hover:bg-lane">
+                <Icon name="message" size={14} /><span className="font-mono">{comments.length}</span>{!own && !teacher && <span className="font-medium">Reply</span>}
+              </button>
+            )}
+            {showVotes && (
+              <button onClick={() => react("vote")} aria-pressed={votes.includes(me)} aria-label="Vote"
+                className={`press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] ${votes.includes(me) ? "bg-[#eef0fb] text-[#4b56a8]" : "text-ink-2 hover:bg-lane"}`}>
+                <span key={votes.length} className="pop"><Up on={votes.includes(me)} /></span><span className="font-mono">{votes.length}</span>
+              </button>
+            )}
+            {showLikes && (
+              <button onClick={() => react("like")} aria-pressed={likes.includes(me)} aria-label="Like"
+                className={`press flex h-8 items-center gap-1.5 rounded-lg px-2 text-[12.5px] ${likes.includes(me) ? "text-[#bf3f39]" : "text-ink-2 hover:bg-lane"}`}>
+                <span key={likes.length} className="pop"><Heart on={likes.includes(me)} /></span><span className="font-mono">{likes.length}</span>
+              </button>
+            )}
+            <span className="flex-1" />
+            {own && editing === null && (
+              <span className="flex items-center gap-0.5">
+                <button onClick={() => setEditing(post.text)} className="btn btn-quiet press h-7 px-2 text-[12px]">Edit</button>
+                <button onClick={async () => {
+                  if (!confirm("Delete your post?")) return;
+                  await op(courseId, { op: "editPost", postId: post.id, studentId: me, remove: true });
+                  onChanged();
+                  toast("Post deleted", { icon: "trash", tone: "plain" });
+                }} aria-label="Delete your post" className="btn btn-quiet press h-7 w-7 justify-center px-0 hover:!text-bad"><Icon name="trash" size={13} /></button>
+              </span>
+            )}
+            {teacher && (
+              <span className="flex items-center gap-0.5">
+                {sections.length > 1 && (
+                  <select value={post.section ?? sections[0]} onChange={(e) => moderate({ section: e.target.value }, `Moved to #${e.target.value}`)} aria-label="Move to topic" className="h-7 max-w-28 rounded-md bg-transparent px-1 text-[12px] text-ink-2 outline-none hover:bg-lane">
+                    {sections.map((x) => <option key={x} value={x}>#{x}</option>)}
+                  </select>
+                )}
+                {post.approved === false && <button onClick={() => moderate({ approved: true }, "Approved")} className="btn btn-dark press h-7 px-2.5 text-[12px]">Approve</button>}
+                <button onClick={() => moderate({ pinned: !post.pinned }, post.pinned ? "Unpinned" : "Pinned to the top")} className="btn btn-quiet press h-7 px-2 text-[12px]">{post.pinned ? "Unpin" : "Pin"}</button>
+                <button onClick={() => confirm("Delete this post for everyone?") && moderate({ remove: true }, "Post deleted")} aria-label="Delete post" className="btn btn-quiet press h-7 w-7 justify-center px-0 hover:!text-bad"><Icon name="trash" size={13} /></button>
+              </span>
             )}
           </div>
+          {replying && (
+            <div className="mt-2">
+              <Composer compact placeholder={`Reply to ${author === "You" ? "your post" : author}…`} autoFocusLabel="Write a reply" onCancel={() => setReplying(false)}
+                onSend={async (text, work) => { const ok = await ctx.send(text, work); if (ok) setReplying(false); return ok; }} />
+            </div>
+          )}
+          {top.length > 0 && (
+            <div className="mt-3">
+              {shown.length < top.length && (
+                <button onClick={() => setShowAll(true)} className="mb-2 text-[12.5px] font-medium text-[#4b56a8] hover:text-ink">Show {top.length - shown.length} earlier {top.length - shown.length === 1 ? "reply" : "replies"}</button>
+              )}
+              {shown.map((c) => <Reply key={c.id} c={c} all={comments} depth={0} ctx={ctx} />)}
+            </div>
+          )}
         </div>
       </div>
     </article>
   );
 }
 
-/** A shared wall: post with any media, react, comment, and (for teachers) moderate. */
-export function WallBoard({ courseId, me, teacher = false, module: m, posts, students, onChanged, header }: {
+/**
+ * A discussion: a feed of posts, newest (or top) first, each with its replies as threads, like a forum. Posts and
+ * replies are written like cards: formatted text, tables and math, recordings, pictures, files and links. Topics
+ * (when the teacher set some) filter the feed.
+ */
+export function WallBoard({ courseId, me, teacher = false, module: m, posts, students, onChanged, header, groupName }: {
   courseId: string; me: Who; teacher?: boolean; module: Module; posts: Post[]; students: Student[]; onChanged: () => void; header?: React.ReactNode;
+  /** A discussion by groups: a group's name, shown to the teacher on each post. */
+  groupName?: (id: string) => string;
 }) {
   const w = wallOf(m);
-  const [text, setText] = useState("");
-  const [work, setWork] = useState<Omit<Attachment, "id">[]>([]);
-  const [busy, setBusy] = useState(false);
   const [sort, setSort] = useState<"new" | "top">(w.reactions === "votes" ? "top" : "new");
-  const sections = w.sections?.filter((x) => x.trim()) ?? [];
-  const [section, setSection] = useState(sections[0] ?? "");
+  const topics = w.sections?.filter((x) => x.trim()) ?? [];
+  const [filter, setFilter] = useState<string | null>(null);
   const canPost = teacher || w.posting === "students";
-  const score = (p: Post) => (p.votes?.length ?? 0) * 2 + (p.likes?.length ?? 0);
-  const list = posts
-    .filter((p) => p.moduleId === m.id)
+  const score = (p: Post) => (p.votes?.length ?? 0) * 2 + (p.likes?.length ?? 0) + (p.comments?.length ?? 0) * 0.5;
+  const all = posts.filter((p) => p.moduleId === m.id);
+  const list = all
+    .filter((p) => !filter || (p.section ?? topics[0]) === filter)
     .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || (sort === "top" ? score(b) - score(a) : 0) || b.createdAt - a.createdAt);
 
-  async function post() {
-    if (!text.trim() && !work.length) return;
-    setBusy(true);
-    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "addPost", studentId: me, moduleId: m.id, text, work, section });
-    setBusy(false);
-    if (!r.ok) return toast(r.error ?? "Couldn’t post", { icon: "x", tone: "bad" });
-    setText("");
-    setWork([]);
+  async function post(text: string, work: Draft[], topic?: string) {
+    const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "addPost", studentId: me, moduleId: m.id, text, work, section: topic });
+    if (!r.ok) { toast(r.error ?? "Couldn’t post", { icon: "x", tone: "bad" }); return false; }
     onChanged();
-    toast(w.approval && !teacher ? "Posted. Your teacher will approve it." : "Posted to the wall", { icon: "wall" });
+    toast(w.approval && !teacher ? "Posted. Your teacher will approve it." : "Posted", { icon: "wall" });
+    return true;
   }
 
   const needed = w.replies ?? 0;
@@ -247,84 +354,49 @@ export function WallBoard({ courseId, me, teacher = false, module: m, posts, stu
       {header}
       {/* Peer review: what's left before this card is done. */}
       {prog && (
-        <div className={`mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border px-3.5 py-2.5 text-[13px] ${prog.done ? "border-ok/35 bg-ok/[0.05]" : "border-line bg-white"}`} role="status">
-          <span className={`flex items-center gap-1.5 ${prog.posted ? "text-ok" : "text-ink-2"}`}><Icon name={prog.posted ? "check" : "wall"} size={13} />{prog.posted ? "You posted" : "Post yours"}</span>
+        <div className={`mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border px-3.5 py-2.5 text-[13px] ${prog.done ? "border-ok/35 bg-ok/[0.05]" : "border-line bg-white"}`}>
+          <span className={`flex items-center gap-1.5 ${prog.posted ? "text-ok" : "text-ink-2"}`}><Icon name={prog.posted ? "check" : "wall"} size={13} />{prog.posted ? "You posted" : "Post once"}</span>
           <span className={`flex items-center gap-1.5 ${prog.replied >= needed ? "text-ok" : "text-ink-2"}`}><Icon name={prog.replied >= needed ? "check" : "message"} size={13} />Replied to {Math.min(prog.replied, needed)} of {needed} classmate{needed === 1 ? "" : "s"}</span>
-          {prog.done ? <span className="font-medium text-ok">Done</span> : <span className="text-ink-3">Open a classmate’s post to reply with words, a video or a voice note.</span>}
+          {prog.done ? <span className="font-medium text-ok">Done</span> : <span className="text-ink-3">Reply to a classmate’s post with words, a video or a voice note.</span>}
         </div>
       )}
       {canPost ? (
-        <div className="rounded-xl border border-line bg-white p-3">
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder={teacher ? "Post to the wall as the teacher…" : "Write something for the wall…"} aria-label="New post"
-            onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && post()} className="w-full resize-none bg-transparent text-[14px] leading-relaxed outline-none placeholder:text-ink-3" />
-          {work.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {work.map((a, i) => (
-                <span key={i} className="pop chip h-7 pr-1"><Icon name={a.kind} size={12} />{a.name ?? a.kind}
-                  <button onClick={() => setWork(work.filter((_, k) => k !== i))} aria-label="Remove attachment" className="press ml-0.5 rounded p-0.5 hover:bg-black/5"><Icon name="x" size={11} /></button>
-                </span>
-              ))}
-            </div>
-          )}
-          {sections.length > 1 && (
-            <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-3">
-              Post to
-              {sections.map((x) => (
-                <button key={x} onClick={() => setSection(x)} aria-pressed={section === x}
-                  className={`press h-6 rounded-full border px-2.5 pointer-coarse:h-9 ${section === x ? "border-ink bg-ink text-white" : "border-line text-ink-2 hover:border-line-strong"}`}>{x}</button>
-              ))}
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
-            <AttachMenu compact onAdd={(a) => setWork((x) => [...x, a].slice(0, 4))} />
-            <span className="flex-1" />
-            <button onClick={post} disabled={busy || (!text.trim() && !work.length)} className="btn btn-dark press h-8 px-4">{busy ? "Posting…" : "Post"}</button>
-          </div>
-          {(w.anonymous || w.approval) && !teacher && (
-            <p className="mt-2 text-[12px] text-ink-3">
-              {w.anonymous && "Your name is hidden from classmates; your teacher can see it. "}
-              {w.approval && "Your teacher approves posts before classmates see them."}
-            </p>
-          )}
-        </div>
+        <Composer placeholder={teacher ? "Post to the discussion as the teacher…" : "Share something with the class…"} topics={topics} onSend={post} />
       ) : (
-        <p className="rounded-xl border border-line bg-[#fafaf9] px-4 py-3 text-[13px] text-ink-3">Only your teacher posts on this wall. You can still react{w.comments ? " and comment" : ""}.</p>
+        <p className="rounded-xl border border-line bg-[#fafaf9] px-4 py-3 text-[13px] text-ink-3">Only your teacher starts posts here. You can still react{w.comments ? " and reply" : ""}.</p>
       )}
+      {(w.anonymous || w.approval) && !teacher && canPost && (
+        <p className="mt-1.5 text-[12px] text-ink-3">
+          {w.anonymous && "Your name is hidden from classmates; your teacher can see it. "}
+          {w.approval && "Your teacher approves posts before classmates see them."}
+        </p>
+      )}
+      {!teacher && canPost && <p className="mt-1.5 text-[11.5px] text-ink-3">Tip: select words in the card above to quote them.</p>}
 
-      <div className="mb-3 mt-5 flex items-center gap-2">
-        <span className="text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{list.length} post{list.length === 1 ? "" : "s"}</span>
-        <span className="flex-1" />
-        {w.reactions !== "none" && (
-          <div className="inline-flex rounded-lg bg-lane p-0.5">
-            {(["top", "new"] as const).map((k) => (
-              <button key={k} onClick={() => setSort(k)} aria-pressed={sort === k}
-                className={`press h-6 rounded-md px-2.5 text-[12px] pointer-coarse:h-9 pointer-coarse:text-[13px] ${sort === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2"}`}>{k === "top" ? "Top" : "Newest"}</button>
+      <div className="mb-1 mt-5 flex flex-wrap items-center gap-2">
+        <span className="text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{all.length} post{all.length === 1 ? "" : "s"}</span>
+        {topics.length > 1 && (
+          <span className="flex flex-wrap gap-1">
+            <button onClick={() => setFilter(null)} aria-pressed={!filter} className={`press h-6 rounded-full px-2.5 text-[12px] ${!filter ? "bg-ink text-white" : "bg-lane text-ink-2 hover:text-ink"}`}>All</button>
+            {topics.map((t) => (
+              <button key={t} onClick={() => setFilter(filter === t ? null : t)} aria-pressed={filter === t}
+                className={`press h-6 rounded-full px-2.5 text-[12px] ${filter === t ? "bg-ink text-white" : "bg-lane text-ink-2 hover:text-ink"}`}>#{t}</button>
             ))}
-          </div>
+          </span>
         )}
+        <span className="flex-1" />
+        <div className="inline-flex rounded-lg bg-lane p-0.5">
+          {(["new", "top"] as const).map((k) => (
+            <button key={k} onClick={() => setSort(k)} aria-pressed={sort === k}
+              className={`press h-6 rounded-md px-2.5 text-[12px] pointer-coarse:h-9 pointer-coarse:text-[13px] ${sort === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>{k === "new" ? "Newest" : "Top"}</button>
+          ))}
+        </div>
       </div>
       {list.length === 0 ? (
-        <div className="hatch flex h-24 items-center justify-center text-[13px] text-ink-3">The wall is empty. Be the first to post.</div>
-      ) : sections.length > 1 ? (
-        // Columns, like sections on a Padlet shelf. Scrolls sideways when there are many.
-        <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-          {sections.map((sec) => {
-            const col = list.filter((p) => (p.section ?? sections[0]) === sec);
-            return (
-              <section key={sec} className="w-[17rem] flex-none sm:w-auto sm:min-w-[15rem] sm:flex-1" aria-label={sec}>
-                <div className="mb-2 flex items-center gap-2 rounded-lg bg-lane px-3 py-2">
-                  <span className="flex-1 truncate text-[13px] font-medium">{sec}</span>
-                  <span className="mono text-[11.5px]">{col.length}</span>
-                </div>
-                {col.length === 0 ? <div className="hatch flex h-16 items-center justify-center text-[12px] text-ink-3">Nothing yet</div> :
-                  col.map((p, i) => <PostCard key={p.id} post={p} me={me} teacher={teacher} module={m} students={students} courseId={courseId} onChanged={onChanged} index={i} />)}
-              </section>
-            );
-          })}
-        </div>
+        <div className="hatch flex h-24 items-center justify-center text-[13px] text-ink-3">{filter ? `Nothing in #${filter} yet.` : "No posts yet. Be the first."}</div>
       ) : (
-        <div className="columns-1 gap-3 sm:columns-2">
-          {list.map((p, i) => <PostCard key={p.id} post={p} me={me} teacher={teacher} module={m} students={students} courseId={courseId} onChanged={onChanged} index={i} />)}
+        <div className="overflow-hidden rounded-xl border border-line bg-white">
+          {list.map((p, i) => <PostCard key={p.id} post={p} me={me} teacher={teacher} module={m} students={students} courseId={courseId} onChanged={onChanged} index={i} groupName={groupName} />)}
         </div>
       )}
     </div>
