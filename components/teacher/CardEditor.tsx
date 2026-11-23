@@ -506,11 +506,6 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, onGo, single
                   {q.options.length < 6 && (
                     <button onClick={() => set(q.id, { options: [...q.options, ""] })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>
                   )}
-                  {!ordered && onTree && (
-                    <button onClick={onTree} className="btn btn-quiet press h-7 px-2 text-[12px] text-[#4b56a8]" title="Deal a different card for each answer">
-                      <Icon name="split" size={12} /> {q.next?.some(Boolean) ? "Edit the card tree" : "A card for each answer"}
-                    </button>
-                  )}
                 </div>
               </>
             )}
@@ -550,7 +545,6 @@ function PollEditor({ question, onChange, cards = [], onTree, onGo }: { question
       </div>
       <div className="flex flex-wrap gap-1">
         {q.options.length < 6 && <button onClick={() => onChange({ ...q, options: [...q.options, ""] })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>}
-        {onTree && <button onClick={onTree} className="btn btn-quiet press h-7 px-2 text-[12px] text-[#4b56a8]"><Icon name="split" size={12} /> A card for each answer</button>}
       </div>
       <p className="text-[12px] text-ink-3">No right answer. After voting, students see how the class voted.</p>
     </div>

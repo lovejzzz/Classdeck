@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.42",
+    date: "2026-11-22",
+    changes: [
+      "The card panel no longer has an “A card for each answer” button (it only jumped to the map). Branches are made on the Map by dragging an answer's dot; the card an answer deals still shows next to it in the panel, and opens with a click.",
+    ],
+  },
+  {
     version: "0.1.41",
     date: "2026-11-22",
     changes: [
