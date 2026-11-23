@@ -201,7 +201,8 @@ export interface ScoreBand { min: number; next: string | null }
 export type Audience =
   | { kind: "all" }
   | { kind: "branch"; slot: string; variant: string }
-  | { kind: "student"; studentId: string };
+  // Only some students: `studentIds` (any number); `studentId` is the first of them (cards from before kept one).
+  | { kind: "student"; studentId: string; studentIds?: string[] };
 
 export interface Module {
   id: string;

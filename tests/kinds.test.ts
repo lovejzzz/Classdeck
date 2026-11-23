@@ -1,7 +1,8 @@
 // Card kinds and faces, checked without a server: npx tsx tests/kinds.test.ts
 import { mixedOrder, wallProgress } from "../lib/grading";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, asKind, faceMeta, faceOf, familyOf, isPoll, kindOf, newCard, unfinished, withKind } from "../lib/kinds";
-import type { Attachment, Module } from "../lib/types";
+import type { Attachment, Lesson, Module } from "../lib/types";
+import { studentsOf, visibleModules } from "../lib/profile";
 
 const card = (extra: Partial<Module> = {}): Module => ({ id: "m", type: "read", title: "t", body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
 const att = (kind: Attachment["kind"], url: string): Attachment => ({ id: "a", kind, url });
@@ -95,6 +96,18 @@ check("a typed answer: Short answer", faceMeta(ch([{ id: "q", kind: "short", tex
 check("two questions: Quiz", faceOf(ch([{ id: "q", text: "A?", options: ["a", "b"], answer: 0 }, { id: "r", text: "B?", options: ["a", "b"], answer: 1 }])) === "quiz");
 check("a blank second question doesn't make a quiz", faceOf(ch([{ id: "q", text: "A?", options: ["a", "b"], answer: 0 }, { id: "r", text: "", options: ["", ""] }])) === "choice");
 check("a poll that makes groups: Sign-up", faceOf(ch([{ id: "q", text: "Which?", options: ["a", "b"] }], { poll: true, signup: { names: true } })) === "signup");
+
+// A card for some students: on their boards only. An older card for one student still works.
+{
+  const some = card({ id: "some", kind: "content", body: "x", title: "For two", audience: { kind: "student", studentId: "s1", studentIds: ["s1", "s3"] } });
+  const one = card({ id: "one", kind: "content", body: "x", title: "For one", audience: { kind: "student", studentId: "s2" } });
+  const lesson = { id: "l", title: "L", modules: [some, one], branches: {} } as unknown as Lesson;
+  const sees = (sid: string) => visibleModules(lesson, sid).map((m) => m.id).join();
+  check("a card for some students is on each of their boards", sees("s1") === "some" && sees("s3") === "some");
+  check("…and not on anyone else's", sees("s4") === "");
+  check("a card made for one student before still reaches them", sees("s2") === "one" && studentsOf(one.audience).join() === "s2");
+  check("some students with no one picked yet: no one", studentsOf({ kind: "student", studentId: "", studentIds: [] }).length === 0);
+}
 
 const failed = rows.filter(([, ok]) => !ok);
 for (const [n] of failed) console.log("  ✗", n);

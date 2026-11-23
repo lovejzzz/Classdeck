@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CARD_SIZE, formatSize, heroAttachment, hostOf } from "@/lib/cards";
-import { uid } from "@/lib/profile";
+import { studentsOf, uid } from "@/lib/profile";
 import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { isoDay } from "@/lib/grading";
 import { useShortcuts } from "@/lib/shortcuts";
@@ -19,6 +19,8 @@ import type { Attachment, Course, Lesson, Module, Question, Skill, Student } fro
 import { GroupingPicker, SignupGroups } from "./Groupings";
 import { SCORE, targetsOf, wiresOf } from "@/lib/branching";
 import { CardFace } from "../cards/CardFace";
+import { AudioPlayer } from "../cards/Media";
+import { MediaLift } from "../cards/MediaLift";
 import { playableArt } from "../cards/PlayArt";
 import { Avatar, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
@@ -185,8 +187,18 @@ export function CardEditor({
     put({ ...m, ...patch });
   };
   const attachments = m.attachments ?? [];
+  // An attachment opened to check it: a video or picture grown big, or a recording playing under its row.
+  const [viewing, setViewing] = useState<{ a: Attachment; from: DOMRect; open: boolean } | null>(null);
+  const [playing, setPlaying] = useState<string | null>(null);
+  const playNow = useCallback((el: HTMLMediaElement | null) => { el?.play().catch(() => {}); }, []);
+  const openAttachment = (x: Attachment, el: HTMLElement) => {
+    if (x.kind === "audio") return setPlaying((p) => (p === x.id ? null : x.id));
+    if (x.kind === "image" || x.kind === "video" || (x.kind === "link" && videoEmbed(x.url))) return setViewing({ a: x, from: el.getBoundingClientRect(), open: true });
+    window.open(x.url, "_blank", "noopener");
+  };
   const addAttachment = (a: Omit<Attachment, "id">) => set({ attachments: [...attachments, { ...a, id: uid("a-") }] });
   const a = m.audience;
+  const chosen = studentsOf(a);
   const kind = kindOf(m);
   const older = olderSettings(m);
   // The answers (or score ranges) that deal this card, or the card group it's in: who gets it is set on the map.
@@ -265,13 +277,28 @@ export function CardEditor({
             <div className="mt-2"><RichBodyEditor key={m.id} value={m.body} onChange={(body) => set({ body })} placeholder={kind === "worksheet" ? "The worksheet students fill in: headings, prompts, a table with empty cells…" : "What students should read, watch or do"} /></div>
             <MathPreview text={m.body} />
             <div className="mt-3">
+          {attachments.length > 0 && <div className="mb-1.5 px-0.5 text-[11.5px] font-medium uppercase tracking-[0.06em] text-ink-3">Attachments</div>}
           <div className="space-y-1.5">
             {attachments.map((x, i) => {
               const timed = x.kind === "video" || (x.kind === "link" && !!videoEmbed(x.url));
               return (
                 <div key={x.id} className="pop rounded-lg border border-line px-2.5 py-2" style={{ "--i": i } as React.CSSProperties}>
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-7 w-7 flex-none items-center justify-center rounded-md bg-lane text-ink-2"><Icon name={x.kind} size={13} /></span>
+                    <button type="button" onClick={(e) => openAttachment(x, e.currentTarget)}
+                      aria-label={x.kind === "audio" ? `${playing === x.id ? "Hide" : "Play"} ${x.name || "the recording"}` : x.kind === "image" ? `Open ${x.name || "the picture"} big` : x.kind === "video" || videoEmbed(x.url) ? `Play ${x.name || "the video"}` : `Open ${x.name || x.url}`}
+                      title={x.kind === "audio" ? "Listen" : x.kind === "image" ? "Open big" : x.kind === "video" || videoEmbed(x.url) ? "Play" : "Open"}
+                      className="press group relative flex h-11 w-14 flex-none items-center justify-center overflow-hidden rounded-md bg-lane text-ink-2 ring-[#4b56a8]/40 hover:ring-2">
+                      {x.kind === "image"
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={x.url} alt="" className="h-full w-full object-cover" />
+                        : x.kind === "video" ? <video src={`${x.url}#t=1`} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                        : <Icon name={x.kind === "audio" && playing === x.id ? "pause" : x.kind} size={14} />}
+                      {(x.kind === "video" || x.kind === "audio" || (x.kind === "link" && !!videoEmbed(x.url))) && playing !== x.id && (
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-90 group-hover:bg-black/20">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/95 shadow-sm"><Icon name="play" size={9} className="translate-x-[0.5px] text-ink" /></span>
+                        </span>
+                      )}
+                    </button>
                     <span className="min-w-0 flex-1">
                       <Clearable><input key={`${x.id}:${x.name ?? ""}`} defaultValue={x.name ?? ""} placeholder={x.kind === "link" ? hostOf(x.url) : "Label"} aria-label="Label"
                         onBlur={(e) => e.target.value !== (x.name ?? "") && set({ attachments: attachments.map((y) => (y.id === x.id ? { ...y, name: e.target.value || undefined } : y)) })}
@@ -283,6 +310,7 @@ export function CardEditor({
                     )}
                     <button onClick={() => set({ attachments: attachments.filter((y) => y.id !== x.id) })} aria-label={`Remove ${x.name ?? x.kind}`} className="btn btn-quiet press h-7 w-7 justify-center px-0"><Icon name="x" size={13} /></button>
                   </div>
+                  {x.kind === "audio" && playing === x.id && <div className="mt-2"><AudioPlayer a={x} onMedia={playNow} /></div>}
                   {timed && (
                     <div className="mt-2 flex flex-wrap items-center gap-2 pl-9 text-[12px] text-ink-2">
                       Watch from
@@ -449,32 +477,42 @@ export function CardEditor({
           )}
 
           <Panel n={kind === "content" ? 2 : 3} title="Access">
-            {/* Who gets it: set on the map (answers deal cards), so said here rather than picked; one student is the exception. */}
+            {/* Who gets it: set on the map (answers deal cards), so said here rather than picked; some students is the exception. */}
             <div className="flex items-start gap-2.5 text-[12.5px]">
               <span className="mt-[1px] flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name={dealtBy.length ? "split" : a.kind === "student" ? "user" : "users"} size={12} /></span>
               <span className="min-w-0 flex-1 pt-[3px] text-ink-2">
                 {a.kind === "branch" ? (
                   <>Only students on the “{a.variant}” path get this card (set up before paths were removed). <button onClick={() => set({ audience: { kind: "all" } })} className="underline underline-offset-2 hover:text-ink">Give it to everyone</button></>
                 ) : a.kind === "student" ? (
-                  <>Only <span className="font-medium text-ink">{students.find((s) => s.id === a.studentId)?.name ?? "one student"}</span> gets this card. <button onClick={() => set({ audience: { kind: "all" } })} className="underline underline-offset-2 hover:text-ink">Give it to everyone</button></>
+                  chosen.length ? <>Only {chosen.length === 1 ? <span className="font-medium text-ink">{students.find((s) => s.id === chosen[0])?.name ?? "1 student"}</span> : <span className="font-medium text-ink">{chosen.length} students</span>} {chosen.length === 1 ? "gets" : "get"} this card.</>
+                    : <span className="text-[#a0561f]">No one gets this card yet: pick who does.</span>
                 ) : dealtBy.length ? (
                   <>Students get it from {dealtBy.slice(0, 2).map((w, k) => (
                     <span key={k}>{k ? " or " : ""}<button onClick={() => (onGo ? onGo(w.from) : onTree?.())} className="font-medium text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{w.label}</button></span>
                   ))}{dealtBy.length > 2 ? ` and ${dealtBy.length - 2} more` : ""}.</>
                 ) : (
-                  <>Everyone gets this card. <button onClick={() => set({ audience: { kind: "student", studentId: students[0]?.id ?? "" } })} className="underline underline-offset-2 hover:text-ink">Only one student…</button></>
+                  <>Everyone gets this card.</>
+                )}
+                {a.kind === "all" && !dealtBy.length && (
+                  <button onClick={() => set({ audience: { kind: "student", studentId: "", studentIds: [] } })} className="mt-1 block underline underline-offset-2 hover:text-ink">Only some students…</button>
                 )}
               </span>
             </div>
             {a.kind === "student" && (
-              <div className="mt-2 flex flex-wrap gap-1.5 pl-[34px]">
-                {students.map((s) => (
-                  <button key={s.id} onClick={() => set({ audience: { kind: "student", studentId: s.id } })} aria-pressed={a.studentId === s.id}
-                    className={`press inline-flex h-7 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-[12.5px] ${a.studentId === s.id ? "border-ink" : "border-line hover:border-line-strong"}`}>
-                    <Avatar name={s.name} size={20} />{s.name}
-                  </button>
-                ))}
-                {!students.length && <span className="text-[12.5px] text-ink-3">No students yet.</span>}
+              <div className="mt-2 pl-[34px]">
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Students who get this card">
+                  {students.map((s) => {
+                    const on = chosen.includes(s.id);
+                    return (
+                      <button key={s.id} onClick={() => { const ids = on ? chosen.filter((x) => x !== s.id) : [...chosen, s.id]; set({ audience: { kind: "student", studentId: ids[0] ?? "", studentIds: ids } }); }} aria-pressed={on}
+                        className={`press inline-flex h-7 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-[12.5px] ${on ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>
+                        <Avatar name={s.name} size={20} />{s.name}{on && <Icon name="check" size={11} />}
+                      </button>
+                    );
+                  })}
+                  {!students.length && <span className="text-[12.5px] text-ink-3">No students yet.</span>}
+                </div>
+                <button onClick={() => set({ audience: { kind: "all" } })} className="mt-2 text-[12.5px] text-ink-2 underline underline-offset-2 hover:text-ink">Give it to everyone</button>
               </div>
             )}
             <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3 text-[12.5px]">
@@ -502,6 +540,7 @@ export function CardEditor({
           )}
         </div>
       </div>
+      {viewing && <MediaLift a={viewing.a} title={viewing.a.name || m.title} from={viewing.from} open={viewing.open} onClose={() => setViewing((v) => v && { ...v, open: false })} onGone={() => setViewing(null)} />}
     </aside>,
     document.body,
   );

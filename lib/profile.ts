@@ -1,5 +1,5 @@
 import { unfinished } from "./kinds";
-import type { Lesson, Module, PresetId, Profile } from "./types";
+import type { Audience, Lesson, Module, PresetId, Profile } from "./types";
 import { followUps, type TreeView } from "./branching";
 
 export const PRESETS: Record<PresetId, Omit<Profile, "preset">> = {
@@ -23,6 +23,9 @@ export function fromPreset(id: PresetId): Profile {
  * Teacher-assigned versions show only the assigned one. In a choice slot the student sees every
  * version until they pick one; after that, only their pick.
  */
+/** The students a card is only for (its audience is some students). */
+export const studentsOf = (a: Audience): string[] => (a.kind !== "student" ? [] : (a.studentIds ?? [a.studentId]).filter(Boolean));
+
 export function visibleModules(lesson: Lesson, studentId: string, chosen: Record<string, string> = {}, tree?: TreeView): Module[] {
   // An elective's cards are only on the board of students who chose it.
   if (lesson.elective && !chosen[`elective:${lesson.id}`]) return [];
@@ -47,7 +50,7 @@ export function visibleModules(lesson: Lesson, studentId: string, chosen: Record
     if (hidden.has(m.id) && !dealt.has(m.id)) continue;
     if (a.kind === "all") out.push(m);
     else if (a.kind === "student") {
-      if (a.studentId === studentId) out.push(m);
+      if (studentsOf(a).includes(studentId)) out.push(m);
     } else {
       const recommended = lesson.branches[a.slot]?.[studentId] ?? firstVariant[a.slot];
       if (lesson.choiceSlots?.includes(a.slot)) {

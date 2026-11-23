@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.70",
+    date: "2026-11-23",
+    changes: [
+      "Card editor: a card's files are listed under Attachments, each with a preview. Click a recording to hear it right there; click a video or picture to see it big.",
+      "Draw opens in a large panel of its own, for teachers and students.",
+      "A card can go to some students: Only some students… lets you pick any number of them (it was one). The map shows how many get it.",
+    ],
+  },
+  {
     version: "0.1.69",
     date: "2026-11-23",
     changes: [

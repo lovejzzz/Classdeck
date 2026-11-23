@@ -9,6 +9,7 @@ import { KindCard } from "../cards/KindCard";
 import { MathText, plainMath } from "../MathText";
 import { plainText } from "@/lib/markdown";
 import { isAsked } from "@/lib/grading";
+import { studentsOf } from "@/lib/profile";
 import { fileExt, hostOf } from "@/lib/cards";
 import type { Attachment, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
 import { videoEmbed } from "@/lib/media";
@@ -1483,7 +1484,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
                           <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[6px]" style={{ background: `${suit.tint}16` }}><Icon name={faceMeta(m).icon} size={11} /></span>{faceMeta(m).name}
                           <span className="truncate normal-case tracking-normal text-ink-3">
-                            · {unfinished(m) ? <span className="text-[#a0561f]">{blankContent(m) ? "hidden until it has something in it" : "hidden until it has a question"}</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : "everyone"}
+                            · {unfinished(m) ? <span className="text-[#a0561f]">{blankContent(m) ? "hidden until it has something in it" : "hidden until it has a question"}</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : m.audience.kind === "student" ? (studentsOf(m.audience).length === 1 ? "1 student" : `${studentsOf(m.audience).length} students`) : "everyone"}
                           </span>
                         </span>
                         {typing?.id === m.id && typing.field === "title"

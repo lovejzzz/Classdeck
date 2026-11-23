@@ -7,7 +7,7 @@ const COLORS = ["#1b1b1a", "#ae502f", "#247b46", "#367195", "#6a5ac0", "#d39b1f"
 const SIZES = [2, 5, 12];
 
 /** A small drawing board: pens, an eraser, undo, and clear. Saves as a PNG. */
-export function SketchPad({ onKeep, onCancel }: { onKeep: (file: File) => void; onCancel: () => void }) {
+export function SketchPad({ onKeep, onCancel, big = false }: { onKeep: (file: File) => void; onCancel: () => void; big?: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [color, setColor] = useState(COLORS[0]);
   const [size, setSize] = useState(SIZES[1]);
@@ -69,7 +69,7 @@ export function SketchPad({ onKeep, onCancel }: { onKeep: (file: File) => void; 
   }
 
   return (
-    <div className="rise overflow-hidden rounded-xl border border-line bg-[#fafaf9]">
+    <div className={big ? "bg-[#fafaf9]" : "rise overflow-hidden rounded-xl border border-line bg-[#fafaf9]"}>
       <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
         {COLORS.map((c) => (
           <button key={c} onClick={() => { setColor(c); setEraser(false); }} aria-label={`Color ${c}`} aria-pressed={!eraser && color === c}
@@ -89,8 +89,8 @@ export function SketchPad({ onKeep, onCancel }: { onKeep: (file: File) => void; 
       </div>
       <canvas
         ref={canvas}
-        width={1200}
-        height={750}
+        width={big ? 1600 : 1200}
+        height={big ? 1000 : 750}
         className="block aspect-[8/5] w-full touch-none bg-white"
         style={{ cursor: eraser ? "cell" : "crosshair" }}
         onPointerDown={down}
