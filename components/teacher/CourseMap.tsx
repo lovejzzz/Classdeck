@@ -15,6 +15,8 @@ import { elbow } from "../mapPath";
 import { toast } from "@/lib/toast";
 import { reducedMotion } from "@/lib/spring";
 import { ask } from "../Confirm";
+import { loadLibrary, useLibrary } from "./NewCardFan";
+import type { SavedCard } from "@/lib/store";
 
 // Fixed sizes, so ports and wires are placed from numbers, not by measuring the page.
 // A card on the map is a playing card: 5 wide by 7 tall. Only a card group (a stack) can grow taller.
@@ -340,6 +342,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const dealsSome = (id: string) => wires.some((w) => nodeOf(w.from) === id);
   const [drag, setDrag] = useState<{ port: Port; x: number; y: number; over?: string } | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
+  // The teacher's saved cards, offered in a lesson's + Card menu (loaded when that menu opens).
+  const saved = useLibrary(!readOnly && !!menu && "add" in menu);
   const [menuLesson, setMenuLesson] = useState<string | null>(null);
   const [hot, setHot] = useState<string | null>(null);
   const [fresh, setFresh] = useState<string | null>(null);
@@ -700,6 +704,24 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     onChange({ ...l, modules: [...l.modules, card] });
     setFresh(card.id);
     onEdit(lessonId, card.id);
+  }
+
+  /** Put down a copy of one of the teacher's saved cards (Save to my cards, in the card panel) at the end of a lesson. */
+  function addSaved(lessonId: string, sc: SavedCard) {
+    const l = lessons.find((x) => x.id === lessonId)!;
+    const card = { ...structuredClone(sc.module), id: makeCard(kindOf(sc.module as Module), "").id, audience: { kind: "all" } } as Module;
+    const r = regions.find((x) => x.lesson.id === lessonId);
+    if (r) born.set(card.id, { x: r.x + r.w - W, y: r.y + TOP - 40 });
+    setMenu(null);
+    onChange({ ...l, modules: [...l.modules, card] });
+    setFresh(card.id);
+    onEdit(lessonId, card.id);
+  }
+  async function forgetSaved(sc: SavedCard) {
+    const r = await fetch("/api/library", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: sc.id }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+    if (!r.ok) return toast(r.error ?? "Couldn’t remove it", { icon: "x", tone: "bad" });
+    await loadLibrary(true);
+    toast(`Removed “${sc.name}” from My cards`);
   }
 
   /** Why the picked cards can't become a card group, or null if they can. */
@@ -1475,6 +1497,23 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     </button>
                   ))}
                 </div>
+                {saved.length > 0 && (
+                  <>
+                    <div className="mt-1.5 border-t border-line px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">From my cards</div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {saved.map((sc) => (
+                        <div key={sc.id} className="group/saved flex items-center rounded-lg hover:bg-lane">
+                          <button onClick={() => addSaved(menu.add, sc)} className="press flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-[12.5px]">
+                            <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfCard(sc.module as Module).tint }} />
+                            <span className="min-w-0 flex-1 truncate">{sc.name}</span>
+                            <span className="flex-none text-[11px] text-ink-3">{faceMeta(sc.module as Module).name}</span>
+                          </button>
+                          <button onClick={() => forgetSaved(sc)} aria-label={`Remove “${sc.name}” from My cards`} title="Remove from My cards" className="press mr-1 flex h-6 w-6 flex-none items-center justify-center rounded-md text-ink-3 opacity-0 hover:bg-white hover:text-bad focus:opacity-100 group-hover/saved:opacity-100"><Icon name="x" size={11} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

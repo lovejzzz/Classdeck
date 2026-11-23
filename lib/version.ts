@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.54",
+    date: "2026-11-23",
+    changes: [
+      "Cards you save with Save to my cards can be used again: + Card on any lesson, in any of your courses, lists them under From my cards. Pick one to put down a copy. The × beside one removes it from My cards. (Saving worked before, but there was no way to use a saved card.)",
+    ],
+  },
+  {
     version: "0.1.53",
     date: "2026-11-23",
     changes: [
