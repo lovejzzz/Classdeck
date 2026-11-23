@@ -61,7 +61,7 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
                   <span className="flex items-center gap-1.5 truncate text-[14px]">{st.name}{st.demo && <span className="chip h-5 flex-none bg-[#fff2c7] text-[10.5px] font-medium text-[#7a5a00]">Demo</span>}</span>
                   <span className="block truncate text-[12.5px] text-ink-3">{st.demo ? "For you to try the course as. What you do as them is kept." : st.userId ? `${st.email ?? "Has an account"} · joined` : `${st.email ? `${st.email} · ` : ""}not joined yet`}</span>
                 </span>
-                {st.demo && <a href={`/learn/${course.id}/${st.id}?preview=1`} className="btn btn-ghost press h-8 px-2.5 text-[12px]"><Icon name="eye" size={12} /> Try as {st.name.split(" ")[0]}</a>}
+                {st.demo && <a href={`/learn/${course.id}/${st.id}?preview=1`} className="btn btn-ghost press h-8 px-2.5 text-[12px]"><Icon name="eye" size={12} /> Try as them</a>}
                 {onMessage && (() => {
                   const unread = nudges.filter((n) => n.studentId === st.id && n.from === "student" && !n.read).length;
                   return (

@@ -13,7 +13,7 @@ import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
-import { DEFAULT_GROUPING, DEMO_STUDENTS, groupFor, isDemoStudent, signupGroupId, signupGroupingId } from "@/lib/shared";
+import { DEFAULT_GROUPING, DEMO_STUDENTS, demoStudent, groupFor, isDemoStudent, signupGroupId, signupGroupingId } from "@/lib/shared";
 
 /**
  * A sign-up poll's grouping, kept in step with the card: its name is the card's title and there's a group for each
@@ -182,6 +182,8 @@ function view(request: Request, courseId: string): Response {
   const d = db();
   const course = d.courses[courseId];
   if (!course) return Response.json({ error: "No such course" }, { status: 404 });
+  // Demo students added in 0.1.71 had made-up names: they're Demo Student A and B now.
+  for (const st of course.students) { const ds = st.demo ? demoStudent(st.id) : undefined; if (ds && st.name !== ds.name) st.name = ds.name; }
   const query = new URL(request.url).searchParams;
   const as = query.get("as");
   // Read-only guest view: course content only, no students, no work.
@@ -628,13 +630,13 @@ async function change(request: Request, courseId: string, body: Record<string, a
       // The two demo students: on the class list (to try the course as, their work kept), or gone with their work.
       if (body.on) {
         for (const ds of DEMO_STUDENTS) {
-          if (course.students.some((x) => x.id === ds.id)) continue;
+          if (course.students.some((x) => x.id === ds.id || x.id === ds.was)) continue;
           if ([...course.students, ...(course.waiting ?? [])].some((x) => x.name.toLowerCase() === ds.name.toLowerCase())) return fail(`A student in this class is already called ${ds.name}`);
           course.students.push({ id: ds.id, name: ds.name, demo: true });
           if (course.groups?.length) [...course.groups].sort((a, b) => a.studentIds.length - b.studentIds.length)[0].studentIds.push(ds.id);
         }
       } else {
-        for (const ds of DEMO_STUDENTS) { dropStudent(ds.id); clearWork(ds.id); }
+        for (const ds of DEMO_STUDENTS) for (const id of [ds.id, ds.was]) { dropStudent(id); clearWork(id); }
       }
       break;
     }

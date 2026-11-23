@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.72",
+    date: "2026-11-23",
+    changes: [
+      "The demo students are called Demo Student A and Demo Student B.",
+      "Closing a card without finishing it (Later, ✕ or Esc) shrinks it back into the card it came from, like rewinding the way it opened.",
+    ],
+  },
+  {
     version: "0.1.71",
     date: "2026-11-23",
     changes: [

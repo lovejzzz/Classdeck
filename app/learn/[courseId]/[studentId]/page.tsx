@@ -690,6 +690,8 @@ export default function LearnPage() {
           onBackdrop={() => close()}
           landing={() => {
             if (lift.completed && handMode && pileRef.current) return pileRef.current.getBoundingClientRect();
+            // Not finished (Later, ✕, Esc): rewind into where it came from, the card or the button that opened it.
+            if (!lift.completed) return lift.el?.isConnected ? lift.el.getBoundingClientRect() : lift.from;
             return els.current.get(lift.id)?.getBoundingClientRect() ?? null;
           }}
           onGone={() => {

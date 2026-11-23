@@ -57,11 +57,13 @@ export const signupGroupingId = (moduleId: string) => `gs-${moduleId}`;
 export const signupGroupId = (moduleId: string, option: number) => `${moduleId}-o${option}`;
 
 /**
- * The two demo students a teacher can add to the class list, to try the course as. Fixed names, unlikely to be a real
- * student's. Their ids are the same in every course.
+ * The two demo students a teacher can add to the class list, to try the course as. Their ids are the same in every
+ * course.
  */
 export const DEMO_STUDENTS = [
-  { id: "s-demo-odessa", name: "Odessa Brightwell" },
-  { id: "s-demo-caspian", name: "Caspian Thornbury" },
+  { id: "s-demo-a", name: "Demo Student A", was: "s-demo-odessa" },
+  { id: "s-demo-b", name: "Demo Student B", was: "s-demo-caspian" },
 ] as const;
-export const isDemoStudent = (id: string) => DEMO_STUDENTS.some((d) => d.id === id);
+/** A demo student's entry, by their id (or the id they had in 0.1.71, when they had made-up names). */
+export const demoStudent = (id: string) => DEMO_STUDENTS.find((d) => d.id === id || d.was === id);
+export const isDemoStudent = (id: string) => !!demoStudent(id);

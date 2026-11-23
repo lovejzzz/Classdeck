@@ -979,9 +979,9 @@ async function main() {
     check("no demo students until the teacher adds them", !(await roster()).some((x) => x.demo));
     check("add the demo students", (await A.op(dc, { op: "setDemoStudents", on: true })).ok);
     const demos = (await roster()).filter((x) => x.demo);
-    check("two demo students, with their fixed names", demos.map((x) => x.name).sort().join() === "Caspian Thornbury,Odessa Brightwell", demos);
+    check("two demo students, with their fixed names", demos.map((x) => x.name).sort().join() === "Demo Student A,Demo Student B", demos);
     check("adding them again doesn't double them", (await A.op(dc, { op: "setDemoStudents", on: true })).ok && (await roster()).filter((x) => x.demo).length === 2);
-    const od = demos.find((x) => x.name === "Odessa Brightwell");
+    const od = demos.find((x) => x.name === "Demo Student A");
     const card = courseOf(await A.state(dc)).weeks.flatMap((w) => w.lessons).flatMap((l) => l.modules).find((m) => m.type !== "group" && m.audience.kind === "all");
     const done = await A.post(`/api/course/${dc}`, { op: "setProgress", preview: true, studentId: od.id, moduleId: card.id, status: "done" });
     check("acting as a demo student in Student View", done.ok, done);
