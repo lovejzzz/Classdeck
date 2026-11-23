@@ -55,8 +55,8 @@ function TiltPreview({ m }: { m: Module }) {
   );
 }
 
-/** What students can do with a Content card. */
-const WRITERS = [["teacher", "Read it"], ["each", "Each edit their own copy"], ["group", "Edit together in groups"], ["class", "Edit together as a class"]] as const;
+/** Who fills in a worksheet. */
+const FILLERS = [["each", "Each student"], ["group", "Each group"], ["class", "Whole class"]] as const;
 
 /** The cards an answer deals, as chips: the first by name, any more as “+N” (each opens its card). */
 function Dealt({ ids, titleOf, onGo, onTree }: { ids: string[]; titleOf: (id: string) => string; onGo?: (id: string) => void; onTree?: () => void }) {
@@ -262,7 +262,7 @@ export function CardEditor({
         <div className="space-y-2.5 px-4 pb-8">
           <Panel n={1} title="Title and what to do">
             <Clearable><input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" /></Clearable>
-            <div className="mt-2"><RichBodyEditor key={m.id} value={m.body} onChange={(body) => set({ body })} placeholder="What students should read, watch or do" /></div>
+            <div className="mt-2"><RichBodyEditor key={m.id} value={m.body} onChange={(body) => set({ body })} placeholder={kind === "worksheet" ? "The worksheet students fill in: headings, prompts, a table with empty cells…" : "What students should read, watch or do"} /></div>
             <MathPreview text={m.body} />
             <div className="mt-3">
           <div className="space-y-1.5">
@@ -335,7 +335,7 @@ export function CardEditor({
           </Panel>
           ) : (
           <Panel n={2} title="How students answer">
-            <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="How students answer">
+            <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="How students answer">
               {ANSWER_FORMS.map((k) => (
                 <button key={k.id} role="radio" aria-checked={kind === k.id} onClick={() => toKind(k.id)}
                   className={`press flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-[12.5px] transition-colors ${kind === k.id ? "border-[#a0561f] bg-[#a0561f]/[0.06] font-medium text-ink" : "border-line bg-white text-ink-2 hover:border-line-strong"}`}>
@@ -345,6 +345,22 @@ export function CardEditor({
             </div>
             <div className="mt-3 border-t border-line pt-3">
               {kind === "answer" && <p className="text-[12.5px] text-ink-3">Students type an answer, record audio or video, or upload files and links. Only you see it, and you give feedback.</p>}
+              {kind === "worksheet" && (
+                // Your text above is the worksheet; students fill in a copy: each their own, or one shared per group or class.
+                <div className="text-[12.5px]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-ink-2">Who fills it in</span>
+                    <Seg value={m.writers ?? "each"} options={FILLERS.map(([v, l]) => [v, l] as [string, string])} onPick={(v) => set({ writers: v as "each" | "group" | "class" })} />
+                  </div>
+                  <p className="mt-1.5 text-[12px] leading-snug text-ink-3">
+                    {(m.writers ?? "each") === "each" ? "Your text above is where each student starts. They fill in their own copy and hand it in; it waits for your feedback in Grades and Students, where you can comment on any passage."
+                      : m.writers === "group" ? "Each group shares one copy and fills it in together, live, each with their cursor and name. Anyone in the group hands it in for the whole group."
+                      : "The whole class shares one copy and fills it in together, live: good for a class table of results. Each student presses Hand in for themselves."}
+                    {" "}History keeps a version every few minutes, with who wrote in it.
+                  </p>
+                  {m.writers === "group" && course && <div className="mt-2"><GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} /></div>}
+                </div>
+              )}
               {kind === "choice" && m.type !== "quiz" && (
                 <div className="mb-3 flex flex-wrap items-center gap-2 text-[12.5px]">
                   <span className="text-ink-2">Has a right answer</span>
@@ -433,29 +449,6 @@ export function CardEditor({
           )}
 
           <Panel n={kind === "content" ? 2 : 3} title="Access">
-            {kind === "content" && (
-              // What students can do with this card: read it, or write in it (each their own copy, or one copy shared).
-              <div className="mb-3.5">
-                <div className="flex flex-wrap items-center gap-2 text-[13px]">
-                  <label htmlFor={`writers-${m.id}`} className="text-ink-2">Students can</label>
-                  <span className="relative">
-                    <select id={`writers-${m.id}`} value={m.writers ?? "teacher"} onChange={(e) => set({ writers: e.target.value === "teacher" ? undefined : (e.target.value as "each" | "group" | "class") })}
-                      className="field h-8 cursor-pointer appearance-none py-0 pr-8 text-[13px] font-medium">
-                      {WRITERS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-                    </select>
-                    <Icon name="chevron" size={12} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
-                  </span>
-                </div>
-                <p className="mt-1.5 text-[12px] leading-snug text-ink-3">
-                  {!m.writers ? "Students read what you write here."
-                    : m.writers === "each" ? "Your text is where each student starts. They write in their own copy and hand it in; it waits for your feedback in Grades and Students, where you can comment on any passage."
-                    : m.writers === "group" ? "Each group shares one copy and writes in it together, live, each with their cursor and name. Anyone in the group hands it in for the whole group."
-                    : "The whole class shares one copy and writes in it together, live: good for a class table of results. Each student presses Hand in for themselves."}
-                  {m.writers && " History keeps a version every few minutes, with who wrote in it."}
-                </p>
-                {m.writers === "group" && course && <div className="mt-2"><GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} /></div>}
-              </div>
-            )}
             {/* Who gets it: set on the map (answers deal cards), so said here rather than picked; one student is the exception. */}
             <div className="flex items-start gap-2.5 text-[12.5px]">
               <span className="mt-[1px] flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name={dealtBy.length ? "split" : a.kind === "student" ? "user" : "users"} size={12} /></span>

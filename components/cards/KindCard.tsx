@@ -21,7 +21,7 @@ export function KindCard({ kind, w = 124 }: { kind: CardKind; w?: number }) {
         <KindArt id={`new-${kind}`} face={faceOf(newCard(kind))} tint={suit.tint} cover={suit.cover} />
       </span>
       <span className="relative px-2.5 pt-2 text-[13.5px] font-semibold leading-tight text-ink">{family.name}</span>
-      <span className="relative px-2.5 pt-1 text-[11px] leading-snug text-ink-3">{question ? "Choices, open answer, discussion" : "Words, pictures, video, links"}</span>
+      <span className="relative px-2.5 pt-1 text-[11px] leading-snug text-ink-3">{question ? "Choose, write, fill in, discuss" : "Words, pictures, video, links"}</span>
     </span>
   );
 }

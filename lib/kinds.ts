@@ -15,7 +15,7 @@ export type Family = "content" | "question";
  * form (CardKind): with choices (a quiz question or a poll), an open answer, or a discussion everyone takes part in.
  * A card group is made by merging cards.
  */
-export type CardKind = "content" | "answer" | "choice" | "discussion" | "group";
+export type CardKind = "content" | "answer" | "choice" | "worksheet" | "discussion" | "group";
 /** How a card looks: its picture and name. A Content card looks like its media; a Question card like how it's answered. */
 export type Face =
   | "text" | "table" | "image" | "video" | "link" | "recording" | "file" | "worksheet" | "doc"
@@ -24,7 +24,7 @@ export type Face =
 /** The two kinds of card a teacher puts down, and what each starts as. */
 export const FAMILIES: { id: Family; name: string; hint: string; start: CardKind }[] = [
   { id: "content", name: "Content", hint: "Words, a picture, a video, a link or a recording", start: "content" },
-  { id: "question", name: "Question", hint: "Students answer: with choices, in their own words, or in a discussion", start: "choice" },
+  { id: "question", name: "Question", hint: "Students answer: with choices, in their own words, on a worksheet, or in a discussion", start: "choice" },
 ];
 export const familyMeta = (f: Family) => FAMILIES.find((x) => x.id === f)!;
 
@@ -32,6 +32,7 @@ export const KINDS: { id: CardKind; family: Family; name: string; hint: string; 
   { id: "content", family: "content", name: "Content", hint: "Words, a picture, a video, a link or a recording", icon: "read", done: "Done" },
   { id: "choice", family: "question", name: "Choices", hint: "Pick an answer: a quiz question, or a poll with no right answer", icon: "quiz", done: "Submit" },
   { id: "answer", family: "question", name: "Open answer", hint: "Students write, record or upload; you give feedback", icon: "message", done: "Hand in" },
+  { id: "worksheet", family: "question", name: "Worksheet", hint: "Students fill in a copy of your text: each their own, or one per group or for the class", icon: "practice", done: "Hand in" },
   { id: "discussion", family: "question", name: "Discussion", hint: "Everyone posts and replies", icon: "wall", done: "Done" },
   // Not a kind you pick: made by selecting cards and merging them. Listed so its name and icon are known.
   { id: "group", family: "question", name: "Card group", hint: "Cards that go together", icon: "layers", done: "Done" },
@@ -74,6 +75,8 @@ const isKind = (k: unknown): k is CardKind => KINDS.some((x) => x.id === k);
 
 /** A card's kind: the one stored, or (for a card made without one, such as a template) the one its type points to. */
 export function kindOf(m: KindFields): CardKind {
+  // Students only ever read a Content card: one they write in (from before Worksheet was an answer type) is a worksheet.
+  if ((m.kind === "content" || (!isKind(m.kind) && (m.type === "read" || m.type === "explore"))) && m.writers) return "worksheet";
   if (isKind(m.kind)) return m.kind;
   switch (m.type) {
     case "group":
@@ -112,9 +115,8 @@ export function faceOf(m: KindFields): Face {
     const q = qs[0] ?? m.questions?.[0];
     return q?.kind === "multi" ? "checkboxes" : q?.kind === "order" ? "order" : q?.kind === "short" ? "short" : "choice";
   }
+  if (k === "worksheet") return (m.writers ?? "each") === "each" ? "worksheet" : "doc";
   if (k !== "content") return k;
-  if (m.writers === "each") return "worksheet";
-  if (m.writers === "group" || m.writers === "class") return "doc";
   const a = firstMedia(m);
   if (!a) return m.body && hasTable(m.body) ? "table" : "text";
   if (a.kind === "image") return "image";
@@ -144,7 +146,8 @@ export const faceMeta = (m: KindFields): { name: string; icon: string } => {
  */
 export function typeOfKind(k: CardKind, current?: ModuleType, inGroups = current === "studio"): ModuleType {
   if (k === "group") return "group";
-  if (familyOf(k) === "content") return "read";
+  // A worksheet runs on a Content card's type: its copies, history and hand-in are kept on the card.
+  if (familyOf(k) === "content" || k === "worksheet") return "read";
   if (k === "choice") return current === "quiz" ? "quiz" : "practice"; // a poll answers right away too
   return k === "answer" ? "submit" : inGroups ? "studio" : "wall";
 }
@@ -180,6 +183,7 @@ export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
   } else {
     next.questions = undefined;
   }
+  next.writers = k === "worksheet" ? m.writers ?? "each" : undefined;
   if (k === "answer") next.submitTo = undefined;
   if (k === "discussion" && !inGroups) next.submitTo = undefined;
   return next;
@@ -189,7 +193,7 @@ export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
 export function withKind(m: Module): Module {
   // A poll keeps no right answer, and only one question.
   const cleanPoll = !m.poll || (m.type === "practice" && (m.questions?.length ?? 0) <= 1 && !m.questions?.some((q) => q.answer !== undefined));
-  if (isKind(m.kind) && cleanPoll && m.type === typeOfKind(m.kind, m.type)) return m;
+  if (isKind(m.kind) && m.kind === kindOf(m) && cleanPoll && m.type === typeOfKind(m.kind, m.type)) return m;
   return asKind(m, kindOf(m));
 }
 
@@ -244,18 +248,18 @@ export function addNextQuestion<L extends { modules: Module[] }>(lesson: L, card
   return { lesson: { ...lesson, modules }, card, grouped: "new" };
 }
 
-/** A Text card each student writes in, in their own copy of it (Who writes: Each student). */
-export const writesOwn = (m: KindFields & Pick<Module, "writers">) => kindOf(m) === "content" && m.writers === "each";
+/** A worksheet each student fills in, in their own copy of it. */
+export const writesOwn = (m: KindFields & Pick<Module, "writers">) => kindOf(m) === "worksheet" && (m.writers ?? "each") === "each";
 
-/** A Text card a group (or the whole class) writes in together, in one shared copy. */
-export const sharedDoc = (m: KindFields & Pick<Module, "writers">) => kindOf(m) === "content" && (m.writers === "group" || m.writers === "class");
+/** A worksheet a group (or the whole class) fills in together, in one shared copy. */
+export const sharedDoc = (m: KindFields & Pick<Module, "writers">) => kindOf(m) === "worksheet" && (m.writers === "group" || m.writers === "class");
 
 /**
  * Work a student hands in for the teacher to read and give feedback on: an open answer, their own copy of a Text
  * card, or their group's shared copy.
  */
 export const reviewableCard = (m: KindFields & Pick<Module, "writers" | "choice">) =>
-  (["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && !m.choice) || writesOwn(m) || (kindOf(m) === "content" && m.writers === "group");
+  (["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && !m.choice) || writesOwn(m) || (kindOf(m) === "worksheet" && m.writers === "group");
 
 /** A card with choices that has neither words nor options yet: students don't see it until the teacher writes them. */
 export const unasked = (m: KindFields) => kindOf(m) === "choice" && !(m.questions ?? []).some(isAsked);

@@ -163,7 +163,7 @@ export function GroupingsList({ course, onChanged, readOnly }: { course: Course;
         <h3 className="flex-1 text-[15px] font-medium">Groups</h3>
         {!readOnly && <button onClick={() => setEditing("new")} className="btn btn-ghost press h-8"><Icon name="plus" size={13} /> New groups</button>}
       </div>
-      <p className="mt-1 text-[13px] text-ink-3">Groups are made on a card (Access: Edit together in groups, or a discussion in groups) and kept here, for other cards to use. Make new ones whenever the groups change.</p>
+      <p className="mt-1 text-[13px] text-ink-3">Groups are made on a card (a worksheet for Each group, or a discussion in groups) and kept here, for other cards to use. Make new ones whenever the groups change.</p>
       {all.length ? (
         <ul className="mt-3 divide-y divide-line">
           {all.map((g) => {

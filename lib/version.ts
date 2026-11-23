@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.69",
+    date: "2026-11-23",
+    changes: [
+      "Students only ever read a Content card. When they should write, a Question card has a fourth way to answer: Worksheet. Your text is the worksheet, and Who fills it in is Each student, Each group or Whole class.",
+      "Content cards students wrote in are now worksheets, with everything students wrote and handed in kept. They show as Question cards (brown) on the map and boards.",
+      "A Content card's Access is who gets it and when it's due; Students can… is gone.",
+      "Questhand 101 has a card on worksheets.",
+    ],
+  },
+  {
     version: "0.1.68",
     date: "2026-11-23",
     changes: [

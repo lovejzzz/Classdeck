@@ -49,7 +49,7 @@ check("a new poll card", isPoll(newCard("choice", undefined, true)) && newCard("
 // Two kinds of card: Content and Question. A Question card is answered with choices, an open answer or a discussion.
 check("two kinds of card: Content and Question", FAMILIES.map((f) => f.name).join() === "Content,Question");
 check("a Question card starts with choices", FAMILIES[1].start === "choice" && newCard(FAMILIES[1].start).title === "New Question card");
-check("three ways to answer a Question card", ANSWER_FORMS.map((k) => k.id).join() === "choice,answer,discussion" && ANSWER_FORMS.every((k) => familyOf(k.id) === "question"));
+check("four ways to answer a Question card", ANSWER_FORMS.map((k) => k.id).join() === "choice,answer,worksheet,discussion" && ANSWER_FORMS.every((k) => familyOf(k.id) === "question"));
 const swapped = asKind(asKind(card({ title: "Look", body: "words" }), "choice"), "content");
 check("a card swapped to Question and back keeps its words, and has no question left", swapped.title === "Look" && swapped.body === "words" && kindOf(swapped) === "content" && !swapped.questions);
 
@@ -80,6 +80,11 @@ check("no post yet: not done even with replies", !wallProgress(wall.filter((p) =
 // Faces follow what's in the card, past the media: who writes in it, tables, files, and what a question asks for.
 check("a PDF: File, named by its type", faceOf(card({ kind: "content", attachments: [{ id: "a", kind: "file", url: "/x/handout.pdf", name: "handout.pdf" }] })) === "file" && faceMeta(card({ kind: "content", attachments: [{ id: "a", kind: "file", url: "/x/handout.pdf", name: "handout.pdf" }] })).name === "PDF");
 check("each student writes: Worksheet", faceOf(card({ kind: "content", writers: "each" })) === "worksheet");
+check("a Content card students write in is a Question card: a worksheet", kindOf(card({ kind: "content", writers: "each" })) === "worksheet" && familyOf(kindOf(card({ kind: "content", writers: "group" }))) === "question");
+check("withKind stores it as a worksheet, and keeps who fills it in", (() => { const w = withKind(card({ kind: "content", writers: "group" })); return w.kind === "worksheet" && w.type === "read" && w.writers === "group" && w.suit === "question"; })());
+check("a new worksheet is filled in by each student", (() => { const w = asKind(card({ kind: "content" }), "worksheet"); return w.writers === "each" && w.type === "read" && faceOf(w) === "worksheet"; })());
+check("switching a worksheet to Content: students only read it", asKind(card({ kind: "worksheet", writers: "class" }), "content").writers === undefined);
+check("Worksheet is a way students answer", ANSWER_FORMS.some((k) => k.id === "worksheet"));
 check("a group writes together: Group doc", faceOf(card({ kind: "content", writers: "group" })) === "doc" && faceMeta(card({ kind: "content", writers: "group" })).name === "Group doc");
 check("the class writes together: Class doc", faceMeta(card({ kind: "content", writers: "class" })).name === "Class doc");
 check("text with a table: Table", faceOf(card({ kind: "content", body: "Hi\n\n| a | b |\n| --- | --- |\n| 1 | 2 |" })) === "table");

@@ -156,7 +156,7 @@
        "id": "m-q1tpl-kinds",
        "type": "read",
        "title": "Two kinds of card",
-       "body": "Content cards hold something to read, watch or listen to.\n\nQuestion cards ask something back. Under How students answer, pick Choices (a right answer, or a poll), Open answer, or Discussion.",
+       "body": "Content cards hold something to read, watch or listen to.\n\nQuestion cards ask something back. Under How students answer, pick Choices (a right answer, or a poll), Open answer, Worksheet, or Discussion.",
        "audience": {
         "kind": "all"
        },
@@ -308,7 +308,7 @@
        "id": "m-q1tpl-kinds-again",
        "type": "read",
        "title": "The card kinds again, side by side",
-       "body": "- Content: something to read, watch or listen to.\n- Choices with a right answer: checked at once (one answer, several, an order, or a short typed answer).\n- Choices with no right answer: a poll.\n- Open answer: students hand in words, a drawing, a recording or a file, and you give feedback.\n- Discussion: a shared wall where the class posts and replies.",
+       "body": "- Content: something to read, watch or listen to.\n- Choices with a right answer: checked at once (one answer, several, an order, or a short typed answer).\n- Choices with no right answer: a poll.\n- Open answer: students hand in words, a drawing, a recording or a file, and you give feedback.\n- Worksheet: students fill in a copy of your text, each their own or one per group or class.\n- Discussion: a shared wall where the class posts and replies.",
        "audience": {
         "kind": "all"
        },
@@ -893,8 +893,8 @@
       {
        "id": "m-q1tpl-who-writes",
        "type": "read",
-       "title": "Who writes in a card",
-       "body": "In a Content card's **Access**, **Students can** has four choices:\n\n- **Read it**: you write, students read. This is every card you've seen so far.\n- **Each edit their own copy**: your text is where each student starts, like a worksheet. They write in their own copy (tables too) and press **Hand in**.\n- **Edit together in groups** and **Edit together as a class**: one shared copy, written together. More on the card after next.\n\nAccess also says who gets the card (everyone, or the students an answer deals it to) and when it's due.\n\nTheir copy then waits for your feedback in Grades and Students. Select any words in it and press **Comment**: the student sees your comment on those words and can reply.\n\n> The next card is one. Try it.",
+       "title": "Worksheets",
+       "body": "Students only ever read a Content card. When they should write, make a Question card and pick **Worksheet** under How students answer. Your text is the worksheet: headings, prompts, a table with empty cells.\n\n**Who fills it in** has three choices:\n\n- **Each student**: each fills in their own copy (tables too) and presses **Hand in**.\n- **Each group** and **Whole class**: one shared copy, filled in together. More on the card after next.\n\nTheir copy then waits for your feedback in Grades and Students. Select any words in it and press **Comment**: the student sees your comment on those words and can reply.\n\n> The next card is one. Try it.",
        "audience": {
         "kind": "all"
        },
@@ -913,8 +913,8 @@
        },
        "tools": [],
        "attachments": [],
-       "kind": "content",
-       "suit": "content",
+       "kind": "worksheet",
+       "suit": "question",
        "writers": "each",
        "minutes": 8
       },
@@ -922,7 +922,7 @@
        "id": "m-q1tpl-together",
        "type": "read",
        "title": "Writing together",
-       "body": "With **Edit together in groups**, every group shares one copy. Make the groups right on the card: **Make groups**, name them, split the class at random or tap students into each group. Other cards can use the same groups from the list, and you make new ones whenever the groups change. With **Edit together as a class**, everyone shares one.\n\n- They write in it at the same time, live: each person's cursor shows with their name, and who's there shows above the text.\n- **History** keeps a version every few minutes, with who wrote in it. Look at any version, or go back to it.\n- In a group, anyone can **Hand in** for the whole group. In Students you can watch a group's copy as it's written, and write in it too.\n\n## Tables that add up\n\nIn a table, **Σ Total** adds a row that adds up each column. Write =AVERAGE, =COUNT, =MIN or =MAX in a cell instead of =SUM for those. **Bar**, **Line** and **Pie** put a chart of the table under it. Both update as students fill the table in.",
+       "body": "With a worksheet for **Each group**, every group shares one copy. Make the groups right on the card: **Make groups**, name them, split the class at random or tap students into each group. Other cards can use the same groups from the list, and you make new ones whenever the groups change. With **Whole class**, everyone shares one.\n\n- They write in it at the same time, live: each person's cursor shows with their name, and who's there shows above the text.\n- **History** keeps a version every few minutes, with who wrote in it. Look at any version, or go back to it.\n- In a group, anyone can **Hand in** for the whole group. In Students you can watch a group's copy as it's written, and write in it too.\n\n## Tables that add up\n\nIn a table, **Σ Total** adds a row that adds up each column. Write =AVERAGE, =COUNT, =MIN or =MAX in a cell instead of =SUM for those. **Bar**, **Line** and **Pie** put a chart of the table under it. Both update as students fill the table in.",
        "audience": {
         "kind": "all"
        },
@@ -935,7 +935,7 @@
        "id": "m-q1tpl-signup",
        "type": "read",
        "title": "Let students pick their group",
-       "body": "Sometimes students should choose: which project, which topic, which lab slot. Make a poll (Choices, Has a right answer: No) and tick **Make groups from the answers**.\n\n- Each option is a group. A student joins one by picking it, and can switch until you tick **Lock the groups**.\n- **At most** caps each group; a full group can't be picked.\n- **Students see who's in each group**, or untick it to show only how many.\n- The groups are kept under the card's name. Pick them in any other card that students edit together in groups, and press **Move students** on the poll to change them yourself.\n\n> The next card is one. Pick a group.",
+       "body": "Sometimes students should choose: which project, which topic, which lab slot. Make a poll (Choices, Has a right answer: No) and tick **Make groups from the answers**.\n\n- Each option is a group. A student joins one by picking it, and can switch until you tick **Lock the groups**.\n- **At most** caps each group; a full group can't be picked.\n- **Students see who's in each group**, or untick it to show only how many.\n- The groups are kept under the card's name. Pick them in any worksheet or discussion for Each group, and press **Move students** on the poll to change them yourself.\n\n> The next card is one. Pick a group.",
        "audience": {
         "kind": "all"
        },
@@ -982,8 +982,8 @@
        },
        "tools": [],
        "attachments": [],
-       "kind": "content",
-       "suit": "content",
+       "kind": "worksheet",
+       "suit": "question",
        "writers": "class"
       },
       {
