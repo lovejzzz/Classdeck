@@ -32,7 +32,6 @@ import { PreviewBar } from "@/components/student/PreviewBar";
 import { toast } from "@/lib/toast";
 import { suitOfCard } from "@/lib/ui";
 import type { Lesson, Module, Profile, Progress, Status } from "@/lib/types";
-import { StudentMap } from "@/components/student/StudentMap";
 
 const narrowQuery = "(max-width: 639px)";
 function useNarrow() {
@@ -89,11 +88,6 @@ export default function LearnPage() {
   const todayRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const [openWeeks, setOpenWeeks] = useState<Set<string>>(new Set());
-  // Cards in rows of weeks, or the quest map. Remembered on this device (a convenience; the board works without it).
-  const [pickedLayout, setLayoutMode] = useState<"cards" | "map" | null>(() => {
-    try { const v = typeof window !== "undefined" ? localStorage.getItem("questhand:board-view") : null; return v === "map" || v === "cards" ? v : null; } catch { return null; }
-  });
-  const pickLayout = (v: "cards" | "map") => { setLayoutMode(v); try { localStorage.setItem("questhand:board-view", v); } catch { /* fine without it */ } };
   const [burst, setBurst] = useState<{ x: number; y: number; colors: string[]; key: number } | null>(null);
   const [now] = useState(() => Date.now());
 
@@ -161,8 +155,6 @@ export default function LearnPage() {
       </div>
     );
   }
-  // The sample course opens on the map (that's what it's there to show); otherwise cards, unless this device chose.
-  const layoutMode = pickedLayout ?? (course.sample ? "map" : "cards");
   const student = course.students.find((s) => s.id === studentId);
   if (!student) return <Centered>There’s no student with that name in this class.</Centered>;
 
@@ -539,40 +531,7 @@ export default function LearnPage() {
             />
           )}
 
-          {course.sample && (
-            <div className="mx-auto mt-6 max-w-6xl px-4">
-              <div className="rise flex flex-wrap items-center gap-3 rounded-2xl border border-[#4b56a8]/20 bg-[#eef0fb] px-4 py-3 text-[13.5px] text-ink">
-                <Icon name="split" size={16} className="text-[#4b56a8]" />
-                <span className="min-w-[14rem] flex-1">
-                  <b>This is a sample course.</b> Take the quiz in Lesson 1: your score decides the next card. Get one wrong (or all right) and watch a different path open on the map. Your copy disappears after a day.
-                </span>
-                <Link href="/login" className="btn btn-dark press h-8 px-3 text-[12.5px]">Make your own course</Link>
-              </div>
-            </div>
-          )}
-          <div className="mx-auto mt-6 flex max-w-6xl items-center gap-2 px-4">
-            <div className="flex rounded-lg bg-lane p-0.5" role="tablist" aria-label="How to show your cards">
-              {(["cards", "map"] as const).map((v) => (
-                <button key={v} role="tab" aria-selected={layoutMode === v} onClick={() => pickLayout(v)}
-                  className={`press flex h-7 items-center gap-1.5 rounded-md px-3 text-[12.5px] transition-colors ${layoutMode === v ? "bg-white font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>
-                  <Icon name={v === "cards" ? "layers" : "split"} size={12} /> {v === "cards" ? "Cards" : "Map"}
-                </button>
-              ))}
-            </div>
-            {layoutMode === "map" && <span className="text-[12px] text-ink-3">Your path through the course. Your answers open new cards.</span>}
-          </div>
-          {layoutMode === "map" && (
-            <div className="mt-4 px-4 pb-16">
-              <StudentMap
-                lessons={lessons}
-                weekOf={Object.fromEntries(course.weeks.flatMap((w) => w.lessons.map((l) => [l.id, w.title.split(" · ")[0]])))}
-                todayId={current.id}
-                statusOf={statusOf}
-                onOpen={open}
-              />
-            </div>
-          )}
-          <div className={`mt-6 space-y-4 pb-16 sm:space-y-8 ${layoutMode === "map" ? "hidden" : ""}`}>
+          <div className="mt-6 space-y-4 pb-16 sm:space-y-8">
             {weeksShown.map((week) => {
               const ms = week.lessons.flatMap((l) => l.modules);
               const finished = ms.length > 0 && ms.every((m) => statusOf(m.id) === "done");
@@ -690,8 +649,6 @@ export default function LearnPage() {
           onBackdrop={() => close()}
           landing={() => {
             if (lift.completed && handMode && pileRef.current) return pileRef.current.getBoundingClientRect();
-            // On the map, the card goes back to the spot it was opened from (the rows of cards are hidden).
-            if (layoutMode === "map") return lift.from ?? null;
             return els.current.get(lift.id)?.getBoundingClientRect() ?? null;
           }}
           onGone={() => {

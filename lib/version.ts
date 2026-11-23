@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.51",
+    date: "2026-11-23",
+    changes: [
+      "Students no longer have a Map view: their board is the cards. A card an answer deals goes straight into their hand, and the card says which cards it opened. The map is the teacher's.",
+      "A Content card that was added and left blank (no words, no media, still called “New Content card”) stays off students' boards until it has something in it. On the map it says so.",
+      "A card with an uploaded video is labelled Video and drawn as one (it was labelled Recording, with a microphone). Recording is for voice notes.",
+    ],
+  },
+  {
     version: "0.1.50",
     date: "2026-11-23",
     changes: [

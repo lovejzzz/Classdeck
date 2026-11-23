@@ -1,6 +1,6 @@
 // Card kinds and faces, checked without a server: npx tsx tests/kinds.test.ts
 import { mixedOrder, wallProgress } from "../lib/grading";
-import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, asKind, faceMeta, faceOf, familyOf, isPoll, kindOf, newCard, withKind } from "../lib/kinds";
+import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, asKind, faceMeta, faceOf, familyOf, isPoll, kindOf, newCard, unfinished, withKind } from "../lib/kinds";
 import type { Attachment, Module } from "../lib/types";
 
 const card = (extra: Partial<Module> = {}): Module => ({ id: "m", type: "read", title: "t", body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
@@ -13,7 +13,13 @@ check("no media: Text", faceOf(card({ kind: "content" })) === "text");
 check("a picture: Image", faceOf(card({ kind: "content", attachments: [att("image", "/a.png")] })) === "image");
 check("a YouTube link: Video", faceOf(card({ kind: "content", attachments: [att("link", "https://www.youtube.com/watch?v=x")] })) === "video");
 check("a page link: Link", faceOf(card({ kind: "content", attachments: [att("link", "https://en.wikipedia.org/wiki/Cadence")] })) === "link");
-check("an uploaded video: Recording", faceOf(card({ kind: "content", attachments: [att("video", "/api/upload/x.webm")] })) === "recording");
+check("an uploaded video: Video", faceOf(card({ kind: "content", attachments: [att("video", "/api/upload/x.webm")] })) === "video");
+check("an uploaded voice note: Recording", faceOf(card({ kind: "content", attachments: [att("audio", "/api/upload/x.m4a")] })) === "recording");
+// A Content card left as it was added stays off students' boards; one with a title of its own, words or media doesn't.
+check("a blank new Content card is unfinished", unfinished(card({ kind: "content", title: "New Content card", body: "" })));
+check("a titled Content card is not", !unfinished(card({ kind: "content", title: "Take a break", body: "" })));
+check("a Content card with words is not", !unfinished(card({ kind: "content", title: "New Content card", body: "Hi" })));
+check("a Content card with media is not", !unfinished(card({ kind: "content", title: "New Content card", attachments: [att("image", "/a.png")] })));
 
 // A poll is a Choice card with no right answer.
 const oldPoll = withKind(card({ type: "practice", poll: true, questions: [{ id: "q", text: "?", options: ["a", "b"], answer: 1, next: ["x", null] }] }));

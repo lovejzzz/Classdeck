@@ -54,7 +54,7 @@ export const FACES: Record<Face, { name: string; icon: string }> = {
 };
 
 const firstMedia = (m: Pick<Module, "attachments">) => (m.attachments ?? [])[0];
-const isRecording = (a?: { kind: string; url: string; name?: string }) => !!a && (a.kind === "video" || a.kind === "audio") && !/^https?:\/\/(www\.)?(youtube|youtu\.be|vimeo)/.test(a.url);
+const isRecording = (a?: { kind: string; url: string; name?: string }) => !!a && a.kind === "audio";
 const VIDEO_LINK = /^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be|vimeo\.com)/;
 
 type KindFields = Pick<Module, "kind" | "type" | "attachments" | "poll" | "questions">;
@@ -217,4 +217,9 @@ export function addNextQuestion<L extends { modules: Module[] }>(lesson: L, card
 }
 
 /** A card with choices that has neither words nor options yet: students don't see it until the teacher writes them. */
-export const unfinished = (m: KindFields) => kindOf(m) === "choice" && !(m.questions ?? []).some(isAsked);
+export const unasked = (m: KindFields) => kindOf(m) === "choice" && !(m.questions ?? []).some(isAsked);
+/** A Content card just added and left as it was (no words, no media, its title still "New … card"). */
+export const blankContent = (m: KindFields & Pick<Module, "title" | "body">) =>
+  kindOf(m) === "content" && !(m.body ?? "").trim() && !(m.attachments ?? []).length && (!m.title.trim() || /^New .* card$/.test(m.title.trim()));
+/** A card students don't see yet: a question not written, or a Content card left blank. */
+export const unfinished = (m: KindFields & Pick<Module, "title" | "body">) => unasked(m) || blankContent(m);
