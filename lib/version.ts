@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.46",
+    date: "2026-11-22",
+    changes: [
+      "The map's contents panel now hangs from the window's left edge, so the pointer that opens it is already inside it: it no longer flickers open and shut.",
+      "Opening a card's panel moves the map at the same time: it makes room and, if the card would end up under the panel, slides it into view as the panel comes in, instead of after.",
+    ],
+  },
+  {
     version: "0.1.45",
     date: "2026-11-22",
     changes: [

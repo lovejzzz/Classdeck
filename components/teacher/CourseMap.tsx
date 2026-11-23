@@ -453,16 +453,18 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     return () => window.removeEventListener("resize", measure);
   }, [selected]);
 
-  // Once the map has made room, the card being edited is moved into view if the panel's arrival left it out of sight.
+  // As the panel slides in, the map makes room and, if the card being edited would end up under the panel, scrolls it
+  // into view at the same time (worked out for the width the map is about to have), not after.
+  const gapWas = useRef(0);
   useEffect(() => {
-    if (!gap || !selected) return;
-    const t = setTimeout(() => {
-      const el = scroller.current, n = targets.get(selected);
-      if (!el || !n) return;
-      const left = n.x * zoom - el.scrollLeft, right = (n.x + W) * zoom - el.scrollLeft;
-      if (left < 0 || right > el.clientWidth) bringIntoView(selected);
-    }, 480);
-    return () => clearTimeout(t);
+    const was = gapWas.current;
+    gapWas.current = gap;
+    if (!selected) return;
+    const el = scroller.current, n = targets.get(selected);
+    if (!el || !n) return;
+    const room = el.clientWidth - (gap - was);
+    const left = n.x * zoom - el.scrollLeft, right = (n.x + W) * zoom - el.scrollLeft;
+    if (left < 0 || right > room) el.scrollTo({ left: Math.max(0, (n.x + W / 2) * zoom - room / 2), behavior: "smooth" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gap, selected]);
 
@@ -1021,13 +1023,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     <div className="flex items-start gap-3">
       {/* Contents: every week and its lessons. Click one to go there on the map. */}
       {/* Hidden until the pointer reaches the map's left edge; it slides in and pushes the map over. */}
-      <div className="relative flex-none" onMouseEnter={openToc} onMouseLeave={closeToc} onFocus={openToc} onBlur={closeToc}
-        style={{ width: toc ? 232 : 0, marginRight: toc ? 0 : -12, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1), margin-right 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
-        <div aria-hidden="true" className="group absolute -left-4 top-0 z-30 flex w-6 items-center justify-center" style={{ height: fill ?? undefined, pointerEvents: toc ? "none" : "auto" }}>
-          <span className={`h-16 w-1 rounded-full bg-ink/15 transition-opacity duration-300 group-hover:bg-ink/30 ${toc ? "opacity-0" : "opacity-100"}`} />
-        </div>
-      <nav aria-label="Course contents" className="w-[232px] overflow-y-auto overflow-x-hidden rounded-2xl border border-line bg-white/80 py-2"
-        style={{ height: fill ?? undefined, opacity: toc ? 1 : 0, transform: toc ? "none" : "translateX(-24px)", transition: "opacity 0.3s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)", pointerEvents: toc ? "auto" : "none" }}>
+      {/* It hangs from the window's left edge (over the page margin), so the pointer that opened it is already inside
+          it: no gap to slip through, so it doesn't open and close over and over. */}
+      <div className="group relative -ml-4 flex-none overflow-hidden" onMouseEnter={openToc} onMouseLeave={closeToc} onFocus={openToc} onBlur={closeToc}
+        style={{ width: toc ? 244 : 16, height: fill ?? undefined, marginRight: toc ? 0 : -12, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1), margin-right 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
+        <span aria-hidden="true" className={`absolute left-[6px] top-1/2 h-16 w-1 -translate-y-1/2 rounded-full bg-ink/15 transition-opacity duration-300 group-hover:bg-ink/30 ${toc ? "opacity-0" : "opacity-100"}`} />
+      <nav aria-label="Course contents" className="h-full w-[244px] overflow-y-auto overflow-x-hidden rounded-r-2xl border border-l-0 border-line bg-white/90 py-2 pl-2"
+        style={{ opacity: toc ? 1 : 0, transform: toc ? "none" : "translateX(-28px)", transition: "opacity 0.3s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)", pointerEvents: toc ? "auto" : "none" }}>
         {contents.map((c, ci) => (
           <div key={ci} className="px-2 pb-2">
             {c.week && <div className="truncate px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3" title={c.week}>{c.week}</div>}
@@ -1112,7 +1114,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         onKeyDown={onKey}
         aria-label="Course map"
         className="tree-canvas relative overscroll-contain h-[calc(100dvh-11.75rem)] sm:h-[calc(100dvh-9.5rem)] min-h-[30rem] overflow-auto rounded-2xl border border-line bg-canvas outline-none focus-visible:ring-2 focus-visible:ring-[#4b56a8]/30"
-        style={{ backgroundSize: `${22 * zoom}px ${22 * zoom}px`, height: fill ?? undefined, marginRight: gap, transition: "margin-right 0.45s cubic-bezier(0.22, 1, 0.36, 1)" }}
+        style={{ backgroundSize: `${22 * zoom}px ${22 * zoom}px`, height: fill ?? undefined, marginRight: gap, transition: "margin-right 0.5s var(--ease-out)" }}
         onPointerDown={(e) => {
           // Only empty space starts a box or a drag: the map's background, a lesson's band and the words in its header
           // (not a card, a button, a box to type in, or a menu).
