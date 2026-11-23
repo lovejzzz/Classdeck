@@ -1027,7 +1027,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           it: no gap to slip through, so it doesn't open and close over and over. */}
       <div className="group relative -ml-4 flex-none overflow-hidden" onMouseEnter={openToc} onMouseLeave={closeToc} onFocus={openToc} onBlur={closeToc}
         style={{ width: toc ? 244 : 16, height: fill ?? undefined, marginRight: toc ? 0 : -12, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1), margin-right 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
-        <span aria-hidden="true" className={`absolute left-[6px] top-1/2 h-16 w-1 -translate-y-1/2 rounded-full bg-ink/15 transition-opacity duration-300 group-hover:bg-ink/30 ${toc ? "opacity-0" : "opacity-100"}`} />
+        {/* The marker: a short bar with a › in it, saying there's something to pull out from this edge. */}
+        <span aria-hidden="true" className={`absolute left-[3px] top-1/2 flex -translate-y-1/2 flex-col items-center gap-[3px] text-ink/35 transition-[opacity,color] duration-300 group-hover:text-ink/60 ${toc ? "opacity-0" : "opacity-100"}`}>
+          <span className="h-6 w-[3px] rounded-full bg-current" />
+          <Icon name="chevron" size={11} strokeWidth={2.4} className="-rotate-90" />
+          <span className="h-6 w-[3px] rounded-full bg-current" />
+        </span>
       <nav aria-label="Course contents" className="h-full w-[244px] overflow-y-auto overflow-x-hidden rounded-r-2xl border border-l-0 border-line bg-white/90 py-2 pl-2"
         style={{ opacity: toc ? 1 : 0, transform: toc ? "none" : "translateX(-28px)", transition: "opacity 0.3s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)", pointerEvents: toc ? "auto" : "none" }}>
         {contents.map((c, ci) => (

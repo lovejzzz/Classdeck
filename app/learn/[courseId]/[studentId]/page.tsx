@@ -85,7 +85,6 @@ export default function LearnPage() {
   const [bump, setBump] = useState(0);
   const els = useRef(new Map<string, HTMLElement>());
   const pileRef = useRef<HTMLButtonElement>(null);
-  const todayRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const [openWeeks, setOpenWeeks] = useState<Set<string>>(new Set());
   const [burst, setBurst] = useState<{ x: number; y: number; colors: string[]; key: number } | null>(null);
@@ -135,12 +134,6 @@ export default function LearnPage() {
     return () => window.removeEventListener("questhand:show-card", show);
   }, [state]);
 
-  // Bring today's lesson into view in the week rows.
-  useEffect(() => {
-    const el = todayRef.current;
-    const row = el?.parentElement?.parentElement;
-    if (el && row) row.scrollTo({ left: el.offsetLeft - 24, behavior: "smooth" });
-  }, [course?.currentLessonId, profile?.horizon]);
 
   if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}`} />;
   if (error && !state) return <Centered>{error}</Centered>;
@@ -540,7 +533,8 @@ export default function LearnPage() {
               return (
                 <section key={week.id} id={`week-${week.id}`} aria-label={week.title} className="scroll-mt-20">
                   <div className="mx-auto flex max-w-6xl items-center gap-3 px-4">
-                    <h2 className={`text-[13px] font-medium ${isNow ? "text-ink" : "text-ink-2"}`}>{week.title}</h2>
+                    {/* The week tabs above already say "Week 1": the heading is the week's own name, when it has one. */}
+                    <h2 className={`text-[13px] font-medium ${isNow ? "text-ink" : "text-ink-2"}`}>{week.title.split(" · ").slice(1).join(" · ") || week.title}</h2>
                     {finished && !isNow && (
                       <button onClick={() => setOpenWeeks((o) => { const n = new Set(o); if (n.has(week.id)) n.delete(week.id); else n.add(week.id); return n; })} className="btn btn-quiet press h-6 px-2 text-[11.5px]">
                         {folded ? "Show cards" : "Fold"}
@@ -579,7 +573,7 @@ export default function LearnPage() {
                           return (
                             <HScroll key={l.id}>
                             <div className="w-max pb-1 pt-2 sm:pb-4 sm:pt-3" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
-                            <div ref={isToday ? todayRef : undefined} className="scroll-ml-6">
+                            <div className="scroll-ml-6">
                               <div className="flex flex-wrap items-center gap-2 text-[13px]" style={{ maxWidth: Math.max(rowWidth, 280) }}>
                                 <span className="font-medium">{l.title}</span>
                                 {isToday && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}

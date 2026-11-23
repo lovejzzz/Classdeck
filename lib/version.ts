@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.52",
+    date: "2026-11-23",
+    changes: [
+      "The map's contents marker on the left edge is easier to spot: a darker bar with a › in it.",
+      "On a student's board, a week's heading is its name (“Getting started”), not “Week 1 · Getting started” again under the Week 1 tab.",
+      "On a student's board, today's lesson row starts where every other row does (it used to open scrolled to the far left).",
+    ],
+  },
+  {
     version: "0.1.51",
     date: "2026-11-23",
     changes: [
