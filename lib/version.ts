@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.43",
+    date: "2026-11-22",
+    changes: [
+      "The List tab is now part of the Map. Each lesson on the map shows its date (or Today), its one-line goal (click to write one), and an elective badge. Its ⋯ menu has the lesson and week actions: make it today's lesson, run or plan the class session, show students every path, make it an elective (or required), duplicate it, and add a lesson to the week, rename the week or duplicate it. New week (blank or from a template) sits next to + Lesson at the bottom of the map.",
+      "The course page's tabs are now Map, Students, Grades and Settings (keys 1 to 4).",
+    ],
+  },
+  {
     version: "0.1.42",
     date: "2026-11-22",
     changes: [

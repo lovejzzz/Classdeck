@@ -54,10 +54,12 @@ await ctx.addCookies([{ name: "cd_s", value: T.cookie.split("=")[1], domain: "lo
 const page = await ctx.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
-// The List view (rows of cards) for the delete steps; the map is checked further down.
-await page.goto(`${B}/teach/${cid}?tab=plan`);
+// The course map, every card shown (it opens folded to each lesson's main path).
+const unfold = async () => { const b = page.getByRole("button", { name: "Unfold all", exact: true }); if (await b.count()) { await b.click(); await settle(600); } };
+await page.goto(`${B}/teach/${cid}`);
 await page.getByRole("button", { name: "Edit Source question" }).waitFor();
 await settle(800);
+await unfold();
 
 // 1) Delete from the card editor.
 await page.getByRole("button", { name: "Edit Source question" }).click();
@@ -86,6 +88,7 @@ await page.reload();
 const srcCard = page.getByRole("button", { name: "Edit Source question" });
 await srcCard.waitFor();
 await settle(800);
+await unfold();
 const box = await srcCard.boundingBox();
 await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 await page.mouse.down();
@@ -118,6 +121,9 @@ await settle();
 
 // 3) Deleting a follow-up only: it goes, the answer that dealt it is unhooked, nothing else moves.
 await page.reload();
+await page.getByRole("button", { name: "Edit Source question" }).waitFor();
+await settle(800);
+await unfold();
 await page.getByRole("button", { name: "Edit Follow-up in Lesson 1" }).waitFor();
 await settle(600);
 await page.getByRole("button", { name: "Edit Follow-up in Lesson 1" }).click();
@@ -130,13 +136,9 @@ check("deleting a follow-up removes only it", now.l1.join() === "m-all1,m-src" &
 check("…and unhooks its answer, keeping the other wire", JSON.stringify(now.src?.questions?.[0]?.next) === JSON.stringify([null, "m-y"]), now.src?.questions);
 
 // 4) A new card in Lesson 2, made from a Lesson 1 answer on the course map: the card and its wire are saved together.
-await page.getByRole("button", { name: "Lesson 1 actions" }).click();
-await page.getByRole("menuitem", { name: /Show on the map/ }).click();
 await page.getByRole("button", { name: "Deal a card for answer A" }).waitFor();
 await settle(800);
-// The map opens folded (each lesson's main path); show every card for the steps below.
-await page.getByRole("button", { name: "Unfold all", exact: true }).click();
-await settle(600);
+await unfold();
 await page.getByRole("button", { name: "Deal a card for answer A" }).click();
 await page.locator(".pop").getByRole("button", { name: /^Week 1: Lesson 2$/ }).click();
 await page.locator(".pop").getByRole("button", { name: "Content", exact: true }).click();

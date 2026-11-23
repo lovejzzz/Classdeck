@@ -3,20 +3,13 @@
 import { createPortal } from "react-dom";
 import { lessonDates, localDay, shortDate, type LessonDate } from "@/lib/dates";
 import { useEffect, useRef, useState } from "react";
-import { dueAt } from "@/lib/grading";
 import { op } from "@/lib/client";
-import { CARD_SIZE } from "@/lib/cards";
 import type { ConnectorInfo } from "@/lib/connectors/types";
-import { uid, visibleModules } from "@/lib/profile";
+import { uid } from "@/lib/profile";
 import { toast } from "@/lib/toast";
-import { SUITS, suitOfCard } from "@/lib/ui";
+import { suitOfCard } from "@/lib/ui";
 import { ask } from "../Confirm";
-import { Clearable } from "../Clearable";
 import type { Course, Lesson, Module, ProgressMap, StudioPost, TrashEntry } from "@/lib/types";
-import { HScroll } from "../HScroll";
-import { scrollToWeek, WeekNav } from "../WeekNav";
-import { CardFace } from "../cards/CardFace";
-import { CardTable } from "../cards/CardTable";
 import { Icon } from "../Icon";
 import { useShortcuts } from "@/lib/shortcuts";
 import { useUrlState } from "@/lib/urlState";
@@ -25,21 +18,19 @@ import { CardEditor } from "./CardEditor";
 import { CourseMap } from "./CourseMap";
 import { newCard, type CardKind } from "@/lib/kinds";
 import { NeighborGraph } from "./NeighborGraph";
-import { bandLabel, branchBelow, deleteCardIn, SCORE, slotOf, targetsOf, treeView, wiresOf } from "@/lib/branching";
+import { branchBelow, deleteCardIn, SCORE, slotOf, targetsOf, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
-import { NewCardFan, loadLibrary, type NewCardChoice } from "./NewCardFan";
+import { loadLibrary } from "./NewCardFan";
 
 /** The time, for grouping quick edits into one undo step (only ever called from event handlers). */
 const clock = () => Date.now();
 
-const SIZE = CARD_SIZE.deck;
-
-/** The teacher's whole course as a deck: one row per week, lessons laid out left to right. */
-export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, live, readOnly = false, view = "list", onView }: {
+/** The teacher's whole course, on the course map: its cards, branches, lessons and weeks, and the card editor. */
+export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, live, readOnly = false, view = "map", onView }: {
   course: Course; connectors?: ConnectorInfo[]; readOnly?: boolean; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode;
-  /** The course map (the default) or the list of weeks. */
-  view?: "map" | "list";
-  onView?: (v: "map" | "list") => void;
+  /** Only the course map now (the list of weeks became part of it). */
+  view?: "map";
+  onView?: (v: "map") => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, Lesson>>({});
   const [editing, setEditing] = useState<{ lessonId: string; moduleId: string } | null>(null);
@@ -57,25 +48,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   const openRef = useRef(false);
   const pushedRef = useRef(false);
   const [agendaFor, setAgendaFor] = useState<string | null>(null);
-  // Weeks before the current one start folded; the teacher can open any of them.
-  const currentWeekIndex = Math.max(0, course.weeks.findIndex((w) => w.lessons.some((l) => l.id === course.currentLessonId)));
-  const [unfolded, setUnfolded] = useState<Set<string>>(new Set());
-  const isFolded = (i: number, id: string) => i < currentWeekIndex && !unfolded.has(id);
-  const toggleFold = (id: string) => setUnfolded((u) => { const n = new Set(u); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  /** How much of a week the class has finished, across everyone, for whole-class cards. */
-  // Each student's share of the week: only the cards on their board (follow-ups count once they're dealt).
-  const trees = Object.fromEntries(course.students.map((st) => [st.id, treeView(course.weeks, progress[st.id])]));
-  const classDone = (w: Course["weeks"][number]) => {
-    let done = 0, total = 0;
-    for (const st of course.students)
-      for (const l of w.lessons)
-        for (const m of visibleModules(l, st.id, choices[st.id], trees[st.id])) {
-          if (m.audience.kind !== "all" || m.choice) continue;
-          total++;
-          if (progress[st.id]?.[m.id]?.status === "done") done++;
-        }
-    return { done, total };
-  };
+  const [renamingWeek, setRenamingWeek] = useState<string | null>(null);
   // The session timer is in the address (?run=lesson), so the browser's Back button closes it.
   const [runId, setRunId] = useUrlState("run");
   const runLesson = runId ? course.weeks.flatMap((w) => w.lessons.map((l) => ({ l, w }))).find((x) => x.l.id === runId && x.l.session) : undefined;
@@ -103,7 +76,6 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   const lessonOf = (id: string) => drafts[id] ?? course.weeks.flatMap((w) => w.lessons).find((l) => l.id === id)!;
   // Card trees reach across lessons, so labels and the editor look at every card in the course.
   const courseCards = course.weeks.flatMap((w) => w.lessons.flatMap((l) => lessonOf(l.id).modules));
-  const courseWires = wiresOf(courseCards);
 
   // Undo and redo cover changes to lessons and their cards (not adding weeks or lessons). Quick edits to the same
   // lesson, like typing, count as one step.
@@ -362,14 +334,6 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     edit(l.id, m.id);
   }
 
-  /** A card put down from the New card fan: Content or a Question (its kind is picked in the editor), or a blank card. */
-  function addChosen(l: Lesson, c: NewCardChoice) {
-    const fam = c.kind === "suit" ? SUITS.find((x) => x.id === c.suit)! : undefined;
-    const m = newCard(fam ? fam.kinds[0] : "content", fam ? `New ${fam.name} card` : "Untitled card");
-    change({ ...l, modules: [...l.modules, m] });
-    edit(l.id, m.id);
-  }
-
   async function saveToLibrary(m: Module) {
     const r = await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ module: m, name: m.title }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) return toast(r.error ?? "Couldn’t save it", { icon: "x", tone: "bad" });
@@ -390,21 +354,57 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     toast("Added a lesson");
   }
 
+  /** Beside a lesson's name on the map: its date (or Today), whether it's an elective, and its lesson and week actions. */
+  const lessonBar = (lid: string) => {
+    const l = lessonOf(lid);
+    const w = course.weeks.find((x) => x.lessons.some((y) => y.id === lid));
+    if (!w) return null;
+    const isToday = l.id === course.currentLessonId;
+    const lessonWires = wiresOf(l);
+    const items: [string, () => void][] = [
+      // "Today" follows the lessons' dates; a course without dates moves it by hand.
+      ...(l.id !== course.currentLessonId ? [["Make it today’s lesson", async () => {
+        if (lessonDates(course).size) change({ ...l, date: localDay() });
+        else { await op(course.id, { op: "setCurrentLesson", lessonId: l.id }); await onRefresh(); }
+        toast(`“${l.title}” is today’s lesson`, { icon: "clock" });
+      }] as [string, () => void]] : []),
+      ...(l.session ? [[`Run the class session (${l.session.minutes} min)`, () => setRunning({ lessonId: l.id, weekTitle: w.title })] as [string, () => void]] : []),
+      [l.session ? "Edit the session agenda" : "Add a class session", () => {
+        if (!l.session) change({ ...l, session: { agenda: [{ label: "Warm-up", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }], minutes: 50 } });
+        setAgendaFor(l.id);
+      }],
+      ...(lessonWires.length ? [[l.openPaths ? "Hide paths from students (card backs)" : "Show students every path", () => {
+        change({ ...l, openPaths: !l.openPaths || undefined });
+        toast(l.openPaths ? "Students see card backs for paths they haven’t taken" : "Students see every path and what deals it", { icon: "split" });
+      }] as [string, () => void]] : []),
+      [l.elective ? "Make required for everyone" : "Make it an elective", () => {
+        change({ ...l, elective: l.elective ? undefined : true });
+        toast(l.elective ? `“${l.title}” is required again` : `Students choose whether to take “${l.title}”`, { icon: "layers" });
+      }],
+      ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
+      ["—", () => {}],
+      [`Add a lesson to ${w.title.split(" · ")[0]}`, () => addLesson(w.id)],
+      [`Rename ${w.title.split(" · ")[0]}`, () => setRenamingWeek(w.id)],
+      [`Duplicate ${w.title.split(" · ")[0]}`, () => duplicate("duplicateWeek", w.id, `“${w.title}”`)],
+    ];
+    return (
+      <span className="flex flex-none items-center gap-1.5" onPointerDown={(e) => e.stopPropagation()}>
+        <LessonDateChip value={dates.get(l.id)} today={isToday} disabled={readOnly} onChange={(date) => change({ ...l, date })} />
+        {l.elective && (
+          <span className="chip h-5 bg-[#eef0fb] text-[11px] text-[#4b56a8]" title="Students choose whether to take this lesson">
+            Elective · {Object.values(choices).filter((c) => c[`elective:${l.id}`]).length} chose it
+          </span>
+        )}
+        {!readOnly && <More label={`${l.title} actions`} items={items} />}
+      </span>
+    );
+  };
+
   const today = course.weeks.flatMap((w) => w.lessons).find((l) => l.id === course.currentLessonId);
   const dates = lessonDates({ weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => lessonOf(l.id)) })) });
-  const weekStep = (d: number) => {
-    const ids = course.weeks.map((w) => w.id);
-    const tops = ids.map((id) => document.getElementById(`week-${id}`)?.getBoundingClientRect().top ?? 0);
-    const cur = Math.max(0, tops.findIndex((t) => t > 140) - 1);
-    const next = ids[Math.max(0, Math.min(ids.length - 1, (tops.every((t) => t <= 140) ? ids.length - 1 : cur) + d))];
-    setUnfolded((u) => new Set(u).add(next));
-    scrollToWeek(next);
-  };
   useShortcuts([
     { keys: "n", label: "New card", run: () => today && addCard(lessonOf(today.id), "content"), enabled: !!today && !editorOpen && !running },
     { keys: "r", label: "Run the class session", run: () => today?.session && setRunning({ lessonId: today.id, weekTitle: course.weeks.find((w) => w.lessons.includes(today))?.title ?? "" }), enabled: !!today?.session && !running },
-    { keys: "[", label: "Previous week", run: () => weekStep(-1), enabled: !editorOpen && !running },
-    { keys: "]", label: "Next week", run: () => weekStep(1), enabled: !editorOpen && !running },
   ]);
 
   // Every card in course order, for stepping through them in the editor.
@@ -413,7 +413,6 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   const step = (d: number) => {
     const next = order[at + d];
     if (!next) return;
-    setUnfolded((u) => new Set(u).add(course.weeks.find((w) => w.lessons.some((l) => l.id === next.lessonId))!.id));
     edit(next.lessonId, next.id);
   };
 
@@ -454,6 +453,21 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             onChangeMany={changeMany}
             onEdit={(lid, id) => { if (!readOnly) edit(lid, id); }}
             onAddLesson={course.weeks.length ? () => addLesson(course.weeks[course.weeks.length - 1].id) : undefined}
+            lessonBar={(lid) => lessonBar(lid)}
+            lessonGoal={(lid) => { const l = lessonOf(lid); return (
+              <input value={l.goal ?? ""} readOnly={readOnly} onChange={(e) => change({ ...l, goal: e.target.value || undefined })}
+                onPointerDown={(e) => e.stopPropagation()} placeholder={readOnly ? "" : "Add a one-line goal for this lesson"} aria-label="Lesson goal"
+                className="-ml-1.5 block w-full min-w-0 truncate rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[12.5px] text-ink-3 placeholder:text-ink-3/70 hover:border-line focus:border-line-strong focus:bg-white focus:text-ink-2 focus:outline-none" />
+            ); }}
+            footer={readOnly ? undefined : <NewWeek n={nextWeek} onBlank={async () => {
+              await op(course.id, { op: "addWeek", title: `Week ${nextWeek}` });
+              onRefresh();
+              toast("Added a week");
+            }} onTemplate={async (theme) => {
+              await op(course.id, { op: "insertWeek", week: standardWeek(theme, nextWeek) });
+              onRefresh();
+              toast(`Added “Week ${nextWeek} · ${theme}” from the template`, { icon: "layers" });
+            }} />}
             trash={course.trash ?? []}
             onRestore={readOnly ? undefined : (e) => void restoreTrash(e)}
             onForget={readOnly ? undefined : async (id) => { await op(course.id, { op: "trashDrop", id }); onRefresh(); }}
@@ -465,199 +479,14 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             }}
           />
         </div>
-      ) : (
-        <>
-      {course.weeks.length > 1 && <WeekNav
-        className="top-14 -mx-4 mb-4"
-        weeks={course.weeks.map((w, i) => ({ id: w.id, label: w.title.split(" · ")[0], ...classDone(w), current: i === currentWeekIndex }))}
-        onPick={(id) => {
-          setUnfolded((u) => new Set(u).add(id));
-          scrollToWeek(id);
-        }}
-      />}
-
-      <div className="space-y-6 pb-8">
-        {course.weeks.map((w, wi) => (
-          <section key={w.id} id={`week-${w.id}`} aria-label={w.title} className="scroll-mt-32">
-            <div className="flex items-center gap-3">
-              <Clearable inline><input
-                key={w.title}
-                defaultValue={w.title}
-                readOnly={readOnly}
-                aria-label="Week title"
-                onBlur={async (e) => {
-                  const v = e.target.value.trim();
-                  if (!v || v === w.title) return;
-                  await op(course.id, { op: "renameWeek", weekId: w.id, title: v });
-                  onRefresh();
-                }}
-                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                style={{ width: `${Math.max(10, w.title.length + 4)}ch` }}
-                className={`-ml-1.5 min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[13px] font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none ${wi === currentWeekIndex ? "text-ink" : "text-ink-2"}`}
-              /></Clearable>
-              {wi < currentWeekIndex && (
-                <button onClick={() => toggleFold(w.id)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">{isFolded(wi, w.id) ? "Show cards" : "Fold"}</button>
-              )}
-              {!readOnly && <More label={`${w.title} actions`} items={[["Duplicate week", () => duplicate("duplicateWeek", w.id, `“${w.title}”`)]]} />}
-              {!readOnly && (
-                <button onClick={() => addLesson(w.id)} className="btn btn-quiet press h-7 px-2 text-[12.5px]">
-                  <Icon name="plus" size={12} /> Add a lesson
-                </button>
-              )}
-              {trashWeek === w.id && (
-                <button onClick={() => setTrashWeek(null)} className="btn btn-dark press h-7 px-3 text-[12.5px]">Done deleting</button>
-              )}
-            </div>
-            {isFolded(wi, w.id) ? (
-              <button onClick={() => toggleFold(w.id)} className="press mt-2 flex w-full items-center gap-4 rounded-xl border border-line bg-white/60 px-4 py-3 text-left hover:bg-white">
-                <span className="flex -space-x-6">
-                  {w.lessons.flatMap((l) => l.modules).slice(0, 5).map((m, i) => (
-                    <span key={m.id} className="block h-[56px] w-[40px] overflow-hidden rounded-[6px] shadow-[0_2px_6px_-2px_rgba(0,0,0,0.2)] ring-2 ring-canvas" style={{ rotate: `${(i - 2) * 3}deg` }}>
-                      <span className="block h-[238px] w-[170px] origin-top-left scale-[0.2353]"><CardFace m={m} /></span>
-                    </span>
-                  ))}
-                </span>
-                <span className="min-w-0 flex-1 text-[13px]">
-                  <span className="font-medium">{w.lessons.map((l) => l.title).join(" · ")}</span>
-                  <span className="block text-ink-3">{w.lessons.reduce((n, l) => n + l.modules.length, 0)} cards · class {(() => { const c = classDone(w); return c.total ? Math.round((c.done / c.total) * 100) : 0; })()}% done</span>
-                </span>
-                <span className="text-[12.5px] text-ink-3">Show cards</span>
-              </button>
-            ) : (
-            // One row per lesson: a week's lessons stack, each scrolling sideways on its own when it has many cards.
-            <div className="ml-[calc(50%-50vw)] w-screen space-y-1">
-                {w.lessons.map((ls) => {
-                  const l = lessonOf(ls.id);
-                  const isToday = l.id === course.currentLessonId;
-                  const lessonWires = wiresOf(l);
-                  const studentsOf = (m: Module) => {
-                    const into = courseWires.filter((x) => x.to === m.id);
-                    const w = into[0];
-                    if (w) {
-                      // Dealt from more than one answer (or card): say so, so the other ways in aren't hidden.
-                      const more = into.length > 1 ? ` · +${into.length - 1} more` : "";
-                      const src = courseCards.find((x) => x.id === w.from);
-                      if (w.score) return `If score ${bandLabel(w.score)}${more}`;
-                      const q = src?.questions?.find((x) => x.id === w.q);
-                      return `If ${String.fromCharCode(65 + w.option)}${q?.options[w.option]?.trim() ? `: ${q.options[w.option].trim().slice(0, 18)}` : ""}${more}`;
-                    }
-                    return m.audience.kind === "branch" ? m.audience.variant : m.audience.kind === "student" ? course.students.find((s) => s.id === (m.audience as { studentId: string }).studentId)?.name : undefined;
-                  };
-                  return (
-                    <HScroll key={l.id}>
-                    <div className="w-max pb-5 pt-4" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
-                      <div className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ maxWidth: `min(${Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 360)}px, calc(100vw - 2rem))` }}>
-                        <Clearable inline><input
-                          value={l.title}
-                          readOnly={readOnly}
-                          onChange={(e) => change({ ...l, title: e.target.value })}
-                          aria-label="Lesson title"
-                          className="-ml-1.5 w-auto min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none"
-                          style={{ width: `${Math.max(8, l.title.length + 4)}ch` }}
-                        /></Clearable>
-                        {/* Today's lesson shows "Today" in place of its date; clicking it changes the date like any other. */}
-                        <LessonDateChip value={dates.get(l.id)} today={isToday} disabled={readOnly} onChange={(date) => change({ ...l, date })} />
-                        {l.elective && (
-                          <span className="chip h-5 bg-[#eef0fb] text-[11px] text-[#4b56a8]" title="Students choose whether to take this lesson">
-                            Elective · {Object.values(choices).filter((c) => c[`elective:${l.id}`]).length} chose it
-                          </span>
-                        )}
-                        {!readOnly && <More
-                          label={`${l.title} actions`}
-                          items={[
-                            // "Today" follows the lessons' dates; a course without dates moves it by hand.
-                            ...(l.id !== course.currentLessonId ? [["Make it today’s lesson", async () => {
-                              if (lessonDates(course).size) change({ ...l, date: localDay() });
-                              else { await op(course.id, { op: "setCurrentLesson", lessonId: l.id }); await onRefresh(); }
-                              toast(`“${l.title}” is today’s lesson`, { icon: "clock" });
-                            }] as [string, () => void]] : []),
-                            // The session timer (with Live, polls and notes) is opened from here now, not a button on the lesson.
-                            ...(l.session ? [[`Run the class session (${l.session.minutes} min)`, () => setRunning({ lessonId: l.id, weekTitle: w.title })] as [string, () => void]] : []),
-                            [l.session ? "Edit the session agenda" : "Add a class session", () => {
-                              if (!l.session) {
-                                const agenda = [{ label: "Warm-up", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }];
-                                change({ ...l, session: { agenda, minutes: 50 } });
-                              }
-                              setAgendaFor(l.id);
-                            }],
-                            [lessonWires.length ? `Show on the map (${lessonWires.length} branch${lessonWires.length === 1 ? "" : "es"})` : "Show on the map", () => showOnMap(l.id)],
-                            ...(lessonWires.length ? [[l.openPaths ? "Hide paths from students (card backs)" : "Show students every path", () => {
-                              change({ ...l, openPaths: !l.openPaths || undefined });
-                              toast(l.openPaths ? "Students see card backs for paths they haven’t taken" : "Students see every path and what deals it", { icon: "split" });
-                            }] as [string, () => void]] : []),
-                            ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
-                            ...(l.elective ? [["Make required for everyone", () => {
-                              change({ ...l, elective: undefined });
-                              toast(`“${l.title}” is required again`, { icon: "layers" });
-                            }] as [string, () => void]] : []),
-                          ]}
-                        />}
-                      </div>
-                      <Clearable><input
-                        value={l.goal ?? ""}
-                        readOnly={readOnly}
-                        onChange={(e) => change({ ...l, goal: e.target.value || undefined })}
-                        placeholder="Add a one-line goal for this lesson"
-                        aria-label="Lesson goal"
-                        className="-ml-1.5 mt-0.5 block w-full min-w-[19rem] rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[12.5px] text-ink-3 placeholder:text-ink-3 hover:border-line focus:border-line-strong focus:bg-white focus:text-ink-2 focus:outline-none"
-                        style={{ maxWidth: Math.min(Math.max((l.modules.length + 1) * (SIZE.w + 14) - 14, 280), 576) }}
-                      /></Clearable>
-                      {agendaFor === l.id && <AgendaEditor lesson={l} onChange={change} onClose={() => setAgendaFor(null)} />}
-                      <CardTable
-                        cards={l.modules.map((m) => ({
-                          id: m.id,
-                          label: `Edit ${m.title}`,
-                          front: (
-                            <span className={`relative block h-full w-full ${trashWeek === w.id ? "animate-[wiggle_0.32s_ease-in-out_infinite_alternate]" : ""}`}>
-                              <CardFace m={m} badge={studentsOf(m)} due={m.due ? { label: `Due ${new Date(dueAt(m.due)).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, tone: "plain" } : undefined} />
-                              {trashWeek === w.id && (
-                                <button
-                                  onPointerDown={(e) => e.stopPropagation()}
-                                  onPointerUp={(e) => e.stopPropagation()}
-                                  onClick={(e) => { e.stopPropagation(); removeCard(l, m); }}
-                                  aria-label={`Delete ${m.title}`}
-                                  className="press absolute -right-2 -top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-bad text-white shadow-[0_4px_10px_-4px_rgba(0,0,0,0.5)]"
-                                ><Icon name="x" size={13} strokeWidth={2.5} /></button>
-                              )}
-                            </span>
-                          ),
-                        }))}
-                        layout="row"
-                        size={SIZE}
-                        gap={14}
-                        idle={false}
-                        deal={false}
-                        draggable={!readOnly && trashWeek !== w.id}
-                        onActivate={(id) => { if (trashWeek) setTrashWeek(null); else if (!readOnly) edit(l.id, id); }}
-                        onLongPress={readOnly ? undefined : () => setTrashWeek(w.id)}
-                        register={(id, el) => (el ? cardEls.current.set(id, el) : cardEls.current.delete(id))}
-                        onReorder={(ids) => change({ ...l, modules: ids.map((id) => l.modules.find((m) => m.id === id)!) })}
-                        after={readOnly ? undefined : <NewCardFan onChoose={(c) => addChosen(l, c)} />}
-                        ariaLabel={l.title}
-                      />
-                    </div>
-                    </HScroll>
-                  );
-                })}
-            </div>
-            )}
-          </section>
-        ))}
-        {!readOnly && <div>
-          <NewWeek n={nextWeek} onBlank={async () => {
-            await op(course.id, { op: "addWeek", title: `Week ${nextWeek}` });
-            onRefresh();
-            toast("Added a week");
-          }} onTemplate={async (theme) => {
-            await op(course.id, { op: "insertWeek", week: standardWeek(theme, nextWeek) });
-            onRefresh();
-            toast(`Added “Week ${nextWeek} · ${theme}” from the template`, { icon: "layers" });
-          }} />
-        </div>}
-      </div>
-
-        </>
-      )}
+      ) : null}
+      {/* A lesson's class-session agenda, and renaming a week: small panels over the map. */}
+      {agendaFor && (() => { const l = allLessons().find((x) => x.id === agendaFor); return l ? (
+        <div className="fixed left-1/2 top-28 z-[55] -translate-x-1/2"><AgendaEditor lesson={l} onChange={change} onClose={() => setAgendaFor(null)} /></div>
+      ) : null; })()}
+      {renamingWeek && (() => { const w = course.weeks.find((x) => x.id === renamingWeek); return w ? (
+        <WeekRename title={w.title} onClose={() => setRenamingWeek(null)} onSave={async (title) => { setRenamingWeek(null); if (title && title !== w.title) { await op(course.id, { op: "renameWeek", weekId: w.id, title }); onRefresh(); } }} />
+      ) : null; })()}
 
       {running && (
         <SessionRunner course={course} lesson={lessonOf(running.lessonId)} weekTitle={running.weekTitle} posts={studioPosts} onClose={() => setRunning(null)} live={live} />
@@ -782,9 +611,11 @@ function AgendaEditor({ lesson, onChange, onClose }: { lesson: Lesson; onChange:
 function More({ items, label }: { items: [string, () => void][]; label: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   useEffect(() => {
     if (!open) return;
-    const off = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const off = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && !list.current?.contains(e.target as Node) && setOpen(false);
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("pointerdown", off);
     window.addEventListener("keydown", esc);
@@ -795,15 +626,19 @@ function More({ items, label }: { items: [string, () => void][]; label: string }
   }, [open]);
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen((o) => !o)} aria-label={label} aria-expanded={open} aria-haspopup="menu" className={`btn press h-6 w-7 justify-center px-0 ${open ? "bg-black/[0.06]" : "btn-quiet"}`}>
+      <button onClick={(e) => { const b = e.currentTarget.getBoundingClientRect(); setAt({ x: Math.min(b.left, window.innerWidth - 248), y: b.bottom + 4 }); setOpen((o) => !o); }} onPointerDown={(e) => e.stopPropagation()}
+        aria-label={label} aria-expanded={open} aria-haspopup="menu" className={`btn press h-6 w-7 justify-center px-0 ${open ? "bg-black/[0.06]" : "btn-quiet"}`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
       </button>
-      {open && (
-        <div role="menu" className="pop absolute left-0 top-7 z-30 w-52 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]">
+      {/* On the page itself, so it floats above the map's cards whatever the zoom. */}
+      {open && at && createPortal(
+        <div ref={list} role="menu" className="pop fixed z-[60] w-60 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]" style={{ left: at.x, top: at.y }}>
           {items.map(([text, fn]) => (
+            text.startsWith("—") ? <div key={text} className="mx-2 my-1 border-t border-line" /> :
             <button key={text} role="menuitem" onClick={() => { setOpen(false); fn(); }} className="press block w-full rounded-lg px-3 py-2 text-left text-[13px] hover:bg-lane">{text}</button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -844,5 +679,18 @@ function LessonDateChip({ value, today = false, disabled, onChange }: { value?: 
         <button type="button" onClick={() => onChange(undefined)} aria-label="Clear the date" title="Clear: follow the week before again" className="press ml-0.5 rounded-full p-0.5 text-ink-3 hover:text-ink"><Icon name="x" size={10} /></button>
       )}
     </span>
+  );
+}
+
+/** Rename a week: a small panel over the map. */
+function WeekRename({ title, onSave, onClose }: { title: string; onSave: (t: string) => void; onClose: () => void }) {
+  const [v, setV] = useState(title);
+  return (
+    <form className="pop fixed left-1/2 top-28 z-[55] flex w-[26rem] max-w-[90vw] -translate-x-1/2 items-center gap-2 rounded-xl border border-line bg-white p-3 shadow-[0_16px_40px_-20px_rgba(20,20,18,0.35)]"
+      onSubmit={(e) => { e.preventDefault(); onSave(v.trim()); }}>
+      <input autoFocus value={v} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => e.key === "Escape" && onClose()} aria-label="Week title" className="field h-8 flex-1 py-0" />
+      <button type="submit" disabled={!v.trim()} className="btn btn-dark press h-8">Save</button>
+      <button type="button" onClick={onClose} className="btn btn-quiet press h-8">Cancel</button>
+    </form>
   );
 }

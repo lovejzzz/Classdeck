@@ -235,7 +235,13 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new" } | { add: 
  * lesson or into a later one). Zoomed out, cards shrink to their titles; zoomed in, they show what to do. Drag from a
  * port onto a card to deal it, or into empty space for a new card. Click a card to edit it in the panel.
  */
-export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget }: {
+export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, lessonGoal, footer }: {
+  /** Beside a lesson's name: its date and a menu of lesson and week actions (the course page fills it in). */
+  lessonBar?: (lessonId: string) => React.ReactNode;
+  /** Under a lesson's name: its one-line goal. */
+  lessonGoal?: (lessonId: string) => React.ReactNode;
+  /** Below the last lesson, beside “+ Lesson”: adding a week. */
+  footer?: React.ReactNode;
   /** Deleted cards, to put back from the trash bin. */
   trash?: TrashEntry[];
   onRestore?: (e: TrashEntry) => void;
@@ -1078,11 +1084,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     {readOnly || level === "far" ? <span className="min-w-0 truncate font-semibold text-ink">{r.lesson.title}</span>
                       : <LessonName title={r.lesson.title} onRename={(title) => { const real = lessons.find((l) => l.id === r.lesson.id); if (real) onChange({ ...real, title }); }} />}
                     {weekOf[r.lesson.id] && <span className="flex-none text-ink-3">{weekOf[r.lesson.id]}</span>}
-                    {today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
+                    {lessonBar && level !== "far" ? lessonBar(r.lesson.id)
+                      : today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
                   </div>
                   <div className="flex items-center gap-2 px-5 pt-1.5">
-                    {level !== "far" && <span className="mono">{full.modules.filter((m) => m.type !== "group").length} card{full.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
-                    <span className="flex-1" />
+                    {lessonGoal && level !== "far" && <span className="min-w-0 flex-1">{lessonGoal(r.lesson.id)}</span>}
+                    {level !== "far" && <span className="mono flex-none">{full.modules.filter((m) => m.type !== "group").length} card{full.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
+                    {!(lessonGoal && level !== "far") && <span className="flex-1" />}
                     {!readOnly && level !== "far" && (
                       <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.left, b.bottom); setMenu({ add: r.lesson.id, x: p.x - 200, y: p.y + 4 }); }}
                         className="press flex h-7 items-center gap-1 rounded-lg bg-white px-2 text-[12px] text-ink-2 shadow-sm hover:text-ink"><Icon name="plus" size={12} /> Card</button>
@@ -1094,10 +1102,15 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                 </div>
               );
             })}
-            {!readOnly && onAddLesson && (
-              <button onClick={onAddLesson} className="press absolute flex items-center gap-1.5 rounded-2xl border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-3 hover:text-ink" style={{ left: 40, top: height - 76 }}>
-                <Icon name="plus" size={13} /> Lesson
-              </button>
+            {!readOnly && (onAddLesson || footer) && (
+              <div className="absolute flex items-start gap-2" style={{ left: 40, top: height - 76 }}>
+                {onAddLesson && (
+                  <button onClick={onAddLesson} className="press flex items-center gap-1.5 rounded-2xl border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-3 hover:text-ink">
+                    <Icon name="plus" size={13} /> Lesson
+                  </button>
+                )}
+                {footer}
+              </div>
             )}
 
             <svg width={width} height={height} className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden="true">
