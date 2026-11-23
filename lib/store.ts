@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import path from "path";
 import { publish } from "./bus";
 import { foldWeeks } from "./cardmodel";
-import { kindWeeks } from "./kinds";
+import { kindWeeks, reviewableCard } from "./kinds";
 import { todayLessonId } from "./dates";
 import { seedChoices, seedCourse, seedEvents, seedMarks, seedNudges, seedPlans, seedPosts, seedProgress, seedStudio, seedUptake } from "./seed";
 import type { Module, ClassEvent, Course, DirectMessage, Feedback, Live, Mark, Nudge, Plan, Post, Progress, ProgressMap, StudioPost, ToolLogEntry } from "./types";
@@ -271,7 +271,7 @@ function glance(c: Course, prog: ProgressMap) {
   const lessons = c.weeks.flatMap((w) => w.lessons);
   const todayId = todayLessonId(c);
   const today = lessons.find((l) => l.id === todayId) ?? lessons[0];
-  const reviewable = new Set(lessons.flatMap((l) => l.modules).filter((m) => ["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length).map((m) => m.id));
+  const reviewable = new Set(lessons.flatMap((l) => l.modules).filter((m) => reviewableCard(m)).map((m) => m.id));
   let toReview = 0;
   for (const st of c.students) for (const [mid, p] of Object.entries(prog[st.id] ?? {})) if (reviewable.has(mid) && p.status === "done" && !p.review) toReview++;
   return { today: today?.title ?? null, toReview, waiting: c.waiting?.length ?? 0 };

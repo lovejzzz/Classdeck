@@ -803,6 +803,30 @@ async function main() {
     check("signed out: no inbox", (await anon.get("/api/inbox")).status === 401);
   }
 
+  // ---- A Text card each student writes in (their own copy), with the teacher's comments on passages
+  {
+    const wc = (await A.post("/api/courses", { title: `Writing ${run}`, start: "blank" })).id;
+    made["writing"] = wc;
+    const l0 = courseOf(await A.state(wc)).weeks[0].lessons[0];
+    await A.op(wc, { op: "saveLesson", lesson: { ...l0, modules: [{ id: "m-own", type: "read", kind: "content", title: "Your copy", body: "## Start here\n\n| a | b |\n|---|---|\n| 1 | |", audience: { kind: "all" }, tools: [], attachments: [], writers: "each" }] } });
+    check("a Text card keeps who writes in it", modulesOf(courseOf(await A.state(wc)))[0].writers === "each");
+    await A.op(wc, { op: "addStudents", names: "Uma\nVic" });
+    const links = (await A.op(wc, { op: "setupLinks" })).links;
+    const uma = await invited(wc, links.find((x) => x.name === "Uma").link, "Uma");
+    const vic = await invited(wc, links.find((x) => x.name === "Vic").link, "Vic");
+    check("the student hands in their copy", (await uma.c.op(wc, { op: "setProgress", studentId: uma.id, moduleId: "m-own", output: "## Start here\n\nMy words.", status: "done" })).ok);
+    const glance = (await A.get("/api/courses")).courses.find((c) => c.id === wc);
+    check("it waits for feedback", glance?.toReview === 1, glance);
+    const note = await A.op(wc, { op: "docNote", studentId: uma.id, moduleId: "m-own", quote: "My words", text: "Say more" });
+    check("the teacher comments on a passage", note.ok && note.note?.quote === "My words");
+    check("the student sees the comment", ((await uma.c.get(`/api/course/${wc}?as=${uma.id}`)).progress?.[uma.id]?.["m-own"]?.notes ?? []).some((n) => n.text === "Say more"));
+    check("the student replies", (await uma.c.op(wc, { op: "docReply", studentId: uma.id, moduleId: "m-own", replyTo: note.note.id, text: "OK" })).ok);
+    check("a student can't comment on someone's work", (await vic.c.op(wc, { op: "docReply", studentId: uma.id, moduleId: "m-own", replyTo: note.note.id, text: "hi" })).ok !== true);
+    check("a student can't start a comment", (await uma.c.op(wc, { op: "docNote", studentId: uma.id, moduleId: "m-own", text: "x" })).ok !== true);
+    await A.op(wc, { op: "docNoteDelete", studentId: uma.id, moduleId: "m-own", noteId: note.note.id });
+    check("removing a comment removes its replies", !(((await A.state(wc)).progress?.[uma.id]?.["m-own"]?.notes) ?? []).length);
+  }
+
   // ---- New teachers start with Questhand 101
   {
     const N = await teacher("new");

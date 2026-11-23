@@ -23,7 +23,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 const STUDENT_OPS = new Set([
   "savePlan", "drill", "feel", "saveFlow", "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
   "retakeQuiz", "rehearse", "fillForm", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
-  "messageTeacher", "readMyMessages",
+  "messageTeacher", "readMyMessages", "docReply",
 ]);
 
 const AUTO_LESSON = /^Lesson \d+$/;
@@ -1196,6 +1196,33 @@ async function change(request: Request, courseId: string, body: Record<string, a
       p.review = { verdict, text: String(body.text ?? "").slice(0, 2000), at: Date.now(), levels: Object.keys(levels).length ? levels : undefined, attachments: attachments.length ? attachments : undefined };
       // Asking for a revision puts the card back in the student's hand.
       if (verdict === "revise" && p.status === "done") p.status = "doing";
+      break;
+    }
+    case "docNote":
+    case "docReply": {
+      // A comment on a student's own copy of a Text card: the teacher's on a passage ("docNote", with `quote`), or a
+      // reply to one, from the teacher ("docNote" with `replyTo`) or the student ("docReply").
+      if (!findModule(course, body.moduleId)) return fail("No such card");
+      const p = mine(body.studentId, body.moduleId);
+      const text = String(body.text ?? "").trim().slice(0, 2000);
+      if (!text) return fail("Write a comment");
+      const notes = (p.notes ??= []);
+      const replyTo = body.replyTo ? String(body.replyTo) : undefined;
+      if (replyTo && !notes.some((n) => n.id === replyTo)) return fail("That comment is gone");
+      if (body.op === "docReply" && !replyTo) return fail("Reply to one of your teacher’s comments");
+      const quote = body.op === "docNote" && !replyTo && body.quote ? String(body.quote).slice(0, 400) : undefined;
+      const note = { id: uid("dn-"), by: body.op === "docNote" ? "teacher" as const : "student" as const, text, at: Date.now(), quote, replyTo };
+      notes.push(note);
+      if (notes.length > 300) notes.splice(0, notes.length - 300);
+      extra = { note };
+      break;
+    }
+    case "docNoteDelete": {
+      // —— teacher —— Remove a comment (and the replies to it).
+      const p = mine(body.studentId, body.moduleId);
+      const id = String(body.noteId ?? "");
+      p.notes = (p.notes ?? []).filter((n) => n.id !== id && n.replyTo !== id);
+      if (!p.notes.length) p.notes = undefined;
       break;
     }
     case "addPost": {

@@ -21,6 +21,7 @@ import { op, useConnectors, useCourse } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
+import { reviewableCard } from "@/lib/kinds";
 import { StudentViewButton } from "@/components/teacher/StudentViewButton";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Conversation } from "@/components/MessageThread";
@@ -99,7 +100,7 @@ export default function TeachPage() {
   // Work handed in for the teacher to read (an open answer, a note to the teacher) is never folded into a run.
   const handIn = (e: ClassEvent) => {
     const m = e.kind === "done" ? moduleOf(e.moduleId)?.m : undefined;
-    return !!m && ["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length;
+    return !!m && reviewableCard(m);
   };
   for (const e of fresh) {
     if ((e.kind !== "done" && e.kind !== "wrong") || handIn(e)) { runs.push([e]); continue; }

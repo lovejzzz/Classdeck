@@ -11,7 +11,8 @@ import { setPreview, useCourse, useQuery } from "@/lib/client";
 import { PreviewBar } from "@/components/student/PreviewBar";
 import { ago } from "@/lib/time";
 import { suitOfCard } from "@/lib/ui";
-import { faceMeta } from "@/lib/kinds";
+import { faceMeta, writesOwn } from "@/lib/kinds";
+import { RichText } from "@/components/RichText";
 import type { Module, Progress } from "@/lib/types";
 
 /** A student's own board: everything they made, and the feedback they got. */
@@ -118,7 +119,7 @@ export default function BoardPage() {
                             {course.skills?.map((s) => p.ratings![s.id] && <span key={s.id} className="chip">{s.name} · {p.ratings![s.id]}</span>)}
                           </div>
                         )}
-                        {p?.output && <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{p.output}</p>}
+                        {p?.output && (writesOwn(m) ? <RichText text={p.output} className="mt-2 text-[13.5px] leading-relaxed text-[#353532]" /> : <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{p.output}</p>)}
                         {p?.work?.length ? <div className="mt-3 space-y-2">{p.work.map((a) => <div key={a.id}><div className="mb-1 text-[12px] text-ink-3">{a.name}</div><MediaView a={a} /></div>)}</div> : null}
                         {(p?.review?.text || p?.review?.attachments?.length) && (
                           // The teacher's feedback: their words, and anything they attached (a voice note, a drawing, a file).

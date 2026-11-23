@@ -1,15 +1,34 @@
 "use client";
 
-import { Fragment, useMemo } from "react";
+import { createContext, Fragment, useContext, useMemo } from "react";
 import { blocks, inline, type Block } from "@/lib/markdown";
 import { MathText } from "./MathText";
 
+/** Passages to mark (the words a comment is about), found within a run of text. */
+const Marks = createContext<string[]>([]);
+
+function Marked({ text, marks }: { text: string; marks: string[] }) {
+  const found = marks.map((m) => ({ m, at: m ? text.indexOf(m) : -1 })).filter((x) => x.at >= 0).sort((a, b) => a.at - b.at);
+  if (!found.length || text.includes("$")) return <MathText text={text} />;
+  const out: React.ReactNode[] = [];
+  let at = 0;
+  for (const f of found) {
+    if (f.at < at) continue;
+    if (f.at > at) out.push(text.slice(at, f.at));
+    out.push(<mark key={f.at} className="rounded-sm bg-[#fff1b8] px-0.5 text-inherit">{f.m}</mark>);
+    at = f.at + f.m.length;
+  }
+  if (at < text.length) out.push(text.slice(at));
+  return <>{out}</>;
+}
+
 /** One line, with bold, italic, code, links and math. */
 function Line({ text }: { text: string }) {
+  const marks = useContext(Marks);
   return (
     <>
       {inline(text).map((x, i) => {
-        let el: React.ReactNode = x.code ? <code className="rounded bg-lane px-1 py-px font-mono text-[0.9em]">{x.t}</code> : <MathText text={x.t} />;
+        let el: React.ReactNode = x.code ? <code className="rounded bg-lane px-1 py-px font-mono text-[0.9em]">{x.t}</code> : marks.length ? <Marked text={x.t} marks={marks} /> : <MathText text={x.t} />;
         if (x.b) el = <strong className="font-semibold text-ink">{el}</strong>;
         if (x.i) el = <em>{el}</em>;
         if (x.s) el = <s>{el}</s>;
@@ -70,7 +89,7 @@ function BlockView({ b }: { b: Block }) {
  * A card's text, formatted: headings, lists, callouts, dividers, links, tables and math. Plain text shows as it was
  * written. Nothing in it is ever treated as HTML.
  */
-export function RichText({ text, className }: { text: string; className?: string }) {
+export function RichText({ text, className, marks = [] }: { text: string; className?: string; marks?: string[] }) {
   const bs = useMemo(() => blocks(text ?? ""), [text]);
-  return <div className={`space-y-3 ${className ?? ""}`}>{bs.map((b, i) => <BlockView key={i} b={b} />)}</div>;
+  return <Marks.Provider value={marks}><div className={`space-y-3 ${className ?? ""}`}>{bs.map((b, i) => <BlockView key={i} b={b} />)}</div></Marks.Provider>;
 }

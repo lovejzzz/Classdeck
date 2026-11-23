@@ -247,6 +247,22 @@ export function CardEditor({
             <Clearable><input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" /></Clearable>
             <div className="mt-2"><RichBodyEditor key={m.id} value={m.body} onChange={(body) => set({ body })} placeholder="What students should read, watch or do" /></div>
             <MathPreview text={m.body} />
+            {kindOf(m) === "content" && (
+              // Who writes in this text: only the teacher (students read it), or each student in their own copy.
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[12.5px]">
+                <span className="text-ink-2">Who writes in it</span>
+                <span className="flex rounded-lg bg-lane p-0.5" role="radiogroup" aria-label="Who writes in it">
+                  {([["teacher", "Only you"], ["each", "Each student, in their own copy"]] as const).map(([v, label]) => {
+                    const on = (m.writers ?? "teacher") === v;
+                    return (
+                      <button key={v} type="button" role="radio" aria-checked={on} onClick={() => set({ writers: v === "each" ? "each" : undefined })}
+                        className={`press h-7 rounded-md px-2.5 transition-colors ${on ? "bg-white font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>{label}</button>
+                    );
+                  })}
+                </span>
+                {m.writers === "each" && <span className="basis-full text-[12px] text-ink-3">Your text is where each student starts. They write in their own copy and hand it in; it waits for your feedback in Grades and Students, where you can comment on any passage.</span>}
+              </div>
+            )}
             <div className="mt-3">
           <div className="space-y-1.5">
             {attachments.map((x, i) => {

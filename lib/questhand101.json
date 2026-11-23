@@ -891,6 +891,34 @@
        "suit": "content"
       },
       {
+       "id": "m-q1tpl-who-writes",
+       "type": "read",
+       "title": "Who writes in a card",
+       "body": "Under a Text card's text box, **Who writes in it** has two choices:\n\n- **Only you**: students read it. This is every card you've seen so far.\n- **Each student, in their own copy**: your text is where each student starts, like a worksheet. They write in their copy (tables too) and press **Hand in**.\n\nTheir copy then waits for your feedback in Grades and Students. Select any words in it and press **Comment**: the student sees your comment on those words and can reply.\n\n> The next card is one. Try it.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-own-copy",
+       "type": "read",
+       "title": "Try it: plan a lesson in your own copy",
+       "body": "## My first lesson\n\n**Topic:** \n\n**What students should be able to do by the end:** \n\n| Card | What students do |\n| --- | --- |\n| 1 | |\n| 2 | |\n| 3 | |\n\n**The question that branches, and what each answer deals:** ",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content",
+       "writers": "each",
+       "minutes": 8
+      },
+      {
        "id": "m-q1tpl-media",
        "type": "read",
        "title": "Media on a card",

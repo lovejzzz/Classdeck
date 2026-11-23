@@ -177,6 +177,18 @@ export interface DirectMessage {
   read?: boolean;
 }
 
+/** A comment on a student's writing: the teacher's on a passage, or a reply (from either side) to one. */
+export interface DocNote {
+  id: string;
+  by: "teacher" | "student";
+  text: string;
+  at: number;
+  /** The words it's about. */
+  quote?: string;
+  /** The comment this replies to. */
+  replyTo?: string;
+}
+
 export type AnswerValue = number | string | number[] | string[];
 
 /** Card tree, quiz cards: students with a submitted score (any try) at least `min` percent (and below the next band) get `next`. */
@@ -197,6 +209,11 @@ export interface Module {
   attachments?: Attachment[];
   questions?: Question[];
   wall?: WallSettings;
+  /**
+   * Who writes in a Text card's text. Unset: only the teacher (students read it). "each": every student gets their own
+   * copy, starting from the teacher's text, to write in and hand in.
+   */
+  writers?: "each";
   /** 为真时，必须先完成前面的模块才能打开（覆盖课程的自主权设置）。 */
   gate?: boolean;
   /** 只在发给学生时设置：这张卡片不是全班共有的（分支或个人模块）。 */
@@ -444,6 +461,8 @@ export interface Progress {
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
+  /** Comments on the student's own copy of a Text card: the teacher's (on a passage, `quote`) and replies to them. */
+  notes?: DocNote[];
   /** Updates posted onto the card: a teacher's form, or notes from a class session. */
   updates?: ExternalUpdate[];
   /** The student's answers to the card's student form, by question id. */

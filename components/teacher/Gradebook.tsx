@@ -10,7 +10,7 @@ import { SkillRadar } from "../SkillRadar";
 import { FeedbackInbox, Journal } from "../student/Progress";
 import { groupScore, treeView } from "@/lib/branching";
 
-const WORK = new Set(["explore", "practice", "submit", "reflect"]);
+import { reviewableCard } from "@/lib/kinds";
 
 /**
  * The whole course per student: where the teacher placed them on each skill (from rubric
@@ -51,7 +51,7 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
     ];
     const quizPct = scores.length ? scores.reduce((t, x) => t + x, 0) / scores.length : undefined;
     const reviews = cards.filter(({ m }) => mine[m.id]?.review).map(({ m, week }) => ({ m, week, r: mine[m.id].review! })).sort((a, b) => b.r.at - a.r.at);
-    const toReview = cards.filter(({ m }) => WORK.has(m.type) && !m.questions?.length && mine[m.id]?.status === "done" && !mine[m.id]?.review);
+    const toReview = cards.filter(({ m }) => reviewableCard(m) && mine[m.id]?.status === "done" && !mine[m.id]?.review);
     const waiting = toReview.length;
     // Latest teacher level per skill, and the student's latest self-rating.
     // Teacher levels come from reviews and from forms (the teacher's card forms), latest wins.

@@ -216,6 +216,13 @@ export function addNextQuestion<L extends { modules: Module[] }>(lesson: L, card
   return { lesson: { ...lesson, modules }, card, grouped: "new" };
 }
 
+/** A Text card each student writes in, in their own copy of it (Who writes: Each student). */
+export const writesOwn = (m: KindFields & Pick<Module, "writers">) => kindOf(m) === "content" && m.writers === "each";
+
+/** Work a student hands in for the teacher to read and give feedback on: an open answer, or their own copy of a Text card. */
+export const reviewableCard = (m: KindFields & Pick<Module, "writers" | "choice">) =>
+  (["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && !m.choice) || writesOwn(m);
+
 /** A card with choices that has neither words nor options yet: students don't see it until the teacher writes them. */
 export const unasked = (m: KindFields) => kindOf(m) === "choice" && !(m.questions ?? []).some(isAsked);
 /** A Content card just added and left as it was (no words, no media, its title still "New … card"). */

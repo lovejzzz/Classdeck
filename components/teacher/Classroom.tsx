@@ -7,7 +7,8 @@ import { invokeTool, op } from "@/lib/client";
 import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
-import { faceMeta, isPoll } from "@/lib/kinds";
+import { faceMeta, isPoll, reviewableCard, writesOwn } from "@/lib/kinds";
+import { DocReview } from "./DocReview";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
 import type { Attachment, CourseState, Lesson, Level, Module, Review, Skill } from "@/lib/types";
 import { download, toCsv } from "@/lib/download";
@@ -72,7 +73,7 @@ export function Classroom({
   const lateCard = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && isLate(m, progress[sid]?.[m.id], now))?.id;
   const overdue = course.students.filter((st) => !!lateCard(st.id));
   // Finished written work the teacher hasn't responded to yet.
-  const reviewable = (m: Module) => ["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && !m.choice;
+  const reviewable = (m: Module) => reviewableCard(m);
   const toReviewCell = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && reviewable(m) && progress[sid]?.[m.id]?.status === "done" && !progress[sid]?.[m.id]?.review)?.id;
   const toReview = course.students.filter((st) => !!toReviewCell(st.id));
   const firstVisible = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id))?.id;
@@ -405,7 +406,10 @@ export function Classroom({
                 ))}
               </div>
             ) : null}
-            {selProgress?.output ? (
+            {selProgress?.output && writesOwn(selModule) ? (
+              // Their own copy of a Text card: formatted, and open to comments on any passage.
+              <DocReview doc={selProgress.output} notes={selProgress.notes ?? []} courseId={courseId} studentId={sel!.sid} moduleId={selModule.id} onChanged={() => {}} />
+            ) : selProgress?.output ? (
               <p className="mt-3 whitespace-pre-wrap rounded-lg bg-lane px-3.5 py-3 text-[13.5px] leading-relaxed">{selProgress.output}</p>
             ) : (
               !selModule.questions && <p className="mt-3 text-[13px] text-ink-3">Nothing written yet.</p>

@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.60",
+    date: "2026-11-23",
+    changes: [
+      "Who writes in a Text card: Only you (students read it), or Each student, in their own copy. Your text is where each student starts, like a worksheet with its headings and tables; they write in their copy, it saves as they go, and they Hand in.",
+      "A handed-in copy waits for your feedback in Grades and Students like any other work, shown as the student wrote it. Select any words and press Comment: the student sees your comment on those words (they're marked in the text) and can reply, and you can reply back or remove it.",
+      "Students see their handed-in copy, formatted, on My work.",
+      "Questhand 101 has two new cards on this, one of them a copy to write in.",
+    ],
+  },
+  {
     version: "0.1.59",
     date: "2026-11-23",
     changes: [
