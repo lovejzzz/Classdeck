@@ -1,5 +1,5 @@
 // Card text as Markdown, checked without a server: npx tsx tests/markdown.test.ts
-import { blocks, chartData, computed, inline, isRich, mentionsIn, plainText } from "../lib/markdown";
+import { blocks, chartData, computed, inline, isRich, mentionsIn, plainText, hasTable } from "../lib/markdown";
 
 const rows: [string, boolean][] = [];
 const check = (name: string, ok: boolean) => rows.push([name, ok]);
@@ -55,6 +55,8 @@ check("links still work next to mentions", mi.some((x) => x.href === "https://x.
 check("plain text reads a mention as @Name", plainText("Ask @[Ana Li](@s-1)") === "Ask @Ana Li");
 check("who is mentioned (once each)", mentionsIn("@[A](@s-1) @[B](@teacher) @[A](@s-1)").join() === "s-1,teacher");
 check("an email address isn't a mention", mentionsIn("write to a@b.c").length === 0 && !inline("a@b.c").some((x) => x.mention));
+check("a preview can leave tables and charts out", plainText("Fill it in.\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n[chart: bar]", { tables: false }).trim() === "Fill it in." && plainText("| a |\n| --- |\n| 1 |").includes("1"));
+check("hasTable finds a table", hasTable("x\n\n| a |\n| --- |\n| 1 |") && !hasTable("a | b"));
 
 for (const [name, ok] of rows) console.log(`${ok ? "✓" : "✗"} ${name}`);
 const failed = rows.filter(([, ok]) => !ok).length;

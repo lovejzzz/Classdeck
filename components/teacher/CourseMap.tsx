@@ -7,6 +7,8 @@ import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, bl
 import { KindArt } from "../cards/KindArt";
 import { MathText, plainMath } from "../MathText";
 import { plainText } from "@/lib/markdown";
+import { isAsked } from "@/lib/grading";
+import { fileExt, hostOf } from "@/lib/cards";
 import type { Attachment, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
 import { videoEmbed } from "@/lib/media";
 import { MediaLift } from "../cards/MediaLift";
@@ -27,6 +29,7 @@ const HEAD = 72;
 const FAR_H = 96; // a card zoomed out: its colour and a big title
 const SEC = 28; // a question's (or the score's) title row
 const ROW = 30; // one answer or one score band
+const MEDIA = 112; // a question card's picture, video, recording or file, above its question
 const PAD = 10;
 const HGAP = 64; // gap between cards side by side (room for the wires leaving their right edge)
 const VGAP = 84; // gap between a card and the cards it deals below it
@@ -42,12 +45,19 @@ export type Level = "far" | "mid" | "near";
 const levelOf = (z: number): Level => (z < 0.55 ? "far" : z >= 1.2 ? "near" : "mid");
 
 const branchQs = (m: Module) => (m.questions ?? []).filter((q) => canBranch(q));
+/** Questions asked that can't branch (put in order, short answer): shown on the card, without ports. */
+const otherQs = (m: Module) => (m.questions ?? []).filter((q) => !canBranch(q) && isAsked(q));
+/** Rows an unbranching question takes under its title: one per option to order, or the accepted answers. */
+const otherRows = (q: { kind?: string; options: string[] }) => (q.kind === "order" ? Math.max(1, q.options.filter((o) => o.trim()).length) : 1);
+const isRight = (q: { kind?: string; answer?: number; answerSet?: number[] }, i: number) => (q.kind === "multi" ? !!q.answerSet?.includes(i) : q.answer === i);
 /** Cards that branch by score: a quiz, and a card group. */
 /** A card with a score that can deal cards: a quiz, or a card group with question cards in it (`cards`: its lesson's). */
 const isQuiz = (m: Module, cards?: Module[]) => m.type === "quiz" || (m.type === "group" && (!cards || scoreCount(m, cards) > 0));
-const wantsQuestion = (m: Module) => kindOf(m) === "choice" && !branchQs(m).length && m.type !== "quiz";
+const wantsQuestion = (m: Module) => kindOf(m) === "choice" && !(m.questions ?? []).some(isAsked) && m.type !== "quiz";
 /** Whether a card's node has anything under its head: answers, score ranges, its group's cards, or that invitation. */
-const hasBody = (m: Module) => branchQs(m).length > 0 || isQuiz(m) || wantsQuestion(m);
+const hasBody = (m: Module) => branchQs(m).length > 0 || otherQs(m).length > 0 || isQuiz(m) || wantsQuestion(m);
+/** A card whose answers fill its face still shows its media, in a strip above them. */
+const mediaStrip = (m: Module) => m.type !== "group" && !!m.attachments?.length && hasBody(m);
 const letter = (i: number) => String.fromCharCode(65 + i);
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
@@ -56,6 +66,7 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
   const ports = new Map<string, number>();
   if (level === "far") return { h: Math.max(CARD_H, m.type === "group" ? FAR_H + members.length * 26 + PAD : 0), ports };
   let y = HEAD;
+  if (mediaStrip(m)) y += MEDIA;
   // A card group: a row per card, with that card's answers (their ports keyed by the card), then the group's score.
   if (m.type === "group")
     for (const c of members) {
@@ -66,6 +77,7 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
     y += SEC;
     q.options.forEach((_, i) => { ports.set(`${q.id}:${i}`, y + ROW / 2); y += ROW; });
   }
+  if (m.type !== "group") for (const q of otherQs(m)) y += SEC + otherRows(q) * ROW;
   if (isQuiz(m, m.type === "group" ? members : undefined)) {
     y += SEC;
     const bands = bandsOf(m);
@@ -1458,6 +1470,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                   )}
                   {level !== "far" && (hasBody(m) || nd.members) && (
                     <div className="flex-none border-t border-line pb-[10px]">
+                      {mediaStrip(m) && (
+                        <div className="px-3.5 pb-1 pt-2.5" style={{ height: MEDIA }}>
+                          <div className="relative h-full overflow-hidden rounded-[10px]" style={{ background: suit.cover }}>
+                            <MapArt m={m} tint={suit.tint} cover={suit.cover} onMedia={(a, el, e) => { if (e.shiftKey || picking || jiggle || dragged) return; e.stopPropagation(); setViewing({ a, title: m.title, from: el.getBoundingClientRect(), open: true }); }} />
+                          </div>
+                        </div>
+                      )}
                       {nd.members?.map((c) => (
                         <div key={c.id}>
                           <button onClick={() => onEdit(nd.lessonId, c.id)} className="flex w-full items-center gap-2 px-3.5 text-left hover:bg-lane" style={{ height: SEC }} title="Edit this card">
@@ -1469,7 +1488,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                             const to = targetsOf(q, oi).length > 0;
                             return (
                               <div key={`${q.id}-${oi}`} className="relative flex items-center gap-2 pl-9 pr-3.5" style={{ height: ROW }}>
-                                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined}>{letter(oi)}</span>
+                                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : isRight(q, oi) ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined}>{letter(oi)}</span>
                                 <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">{o.trim() ? <MathText text={o.trim()} /> : `Option ${oi + 1}`}</span>
                                 {wentBadge(c.id, q.id, oi)}
                                 <PortDot color={pathColor(oi)} wired={!!to} readOnly={readOnly} label={to ? `${c.title}: answer ${letter(oi)} deals ${targetsOf(q, oi).length > 1 ? `${targetsOf(q, oi).length} cards` : "a card"}. Add or change` : `${c.title}: deal a card for answer ${letter(oi)}`} onPointerDown={(e) => startDrag(e, { from: c.id, q: q.id, option: oi })} />
@@ -1487,7 +1506,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                             const to = targetsOf(q, oi).length > 0;
                             return (
                               <div key={oi} className="relative flex items-center gap-2 px-3.5" style={{ height: ROW }}>
-                                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : q.answer === oi ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"}`} style={to ? { background: pathColor(oi) } : undefined} title={q.answer === oi && !m.poll ? "The right answer" : undefined}>{letter(oi)}</span>
+                                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10.5px] font-semibold transition-colors ${to ? "text-white" : isRight(q, oi) ? "bg-ok/15 text-ok" : "bg-lane text-ink-3"} ${q.kind === "multi" ? "!rounded-[4px]" : ""}`} style={to ? { background: pathColor(oi) } : undefined} title={isRight(q, oi) && !m.poll ? "A right answer" : undefined}>{letter(oi)}</span>
                                 {typing?.id === m.id && typing.field === `o:${q.id}:${oi}`
                                   ? <span className="min-w-0 flex-1 pr-3">{typeBox("h-6 text-[12.5px]")}</span>
                                   : <span onDoubleClick={startTyping(m.id, `o:${q.id}:${oi}`, o)} className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2" title={readOnly ? undefined : "Double-click to edit"}>{o.trim() ? <MathText text={o.trim()} /> : `Option ${oi + 1}`}</span>}
@@ -1496,6 +1515,25 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                               </div>
                             );
                           })}
+                        </div>
+                      ))}
+                      {otherQs(m).map((q) => (
+                        <div key={q.id}>
+                          <div className="truncate px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }}><MathText text={q.text.trim() || m.title || "Question"} /></div>
+                          {q.kind === "order" ? q.options.filter((o) => o.trim()).map((o, oi) => (
+                            <div key={oi} className="flex items-center gap-2 px-3.5" style={{ height: ROW }} title="The right order">
+                              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md bg-ok/15 text-[10.5px] font-semibold text-ok">{oi + 1}</span>
+                              <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2"><MathText text={o.trim()} /></span>
+                              <Icon name="grip" size={12} className="flex-none text-ink-3/60" />
+                            </div>
+                          )) : (
+                            <div className="flex items-center gap-2 px-3.5" style={{ height: ROW }}>
+                              <span className="flex h-5 min-w-0 flex-1 items-center rounded-md border border-dashed border-line-strong px-2 text-[12px] text-ink-2">
+                                <span className="truncate">{q.accept?.filter((a) => a.trim()).length ? q.accept.filter((a) => a.trim()).join(" · ") : <span className="text-ink-3">Students type an answer</span>}</span>
+                              </span>
+                              {!!q.accept?.some((a) => a.trim()) && <span className="flex-none text-[10.5px] text-ok">accepted</span>}
+                            </div>
+                          )}
                         </div>
                       ))}
                       {scoring && (
@@ -1687,33 +1725,54 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 
 /** A path through these points at right angles, each corner rounded. */
 /** The rest of a card below its head and answers: its picture (or drawing) and the start of what to do, like a playing card's face. */
-function CardRest({ m, far, art, tint, cover, onMedia }: { m: Module; far: boolean; art: boolean; tint: string; cover: string; onMedia?: (a: Attachment, el: HTMLElement, e: React.MouseEvent) => void }) {
+/** A card's media on the map: its picture, video, recording or file (a video or a picture opens big), or its drawing. */
+function MapArt({ m, tint, cover, onMedia }: { m: Module; tint: string; cover: string; onMedia?: (a: Attachment, el: HTMLElement, e: React.MouseEvent) => void }) {
   const first = m.attachments?.[0];
   const yt = first?.kind === "link" ? videoEmbed(first.url)?.src.match(/youtube[^/]*\/embed\/([\w-]+)/)?.[1] : undefined;
-  // A video or a picture opens big (the media area is its own button, so the card's click leaves it be); a recording
-  // plays right here.
   const open = (e: React.MouseEvent<HTMLElement>) => first && onMedia?.(first, e.currentTarget, e);
-  const body = plainText(m.body).trim();
+  if (first?.kind === "image") return (
+    <button type="button" data-art onClick={open} aria-label={`Open the picture on “${m.title}”`} className="absolute inset-0 cursor-zoom-in">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={first.url} alt="" draggable={false} className="h-full w-full object-cover" />
+    </button>
+  );
+  if (first?.kind === "video" || yt) return (
+    <button type="button" data-art onClick={open} aria-label={`Play the video on “${m.title}”`} className="group absolute inset-0 bg-[#dfe6ec]">
+      {first?.kind === "video"
+        ? <video src={`${first.url}#t=1.5`} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+        // eslint-disable-next-line @next/next/no-img-element
+        : <img src={`https://i.ytimg.com/vi/${yt}/hqdefault.jpg`} alt="" draggable={false} className="h-full w-full object-cover" />}
+      <span className="absolute inset-0 flex items-center justify-center"><PlayDot /></span>
+    </button>
+  );
+  if (first?.kind === "audio") return <div className="absolute inset-0"><Recording a={first} cover={cover} /></div>;
+  if (first?.kind === "file") return (
+    <a href={first.url} target="_blank" rel="noreferrer" data-art onClick={(e) => e.stopPropagation()} aria-label={`Open ${first.name || "the file"} on “${m.title}”`} className="absolute inset-0 flex items-center justify-center">
+      <span className="relative flex h-[62%] aspect-[3/4] flex-col justify-end rounded-md border border-line bg-white p-1.5 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.2)]">
+        <span className="rounded bg-ink px-1 py-0.5 text-center font-mono text-[9px] font-medium tracking-wide text-white">{fileExt(first)}</span>
+      </span>
+      {first.name && <span className="absolute inset-x-2 bottom-1.5 truncate text-center font-mono text-[10px] text-ink-2">{first.name}</span>}
+    </a>
+  );
+  if (first?.kind === "link" && kindOf(m) !== "content") return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+      <Icon name="globe" size={26} strokeWidth={1.4} className="text-ink/75" />
+      <span className="max-w-[85%] truncate font-mono text-[10px] text-ink-2">{hostOf(first.url)}</span>
+    </div>
+  );
+  return <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />;
+}
+
+function CardRest({ m, far, art, tint, cover, onMedia }: { m: Module; far: boolean; art: boolean; tint: string; cover: string; onMedia?: (a: Attachment, el: HTMLElement, e: React.MouseEvent) => void }) {
+  // A table reads as noise in a few lines of preview: the drawing shows there is one.
+  const body = plainText(m.body, { tables: false }).trim();
   return (
-    <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-hidden ${far ? "px-4 pb-4 pt-1" : "px-3.5 pb-3.5 pt-1.5"}`}>
+    // The padding sits inside the clipped box, so a card whose answers fill it hides the preview instead of spilling.
+    <div className="min-h-0 flex-1 overflow-hidden">
+    <div className={`flex h-full flex-col gap-2 ${far ? "px-4 pb-4 pt-1" : "px-3.5 pb-3.5 pt-1.5"}`}>
       {art && (
         <div className="relative min-h-[3rem] flex-1 overflow-hidden rounded-[12px]" style={{ background: cover }}>
-          {first?.kind === "image" ? (
-            <button type="button" data-art onClick={open} aria-label={`Open the picture on “${m.title}”`} className="absolute inset-0 cursor-zoom-in">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={first.url} alt="" draggable={false} className="h-full w-full object-cover" />
-            </button>
-          ) : first?.kind === "video" || yt ? (
-            <button type="button" data-art onClick={open} aria-label={`Play the video on “${m.title}”`} className="group absolute inset-0 bg-[#dfe6ec]">
-              {first?.kind === "video"
-                ? <video src={`${first.url}#t=1.5`} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-                // eslint-disable-next-line @next/next/no-img-element
-                : <img src={`https://i.ytimg.com/vi/${yt}/hqdefault.jpg`} alt="" draggable={false} className="h-full w-full object-cover" />}
-              <span className="absolute inset-0 flex items-center justify-center"><PlayDot /></span>
-            </button>
-          ) : first?.kind === "audio" ? (
-            <div className="absolute inset-0"><Recording a={first} cover={cover} /></div>
-          ) : <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />}
+          <MapArt m={m} tint={tint} cover={cover} onMedia={onMedia} />
         </div>
       )}
       {!far && body && <p className={`flex-none text-[12px] leading-[1.45] text-ink-2 ${art ? "line-clamp-3" : "line-clamp-[8]"}`}><MathText text={body} /></p>}
@@ -1723,6 +1782,7 @@ function CardRest({ m, far, art, tint, cover, onMedia }: { m: Module; far: boole
           <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@
 // card (quiz question or poll), and each score range of a quiz or a card group, can deal a card.
 import type { Module, ModuleType, Question } from "./types";
 import { isAsked } from "./grading";
+import { hasTable } from "./markdown";
 
 export type Family = "content" | "question";
 /**
@@ -16,7 +17,9 @@ export type Family = "content" | "question";
  */
 export type CardKind = "content" | "answer" | "choice" | "discussion" | "group";
 /** How a card looks: its picture and name. A Content card looks like its media; a Question card like how it's answered. */
-export type Face = "text" | "image" | "video" | "link" | "recording" | "answer" | "choice" | "poll" | "discussion" | "group";
+export type Face =
+  | "text" | "table" | "image" | "video" | "link" | "recording" | "file" | "worksheet" | "doc"
+  | "answer" | "choice" | "checkboxes" | "order" | "short" | "quiz" | "poll" | "signup" | "discussion" | "group";
 
 /** The two kinds of card a teacher puts down, and what each starts as. */
 export const FAMILIES: { id: Family; name: string; hint: string; start: CardKind }[] = [
@@ -42,13 +45,22 @@ export const familyOf = (k: CardKind): Family => kindMeta(k).family;
 
 export const FACES: Record<Face, { name: string; icon: string }> = {
   text: { name: "Text", icon: "read" },
+  table: { name: "Table", icon: "table" },
   image: { name: "Image", icon: "image" },
   video: { name: "Video", icon: "video" },
   link: { name: "Link", icon: "link" },
   recording: { name: "Recording", icon: "mic" },
+  file: { name: "File", icon: "file" },
+  worksheet: { name: "Worksheet", icon: "practice" },
+  doc: { name: "Shared doc", icon: "users" },
   answer: { name: "Open answer", icon: "message" },
   choice: { name: "Multiple choice", icon: "quiz" },
+  checkboxes: { name: "Checkboxes", icon: "checkbox" },
+  order: { name: "Put in order", icon: "ordered" },
+  short: { name: "Short answer", icon: "type" },
+  quiz: { name: "Quiz", icon: "quiz" },
   poll: { name: "Poll", icon: "chart" },
+  signup: { name: "Sign-up", icon: "groups" },
   discussion: { name: "Discussion", icon: "wall" },
   group: { name: "Card group", icon: "layers" },
 };
@@ -57,7 +69,7 @@ const firstMedia = (m: Pick<Module, "attachments">) => (m.attachments ?? [])[0];
 const isRecording = (a?: { kind: string; url: string; name?: string }) => !!a && a.kind === "audio";
 const VIDEO_LINK = /^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be|vimeo\.com)/;
 
-type KindFields = Pick<Module, "kind" | "type" | "attachments" | "poll" | "questions">;
+type KindFields = Pick<Module, "kind" | "type" | "attachments" | "poll" | "questions"> & Partial<Pick<Module, "writers" | "signup" | "body">>;
 const isKind = (k: unknown): k is CardKind => KINDS.some((x) => x.id === k);
 
 /** A card's kind: the one stored, or (for a card made without one, such as a template) the one its type points to. */
@@ -85,27 +97,43 @@ export function kindOf(m: KindFields): CardKind {
 /** Whether a card is a poll: a Choice card with no right answer. */
 export const isPoll = (m: KindFields) => kindOf(m) === "choice" && !!(m.poll || m.type === "selfcheck");
 
-/** How a card looks. A Content card follows its first piece of media: a picture, a video, a recording, a link, or words. */
+/**
+ * How a card looks: it follows what's in the card. A Content card that students write in is a worksheet (each their
+ * own) or a shared doc; otherwise it follows its first piece of media (a picture, a video, a recording, a link, a file),
+ * or a table in its text. A Choice card follows what its question asks for: one answer, several, an order, a typed
+ * answer; several questions are a quiz, and a poll that makes groups is a sign-up.
+ */
 export function faceOf(m: KindFields): Face {
   const k = kindOf(m);
-  if (k === "choice") return isPoll(m) ? "poll" : "choice";
+  if (k === "choice") {
+    if (isPoll(m)) return m.signup ? "signup" : "poll";
+    const qs = (m.questions ?? []).filter(isAsked);
+    if (qs.length > 1 || m.type === "quiz") return "quiz";
+    const q = qs[0] ?? m.questions?.[0];
+    return q?.kind === "multi" ? "checkboxes" : q?.kind === "order" ? "order" : q?.kind === "short" ? "short" : "choice";
+  }
   if (k !== "content") return k;
+  if (m.writers === "each") return "worksheet";
+  if (m.writers === "group" || m.writers === "class") return "doc";
   const a = firstMedia(m);
-  if (!a) return "text";
+  if (!a) return m.body && hasTable(m.body) ? "table" : "text";
   if (a.kind === "image") return "image";
   if (isRecording(a)) return "recording";
   if (a.kind === "video" || (a.kind === "link" && VIDEO_LINK.test(a.url))) return "video";
+  if (a.kind === "file") return "file";
   if (a.kind === "audio" || a.kind === "link") return "link";
   return "text";
 }
 export const faceMeta = (m: KindFields): { name: string; icon: string } => {
-  const f = FACES[faceOf(m)];
-  // A choice card's label says what its question asks for: picking, ordering or typing.
-  if (faceOf(m) === "choice" && (m.questions?.length ?? 0) === 1) {
-    const k = m.questions![0].kind;
-    if (k === "order") return { ...f, name: "Put in order" };
-    if (k === "short") return { ...f, name: "Short answer" };
+  const face = faceOf(m);
+  const f = FACES[face];
+  // A file says what it is (PDF, DOCX…); a shared doc says who shares it.
+  if (face === "file") {
+    const a = firstMedia(m)!;
+    const ext = (a.name || a.url).match(/\.([a-z0-9]{2,5})(?:$|\?)/i)?.[1]?.toUpperCase();
+    return { ...f, name: ext ?? f.name };
   }
+  if (face === "doc") return { ...f, name: m.writers === "group" ? "Group doc" : "Class doc" };
   return f;
 };
 

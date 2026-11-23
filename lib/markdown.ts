@@ -188,7 +188,11 @@ export function isRich(src?: string): boolean {
 }
 
 /** The words only: for previews, read-aloud and search. */
-export function plainText(src: string): string {
+/** Whether a text has a table in it (or a chart of one). */
+export const hasTable = (src: string) => blocks(src).some((b) => b.k === "table");
+
+/** A text as plain words. `tables: false` leaves tables and charts out (a short preview, where a table reads as noise). */
+export function plainText(src: string, { tables = true }: { tables?: boolean } = {}): string {
   const flat = (s: string) => inline(s).map((x) => x.t).join("");
   return blocks(src).map((b) => {
     switch (b.k) {
@@ -197,7 +201,7 @@ export function plainText(src: string): string {
       case "ul": case "ol": { let n = (b.start ?? 1) - 1; return b.items.map((x) => `${"  ".repeat(x.d)}${b.k === "ol" && !x.d ? `${++n}.` : "•"} ${flat(x.t)}`).join("\n"); }
       case "quote": return b.lines.map(flat).join("\n");
       case "hr": return "";
-      case "table": return [b.head, ...computed(b).rows].map((r) => r.map(flat).join(" · ")).join("\n");
+      case "table": if (!tables) return ""; return [b.head, ...computed(b).rows].map((r) => r.map(flat).join(" · ")).join("\n");
       case "chart": return "";
     }
   }).filter(Boolean).join("\n\n");

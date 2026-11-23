@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.66",
+    date: "2026-11-23",
+    changes: [
+      "Card faces follow what's in the card. A card students write in shows as a Worksheet (each their own) or a Group doc / Class doc (written together); a file shows its type (PDF…); text with a table shows as a Table.",
+      "Question faces say what they ask for, each with its own picture: Multiple choice, Checkboxes (pick all that apply), Put in order, Short answer, Quiz (several questions), Poll, and Sign-up (a poll that makes groups).",
+      "Map: Put in order and Short answer cards show their question, the right order or the accepted answers (they no longer looked unfinished).",
+      "Map: Checkboxes cards mark every right answer.",
+      "Map: a question card's picture, video, recording or file shows above its answers.",
+      "Map: a card's preview leaves tables out (no more “Name · Min A · 3”), and a card full of answers no longer spills its text below its edge.",
+    ],
+  },
+  {
     version: "0.1.65",
     date: "2026-11-23",
     changes: [

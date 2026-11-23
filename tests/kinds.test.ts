@@ -77,6 +77,20 @@ const wall = [
 check("replies to one classmate count once, own post and teacher post don't count", wallProgress(wall, "w", "ben", 2).replied === 1 && !wallProgress(wall, "w", "ben", 2).done && wallProgress(wall, "w", "ben", 1).done);
 check("no post yet: not done even with replies", !wallProgress(wall.filter((p) => p.studentId !== "ben"), "w", "ben", 1).done);
 
+// Faces follow what's in the card, past the media: who writes in it, tables, files, and what a question asks for.
+check("a PDF: File, named by its type", faceOf(card({ kind: "content", attachments: [{ id: "a", kind: "file", url: "/x/handout.pdf", name: "handout.pdf" }] })) === "file" && faceMeta(card({ kind: "content", attachments: [{ id: "a", kind: "file", url: "/x/handout.pdf", name: "handout.pdf" }] })).name === "PDF");
+check("each student writes: Worksheet", faceOf(card({ kind: "content", writers: "each" })) === "worksheet");
+check("a group writes together: Group doc", faceOf(card({ kind: "content", writers: "group" })) === "doc" && faceMeta(card({ kind: "content", writers: "group" })).name === "Group doc");
+check("the class writes together: Class doc", faceMeta(card({ kind: "content", writers: "class" })).name === "Class doc");
+check("text with a table: Table", faceOf(card({ kind: "content", body: "Hi\n\n| a | b |\n| --- | --- |\n| 1 | 2 |" })) === "table");
+check("a picture beats a table", faceOf(card({ kind: "content", body: "| a |\n| --- |\n| 1 |", attachments: [att("image", "/a.png")] })) === "image");
+const ch = (qs: Module["questions"], extra: Partial<Module> = {}) => card({ kind: "choice", type: "practice", questions: qs, ...extra });
+check("pick several: Checkboxes", faceOf(ch([{ id: "q", kind: "multi", text: "Which?", options: ["a", "b"], answerSet: [0, 1] }])) === "checkboxes");
+check("a typed answer: Short answer", faceMeta(ch([{ id: "q", kind: "short", text: "Which?", options: [], accept: ["x"] }])).name === "Short answer");
+check("two questions: Quiz", faceOf(ch([{ id: "q", text: "A?", options: ["a", "b"], answer: 0 }, { id: "r", text: "B?", options: ["a", "b"], answer: 1 }])) === "quiz");
+check("a blank second question doesn't make a quiz", faceOf(ch([{ id: "q", text: "A?", options: ["a", "b"], answer: 0 }, { id: "r", text: "", options: ["", ""] }])) === "choice");
+check("a poll that makes groups: Sign-up", faceOf(ch([{ id: "q", text: "Which?", options: ["a", "b"] }], { poll: true, signup: { names: true } })) === "signup");
+
 const failed = rows.filter(([, ok]) => !ok);
 for (const [n] of failed) console.log("  ✗", n);
 console.log(`${rows.length - failed.length} passed, ${failed.length} failed`);
