@@ -392,7 +392,7 @@
        "id": "m-q1tpl-dates",
        "type": "read",
        "title": "Dates and today's lesson",
-       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nTo date them all at once, open a lesson's ⋯ menu → Schedule lessons from here…: pick the first class, the days class meets and any days off, and every lesson from there gets its date.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too (under When and for whom: Today, +3 days, +1 week). Students see what's due in To-do, and a card past its date shows as Overdue.",
+       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nTo date them all at once, open a lesson's ⋯ menu → Schedule lessons from here…: pick the first class, the days class meets and any days off, and every lesson from there gets its date.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too (under Access: Today, +3 days, +1 week). Students see what's due in To-do, and a card past its date shows as Overdue.",
        "audience": {
         "kind": "all"
        },
@@ -894,7 +894,7 @@
        "id": "m-q1tpl-who-writes",
        "type": "read",
        "title": "Who writes in a card",
-       "body": "Under a Text card's text box, **Who writes in it** has four choices:\n\n- **Only you**: students read it. This is every card you've seen so far.\n- **Each student**: your text is where each student starts, like a worksheet. They write in their own copy (tables too) and press **Hand in**.\n- **Each group** and **Whole class**: one shared copy, written together. More on the card after next.\n\nTheir copy then waits for your feedback in Grades and Students. Select any words in it and press **Comment**: the student sees your comment on those words and can reply.\n\n> The next card is one. Try it.",
+       "body": "In a Content card's **Access**, **Students can** has four choices:\n\n- **Read it**: you write, students read. This is every card you've seen so far.\n- **Each edit their own copy**: your text is where each student starts, like a worksheet. They write in their own copy (tables too) and press **Hand in**.\n- **Edit together in groups** and **Edit together as a class**: one shared copy, written together. More on the card after next.\n\nAccess also says who gets the card (everyone, or the students an answer deals it to) and when it's due.\n\nTheir copy then waits for your feedback in Grades and Students. Select any words in it and press **Comment**: the student sees your comment on those words and can reply.\n\n> The next card is one. Try it.",
        "audience": {
         "kind": "all"
        },
@@ -922,7 +922,7 @@
        "id": "m-q1tpl-together",
        "type": "read",
        "title": "Writing together",
-       "body": "With **Each group**, every group shares one copy. Make the groups right on the card: **Make groups**, name them, split the class at random or tap students into each group. Other cards can use the same groups from the list, and you make new ones whenever the groups change. With **Whole class**, everyone shares one.\n\n- They write in it at the same time, live: each person's cursor shows with their name, and who's there shows above the text.\n- **History** keeps a version every few minutes, with who wrote in it. Look at any version, or go back to it.\n- In a group, anyone can **Hand in** for the whole group. In Students you can watch a group's copy as it's written, and write in it too.\n\n## Tables that add up\n\nIn a table, **Σ Total** adds a row that adds up each column. Write =AVERAGE, =COUNT, =MIN or =MAX in a cell instead of =SUM for those. **Bar**, **Line** and **Pie** put a chart of the table under it. Both update as students fill the table in.",
+       "body": "With **Edit together in groups**, every group shares one copy. Make the groups right on the card: **Make groups**, name them, split the class at random or tap students into each group. Other cards can use the same groups from the list, and you make new ones whenever the groups change. With **Edit together as a class**, everyone shares one.\n\n- They write in it at the same time, live: each person's cursor shows with their name, and who's there shows above the text.\n- **History** keeps a version every few minutes, with who wrote in it. Look at any version, or go back to it.\n- In a group, anyone can **Hand in** for the whole group. In Students you can watch a group's copy as it's written, and write in it too.\n\n## Tables that add up\n\nIn a table, **Σ Total** adds a row that adds up each column. Write =AVERAGE, =COUNT, =MIN or =MAX in a cell instead of =SUM for those. **Bar**, **Line** and **Pie** put a chart of the table under it. Both update as students fill the table in.",
        "audience": {
         "kind": "all"
        },
@@ -935,7 +935,7 @@
        "id": "m-q1tpl-signup",
        "type": "read",
        "title": "Let students pick their group",
-       "body": "Sometimes students should choose: which project, which topic, which lab slot. Make a poll (Choices, Has a right answer: No) and tick **Make groups from the answers**.\n\n- Each option is a group. A student joins one by picking it, and can switch until you tick **Lock the groups**.\n- **At most** caps each group; a full group can't be picked.\n- **Students see who's in each group**, or untick it to show only how many.\n- The groups are kept under the card's name. Pick them in any other card's **Each group**, and press **Move students** on the poll to change them yourself.\n\n> The next card is one. Pick a group.",
+       "body": "Sometimes students should choose: which project, which topic, which lab slot. Make a poll (Choices, Has a right answer: No) and tick **Make groups from the answers**.\n\n- Each option is a group. A student joins one by picking it, and can switch until you tick **Lock the groups**.\n- **At most** caps each group; a full group can't be picked.\n- **Students see who's in each group**, or untick it to show only how many.\n- The groups are kept under the card's name. Pick them in any other card that students edit together in groups, and press **Move students** on the poll to change them yourself.\n\n> The next card is one. Pick a group.",
        "audience": {
         "kind": "all"
        },

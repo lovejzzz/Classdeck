@@ -263,6 +263,18 @@ function keepInView(el: HTMLElement | null) {
   el.style.translate = `${dx / k}px ${dy / k}px`;
 }
 
+/** A menu that opens beside what it belongs to: scroll the map to show it, rather than move it over the cards. */
+function scrollIntoMap(el: HTMLElement | null) {
+  if (!el) return;
+  const sc = el.closest(".tree-canvas") as HTMLElement | null;
+  if (sc) {
+    const over = el.getBoundingClientRect().right - (Math.min(sc.getBoundingClientRect().right, innerWidth) - 12);
+    if (over > 0) sc.scrollBy({ left: over, behavior: reducedMotion() ? "auto" : "smooth" });
+  }
+  // Anything still out of view (below the map's bottom, or a map that can't scroll that far) is nudged as usual.
+  setTimeout(() => keepInView(el), 400);
+}
+
 // `saved`: the menu is showing the teacher's saved cards instead of Content / Question.
 type Menu = { port: Port; x: number; y: number; mode: "port" | "new"; saved?: boolean } | { add: string; x: number; y: number; saved?: boolean };
 
@@ -1323,8 +1335,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           window.addEventListener("pointerup", up);
         }}
       >
-        <div data-canvas="1" style={{ width: width * zoom, height: height * zoom }} className="relative">
-          <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width, height, transform: `scale(${zoom})` }}>
+        {/* While Add a card is open beside the last card of the widest lesson, the map makes room for it on the right. */}
+        <div data-canvas="1" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0) * zoom, height: height * zoom }} className="relative">
+          <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0), height, transform: `scale(${zoom})` }}>
             {/* Lessons: a quiet band each, with its name and a way to add a card. */}
             {regions.map((r) => {
               const today = r.lesson.id === todayId;
@@ -1345,7 +1358,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     {level !== "far" && <span className="mono flex-none">{full.modules.filter((m) => m.type !== "group").length} card{full.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
                     <span className="flex-1" />
                     {!readOnly && level !== "far" && (
-                      <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.left, b.bottom); setMenu({ add: r.lesson.id, x: p.x - 232, y: p.y + 4 }); }}
+                      <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.right + 8, b.top); setMenu({ add: r.lesson.id, x: p.x, y: p.y }); }}
                         className="press flex h-7 items-center gap-1 rounded-lg bg-white px-2 text-[12px] text-ink-2 shadow-sm hover:text-ink"><Icon name="plus" size={12} /> Card</button>
                     )}
                   </div>
@@ -1651,7 +1664,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               );
             })()}
             {menu && "add" in menu && (
-              <div ref={keepInView} className="pop absolute z-20 w-[296px] rounded-2xl border border-line bg-white p-3 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
+              <div ref={scrollIntoMap} className="pop absolute z-20 w-[296px] rounded-2xl border border-line bg-white p-3 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
                 <div className="px-1 pb-3">
                   <div className="text-[13.5px] font-semibold text-ink">Add a card</div>
                   <div className="truncate text-[11.5px] text-ink-3">to {lessons.find((l) => l.id === menu.add)?.title} · every student gets it</div>

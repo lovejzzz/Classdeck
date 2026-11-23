@@ -17,7 +17,7 @@ import { RichBodyEditor } from "./RichBodyEditor";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Course, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { GroupingPicker, SignupGroups } from "./Groupings";
-import { targetsOf } from "@/lib/branching";
+import { SCORE, targetsOf, wiresOf } from "@/lib/branching";
 import { CardFace } from "../cards/CardFace";
 import { playableArt } from "../cards/PlayArt";
 import { Avatar, Icon } from "../Icon";
@@ -54,6 +54,9 @@ function TiltPreview({ m }: { m: Module }) {
     </div>
   );
 }
+
+/** What students can do with a Content card. */
+const WRITERS = [["teacher", "Read it"], ["each", "Each edit their own copy"], ["group", "Edit together in groups"], ["class", "Edit together as a class"]] as const;
 
 /** The cards an answer deals, as chips: the first by name, any more as “+N” (each opens its card). */
 function Dealt({ ids, titleOf, onGo, onTree }: { ids: string[]; titleOf: (id: string) => string; onGo?: (id: string) => void; onTree?: () => void }) {
@@ -186,6 +189,15 @@ export function CardEditor({
   const a = m.audience;
   const kind = kindOf(m);
   const older = olderSettings(m);
+  // The answers (or score ranges) that deal this card, or the card group it's in: who gets it is set on the map.
+  const everyCard = allCards ?? lesson.modules;
+  const inGroup = everyCard.find((g) => g.type === "group" && g.members?.includes(m.id))?.id;
+  const dealtBy = wiresOf(everyCard).filter((w) => w.to === m.id || (!!inGroup && w.to === inGroup)).map((w) => {
+    const from = everyCard.find((c) => c.id === w.from);
+    const title = `“${from?.title || "Untitled card"}”`;
+    if (w.q === SCORE) return { from: w.from, label: `a score of ${w.score ? `${w.score.min}–${Math.min(100, w.score.max - 1)}%` : "a range"} on ${title}` };
+    return { from: w.from, label: `answer ${String.fromCharCode(65 + w.option)} on ${title}` };
+  });
 
   /** Turn the card into another kind or answer form. Its words and media stay; what only the old one used goes. */
   async function toKind(k: CardKind) {
@@ -252,30 +264,6 @@ export function CardEditor({
             <Clearable><input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" /></Clearable>
             <div className="mt-2"><RichBodyEditor key={m.id} value={m.body} onChange={(body) => set({ body })} placeholder="What students should read, watch or do" /></div>
             <MathPreview text={m.body} />
-            {kindOf(m) === "content" && (
-              // Who writes in this text: only the teacher (students read it), or each student in their own copy.
-              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[12.5px]">
-                <span className="text-ink-2">Who writes in it</span>
-                <span className="flex rounded-lg bg-lane p-0.5" role="radiogroup" aria-label="Who writes in it">
-                  {([["teacher", "Only you"], ["each", "Each student"], ["group", "Each group"], ["class", "Whole class"]] as const).map(([v, label]) => {
-                    const on = (m.writers ?? "teacher") === v;
-                    return (
-                      <button key={v} type="button" role="radio" aria-checked={on} onClick={() => set({ writers: v === "teacher" ? undefined : v })}
-                        className={`press h-7 rounded-md px-2.5 transition-colors ${on ? "bg-white font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>{label}</button>
-                    );
-                  })}
-                </span>
-                {m.writers === "group" && course && <div className="basis-full"><GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} /></div>}
-                {m.writers && (
-                  <span className="basis-full text-[12px] text-ink-3">
-                    {m.writers === "each" ? "Your text is where each student starts. They write in their own copy and hand it in; it waits for your feedback in Grades and Students, where you can comment on any passage."
-                      : m.writers === "group" ? "Each group shares one copy and writes in it together, live, each with their cursor and name. Anyone in the group hands it in for the whole group."
-                      : "The whole class shares one copy and writes in it together, live: good for a class table of results. Each student presses Hand in for themselves."}
-                    {" "}History keeps a version every few minutes, with who wrote in it.
-                  </span>
-                )}
-              </div>
-            )}
             <div className="mt-3">
           <div className="space-y-1.5">
             {attachments.map((x, i) => {
@@ -444,35 +432,67 @@ export function CardEditor({
           </Panel>
           )}
 
-          <Panel n={kind === "content" ? 2 : 3} title="When and for whom">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="field h-8 w-40 py-0" />
+          <Panel n={kind === "content" ? 2 : 3} title="Access">
+            {kind === "content" && (
+              // What students can do with this card: read it, or write in it (each their own copy, or one copy shared).
+              <div className="mb-3.5">
+                <div className="flex flex-wrap items-center gap-2 text-[13px]">
+                  <label htmlFor={`writers-${m.id}`} className="text-ink-2">Students can</label>
+                  <span className="relative">
+                    <select id={`writers-${m.id}`} value={m.writers ?? "teacher"} onChange={(e) => set({ writers: e.target.value === "teacher" ? undefined : (e.target.value as "each" | "group" | "class") })}
+                      className="field h-8 cursor-pointer appearance-none py-0 pr-8 text-[13px] font-medium">
+                      {WRITERS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+                    </select>
+                    <Icon name="chevron" size={12} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
+                  </span>
+                </div>
+                <p className="mt-1.5 text-[12px] leading-snug text-ink-3">
+                  {!m.writers ? "Students read what you write here."
+                    : m.writers === "each" ? "Your text is where each student starts. They write in their own copy and hand it in; it waits for your feedback in Grades and Students, where you can comment on any passage."
+                    : m.writers === "group" ? "Each group shares one copy and writes in it together, live, each with their cursor and name. Anyone in the group hands it in for the whole group."
+                    : "The whole class shares one copy and writes in it together, live: good for a class table of results. Each student presses Hand in for themselves."}
+                  {m.writers && " History keeps a version every few minutes, with who wrote in it."}
+                </p>
+                {m.writers === "group" && course && <div className="mt-2"><GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} /></div>}
+              </div>
+            )}
+            {/* Who gets it: set on the map (answers deal cards), so said here rather than picked; one student is the exception. */}
+            <div className="flex items-start gap-2.5 text-[12.5px]">
+              <span className="mt-[1px] flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name={dealtBy.length ? "split" : a.kind === "student" ? "user" : "users"} size={12} /></span>
+              <span className="min-w-0 flex-1 pt-[3px] text-ink-2">
+                {a.kind === "branch" ? (
+                  <>Only students on the “{a.variant}” path get this card (set up before paths were removed). <button onClick={() => set({ audience: { kind: "all" } })} className="underline underline-offset-2 hover:text-ink">Give it to everyone</button></>
+                ) : a.kind === "student" ? (
+                  <>Only <span className="font-medium text-ink">{students.find((s) => s.id === a.studentId)?.name ?? "one student"}</span> gets this card. <button onClick={() => set({ audience: { kind: "all" } })} className="underline underline-offset-2 hover:text-ink">Give it to everyone</button></>
+                ) : dealtBy.length ? (
+                  <>Students get it from {dealtBy.slice(0, 2).map((w, k) => (
+                    <span key={k}>{k ? " or " : ""}<button onClick={() => (onGo ? onGo(w.from) : onTree?.())} className="font-medium text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{w.label}</button></span>
+                  ))}{dealtBy.length > 2 ? ` and ${dealtBy.length - 2} more` : ""}.</>
+                ) : (
+                  <>Everyone gets this card. <button onClick={() => set({ audience: { kind: "student", studentId: students[0]?.id ?? "" } })} className="underline underline-offset-2 hover:text-ink">Only one student…</button></>
+                )}
+              </span>
+            </div>
+            {a.kind === "student" && (
+              <div className="mt-2 flex flex-wrap gap-1.5 pl-[34px]">
+                {students.map((s) => (
+                  <button key={s.id} onClick={() => set({ audience: { kind: "student", studentId: s.id } })} aria-pressed={a.studentId === s.id}
+                    className={`press inline-flex h-7 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-[12.5px] ${a.studentId === s.id ? "border-ink" : "border-line hover:border-line-strong"}`}>
+                    <Avatar name={s.name} size={20} />{s.name}
+                  </button>
+                ))}
+                {!students.length && <span className="text-[12.5px] text-ink-3">No students yet.</span>}
+              </div>
+            )}
+            <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3 text-[12.5px]">
+              <span className="mr-1 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name="clock" size={12} /></span>
+              <span className="mr-0.5 text-ink-2">Due</span>
+              <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="field h-8 w-[136px] px-2 py-0" />
               {([["Today", 0], ["+3 days", 3], ["+1 week", 7]] as const).map(([label, n]) => (
-                <button key={label} onClick={() => set({ due: isoDay(n) })} className="btn btn-quiet press h-7 px-2 text-[12px]">{label}</button>
+                <button key={label} onClick={() => set({ due: isoDay(n) })} className="btn btn-quiet press h-7 whitespace-nowrap px-1.5 text-[12px]">{label}</button>
               ))}
               {m.due && <button onClick={() => set({ due: undefined })} aria-label="Clear due date" className="btn btn-quiet press h-7 w-7 justify-center px-0"><Icon name="x" size={12} /></button>}
             </div>
-            {a.kind === "branch" ? (
-              <p className="mt-3 text-[12.5px] text-ink-2">
-                Only students on the “{a.variant}” path get this card (set up before paths were removed).{" "}
-                <button onClick={() => set({ audience: { kind: "all" } })} className="underline underline-offset-2 hover:text-ink">Give it to everyone</button>
-              </p>
-            ) : (
-              <>
-                <div className="mt-3"><Seg value={a.kind} options={[["all", "Everyone"], ["student", "One student"]]} onPick={(v) => v !== a.kind && set({ audience: v === "all" ? { kind: "all" } : { kind: "student", studentId: students[0]?.id ?? "" } })} /></div>
-                {a.kind === "student" && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {students.map((s) => (
-                      <button key={s.id} onClick={() => set({ audience: { kind: "student", studentId: s.id } })} aria-pressed={a.studentId === s.id}
-                        className={`press inline-flex h-7 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-[12.5px] ${a.studentId === s.id ? "border-ink" : "border-line hover:border-line-strong"}`}>
-                        <Avatar name={s.name} size={20} />{s.name}
-                      </button>
-                    ))}
-                    {!students.length && <span className="text-[12.5px] text-ink-3">No students yet.</span>}
-                  </div>
-                )}
-              </>
-            )}
           </Panel>
 
           {onSaveToLibrary && (

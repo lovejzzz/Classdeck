@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.68",
+    date: "2026-11-23",
+    changes: [
+      "Card editor: a new Access section brings together what students can do with a card, who gets it and when it's due.",
+      "On a Content card, Students can: Read it, Each edit their own copy, Edit together in groups, or Edit together as a class (it was Who writes in it, under the text).",
+      "Access says who gets the card: everyone, or the students an answer (or a score) deals it to, with a link to that card. Only one student… is still there for the odd exception.",
+      "Map: Add a card opens to the right of + Card, so it doesn't cover the lesson's cards; the map scrolls to show it when needed.",
+      "Questhand 101 describes Access.",
+    ],
+  },
+  {
     version: "0.1.67",
     date: "2026-11-23",
     changes: [
