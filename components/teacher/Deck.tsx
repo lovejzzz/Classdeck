@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { lessonDates, localDay, shortDate, type LessonDate } from "@/lib/dates";
+import { ScheduleDialog } from "./ScheduleDialog";
 import { useEffect, useRef, useState } from "react";
 import { op } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
@@ -60,6 +61,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   const openRef = useRef(false);
   const pushedRef = useRef(false);
   const [agendaFor, setAgendaFor] = useState<string | null>(null);
+  const [scheduleFrom, setScheduleFrom] = useState<string | null>(null);
   const [renamingWeek, setRenamingWeek] = useState<string | null>(null);
   // The session timer is in the address (?run=lesson), so the browser's Back button closes it.
   const [runId, setRunId] = useUrlState("run");
@@ -371,11 +373,18 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     edit(l.id, m.id);
   }
 
-  async function saveToLibrary(m: Module) {
-    const r = await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ module: m, name: m.title }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+  /** Save to my cards: one card, or a card group with its cards, or (from a lesson's menu) a whole lesson. */
+  async function saveToLibrary(m: Module | null, lesson?: Lesson) {
+    const l = lesson ?? (m ? allLessons().find((x) => x.modules.some((y) => y.id === m.id)) : undefined);
+    const body = lesson
+      ? { name: lesson.title, kind: "lesson", modules: lesson.modules }
+      : m && m.type === "group" && l
+        ? { name: m.title, kind: "group", modules: [m, ...l.modules.filter((x) => m.members?.includes(x.id))] }
+        : { module: m, name: m?.title };
+    const r = await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) return toast(r.error ?? "Couldn’t save it", { icon: "x", tone: "bad" });
     await loadLibrary(true);
-    toast("Saved. To use it in any of your courses, press + Card on a lesson, then Saved cards.", { icon: "star" });
+    toast(`Saved${lesson ? ` “${lesson.title}” and its ${lesson.modules.length} cards` : ""}. To use it in any of your courses, press + Card on a lesson, then Saved cards.`, { icon: "star" });
   }
 
   async function duplicate(op_: "duplicateWeek" | "duplicateLesson", id: string, what: string) {
@@ -406,6 +415,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
         toast(`“${l.title}” is today’s lesson`, { icon: "clock" });
       }] as [string, () => void]] : []),
       ...(l.session ? [[`Run the class session (${l.session.minutes} min)`, () => setRunning({ lessonId: l.id, weekTitle: w.title })] as [string, () => void]] : []),
+      ["Schedule lessons from here…", () => setScheduleFrom(l.id)],
       [l.session ? "Edit the session agenda" : "Add a class session", () => {
         if (!l.session) change({ ...l, session: { agenda: [{ label: "Warm-up", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }], minutes: 50 } });
         setAgendaFor(l.id);
@@ -419,6 +429,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
         toast(l.elective ? `“${l.title}” is required again` : `Students choose whether to take “${l.title}”`, { icon: "layers" });
       }],
       ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
+      ...(l.modules.length ? [["Save lesson to my cards", () => saveToLibrary(null, l)] as [string, () => void]] : []),
       ["—", () => {}],
       [`Add a lesson to ${w.title.split(" · ")[0]}`, () => addLesson(w.id)],
       [`Rename ${w.title.split(" · ")[0]}`, () => setRenamingWeek(w.id)],
@@ -523,6 +534,16 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       {agendaFor && (() => { const l = allLessons().find((x) => x.id === agendaFor); return l ? (
         <div className="fixed left-1/2 top-28 z-[55] -translate-x-1/2"><AgendaEditor lesson={l} onChange={change} onClose={() => setAgendaFor(null)} /></div>
       ) : null; })()}
+      {scheduleFrom && (() => {
+        const all = allLessons(), i = all.findIndex((x) => x.id === scheduleFrom);
+        if (i < 0) return null;
+        return (
+          <div className="fixed left-1/2 top-28 z-[55] -translate-x-1/2">
+            <ScheduleDialog lessons={all.slice(i)} start={dates.get(scheduleFrom)?.date} onClose={() => setScheduleFrom(null)}
+              onApply={(dated) => { setScheduleFrom(null); void changeMany(dated); toast(`Dated ${dated.length} lesson${dated.length === 1 ? "" : "s"}, ${shortDate(dated[0].date!)} to ${shortDate(dated[dated.length - 1].date!)}`, { icon: "clock" }); }} />
+          </div>
+        );
+      })()}
       {renamingWeek && (() => { const w = course.weeks.find((x) => x.id === renamingWeek); return w ? (
         <WeekRename title={w.title} onClose={() => setRenamingWeek(null)} onSave={async (title) => { setRenamingWeek(null); if (title && title !== w.title) { await op(course.id, { op: "renameWeek", weekId: w.id, title }); onRefresh(); } }} />
       ) : null; })()}

@@ -32,7 +32,7 @@ export function ForYou({ state, studentId, onOpen, onBoard }: {
   const todos = todoList(state.course, mine, now);
   // Cards the student starred to come back to, in course order.
   const starred = state.course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.filter((m) => mine[m.id]?.starred).map((m) => ({ m, lesson: l, week: w.title }))));
-  const nudges = (state.nudges ?? []).filter((n) => n.studentId === studentId && now - n.at < 7 * 86400_000).sort((a, b) => b.at - a.at);
+  const nudges = (state.nudges ?? []).filter((n) => n.studentId === studentId && !n.from && now - n.at < 7 * 86400_000).sort((a, b) => b.at - a.at);
   const [canNotify, setCanNotify] = useState(() => typeof Notification !== "undefined" && Notification.permission === "granted");
   const seen = useRef<number>(nudges[0]?.at ?? 0);
 

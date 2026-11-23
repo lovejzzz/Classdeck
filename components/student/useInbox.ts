@@ -78,7 +78,8 @@ export function useInbox(course: Course | undefined, studentId: string, progress
       });
     }
   }
-  for (const n of nudges) reviews.push({ id: `n:${n.id}`, at: n.at, group: "teacher", groupLabel: "Your teacher", source: "Reminder", icon: "user", title: "Reminder from your teacher", text: n.text });
+  // The teacher's reminders and messages (not the student's own messages to them).
+  for (const n of nudges) if (!n.from) reviews.push({ id: `n:${n.id}`, at: n.at, group: "teacher", groupLabel: "Your teacher", source: n.moduleId ? "Reminder" : "Message", icon: "message", title: "From your teacher", text: n.text });
   const unread = [...(saved?.notes ?? []), ...reviews].filter((n) => n.at > (saved?.seenAt ?? 0)).sort((a, b) => b.at - a.at);
   function clear() {
     if (!saved) return;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, picked, SCORE, SHARED_ONLY, slotOf, targetsOf, wiresOf, type Wire } from "@/lib/branching";
+import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, mapSlot, picked, SCORE, SHARED_ONLY, slotOf, targetsOf, wiresOf, type Wire } from "@/lib/branching";
 import { bandTone, pathColor, suitOfCard, suitOfKind } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
@@ -362,8 +362,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const dealsSome = (id: string) => wires.some((w) => nodeOf(w.from) === id);
   const [drag, setDrag] = useState<{ port: Port; x: number; y: number; over?: string } | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
+  const [searching, setSearching] = useState(false);
+  // "/" opens the card search (when not typing somewhere).
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || t.closest("input, textarea, [contenteditable=true]")) return;
+      e.preventDefault();
+      setSearching(true);
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, []);
   // The teacher's saved cards, offered in a lesson's + Card menu (loaded when that menu opens).
-  const saved = useLibrary(!readOnly && !!menu);
+  const savedAll = useLibrary(!readOnly && !!menu);
   const [menuLesson, setMenuLesson] = useState<string | null>(null);
   const [hot, setHot] = useState<string | null>(null);
   const [fresh, setFresh] = useState<string | null>(null);
@@ -488,7 +500,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     if (!el || !n) return;
     const room = el.clientWidth - (gap - was);
     const left = n.x * zoom - el.scrollLeft, right = (n.x + W) * zoom - el.scrollLeft;
-    if (left < 0 || right > room) el.scrollTo({ left: Math.max(0, (n.x + W / 2) * zoom - room / 2), behavior: "smooth" });
+    // Up or down too, for a card opened from somewhere else (a search, a link): one scroll, so neither cancels the other.
+    const top = n.y * zoom - el.scrollTop, below = top + 120 * zoom > el.clientHeight;
+    const across = left < 0 || right > room, upDown = top < 0 || below;
+    if (across || upDown) el.scrollTo({
+      left: across ? Math.max(0, (n.x + W / 2) * zoom - room / 2) : el.scrollLeft,
+      top: upDown ? Math.max(0, n.y * zoom - el.clientHeight / 2.4) : el.scrollTop,
+      behavior: "smooth",
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gap, selected]);
 
@@ -550,14 +569,17 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [going, regions]);
   // A card brought into view (from the panel, a search) that is folded away: unfold what hides it first.
-  useEffect(() => {
-    if (!focus || !hidden.has(focus.id)) return;
+  function reveal(target: string) {
     const up = new Set<string>();
     const climb = (id: string) => { for (const w of wires) if (w.to === id) { const f = nodeOf(w.from); if (!up.has(f)) { up.add(f); climb(f); } } };
-    climb(focus.id);
+    climb(target);
     // Scroll to it once the map has redrawn with it in place.
-    setGoing(focus.id);
+    setGoing(target);
     setFolded((f) => new Set([...f].filter((x) => !up.has(x))));
+  }
+  useEffect(() => {
+    if (!focus || !hidden.has(focus.id)) return;
+    reveal(focus.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.at]);
   useEffect(() => {
@@ -692,6 +714,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 
   /** A fresh copy of one of the teacher's saved cards, ready to put down. */
   const copyOf = (sc: SavedCard): Module => ({ ...structuredClone(sc.module), id: makeCard(kindOf(sc.module as Module), "").id, audience: { kind: "all" } } as Module);
+  /** Fresh copies of a saved set (a lesson, or a card group and its cards), wired to each other as they were saved. */
+  const copiesOf = (sc: SavedCard): Module[] => {
+    if (!sc.set) return [copyOf(sc)];
+    const ids = new Map(sc.set.modules.map((m) => [m.id, makeCard("content", "").id]));
+    const to = (x: string | null) => (x ? (ids.get(x) ?? null) : null);
+    return structuredClone(sc.set.modules).map((m) => ({
+      ...m,
+      id: ids.get(m.id)!,
+      audience: { kind: "all" },
+      questions: m.questions?.map((q) => (q.next ? { ...q, next: q.next.map((x) => mapSlot(x, to)) } : q)),
+      bands: m.bands?.map((b) => ({ ...b, next: to(b.next) })),
+      members: m.members?.map((x) => ids.get(x) ?? x),
+    }) as Module);
+  };
 
   async function newCard(port: Port, type: CardKind, into: string, from?: SavedCard) {
     const lesson = lessonWith(port.from);
@@ -720,11 +756,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   }
   function addCard(lessonId: string, type: CardKind, from?: SavedCard) {
     const l = lessons.find((x) => x.id === lessonId)!;
-    const card = from ? copyOf(from) : blank(type, `New ${familyName(type)} card`);
+    const cards = from ? copiesOf(from) : [blank(type, `New ${familyName(type)} card`)];
+    const card = cards[0];
     const r = regions.find((x) => x.lesson.id === lessonId);
-    if (r) born.set(card.id, { x: r.x + r.w - W, y: r.y + TOP - 40 });
+    if (r) cards.forEach((c, i) => born.set(c.id, { x: r.x + r.w - W + i * 12, y: r.y + TOP - 40 }));
     setMenu(null);
-    onChange({ ...l, modules: [...l.modules, card] });
+    onChange({ ...l, modules: [...l.modules, ...cards] });
     setFresh(card.id);
     onEdit(lessonId, card.id);
   }
@@ -740,7 +777,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
    * What a new card can be: Content, Question, or one of the teacher's Saved cards (from Save to my cards, in any of
    * their courses). Saved cards open a list in the same menu, with a way back.
    */
-  function kindPicker(onKind: (t: CardKind) => void, onSaved: (sc: SavedCard) => void) {
+  function kindPicker(onKind: (t: CardKind) => void, onSaved: (sc: SavedCard) => void, singles = false) {
+    // An answer deals one card, so its menu offers saved single cards only (not whole lessons or groups).
+    const saved = singles ? savedAll.filter((x) => !x.set) : savedAll;
     if (menu?.saved) return (
       <div>
         <button onClick={() => setMenu({ ...menu, saved: false })} className="press flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[12.5px] font-medium text-ink hover:bg-lane">
@@ -753,7 +792,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                 <button onClick={() => onSaved(sc)} className="press flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-[12.5px]">
                   <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfCard(sc.module as Module).tint }} />
                   <span className="min-w-0 flex-1 truncate">{sc.name}</span>
-                  <span className="flex-none text-[11px] text-ink-3">{faceMeta(sc.module as Module).name}</span>
+                  <span className="flex-none text-[11px] text-ink-3">{sc.set ? `${sc.set.kind === "group" ? "Card group" : "Lesson"} · ${sc.set.modules.filter((m) => m.type !== "group").length} cards` : faceMeta(sc.module as Module).name}</span>
                 </button>
                 <button onClick={() => forgetSaved(sc)} aria-label={`Remove “${sc.name}” from Saved cards`} title="Remove from Saved cards" className="press mr-1 flex h-6 w-6 flex-none items-center justify-center rounded-md text-ink-3 opacity-0 hover:bg-white hover:text-bad focus:opacity-100 group-hover/saved:opacity-100"><Icon name="x" size={11} /></button>
               </div>
@@ -1165,6 +1204,19 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           <button onClick={fitAll} className="mono h-7 w-12 rounded-lg text-center hover:bg-lane" title="Fit the map’s width (press again to see the whole course)">{Math.round(zoom * 100)}%</button>
           <button onClick={() => zoomTo(zoom + 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom in">+</button>
         </div>
+        <MapSearch cards={all} lessons={lessons} open={searching} onOpen={setSearching} onPick={(lessonId, id) => {
+          setSearching(false);
+          // Open it first: the card panel makes room by moving the map, so the map goes to the card once that's done.
+          onEdit(lessonId, id);
+          setTimeout(() => {
+            if (hidden.has(id)) reveal(id); else bringIntoView(id);
+            setTimeout(() => {
+              const el = document.querySelector(`[data-node="${CSS.escape(id)}"]`);
+              el?.classList.add("dealt-glow");
+              setTimeout(() => el?.classList.remove("dealt-glow"), 3600);
+            }, 500);
+          }, 480);
+        }} />
         {!readOnly && (
           <button onClick={() => { setPicking((v) => !v); setJiggle(false); }} aria-pressed={picking} title="Put cards together as one card group (any kind of card). With question cards in it, its score can deal cards"
             className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${picking ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
@@ -1575,7 +1627,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       </button>
                     ))}
                   </div>
-                  {kindPicker((t) => newCard(menu.port, t, into), (sc) => newCard(menu.port, "content", into, sc))}
+                  {kindPicker((t) => newCard(menu.port, t, into), (sc) => newCard(menu.port, "content", into, sc), true)}
                   {menu.mode === "port" && dealt.length > 0 && (
                     <>
                       <div className="px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">{isScore ? "Deals" : dealt.length > 1 ? `Deals ${dealt.length} cards` : "Deals"}</div>
@@ -1754,6 +1806,70 @@ function TrashBin({ entries, hot, dragging, onRestore, onForget }: { entries: Tr
               );
             })}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** All the words on a card, for search: its title, text, questions, choices and explanations. */
+function cardWords(m: Module): string {
+  const qs = (m.questions ?? []).flatMap((q) => [q.text, ...(q.options ?? []), q.explain ?? "", ...(q.accept ?? [])]);
+  return [m.title, m.body ?? "", ...qs].join(" \n ");
+}
+
+/**
+ * Find a card by any of its words. A box over the map's toolbar: type, then pick a result (or press Enter for the
+ * first) to bring that card into view and open it. "/" opens it.
+ */
+function MapSearch({ cards, lessons, open, onOpen, onPick }: {
+  cards: { m: Module; lessonId: string }[];
+  lessons: Lesson[];
+  open: boolean;
+  onOpen: (v: boolean) => void;
+  onPick: (lessonId: string, id: string) => void;
+}) {
+  const [q, setQ] = useState("");
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = words.length ? cards.map((c) => {
+    const text = cardWords(c.m);
+    const low = text.toLowerCase();
+    if (!words.every((w) => low.includes(w))) return null;
+    // A little of the text around the first word found, unless it's in the title.
+    const inTitle = words.every((w) => c.m.title.toLowerCase().includes(w));
+    const at = low.indexOf(words[0]);
+    const snip = inTitle ? "" : `${at > 30 ? "…" : ""}${plainMath(text.slice(Math.max(0, at - 30), at + 60).replace(/\s+/g, " "))}…`;
+    return { ...c, snip, score: inTitle ? 0 : 1 };
+  }).filter((x): x is NonNullable<typeof x> => !!x).sort((a, b) => a.score - b.score).slice(0, 8) : [];
+  const lessonTitle = (id: string) => lessons.find((l) => l.id === id)?.title ?? "";
+  if (!open) return (
+    <button onClick={() => onOpen(true)} title="Find a card (/)" aria-label="Search cards"
+      className="pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-2.5 text-[12.5px] text-ink-2 shadow-sm">
+      <Icon name="search" size={13} /> Search
+    </button>
+  );
+  return (
+    <div className="pointer-events-auto relative">
+      <div className="flex h-8 w-64 items-center gap-1.5 rounded-xl border border-[#4b56a8]/40 bg-white px-2.5 shadow-sm">
+        <Icon name="search" size={13} className="text-ink-3" />
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a card…" aria-label="Find a card"
+          onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setQ(""); onOpen(false); } if (e.key === "Enter" && hits[0]) { onPick(hits[0].lessonId, hits[0].m.id); setQ(""); } }}
+          onBlur={() => setTimeout(() => { if (!q) onOpen(false); }, 150)}
+          className="min-w-0 flex-1 bg-transparent text-[12.5px] outline-none" />
+        <button onClick={() => { setQ(""); onOpen(false); }} aria-label="Close search" className="text-ink-3 hover:text-ink"><Icon name="x" size={11} /></button>
+      </div>
+      {words.length > 0 && (
+        <div className="pop absolute bottom-10 left-0 w-80 rounded-2xl border border-line bg-white p-1.5 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]">
+          {hits.length ? hits.map((h) => (
+            <button key={h.m.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { onPick(h.lessonId, h.m.id); setQ(""); }}
+              className="press flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-lane">
+              <span className="mt-1 h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfCard(h.m).tint }} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[12.5px] font-medium">{h.m.title || "Untitled card"}</span>
+                <span className="block truncate text-[11.5px] text-ink-3">{lessonTitle(h.lessonId)}{h.snip ? ` · ${h.snip}` : ""}</span>
+              </span>
+            </button>
+          )) : <p className="px-2 py-1.5 text-[12.5px] text-ink-3">No card has “{q.trim()}”.</p>}
         </div>
       )}
     </div>

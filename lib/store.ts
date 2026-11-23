@@ -35,8 +35,11 @@ export interface User {
 export interface SavedCard {
   id: string;
   name: string;
-  /** The card as saved, without its id, who it's for, or a due date. */
+  /** The card as saved, without its id, who it's for, or a due date. For a set, its first card. */
   module: Omit<Module, "id">;
+  /** A set of cards saved together (a whole lesson, or a card group with its cards), in order, with the answers and
+   *  scores that deal cards inside the set still wired. Their ids only tie the set together; copies get new ones. */
+  set?: { kind: "lesson" | "group"; modules: Module[] };
   at: number;
 }
 

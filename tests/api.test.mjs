@@ -747,6 +747,39 @@ async function main() {
     check("an unknown suit is dropped", back[1].suit === undefined, back[1].suit);
   }
 
+  // ---- Messages between the teacher and one student
+  {
+    const mc = (await A.post("/api/courses", { title: `Messages ${run}`, start: "blank" })).id;
+    made["messages"] = mc;
+    await A.op(mc, { op: "addStudents", names: "Ola\nPim" });
+    const links = (await A.op(mc, { op: "setupLinks" })).links;
+    const ola = await invited(mc, links.find((x) => x.name === "Ola").link, "Ola");
+    const pim = await invited(mc, links.find((x) => x.name === "Pim").link, "Pim");
+    check("teacher messages a student", (await A.op(mc, { op: "message", studentId: ola.id, text: "Hi Ola" })).ok);
+    const seen = (await ola.c.get(`/api/course/${mc}?as=${ola.id}`)).nudges ?? [];
+    check("the student sees the teacher's message", seen.some((n) => n.text === "Hi Ola" && !n.from));
+    check("another student doesn't", !((await pim.c.get(`/api/course/${mc}?as=${pim.id}`)).nudges ?? []).some((n) => n.text === "Hi Ola"));
+    check("the student replies", (await ola.c.op(mc, { op: "messageTeacher", studentId: ola.id, text: "Thanks!" })).ok);
+    check("a student can't write as someone else", (await ola.c.op(mc, { op: "messageTeacher", studentId: pim.id, text: "fake" })).ok !== true);
+    check("a student can't use the teacher's message op", (await ola.c.op(mc, { op: "message", studentId: ola.id, text: "fake" })).ok !== true);
+    const tv = (await A.state(mc)).nudges ?? [];
+    check("the teacher sees the reply, unread", tv.some((n) => n.text === "Thanks!" && n.from === "student" && !n.read));
+    await A.op(mc, { op: "readMessages", studentId: ola.id });
+    check("the teacher reads it", ((await A.state(mc)).nudges ?? []).find((n) => n.text === "Thanks!")?.read === true);
+    await ola.c.op(mc, { op: "readMyMessages", studentId: ola.id });
+    check("the student reads theirs", ((await ola.c.get(`/api/course/${mc}?as=${ola.id}`)).nudges ?? []).find((n) => n.text === "Hi Ola")?.read === true);
+    check("an empty message is refused", (await A.op(mc, { op: "message", studentId: ola.id, text: "  " })).ok === false);
+  }
+
+  // ---- New teachers start with Questhand 101
+  {
+    const N = await teacher("new");
+    const mine = (await N.get("/api/courses")).courses ?? [];
+    check("a new teacher has Questhand 101", mine.some((c) => c.title === "Questhand 101"), mine.map((c) => c.title));
+    const S1 = await student("Fresh student");
+    check("a new student account doesn't", ((await S1.get("/api/courses")).courses ?? []).length === 0);
+  }
+
   // ---- Demo course
   const demo = await anon.state("demo");
   check("demo is open to visitors", demo.status === 200);

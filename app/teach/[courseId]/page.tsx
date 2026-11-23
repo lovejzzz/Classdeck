@@ -23,6 +23,7 @@ import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
 import { StudentViewButton } from "@/components/teacher/StudentViewButton";
 import { SiteFooter } from "@/components/SiteFooter";
+import { MessageThread } from "@/components/MessageThread";
 
 // Map (the course as a card tree) is the default; List is the same cards in rows of weeks.
 const TABS = [["map", "Map"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
@@ -63,6 +64,8 @@ export default function TeachPage() {
   const seenKey = `seen-at:teacher:${courseId}`;
   const [seenAt, setSeenAt] = useState(() => (typeof window === "undefined" ? 0 : readSeen(seenKey)));
   const [inviting, setInviting] = useState(false);
+  // The conversation with one student that's open (Students → Message, or a new message in Class activity).
+  const [talkingTo, setTalkingTo] = useState<string | null>(null);
 
   if (needAuth && !state) return <SignInNeeded who="teacher" courseId={courseId} next={`/teach/${courseId}`} detail={authDetail} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
@@ -135,6 +138,10 @@ export default function TeachPage() {
         : `Worked through ${cards.length} cards${wrong.length ? ` · ${wrong.length} wrong: ${wrong.map((x) => `${moduleOf(x.moduleId)?.m.title ?? "a card"} (${x.text.replace(/^Q\d+: /, "")})`).join("; ")}` : ""}`,
     };
   }).reverse();
+  // Students' messages the teacher hasn't read yet, newest first among the notes.
+  const unreadMsgs = (state.nudges ?? []).filter((n) => n.from === "student" && !n.read);
+  for (const n of unreadMsgs) notes.push({ id: `msg:${n.id}`, at: n.at, group: n.studentId, groupLabel: studentName(n.studentId), source: "Message", icon: "message", title: studentName(n.studentId), text: n.text.length > 160 ? `${n.text.slice(0, 160)}…` : n.text });
+  notes.sort((a, b) => b.at - a.at);
 
   return (
     <MarksContext.Provider value={{ courseId, me: "teacher", marks: state.marks ?? [], names: Object.fromEntries(state.course.students.map((s) => [s.id, s.name])), refresh }}>
@@ -184,6 +191,7 @@ export default function TeachPage() {
               setSeenAt(now);
             }}
             onPick={(n) => {
+              if (n.id.startsWith("msg:")) { setTalkingTo(n.group); return; }
               const ev = state.events.find((e) => e.id === n.id);
               const found = ev && moduleOf(ev.moduleId);
               if (!ev || !found) return;
@@ -294,12 +302,22 @@ export default function TeachPage() {
           )}
           {tab === "map" && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} view="map" />}
           {tab === "students" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
-          {tab === "students" && <div className={course.students.length ? "mt-8" : ""}><Settings part="students" course={course} readOnly={viewer} onInvite={() => setInviting(true)} onChanged={refresh} /></div>}
+          {tab === "students" && <div className={course.students.length ? "mt-8" : ""}><Settings part="students" course={course} readOnly={viewer} onInvite={() => setInviting(true)} onChanged={refresh} nudges={state.nudges} onMessage={setTalkingTo} /></div>}
           {tab === "grades" && (course.students.length > 0 || courseId === "demo") && <Gradebook state={state} onReview={(sid, lid, mid) => { setPicked(lid); setTab("students"); setSel({ sid, mid }); }} />}
           {tab === "settings" && !viewer && <><Settings course={course} me={state.me} onChanged={refresh} /><SiteFooter /></>}
         </main>
       </div>
     </div>
+      {talkingTo && (() => {
+        const st = course.students.find((x) => x.id === talkingTo);
+        if (!st) return null;
+        return (
+          <MessageThread me="teacher" title={st.name} subtitle="Only this student sees these messages." messages={(state.nudges ?? []).filter((n) => n.studentId === st.id)}
+            onClose={() => setTalkingTo(null)}
+            onRead={() => { void op(courseId, { op: "readMessages", studentId: st.id }).then(refresh); }}
+            onSend={async (text) => { const r = await op<{ ok?: boolean; error?: string }>(courseId, { op: "message", studentId: st.id, text }); if (r.ok === false) { toast(r.error ?? "Couldn’t send it", { icon: "x", tone: "bad" }); return false; } await refresh(); return true; }} />
+        );
+      })()}
       {inviting && <InviteStudents course={course} me={state.me} onClose={() => setInviting(false)} onChanged={refresh} />}
     </MarksContext.Provider>
   );

@@ -23,6 +23,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 const STUDENT_OPS = new Set([
   "savePlan", "drill", "feel", "saveFlow", "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
   "retakeQuiz", "rehearse", "fillForm", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
+  "messageTeacher", "readMyMessages",
 ]);
 
 const AUTO_LESSON = /^Lesson \d+$/;
@@ -1077,6 +1078,26 @@ async function change(request: Request, courseId: string, body: Record<string, a
       for (const sid of ids) list.push({ id: uid("n-"), studentId: sid, text, moduleId: body.moduleId ? String(body.moduleId) : undefined, at: Date.now() });
       if (list.length > 1000) list.splice(0, list.length - 1000);
       extra = { sent: ids.length };
+      break;
+    }
+    case "message":
+    case "messageTeacher": {
+      // A message in the conversation between the teacher and one student ("message": the teacher writes;
+      // "messageTeacher": the student does).
+      const text = String(body.text ?? "").trim().slice(0, 2000);
+      if (!text || !isStudent(body.studentId)) return fail("Write a message");
+      const list = (d.nudges[courseId] ??= []);
+      const msg = { id: uid("n-"), studentId: body.studentId, text, at: Date.now(), ...(body.op === "messageTeacher" ? { from: "student" as const } : {}) };
+      list.push(msg);
+      if (list.length > 3000) list.splice(0, list.length - 3000);
+      extra = { message: msg };
+      break;
+    }
+    case "readMessages":
+    case "readMyMessages": {
+      // The teacher has read a student's messages ("readMessages"), or the student has read the teacher's.
+      const fromStudent = body.op === "readMessages";
+      for (const n of d.nudges[courseId] ?? []) if (n.studentId === body.studentId && !!n.from === fromStudent) n.read = true;
       break;
     }
     case "resetPin": {

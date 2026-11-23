@@ -51,3 +51,21 @@ export function todayLessonId(course: Pick<Course, "weeks" | "currentLessonId">,
 export function shortDate(day: string): string {
   return new Date(`${day}T12:00:00`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
+
+/** 0 = Sunday … 6 = Saturday, for a YYYY-MM-DD day. */
+export const weekday = (day: string) => new Date(`${day}T12:00:00`).getDay();
+
+/**
+ * Dates for a run of lessons, in order: the first on `start` (or the first class day after it), each next one on the
+ * next class day. `days` are the weekdays class meets (0 = Sunday); `skip` are days with no class (holidays).
+ */
+export function scheduleDates(count: number, start: string, days: number[], skip: string[] = []): string[] {
+  const out: string[] = [];
+  if (!days.length || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return out;
+  const off = new Set(skip);
+  let d = start;
+  for (let guard = 0; out.length < count && guard < 3000; guard++, d = addDays(d, 1)) {
+    if (days.includes(weekday(d)) && !off.has(d)) out.push(d);
+  }
+  return out;
+}

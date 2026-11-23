@@ -379,7 +379,7 @@
        "id": "m-q1tpl-reuse",
        "type": "read",
        "title": "Use a card again",
-       "body": "Made a card you'll want again, like a weekly reflection or a check-in poll? In its panel, press Save to my cards (at the bottom).\n\nThen, in any of your courses, add a card as usual (+ Card on a lesson, or an answer's dot) and choose Saved cards. Pick one to put down a copy, and change it as you like. The × beside one takes it off the list.",
+       "body": "Made a card you'll want again, like a weekly reflection or a check-in poll? In its panel, press Save to my cards (at the bottom). On a card group, that saves the group with its cards. To save a whole lesson, use its ⋯ menu → Save lesson to my cards.\n\nThen, in any of your courses, add a card as usual (+ Card on a lesson, or an answer's dot) and choose Saved cards. Pick one to put down a copy, and change it as you like. The × beside one takes it off the list.",
        "audience": {
         "kind": "all"
        },
@@ -392,7 +392,7 @@
        "id": "m-q1tpl-dates",
        "type": "read",
        "title": "Dates and today's lesson",
-       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too (under When and for whom: Today, +3 days, +1 week). Students see what's due in To-do, and a card past its date shows as Overdue.",
+       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nTo date them all at once, open a lesson's ⋯ menu → Schedule lessons from here…: pick the first class, the days class meets and any days off, and every lesson from there gets its date.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too (under When and for whom: Today, +3 days, +1 week). Students see what's due in To-do, and a card past its date shows as Overdue.",
        "audience": {
         "kind": "all"
        },
@@ -632,7 +632,7 @@
        "id": "m-q1tpl-moves",
        "type": "read",
        "title": "Move, pick and tidy",
-       "body": "- Contents: point at the map's left edge (the bar with ›) to see every week and lesson. Click one to go there.\n- Move a card: drag it along its row, or into another lesson.\n- Pick several: drag a box on empty space (Shift adds more). Then make them a card group, or delete them.\n- Pan: hold Space and drag.\n- Zoom: − and + under the map, or pinch. The % button fits the map's width; press it again to see the whole course.\n- Fold all / Unfold all hides or shows the cards answers deal.",
+       "body": "- Contents: point at the map's left edge (the bar with ›) to see every week and lesson. Click one to go there.\n- Search: press / (or Search under the map) and type any word on a card; pick a result to go to it.\n- Move a card: drag it along its row, or into another lesson.\n- Pick several: drag a box on empty space (Shift adds more). Then make them a card group, or delete them.\n- Pan: hold Space and drag.\n- Zoom: − and + under the map, or pinch. The % button fits the map's width; press it again to see the whole course.\n- Fold all / Unfold all hides or shows the cards answers deal.",
        "audience": {
         "kind": "all"
        },
@@ -658,7 +658,7 @@
        "id": "m-q1tpl-keys",
        "type": "read",
        "title": "Keyboard shortcuts",
-       "body": "Press ? on the course page for the full list. The ones you'll use most:\n\n- 1 to 4: Map, Students, Grades, Settings.\n- n: a new card in today's lesson.\n- In a card's panel, [ and ] go to the previous and next card.\n- On the map, the arrow keys move between cards, and Enter opens one.",
+       "body": "Press ? on the course page for the full list. The ones you'll use most:\n\n- 1 to 4: Map, Students, Grades, Settings.\n- n: a new card in today's lesson.\n- /: find a card.\n- In a card's panel, [ and ] go to the previous and next card.\n- On the map, the arrow keys move between cards, and Enter opens one.",
        "audience": {
         "kind": "all"
        },
@@ -1090,7 +1090,7 @@
        "id": "m-q1tpl-class-list",
        "type": "read",
        "title": "Your class list",
-       "body": "In Students, each student has Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nDiscussion groups: Auto-group, or tap a student to move them to another group.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
+       "body": "In Students, each student has Message (a private conversation: only that student sees it, and they can write back from their board), Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nDiscussion groups: Auto-group, or tap a student to move them to another group.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
        "audience": {
         "kind": "all"
        },

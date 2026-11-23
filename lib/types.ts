@@ -151,12 +151,20 @@ export interface Plan {
 }
 
 /** A reminder the teacher sent to a student. */
+/**
+ * A message between the teacher and one student: a reminder or a note from the teacher, or a student's message to
+ * the teacher (`from: "student"`). Together they're the conversation with that student.
+ */
 export interface Nudge {
   id: string;
   studentId: string;
   text: string;
   moduleId?: string;
   at: number;
+  /** Written by the student. Unset: by the teacher. */
+  from?: "student";
+  /** The other side has opened it. */
+  read?: boolean;
 }
 
 export type AnswerValue = number | string | number[] | string[];

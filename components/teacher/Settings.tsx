@@ -10,14 +10,16 @@ import { useState } from "react";
 import { ask } from "../Confirm";
 import { Clearable } from "../Clearable";
 import { DeleteCourse } from "./DeleteCourse";
-import type { Course, CourseState } from "@/lib/types";
+import type { Course, CourseState, Nudge } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { uid } from "@/lib/profile";
 import type { Group } from "@/lib/types";
 
 /** The Settings tab (part "settings") and the Students tab (part "students") share this component and its helpers. */
-export function Settings({ course, onChanged, part = "settings", readOnly = false, onInvite, me }: {
+export function Settings({ course, onChanged, part = "settings", readOnly = false, onInvite, me, nudges = [], onMessage }: {
   course: Course; connectors?: ConnectorInfo[]; onChanged: () => void; part?: "settings" | "students"; readOnly?: boolean; onInvite?: () => void; me?: CourseState["me"];
+  /** The class's messages, for the unread count beside each student; and opening a conversation with one. */
+  nudges?: Nudge[]; onMessage?: (studentId: string) => void;
 }) {
   const [sharing, setSharing] = useState(false);
   const owner = me?.role === "owner" || course.id === "demo";
@@ -72,6 +74,15 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
                   <span className="block truncate text-[14px]">{st.name}</span>
                   <span className="block truncate text-[12.5px] text-ink-3">{st.userId ? `${st.email ?? "Has an account"} · joined` : `${st.email ? `${st.email} · ` : ""}not joined yet`}</span>
                 </span>
+                {onMessage && (() => {
+                  const unread = nudges.filter((n) => n.studentId === st.id && n.from === "student" && !n.read).length;
+                  return (
+                    <button onClick={() => onMessage(st.id)} aria-label={`Message ${st.name}${unread ? ` (${unread} new)` : ""}`}
+                      className={`btn press h-8 px-2.5 text-[12px] ${unread ? "btn-dark" : "btn-quiet"}`}>
+                      <Icon name="message" size={12} /> Message{unread ? <span className="mono ml-0.5 rounded-full bg-white/20 px-1.5">{unread}</span> : null}
+                    </button>
+                  );
+                })()}
                 {!readOnly && (
                   <span className="flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
                     {!st.userId && (

@@ -27,10 +27,11 @@ import { ForYou } from "@/components/student/ForYou";
 import { Electives } from "@/components/student/Electives";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
-import { setPreview, useConnectors, useCourse, useQuery } from "@/lib/client";
+import { op, setPreview, useConnectors, useCourse, useQuery } from "@/lib/client";
 import { PreviewBar } from "@/components/student/PreviewBar";
 import { toast } from "@/lib/toast";
 import { suitOfCard } from "@/lib/ui";
+import { MessageThread } from "@/components/MessageThread";
 import type { Lesson, Module, Profile, Progress, Status } from "@/lib/types";
 
 const narrowQuery = "(max-width: 639px)";
@@ -137,6 +138,7 @@ export default function LearnPage() {
   // Cards an answer just dealt: marked New until opened, and dealt into place on the board with a short flight once
   // the card that dealt them closes (or at once, if no card is open).
   const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const [talking, setTalking] = useState(false);
   const toDeal = useRef<string[]>([]);
   const liftOpen = useRef(false);
   useEffect(() => { liftOpen.current = !!lift; }, [lift]);
@@ -443,6 +445,14 @@ export default function LearnPage() {
           <section className="mx-auto max-w-6xl px-4 pt-7">
             <div className="flex flex-wrap items-center gap-3">
               <div className="eyebrow flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap"><Avatar name={student.name} size={18} /><span className="truncate">{course.title}{course.subtitle ? ` · ${course.subtitle}` : ""} · {student.name}</span></div>
+              {(() => {
+                const unread = (state.nudges ?? []).filter((n) => n.studentId === studentId && !n.from && !n.read).length;
+                return (
+                  <button onClick={() => setTalking(true)} aria-label={`Messages with your teacher${unread ? ` (${unread} new)` : ""}`} className={`btn press h-8 ${unread ? "btn-dark" : "btn-ghost"}`}>
+                    <Icon name="message" size={13} /> Messages{unread ? <span className="mono rounded-full bg-white/20 px-1.5">{unread}</span> : null}
+                  </button>
+                );
+              })()}
               <Link href={`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`} className="btn btn-ghost press h-8"><Icon name="board" size={13} /> My board</Link>
               <Shortcuts
                 list={[
@@ -677,6 +687,18 @@ export default function LearnPage() {
         </>
       )}
 
+      {talking && (
+        <MessageThread me="student" title="Your teacher" subtitle={course.title}
+          messages={(state.nudges ?? []).filter((n) => n.studentId === studentId)}
+          onClose={() => setTalking(false)}
+          onRead={() => { void op(courseId, { op: "readMyMessages", studentId }).then(() => refresh()); }}
+          onSend={async (text) => {
+            const r = await op<{ ok?: boolean; error?: string }>(courseId, { op: "messageTeacher", studentId, text });
+            if (r.ok === false) { toast(r.error ?? "Couldn’t send it", { icon: "x", tone: "bad" }); return false; }
+            await refresh();
+            return true;
+          }} />
+      )}
       {burst && <Burst key={burst.key} seed={burst.key} x={burst.x} y={burst.y} colors={burst.colors} onDone={() => setBurst(null)} />}
 
       {!isPreview && <BackCloses name="card" restore={restoring} value={lift?.open ? lift.id : null} onBack={() => close()} />}

@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.57",
+    date: "2026-11-23",
+    changes: [
+      "Schedule lessons from here… (in a lesson's ⋯ menu): pick the first class, the days class meets and any days off, and this lesson and every one after it get their dates, shown before they're set. Electives keep no date.",
+      "Save a whole lesson (its ⋯ menu → Save lesson to my cards), or a card group with its cards (Save to my cards on the group). Put either down from Saved cards in any of your courses: the cards come with the answers and scores that deal cards inside them still wired. Saving a card group used to save only the group, without its cards.",
+      "Find a card: Search under the map (or press /) looks through every card's title, text, questions and choices. Pick a result and the map goes to it and opens it.",
+      "Messages: talk with one student privately. In Students, each student has Message; students write back from Messages on their board. Unread messages show beside the student's name and in Class activity. Reminders from the teacher are part of the same conversation.",
+      "Opening a card from elsewhere (a search, a link) brings it into view up and down, not only sideways.",
+    ],
+  },
+  {
     version: "0.1.56",
     date: "2026-11-23",
     changes: [
