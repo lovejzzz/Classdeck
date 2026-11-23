@@ -12,6 +12,7 @@ import { rolesFor, sessionIndex } from "@/lib/roles";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { WorkComposer } from "./WorkComposer";
 import { SUBSKILLS } from "@/lib/onboarding";
+import { groupFor } from "@/lib/shared";
 
 type Rubric = Record<string, { level?: number; note?: string }>;
 type FbIn = { observed: string; effect: string; next: string; level?: number; rubric?: Rubric };
@@ -172,7 +173,8 @@ export function Studio({
   posts: StudioPost[]; feedback: Feedback[]; progress?: Progress; lessonWork: { from: string; a: Attachment }[]; onChanged: () => void;
 }) {
   const me = course.students.find((s) => s.id === studentId)!;
-  const group = course.groups?.find((g) => g.studentIds.includes(studentId));
+  // The group this card uses (its own grouping, or the course's Discussion groups).
+  const group = groupFor(course, m, studentId);
   const mine = posts.find((p) => p.moduleId === m.id && p.studentId === studentId);
   // Peers you haven't replied to come first, so the next person to help is always at the top.
   const replied = (postId: string) => feedback.some((f) => f.postId === postId && f.fromId === studentId);

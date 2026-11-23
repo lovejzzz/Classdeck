@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.62",
+    date: "2026-11-23",
+    changes: [
+      "Groups are made on the card that needs them: choose Each group (writing together, or a discussion in groups), then Make groups. Name the groups, split the class at random into as many groups as you like, or tap students into each group; name each group too.",
+      "Groups you make are kept in the course: another card picks them from the list instead of making them again. Make new ones whenever the groups change; changing groups changes them on every card that uses them.",
+      "Students → Groups lists every set of groups in the course, to change or remove. New courses no longer start with a group, and new students aren't put in one.",
+      "A card on Each group with no groups made yet has the whole class as one group.",
+    ],
+  },
+  {
     version: "0.1.61",
     date: "2026-11-23",
     changes: [

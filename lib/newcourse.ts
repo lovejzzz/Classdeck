@@ -1,5 +1,5 @@
 import { cloneWeek } from "./clone";
-import { fromPreset, uid } from "./profile";
+import { fromPreset } from "./profile";
 import { db } from "./store";
 import { randomCode } from "./uploads";
 import { DEFAULT_LEVELS } from "./skillsets";
@@ -32,7 +32,8 @@ export function makeCourse(ownerId: string, title: string, weeks: Week[], extra:
     students: [],
     skills: [],
     levels: DEFAULT_LEVELS,
-    groups: [{ id: uid("g-"), name: "Studio A", studentIds: [] }],
+    // No groups to start: groups are made on the cards that need them.
+    groups: [],
     currentLessonId: weeks[0].lessons[0].id,
     enabledConnectors: ["wikipedia", "dictionary", "ai"],
     weeks,

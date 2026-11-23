@@ -559,6 +559,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           module={curModule}
           students={course.students}
           skills={course.skills}
+          course={course}
+          onCourseChanged={onRefresh}
           started={course.students.filter((st) => { const p = progress[st.id]?.[curModule.id]; return !!p && (p.status !== "todo" || !!p.output || !!p.work?.length); }).length}
           open={editorOpen}
           onChange={change}

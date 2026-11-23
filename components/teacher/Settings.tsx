@@ -12,8 +12,7 @@ import { Clearable } from "../Clearable";
 import { DeleteCourse } from "./DeleteCourse";
 import type { Course, CourseState, Nudge } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
-import { uid } from "@/lib/profile";
-import type { Group } from "@/lib/types";
+import { GroupingsList } from "./Groupings";
 
 /** The Settings tab (part "settings") and the Students tab (part "students") share this component and its helpers. */
 export function Settings({ course, onChanged, part = "settings", readOnly = false, onInvite, me, nudges = [], onMessage }: {
@@ -41,19 +40,6 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
     if (r.ok === false) toast(r.error ?? "That didn’t save", { icon: "x", tone: "bad" });
     else toast(note);
   };
-  const groups = course.groups ?? [];
-  const unassigned = course.students.filter((s) => !groups.some((g) => g.studentIds.includes(s.id)));
-  const saveGroups = async (next: Group[]) => {
-    await op(course.id, { op: "setGroups", groups: next });
-    onChanged();
-  };
-  /** Tapping a student moves them to the next group (and from the last group to unassigned). */
-  const moveOn = (sid: string) => {
-    const from = groups.findIndex((g) => g.studentIds.includes(sid));
-    const to = from + 1 < groups.length ? from + 1 : -1;
-    saveGroups(groups.map((g, i) => ({ ...g, studentIds: i === from ? g.studentIds.filter((x) => x !== sid) : i === to ? [...g.studentIds, sid] : g.studentIds })));
-  };
-
   return (
     <div className="space-y-6">
       {part === "students" ? (
@@ -140,66 +126,23 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
         </label>
       </section>
 
-      {/* Groups matter only to a discussion run in groups: show them once a course has one, or already has groups. */}
-      {(course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => m.type === "studio"))) || (course.groups?.length ?? 0) > 1) && (
-      <section className="card p-6">
-        <div className="flex items-center">
-          <h3 className="flex-1 text-[15px] font-medium">Discussion groups</h3>
-          <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6 }); onChanged(); toast("Split the class into balanced groups", { icon: "users" }); }} className="btn btn-ghost press mr-2 h-8"><Icon name="users" size={13} /> Auto-group</button>
-          {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
-            <button onClick={async () => { await op(course.id, { op: "autoGroup", size: 6, by: "elective" }); onChanged(); toast("Grouped students who share an elective", { icon: "users" }); }}
-              title="Students who chose the same elective share a group, so early feedback uses the same rubric" className="btn btn-ghost press mr-2 h-8"><Icon name="layers" size={13} /> Group by elective</button>
-          )}
-          {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
-            <label className="mr-2 inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
-              Each student takes at least
-              <input type="number" min={0} max={10} defaultValue={course.electiveMin ?? 2} aria-label="Minimum electives"
-                onBlur={async (e) => { await op(course.id, { op: "setElectiveMin", min: Number(e.target.value) }); onChanged(); }}
-                className="field h-8 w-14 py-0 text-center" />
-              electives
-            </label>
-          )}
-          <button onClick={() => saveGroups([...groups, { id: uid("g-"), name: `Studio ${String.fromCharCode(65 + groups.length)}`, studentIds: [] }])} className="btn btn-ghost press h-8"><Icon name="plus" size={13} /> Add group</button>
-        </div>
-        <p className="mt-1 text-[13px] text-ink-3">Groups of 4–6 work best. Tap a student to move them to the next group. Students see and give feedback only within their own group.</p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {groups.map((g) => (
-            <div key={g.id} className="rounded-xl bg-lane p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <input defaultValue={g.name} onBlur={(e) => e.target.value !== g.name && saveGroups(groups.map((x) => (x.id === g.id ? { ...x, name: e.target.value || x.name } : x)))}
-                  aria-label="Group name" className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-[13.5px] font-medium hover:border-line focus:border-line-strong focus:bg-white focus:outline-none" />
-                <span className={`mono ${g.studentIds.length > 6 || (g.studentIds.length > 0 && g.studentIds.length < 3) ? "text-warn" : ""}`}>{g.studentIds.length}</span>
-                {g.studentIds.length === 0 && (
-                  <button onClick={() => saveGroups(groups.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name}`} className="btn btn-quiet press h-6 w-6 justify-center px-0"><Icon name="x" size={12} /></button>
-                )}
-              </div>
-              <div className="flex min-h-8 flex-wrap gap-1.5">
-                {g.studentIds.map((sid) => {
-                  const st = course.students.find((x) => x.id === sid);
-                  return st && (
-                    <button key={sid} onClick={() => moveOn(sid)} className="pop press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
-                      <Avatar name={st.name} size={20} />{st.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-          {unassigned.length > 0 && (
-            <div className="rounded-xl border border-dashed border-line-strong p-3">
-              <div className="mb-2 text-[13.5px] font-medium text-ink-2">Not in a group <span className="mono">{unassigned.length}</span></div>
-              <div className="flex flex-wrap gap-1.5">
-                {unassigned.map((st) => (
-                  <button key={st.id} onClick={() => groups[0] && saveGroups(groups.map((g, i) => (i === 0 ? { ...g, studentIds: [...g.studentIds, st.id] } : g)))}
-                    className="pop press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
-                    <Avatar name={st.name} size={20} />{st.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
+      {/* Groups: made on cards, kept here to look over, change or remove. */}
+      <GroupingsList course={course} onChanged={onChanged} readOnly={readOnly} />
+
+      {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
+        <section className="card flex flex-wrap items-center gap-3 p-6">
+          <span className="min-w-[14rem] flex-1">
+            <span className="block text-[15px] font-medium">Electives</span>
+            <span className="block text-[13px] text-ink-3">How many elective lessons each student chooses.</span>
+          </span>
+          <label className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
+            Each student takes at least
+            <input type="number" min={0} max={10} defaultValue={course.electiveMin ?? 2} aria-label="Minimum electives" disabled={readOnly}
+              onBlur={async (e) => { await op(course.id, { op: "setElectiveMin", min: Number(e.target.value) }); onChanged(); }}
+              className="field h-8 w-14 py-0 text-center" />
+            electives
+          </label>
+        </section>
       )}
         </>
       ) : (

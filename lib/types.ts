@@ -215,6 +215,8 @@ export interface Module {
    * it together, live; "class": the whole class shares one.
    */
   writers?: "each" | "group" | "class";
+  /** Which grouping "Each group" (writing together, or a discussion in groups) uses. Unset: the course's Discussion groups. */
+  grouping?: string;
   /** 为真时，必须先完成前面的模块才能打开（覆盖课程的自主权设置）。 */
   gate?: boolean;
   /** 只在发给学生时设置：这张卡片不是全班共有的（分支或个人模块）。 */
@@ -373,6 +375,16 @@ export interface Group {
   studentIds: string[];
 }
 
+/**
+ * A way of splitting the class into named groups, made from a card ("Each group") and kept in the course, so other
+ * cards can use it too. The course's own groups (course.groups) are the grouping called "Discussion groups".
+ */
+export interface Grouping {
+  id: string;
+  name: string;
+  groups: Group[];
+}
+
 export interface CoTeacher {
   email: string;
   role: "editor" | "viewer";
@@ -406,6 +418,8 @@ export interface Course {
   levels?: Level[];
   groups?: Group[];
   joinCode: string;
+  /** Groupings made from cards (see Grouping). */
+  groupings?: Grouping[];
   /** Students may message each other (Students → "Students can message each other"). Unset: yes. */
   peerMessages?: boolean;
   access?: { joinOpen: boolean; passcode?: string; guestToken?: string;

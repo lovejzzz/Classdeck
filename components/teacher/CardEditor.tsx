@@ -15,7 +15,8 @@ import { clearOlder, olderSettings } from "@/lib/cardmodel";
 import { MathPreview } from "../MathText";
 import { RichBodyEditor } from "./RichBodyEditor";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
-import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
+import type { Attachment, Course, Lesson, Module, Question, Skill, Student } from "@/lib/types";
+import { GroupingPicker } from "./Groupings";
 import { targetsOf } from "@/lib/branching";
 import { CardFace } from "../cards/CardFace";
 import { playableArt } from "../cards/PlayArt";
@@ -82,8 +83,11 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 }
 
 export function CardEditor({
-  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, onOpen, allCards, neighbors, onGo, back,
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, onOpen, allCards, neighbors, onGo, back, course, onCourseChanged,
 }: {
+  /** The course, for the groups a card can use (Each group); and refreshing it after groups change. */
+  course?: Course;
+  onCourseChanged?: () => unknown;
   /** Shown at the top of the panel: where this card sits in the course's card tree. */
   neighbors?: React.ReactNode;
   /** Open another card (in any lesson): the card an answer deals. */
@@ -260,10 +264,11 @@ export function CardEditor({
                     );
                   })}
                 </span>
+                {m.writers === "group" && course && <div className="basis-full"><GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} /></div>}
                 {m.writers && (
                   <span className="basis-full text-[12px] text-ink-3">
                     {m.writers === "each" ? "Your text is where each student starts. They write in their own copy and hand it in; it waits for your feedback in Grades and Students, where you can comment on any passage."
-                      : m.writers === "group" ? "Each discussion group (Students → Discussion groups) shares one copy and writes in it together, live, each with their cursor and name. Anyone in the group hands it in for the whole group."
+                      : m.writers === "group" ? "Each group shares one copy and writes in it together, live, each with their cursor and name. Anyone in the group hands it in for the whole group."
                       : "The whole class shares one copy and writes in it together, live: good for a class table of results. Each student presses Hand in for themselves."}
                     {" "}History keeps a version every few minutes, with who wrote in it.
                   </span>
@@ -382,6 +387,7 @@ export function CardEditor({
                     <Seg value={m.type === "studio" ? "groups" : "class"} options={[["class", "The whole class"], ["groups", "Each group"]]}
                       onPick={(v) => set(asKind({ ...m, type: v === "groups" ? "studio" : "wall", submitTo: v === "groups" ? "studio" : undefined }, "discussion"))} />
                   </div>
+                  {m.type === "studio" && course && <GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} />}
                   {m.type === "wall" && (
                     <>
                       <div className="flex flex-wrap items-center gap-2">

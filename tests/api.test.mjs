@@ -827,6 +827,35 @@ async function main() {
     check("removing a comment removes its replies", !(((await A.state(wc)).progress?.[uma.id]?.["m-own"]?.notes) ?? []).length);
   }
 
+  // ---- Groups made on a card, kept in the course for other cards; shared copies follow them
+  {
+    const gc = (await A.post("/api/courses", { title: `Groups ${run}`, start: "blank" })).id;
+    made["groups"] = gc;
+    await A.op(gc, { op: "addStudents", names: "Wes\nXia\nYan\nZed" });
+    const st = Object.fromEntries(courseOf(await A.state(gc)).students.map((s) => [s.name, s.id]));
+    const r = await A.op(gc, { op: "saveGrouping", grouping: { name: "Lab partners", groups: [{ name: "Red", studentIds: [st.Wes, st.Xia] }, { name: "Blue", studentIds: [st.Yan, st.Xia] }] } });
+    check("a teacher makes named groups", typeof r.id === "string" && r.id.startsWith("gs-"));
+    let gsets = courseOf(await A.state(gc)).groupings ?? [];
+    check("they're kept in the course", gsets.length === 1 && gsets[0].name === "Lab partners" && gsets[0].groups.map((g) => g.name).join() === "Red,Blue");
+    check("a student is in one group only", gsets[0].groups[1].studentIds.length === 1);
+    const l0 = courseOf(await A.state(gc)).weeks[0].lessons[0];
+    const card = (id) => ({ id, type: "read", kind: "content", title: id, body: "start", audience: { kind: "all" }, tools: [], attachments: [], writers: "group", grouping: r.id });
+    await A.op(gc, { op: "saveLesson", lesson: { ...l0, modules: [card("m-g1"), card("m-g2")] } });
+    check("two cards use the same groups", modulesOf(courseOf(await A.state(gc))).every((m) => m.grouping === r.id));
+    const red = gsets[0].groups[0];
+    const links = (await A.op(gc, { op: "setupLinks" })).links;
+    const wes = await invited(gc, links.find((x) => x.name === "Wes").link, "Wes");
+    const yan = await invited(gc, links.find((x) => x.name === "Yan").link, "Yan");
+    check("a student opens their group's copy", (await wes.c.get(`/api/collab/${gc}?doc=${encodeURIComponent(`m-g1:g:${r.id}~${red.id}`)}&history=1`)).status === 200);
+    check("another group's copy is closed to them", (await yan.c.get(`/api/collab/${gc}?doc=${encodeURIComponent(`m-g1:g:${r.id}~${red.id}`)}&history=1`)).status === 403);
+    await A.op(gc, { op: "saveGrouping", grouping: { id: r.id, name: "Lab partners", groups: [{ id: red.id, name: "Red", studentIds: [st.Wes, st.Yan] }] } });
+    check("changing the groups changes who's in a copy", (await yan.c.get(`/api/collab/${gc}?doc=${encodeURIComponent(`m-g1:g:${r.id}~${red.id}`)}&history=1`)).status === 200);
+    check("a student can't change groups", (await wes.c.op(gc, { op: "saveGrouping", grouping: { name: "x", groups: [{ name: "a", studentIds: [] }] } })).ok !== true);
+    await A.op(gc, { op: "deleteGrouping", id: r.id });
+    const after = courseOf(await A.state(gc));
+    check("removing groups: the cards go back to the course's groups", !(after.groupings ?? []).length && modulesOf(after).every((m) => !m.grouping));
+  }
+
   // ---- New teachers start with Questhand 101
   {
     const N = await teacher("new");

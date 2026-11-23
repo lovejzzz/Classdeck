@@ -12,6 +12,7 @@ import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
+import { DEFAULT_GROUPING, groupFor } from "@/lib/shared";
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
@@ -65,7 +66,6 @@ function findModule(course: Course, moduleId: string): { lesson: Lesson; mod: Mo
   }
 }
 
-const groupOf = (course: Course, studentId: string) => course.groups?.find((g) => g.studentIds.includes(studentId));
 
 /** What a student receives: only their cards, no answer keys, no version labels, only their group's studio. */
 function forStudent(course: Course, studentId: string, chosen: Record<string, string>): Course {
@@ -211,9 +211,8 @@ function view(request: Request, courseId: string): Response {
       own[mid] = view;
     }
     progress = { [as]: own };
-    const group = groupOf(course, as);
-    // Posts from whoever is in your group now, so regrouping moves who you see.
-    const posts = studio.posts.filter((p) => p.studentId === as || (group && group.studentIds.includes(p.studentId)));
+    // Posts from whoever is in your group on that card now (each card can use its own grouping), so regrouping moves who you see.
+    const posts = studio.posts.filter((p) => p.studentId === as || !!groupFor(course, findModule(course, p.moduleId)?.mod, as)?.studentIds.includes(p.studentId));
     const ids = new Set(posts.map((p) => p.id));
     studioView = { posts, feedback: studio.feedback.filter((f) => ids.has(f.postId)) };
   }
@@ -265,8 +264,7 @@ function visibleWork(course: Course, studentId: string): Set<string> {
   const d = db();
   const ids = new Set<string>();
   for (const p of Object.values(d.progress[course.id]?.[studentId] ?? {})) for (const w of p.work ?? []) ids.add(w.id);
-  const group = groupOf(course, studentId);
-  for (const p of d.studio[course.id]?.posts ?? []) if (p.studentId === studentId || (group && group.studentIds.includes(p.studentId))) for (const w of p.work) ids.add(w.id);
+  for (const p of d.studio[course.id]?.posts ?? []) if (p.studentId === studentId || groupFor(course, findModule(course, p.moduleId)?.mod, studentId)?.studentIds.includes(p.studentId)) for (const w of p.work) ids.add(w.id);
   return ids;
 }
 
@@ -373,7 +371,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
   /** A studio card is done once you've posted and given feedback to enough peers. */
   function studioStatus(studentId: string, moduleId: string) {
     const posted = studio.posts.some((p) => p.studentId === studentId && p.moduleId === moduleId);
-    const peers = (groupOf(course, studentId)?.studentIds.length ?? 1) - 1;
+    const peers = (groupFor(course, findModule(course, moduleId)?.mod, studentId)?.studentIds.length ?? 1) - 1;
     const postIds = new Set(studio.posts.filter((p) => p.moduleId === moduleId && p.studentId !== studentId).map((p) => p.id));
     const given = new Set(studio.feedback.filter((f) => f.fromId === studentId && postIds.has(f.postId)).map((f) => f.postId)).size;
     const p = mine(studentId, moduleId);
@@ -646,6 +644,42 @@ async function change(request: Request, courseId: string, body: Record<string, a
     case "setCourseInfo": {
       if (String(body.title ?? "").trim()) course.title = String(body.title).trim().slice(0, 80);
       if (typeof body.subtitle === "string") course.subtitle = body.subtitle.trim().slice(0, 120) || undefined;
+      break;
+    }
+    case "saveGrouping": {
+      // —— teacher —— A grouping (a new one, or a change to one): its name, and its named groups of students.
+      const g = body.grouping ?? {};
+      const groups = (Array.isArray(g.groups) ? g.groups : []).slice(0, 40).map((x: { id?: string; name?: string; studentIds?: string[] }, i: number) => ({
+        id: typeof x.id === "string" && x.id ? x.id.slice(0, 40) : uid("g-"),
+        name: String(x.name ?? "").trim().slice(0, 40) || `Group ${i + 1}`,
+        studentIds: [...new Set((Array.isArray(x.studentIds) ? x.studentIds : []).filter((id) => course.students.some((st) => st.id === id)))],
+      }));
+      // A student is in one group of a grouping.
+      const seen = new Set<string>();
+      for (const x of groups) x.studentIds = x.studentIds.filter((id: string) => (seen.has(id) ? false : (seen.add(id), true)));
+      if (!groups.length) return fail("Make at least one group");
+      if (g.id === DEFAULT_GROUPING) {
+        course.groups = groups;
+        extra = { id: DEFAULT_GROUPING };
+        break;
+      }
+      const name = String(g.name ?? "").trim().slice(0, 60) || "Groups";
+      const list = (course.groupings ??= []);
+      const at = list.findIndex((x) => x.id === g.id);
+      if (at >= 0) list[at] = { id: list[at].id, name, groups };
+      else {
+        if (list.length >= 50) return fail("This course has 50 groupings; remove one first");
+        list.push({ id: uid("gs-"), name, groups });
+      }
+      extra = { id: at >= 0 ? list[at].id : list[list.length - 1].id };
+      break;
+    }
+    case "deleteGrouping": {
+      // —— teacher —— Cards that used it go back to the course's Discussion groups.
+      const id = String(body.id ?? "");
+      course.groupings = (course.groupings ?? []).filter((x) => x.id !== id);
+      if (!course.groupings.length) course.groupings = undefined;
+      for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) if (m.grouping === id) m.grouping = undefined;
       break;
     }
     case "setGroups":
@@ -1407,8 +1441,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
       break;
     }
     case "studioPost": {
-      const group = groupOf(course, body.studentId);
-      if (!group) return fail("You aren’t in a Collab Studio group yet. Ask your teacher.");
+      const group = groupFor(course, findModule(course, body.moduleId)?.mod, body.studentId);
+      if (!group) return fail("You aren’t in a group for this card yet. Ask your teacher.");
       const f = body.post ?? {};
       const str = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
       const work = (Array.isArray(f.work) ? f.work : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 6);
@@ -1431,7 +1465,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const post = studio.posts.find((p) => p.id === body.postId);
       if (!post) return fail("That post is gone");
       if (post.studentId === body.studentId) return fail("Give feedback to your peers, not yourself");
-      if (!groupOf(course, body.studentId)?.studentIds.includes(post.studentId)) return fail("You can only give feedback in your own group");
+      if (!groupFor(course, findModule(course, post.moduleId)?.mod, body.studentId)?.studentIds.includes(post.studentId)) return fail("You can only give feedback in your own group");
       const str = (v: unknown) => String(v ?? "").trim().slice(0, 1000);
       const fb = { observed: str(body.observed), effect: str(body.effect), next: str(body.next) };
       if (!fb.observed || !fb.next) return fail("Describe what you observed and one thing to try next");

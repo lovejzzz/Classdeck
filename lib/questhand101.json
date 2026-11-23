@@ -922,7 +922,7 @@
        "id": "m-q1tpl-together",
        "type": "read",
        "title": "Writing together",
-       "body": "With **Each group**, every discussion group (Students → Discussion groups) shares one copy. With **Whole class**, everyone shares one.\n\n- They write in it at the same time, live: each person's cursor shows with their name, and who's there shows above the text.\n- **History** keeps a version every few minutes, with who wrote in it. Look at any version, or go back to it.\n- In a group, anyone can **Hand in** for the whole group. In Students you can watch a group's copy as it's written, and write in it too.\n\n## Tables that add up\n\nIn a table, **Σ Total** adds a row that adds up each column. Write =AVERAGE, =COUNT, =MIN or =MAX in a cell instead of =SUM for those. **Bar**, **Line** and **Pie** put a chart of the table under it. Both update as students fill the table in.",
+       "body": "With **Each group**, every group shares one copy. Make the groups right on the card: **Make groups**, name them, split the class at random or tap students into each group. Other cards can use the same groups from the list, and you make new ones whenever the groups change. With **Whole class**, everyone shares one.\n\n- They write in it at the same time, live: each person's cursor shows with their name, and who's there shows above the text.\n- **History** keeps a version every few minutes, with who wrote in it. Look at any version, or go back to it.\n- In a group, anyone can **Hand in** for the whole group. In Students you can watch a group's copy as it's written, and write in it too.\n\n## Tables that add up\n\nIn a table, **Σ Total** adds a row that adds up each column. Write =AVERAGE, =COUNT, =MIN or =MAX in a cell instead of =SUM for those. **Bar**, **Line** and **Pie** put a chart of the table under it. Both update as students fill the table in.",
        "audience": {
         "kind": "all"
        },
@@ -1029,7 +1029,7 @@
        "id": "m-q1tpl-why-elective",
        "type": "read",
        "title": "Why an elective?",
-       "body": "An elective is a lesson students choose to take (or not). Make one from a lesson's ⋯ menu: Make it an elective. Students choose from the Electives shelf on their board.\n\nIn Students → Discussion groups, set how many electives each student takes, and group students by the electives they chose.",
+       "body": "An elective is a lesson students choose to take (or not). Make one from a lesson's ⋯ menu: Make it an elective. Students choose from the Electives shelf on their board.\n\nIn Students → Electives, set how many electives each student takes.",
        "audience": {
         "kind": "all"
        },
@@ -1171,7 +1171,7 @@
        "id": "m-q1tpl-class-list",
        "type": "read",
        "title": "Your class list",
-       "body": "In Students, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nDiscussion groups: Auto-group, or tap a student to move them to another group.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
+       "body": "In Students, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nStudents → Groups lists the groups you've made on cards, to change or remove.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
        "audience": {
         "kind": "all"
        },
