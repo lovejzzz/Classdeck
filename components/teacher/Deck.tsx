@@ -375,7 +375,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     const r = await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ module: m, name: m.title }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) return toast(r.error ?? "Couldn’t save it", { icon: "x", tone: "bad" });
     await loadLibrary(true);
-    toast("Saved to My cards. To use it in any of your courses, press + Card on a lesson and pick it under From my cards.", { icon: "star" });
+    toast("Saved. To use it in any of your courses, press + Card on a lesson, then Saved cards.", { icon: "star" });
   }
 
   async function duplicate(op_: "duplicateWeek" | "duplicateLesson", id: string, what: string) {

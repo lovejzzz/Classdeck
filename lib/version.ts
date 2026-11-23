@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.55",
+    date: "2026-11-23",
+    changes: [
+      "Saved cards are a choice wherever you add a card: next to Content and Question, Saved cards opens the cards you saved (with Save to my cards) in any of your courses. Pick one to put down a copy. It's there in + Card on a lesson and when you make the card an answer deals.",
+    ],
+  },
+  {
     version: "0.1.54",
     date: "2026-11-23",
     changes: [

@@ -231,7 +231,8 @@ function useGlide(target: Map<string, { x: number; y: number }>, spawnAt: (id: s
 }
 
 type Port = { from: string; q: string; option: number };
-type Menu = { port: Port; x: number; y: number; mode: "port" | "new" } | { add: string; x: number; y: number };
+// `saved`: the menu is showing the teacher's saved cards instead of Content / Question.
+type Menu = { port: Port; x: number; y: number; mode: "port" | "new"; saved?: boolean } | { add: string; x: number; y: number; saved?: boolean };
 
 /**
  * The course map: every lesson's cards on one canvas, with the wires that deal follow-ups (by answer or score, within a
@@ -343,7 +344,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const [drag, setDrag] = useState<{ port: Port; x: number; y: number; over?: string } | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   // The teacher's saved cards, offered in a lesson's + Card menu (loaded when that menu opens).
-  const saved = useLibrary(!readOnly && !!menu && "add" in menu);
+  const saved = useLibrary(!readOnly && !!menu);
   const [menuLesson, setMenuLesson] = useState<string | null>(null);
   const [hot, setHot] = useState<string | null>(null);
   const [fresh, setFresh] = useState<string | null>(null);
@@ -670,11 +671,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 
   const blank = (k: CardKind, title: string): Module => makeCard(k, title);
 
-  async function newCard(port: Port, type: CardKind, into: string) {
+  /** A fresh copy of one of the teacher's saved cards, ready to put down. */
+  const copyOf = (sc: SavedCard): Module => ({ ...structuredClone(sc.module), id: makeCard(kindOf(sc.module as Module), "").id, audience: { kind: "all" } } as Module);
+
+  async function newCard(port: Port, type: CardKind, into: string, from?: SavedCard) {
     const lesson = lessonWith(port.from);
     const src = lesson.modules.find((m) => m.id === port.from)!;
     const what = port.q === SCORE ? `Score ${bandLabel(bandsOf(src)[port.option])}` : plainMath(src.questions?.find((x) => x.id === port.q)?.options[port.option]?.trim() ?? "");
-    const card = blank(type, what ? `If “${what.slice(0, 40)}”` : `New ${familyName(type)} card`);
+    const card = from ? copyOf(from) : blank(type, what ? `If “${what.slice(0, 40)}”` : `New ${familyName(type)} card`);
     const p = portPos(port);
     born.set(card.id, { x: p.x + 40, y: p.y - HEAD / 2 });
     setMenu(null);
@@ -695,9 +699,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     setFresh(card.id);
     onEdit(into, card.id);
   }
-  function addCard(lessonId: string, type: CardKind) {
+  function addCard(lessonId: string, type: CardKind, from?: SavedCard) {
     const l = lessons.find((x) => x.id === lessonId)!;
-    const card = blank(type, `New ${familyName(type)} card`);
+    const card = from ? copyOf(from) : blank(type, `New ${familyName(type)} card`);
     const r = regions.find((x) => x.lesson.id === lessonId);
     if (r) born.set(card.id, { x: r.x + r.w - W, y: r.y + TOP - 40 });
     setMenu(null);
@@ -706,22 +710,55 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     onEdit(lessonId, card.id);
   }
 
-  /** Put down a copy of one of the teacher's saved cards (Save to my cards, in the card panel) at the end of a lesson. */
-  function addSaved(lessonId: string, sc: SavedCard) {
-    const l = lessons.find((x) => x.id === lessonId)!;
-    const card = { ...structuredClone(sc.module), id: makeCard(kindOf(sc.module as Module), "").id, audience: { kind: "all" } } as Module;
-    const r = regions.find((x) => x.lesson.id === lessonId);
-    if (r) born.set(card.id, { x: r.x + r.w - W, y: r.y + TOP - 40 });
-    setMenu(null);
-    onChange({ ...l, modules: [...l.modules, card] });
-    setFresh(card.id);
-    onEdit(lessonId, card.id);
-  }
   async function forgetSaved(sc: SavedCard) {
     const r = await fetch("/api/library", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: sc.id }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) return toast(r.error ?? "Couldn’t remove it", { icon: "x", tone: "bad" });
     await loadLibrary(true);
-    toast(`Removed “${sc.name}” from My cards`);
+    toast(`Removed “${sc.name}” from Saved cards`);
+  }
+
+  /**
+   * What a new card can be: Content, Question, or one of the teacher's Saved cards (from Save to my cards, in any of
+   * their courses). Saved cards open a list in the same menu, with a way back.
+   */
+  function kindPicker(onKind: (t: CardKind) => void, onSaved: (sc: SavedCard) => void) {
+    if (menu?.saved) return (
+      <div>
+        <button onClick={() => setMenu({ ...menu, saved: false })} className="press flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[12.5px] font-medium text-ink hover:bg-lane">
+          <Icon name="chevron" size={12} className="rotate-90" /> Saved cards
+        </button>
+        {saved.length ? (
+          <div className="max-h-56 overflow-y-auto">
+            {saved.map((sc) => (
+              <div key={sc.id} className="group/saved flex items-center rounded-lg hover:bg-lane">
+                <button onClick={() => onSaved(sc)} className="press flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-[12.5px]">
+                  <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfCard(sc.module as Module).tint }} />
+                  <span className="min-w-0 flex-1 truncate">{sc.name}</span>
+                  <span className="flex-none text-[11px] text-ink-3">{faceMeta(sc.module as Module).name}</span>
+                </button>
+                <button onClick={() => forgetSaved(sc)} aria-label={`Remove “${sc.name}” from Saved cards`} title="Remove from Saved cards" className="press mr-1 flex h-6 w-6 flex-none items-center justify-center rounded-md text-ink-3 opacity-0 hover:bg-white hover:text-bad focus:opacity-100 group-hover/saved:opacity-100"><Icon name="x" size={11} /></button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="px-2 pb-1.5 pt-0.5 text-[12px] leading-snug text-ink-3">No saved cards yet. Open a card and press Save to my cards at the bottom of its panel; it shows up here in all your courses.</p>
+        )}
+      </div>
+    );
+    return (
+      <div className="grid grid-cols-2 gap-0.5">
+        {NEW_KINDS.map((t) => (
+          <button key={t} onClick={() => onKind(t)} className="press flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
+            <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{familyName(t)}
+          </button>
+        ))}
+        <button onClick={() => menu && setMenu({ ...menu, saved: true })} className="press col-span-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
+          <Icon name="star" size={12} className="flex-none text-ink-3" /><span className="flex-1">Saved cards</span>
+          {saved.length > 0 && <span className="mono text-[11px] text-ink-3">{saved.length}</span>}
+          <Icon name="chevron" size={12} className="-rotate-90 text-ink-3" />
+        </button>
+      </div>
+    );
   }
 
   /** Why the picked cards can't become a card group, or null if they can. */
@@ -1490,30 +1527,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
             {menu && "add" in menu && (
               <div className="pop absolute z-20 w-64 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
                 <div className="px-2 pb-1.5 pt-0.5 text-[12px] font-medium text-ink">New card for everyone in {lessons.find((l) => l.id === menu.add)?.title}</div>
-                <div className="grid grid-cols-2 gap-0.5">
-                  {NEW_KINDS.map((t) => (
-                    <button key={t} onClick={() => addCard(menu.add, t)} className="press flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
-                      <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{familyName(t)}
-                    </button>
-                  ))}
-                </div>
-                {saved.length > 0 && (
-                  <>
-                    <div className="mt-1.5 border-t border-line px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">From my cards</div>
-                    <div className="max-h-48 overflow-y-auto">
-                      {saved.map((sc) => (
-                        <div key={sc.id} className="group/saved flex items-center rounded-lg hover:bg-lane">
-                          <button onClick={() => addSaved(menu.add, sc)} className="press flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-[12.5px]">
-                            <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfCard(sc.module as Module).tint }} />
-                            <span className="min-w-0 flex-1 truncate">{sc.name}</span>
-                            <span className="flex-none text-[11px] text-ink-3">{faceMeta(sc.module as Module).name}</span>
-                          </button>
-                          <button onClick={() => forgetSaved(sc)} aria-label={`Remove “${sc.name}” from My cards`} title="Remove from My cards" className="press mr-1 flex h-6 w-6 flex-none items-center justify-center rounded-md text-ink-3 opacity-0 hover:bg-white hover:text-bad focus:opacity-100 group-hover/saved:opacity-100"><Icon name="x" size={11} /></button>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+                {kindPicker((t) => addCard(menu.add, t), (sc) => addCard(menu.add, "content", sc))}
               </div>
             )}
 
@@ -1542,13 +1556,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       </button>
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 gap-0.5">
-                    {NEW_KINDS.map((t) => (
-                      <button key={t} onClick={() => newCard(menu.port, t, into)} className="press flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-lane">
-                        <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfKind(t).tint }} />{familyName(t)}
-                      </button>
-                    ))}
-                  </div>
+                  {kindPicker((t) => newCard(menu.port, t, into), (sc) => newCard(menu.port, "content", into, sc))}
                   {menu.mode === "port" && dealt.length > 0 && (
                     <>
                       <div className="px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">{isScore ? "Deals" : dealt.length > 1 ? `Deals ${dealt.length} cards` : "Deals"}</div>
