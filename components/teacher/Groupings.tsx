@@ -136,6 +136,21 @@ export function GroupingPicker({ course, value, onPick, onChanged }: { course: C
   );
 }
 
+/** A sign-up poll's groups: who has joined each, and a way for the teacher to move people. */
+export function SignupGroups({ course, groupingId, onChanged }: { course: Course; groupingId: string; onChanged: () => unknown }) {
+  const g = course.groupings?.find((x) => x.id === groupingId);
+  const [editing, setEditing] = useState(false);
+  if (!g) return <p className="text-ink-3">The groups appear here once students start joining.</p>;
+  const name = (id: string) => course.students.find((s) => s.id === id)?.name ?? "";
+  return (
+    <div className="space-y-1">
+      {g.groups.map((x) => <p key={x.id} className="text-ink-2"><span className="font-medium text-ink">{x.name}</span> ({x.studentIds.length}){x.studentIds.length ? `: ${x.studentIds.map(name).join(", ")}` : ""}</p>)}
+      <button onClick={() => setEditing(true)} className="btn btn-quiet press h-8 px-2 text-[12.5px]"><Icon name="users" size={12} /> Move students</button>
+      {editing && <GroupingEditor course={course} grouping={g} onClose={() => setEditing(false)} onSaved={async () => { setEditing(false); await onChanged(); toast("Groups saved", { icon: "users" }); }} />}
+    </div>
+  );
+}
+
 /** Students tab: the course's groupings, to look over, change or remove. */
 export function GroupingsList({ course, onChanged, readOnly }: { course: Course; onChanged: () => unknown; readOnly?: boolean }) {
   const all = groupingsOf(course);

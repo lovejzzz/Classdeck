@@ -159,6 +159,9 @@ function nightlyDemoReset() {
   try { reset(); } finally { gg.__demoResetting = false; }
 }
 
+/** Whether this request is a Student View test (its changes to the course itself aren't kept). */
+export const inPreview = () => !!g.__preview;
+
 export function db(): DB {
   // Inside a Student View test (runPreview): the sandbox copy, never the real data.
   if (g.__preview) return g.__preview;

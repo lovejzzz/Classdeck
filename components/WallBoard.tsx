@@ -11,7 +11,7 @@ import { AttachMenu } from "./AttachMenu";
 import { MediaView } from "./cards/Media";
 import { Avatar, Icon } from "./Icon";
 import { RichText } from "./RichText";
-import { RichBodyEditor } from "./teacher/RichBodyEditor";
+import { MentionPeople, RichBodyEditor } from "./teacher/RichBodyEditor";
 
 type Who = string; // a student id, or "teacher"
 type Draft = Omit<Attachment, "id"> & { id?: string };
@@ -322,7 +322,15 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
  * replies are written like cards: formatted text, tables and math, recordings, pictures, files and links. Topics
  * (when the teacher set some) filter the feed.
  */
-export function WallBoard({ courseId, me, teacher = false, module: m, posts, students, onChanged, header, groupName }: {
+type WallProps = Parameters<typeof Feed>[0];
+
+/** A discussion. Anyone in it can @mention classmates and the teacher in posts and replies. */
+export function WallBoard(props: WallProps) {
+  const people = [...props.students.map(({ id, name }) => ({ id, name })), { id: "teacher", name: "Teacher" }].filter((x) => x.id !== props.me && x.name);
+  return <MentionPeople.Provider value={people}><Feed {...props} /></MentionPeople.Provider>;
+}
+
+function Feed({ courseId, me, teacher = false, module: m, posts, students, onChanged, header, groupName }: {
   courseId: string; me: Who; teacher?: boolean; module: Module; posts: Post[]; students: Student[]; onChanged: () => void; header?: React.ReactNode;
   /** A discussion by groups: a group's name, shown to the teacher on each post. */
   groupName?: (id: string) => string;

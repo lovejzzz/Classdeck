@@ -2,7 +2,7 @@
 // A card written as plain text before is plain Markdown already. This reads it into blocks for display, and turns
 // it back into plain words for previews, read-aloud and search. Raw HTML is never rendered: it stays as text.
 
-export type Inline = { t: string; b?: boolean; i?: boolean; s?: boolean; code?: boolean; href?: string };
+export type Inline = { t: string; b?: boolean; i?: boolean; s?: boolean; code?: boolean; href?: string; mention?: string };
 export type Block =
   | { k: "p"; lines: string[] }
   | { k: "h"; level: 1 | 2 | 3; text: string }
@@ -149,23 +149,25 @@ export function inline(src: string): Inline[] {
 
 function runs(src: string): Inline[] {
   const out: Inline[] = [];
-  const re = /(`[^`]+`)|\[([^\]]+)\]\(([^)\s]+)\)|(\*\*|__)(?=\S)([\s\S]+?)(?<=\S)\4|(~~)(?=\S)([\s\S]+?)(?<=\S)~~|(\*|_)(?=\S)([\s\S]+?)(?<=\S)\8(?![*_\w])/g;
+  const re = /(`[^`]+`)|@\[([^\]\n]{1,60})\]\(@([\w-]{1,40})\)|\[([^\]]+)\]\(([^)\s]+)\)|(\*\*|__)(?=\S)([\s\S]+?)(?<=\S)\6|(~~)(?=\S)([\s\S]+?)(?<=\S)~~|(\*|_)(?=\S)([\s\S]+?)(?<=\S)\10(?![*_\w])/g;
   let at = 0;
   for (const m of src.matchAll(re)) {
     if (m.index! > at) out.push({ t: src.slice(at, m.index) });
     if (m[1]) out.push({ t: m[1].slice(1, -1), code: true });
-    else if (m[2] !== undefined) out.push(...(SAFE_URL.test(m[3]) ? runs(m[2]).map((x) => ({ ...x, href: m[3] })) : [{ t: m[0] }]));
-    else if (m[4]) out.push(...runs(m[5]).map((x) => ({ ...x, b: true })));
-    else if (m[6]) out.push(...runs(m[7]).map((x) => ({ ...x, s: true })));
-    else if (m[8]) out.push(...runs(m[9]).map((x) => ({ ...x, i: true })));
+    // @[Name](@id): a classmate (or the teacher) mentioned by name.
+    else if (m[2] !== undefined) out.push({ t: `@${m[2]}`, mention: m[3] });
+    else if (m[4] !== undefined) out.push(...(SAFE_URL.test(m[5]) ? runs(m[4]).map((x) => ({ ...x, href: m[5] })) : [{ t: m[0] }]));
+    else if (m[6]) out.push(...runs(m[7]).map((x) => ({ ...x, b: true })));
+    else if (m[8]) out.push(...runs(m[9]).map((x) => ({ ...x, s: true })));
+    else if (m[10]) out.push(...runs(m[11]).map((x) => ({ ...x, i: true })));
     at = m.index! + m[0].length;
   }
   if (at < src.length) out.push({ t: src.slice(at) });
   // Backslash escapes (\_ \* \# …) show as the character itself; \$ is left for MathText.
-  for (const x of out) if (!x.code) x.t = x.t.replace(/\\([\\`*_{}\[\]()#+\-.!|>~<])/g, "$1");
+  for (const x of out) if (!x.code && !x.mention) x.t = x.t.replace(/\\([\\`*_{}\[\]()#+\-.!|>~<])/g, "$1");
   // Bare web addresses become links too.
   return out.flatMap((x) => {
-    if (x.href || x.code) return [x];
+    if (x.href || x.code || x.mention) return [x];
     const parts: Inline[] = [];
     let k = 0;
     for (const u of x.t.matchAll(/https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"]/g)) {
@@ -199,4 +201,9 @@ export function plainText(src: string): string {
       case "chart": return "";
     }
   }).filter(Boolean).join("\n\n");
+}
+
+/** Who a text mentions (@[Name](@id)): their ids. */
+export function mentionsIn(src: string): string[] {
+  return [...new Set([...src.matchAll(/@\[[^\]\n]{1,60}\]\(@([\w-]{1,40})\)/g)].map((m) => m[1]))];
 }

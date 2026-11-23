@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Note } from "../NotificationCenter";
 import type { Course, Nudge, Post, Progress } from "@/lib/types";
-import { plainText } from "@/lib/markdown";
+import { mentionsIn, plainText } from "@/lib/markdown";
 
 // 学生端的通知：老师给你加了新卡片、换了今天的课。
 // 在浏览器里记住上次看到的模块，和这次对比。这只是给这台设备的便利，丢了也不影响学习。
@@ -84,10 +84,17 @@ export function useInbox(course: Course | undefined, studentId: string, progress
   // Replies in discussions: to your posts, and to your replies.
   const nameOf = (id: string) => (id === "teacher" ? "Your teacher" : course?.students.find((s) => s.id === id)?.name ?? "A classmate");
   const cardTitle = (id: string) => course?.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules)).find((m) => m.id === id)?.title ?? "A discussion";
+  const gist = (t: string) => { const words = plainText(t).replace(/\s+/g, " ").trim(); return words ? (words.length > 140 ? `${words.slice(0, 140)}…` : words) : "A recording or a file"; };
   for (const p of posts) {
     const mine = p.mine || p.studentId === studentId;
+    // Someone @mentioned you, in a post or a reply.
+    if (!mine && mentionsIn(p.text).includes(studentId)) reviews.push({ id: `m:${p.moduleId}#${p.id}`, at: p.createdAt, group: p.moduleId, groupLabel: cardTitle(p.moduleId), source: cardTitle(p.moduleId), icon: "message", title: `${p.studentId ? nameOf(p.studentId) : "A classmate"} mentioned you`, text: gist(p.text) });
     for (const c of p.comments ?? []) {
-      if (c.from === studentId) continue;
+      if (c.from === studentId || !mentionsIn(c.text).includes(studentId)) continue;
+      reviews.push({ id: `m:${p.moduleId}#${c.id}`, at: c.at, group: p.moduleId, groupLabel: cardTitle(p.moduleId), source: cardTitle(p.moduleId), icon: "message", title: `${nameOf(c.from)} mentioned you`, text: gist(c.text) });
+    }
+    for (const c of p.comments ?? []) {
+      if (c.from === studentId || mentionsIn(c.text).includes(studentId)) continue;
       const toMyReply = c.replyTo && p.comments?.find((x) => x.id === c.replyTo)?.from === studentId;
       if (!(toMyReply || (mine && !c.replyTo))) continue;
       const words = plainText(c.text).replace(/\s+/g, " ").trim();

@@ -722,7 +722,27 @@ function Questions(p: DetailProps) {
                   {submitted && correct && !right && <p className="rise mt-1.5 text-[12.5px] text-ink-2">Correct order: {correct.join(" → ")}</p>}
                 </div>
               );
-            })() : (
+            })() : m.signupView ? (
+              // A sign-up: each option is a group. Pick one to join it (and pick another to move, until the groups are locked).
+              <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+                {q.options.map((opt, oi) => {
+                  const v = m.signupView!;
+                  const mine = v.mine === oi;
+                  const full = !!v.max && v.counts[oi] >= v.max && !mine;
+                  return (
+                    <button key={oi} onClick={() => !mine && answer(q.id, oi)} disabled={v.locked || full || q.id in pending} aria-pressed={mine}
+                      className={`press flex flex-col items-stretch gap-1.5 rounded-xl border px-3.5 py-3 text-left transition-colors disabled:cursor-not-allowed ${mine ? "border-[#4b56a8]/50 bg-[#eef0fb]" : full ? "border-line bg-lane/60 opacity-60" : "border-line bg-white hover:border-line-strong"}`}>
+                      <span className="flex items-center gap-2">
+                        <span className="flex-1 font-medium"><MathText text={opt} /></span>
+                        <span className={`mono text-[12px] ${full ? "text-bad" : "text-ink-3"}`}>{v.counts[oi]}{v.max ? `/${v.max}` : ""}</span>
+                      </span>
+                      {v.names && v.names[oi].length > 0 && <span className="text-[12px] leading-snug text-ink-3">{v.names[oi].join(", ")}</span>}
+                      {mine ? <span className="text-[11.5px] font-medium text-[#4b56a8]">Your group</span> : full ? <span className="text-[11.5px] text-bad">Full</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
               <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
                 {order.map((oi) => {
                   const opt = q.options[oi];
@@ -750,14 +770,19 @@ function Questions(p: DetailProps) {
                 })}
               </div>
             )}
-            {m.poll && (!q.kind || q.kind === "choice") && progress?.answers?.[q.id] === undefined && (
+            {m.poll && !m.signupView && (!q.kind || q.kind === "choice") && progress?.answers?.[q.id] === undefined && (
               <div className="mt-2.5 flex items-center gap-3">
                 <button onClick={() => { const v = drafts[q.id]; if (typeof v === "number") answer(q.id, v); }} disabled={typeof drafts[q.id] !== "number" || q.id in pending}
                   className="btn btn-dark press h-9 px-4">{q.id in pending ? "Sending…" : "Submit vote"}</button>
                 <span className="text-[12.5px] text-ink-3">{typeof drafts[q.id] === "number" ? "You can't change it once it's in." : "Pick one. Pick it again to clear it."}</span>
               </div>
             )}
-            {m.poll && progress?.answers?.[q.id] !== undefined && m.tally && (() => {
+            {m.signupView && (
+              <p className="mt-2 text-[12.5px] text-ink-3">
+                {m.signupView.locked ? "The groups are set." : m.signupView.mine === undefined ? "Pick the group you want to join." : "You can switch until your teacher locks the groups."}
+              </p>
+            )}
+            {m.poll && !m.signupView && progress?.answers?.[q.id] !== undefined && m.tally && (() => {
               // How the class voted, once you have.
               const tally = m.tally!, all = Math.max(1, tally.reduce((a, b) => a + b, 0));
               return (
@@ -807,11 +832,11 @@ function Questions(p: DetailProps) {
           <span className="mono text-[11.5px]">{answeredCount}/{total} answered</span>
         </div>
       )}
-      {m.poll && set.every((q) => progress?.answers?.[q.id] !== undefined) && (
+      {m.poll && (m.signupView ? m.signupView.mine !== undefined : set.every((q) => progress?.answers?.[q.id] !== undefined)) && (
         // All voted: the card is done (closing it ticks it too); Done just closes it.
         <div className="flex items-center gap-3">
           <button onClick={() => p.onClose(true)} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}><Icon name="check" size={14} /> Done</button>
-          <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> Your vote is in</span>
+          <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> {m.signupView ? `You’re in ${m.questions?.[0]?.options[m.signupView.mine!] ?? "a group"}` : "Your vote is in"}</span>
         </div>
       )}
       {!m.poll && (submitted || (!isQuiz && progress?.status === "done")) && (

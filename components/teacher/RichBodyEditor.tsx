@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
@@ -44,6 +45,55 @@ const MathInline = Node.create({
     return [nodeInputRule({ find: /(?<![\\$\w])(\$(?:[^\s$]|[^\s$][^$\n]*?[^\s\\$])\$)$/, type: this.type, getAttributes: (m) => ({ src: m[1] }) })];
   },
 });
+
+/** The people who can be @mentioned here (classmates and the teacher). Empty: no mentions. */
+export type MentionPerson = { id: string; name: string };
+export const MentionPeople = createContext<MentionPerson[]>([]);
+
+const MENTION_AT_START = /^@\[([^\]\n]{1,60})\]\(@([\w-]{1,40})\)/;
+
+/** A mention: "@Name" as one piece, written to Markdown as @[Name](@id) so it still says who it is. */
+const Mention = Node.create({
+  name: "mention",
+  group: "inline",
+  inline: true,
+  atom: true,
+  addAttributes() { return { id: { default: "" }, label: { default: "" } }; },
+  parseHTML() { return [{ tag: "span[data-mention]", getAttrs: (el) => ({ id: (el as HTMLElement).getAttribute("data-mention") ?? "", label: ((el as HTMLElement).textContent ?? "").replace(/^@/, "") }) }]; },
+  renderHTML({ HTMLAttributes, node }) { return ["span", mergeAttributes(HTMLAttributes, { "data-mention": node.attrs.id, class: "mention" }), `@${node.attrs.label}`]; },
+  markdownTokenName: "mention",
+  markdownTokenizer: {
+    name: "mention",
+    level: "inline",
+    start: (src: string) => src.indexOf("@["),
+    tokenize: (src: string) => {
+      const m = src.match(MENTION_AT_START);
+      return m ? { type: "mention", raw: m[0], text: m[1] } : undefined;
+    },
+  },
+  parseMarkdown: (token: { raw?: string }) => {
+    const m = (token.raw ?? "").match(MENTION_AT_START);
+    return { type: "mention", attrs: { label: m?.[1] ?? "", id: m?.[2] ?? "" } };
+  },
+  renderMarkdown: (node: { attrs?: { id?: string; label?: string } }) => `@[${(node.attrs?.label ?? "").replace(/[\[\]\n]/g, "")}](@${node.attrs?.id ?? ""})`,
+});
+
+/** Typing @: who it could be, from the word after the @ up to the cursor. */
+type MentionQuery = { query: string; from: number; to: number; x: number; y: number };
+function mentionAt(e: Editor): MentionQuery | null {
+  const { $from, empty } = e.state.selection;
+  if (!empty || !$from.parent.isTextblock) return null;
+  const before = $from.parent.textBetween(Math.max(0, $from.parentOffset - 32), $from.parentOffset, undefined, "\ufffc");
+  const m = before.match(/(?:^|[\s(])@([^\s@\ufffc][^@\ufffc\n]{0,23}|)$/);
+  if (!m) return null;
+  const c = e.view.coordsAtPos($from.pos);
+  return { query: m[1], from: $from.pos - m[1].length - 1, to: $from.pos, x: c.left, y: c.bottom };
+}
+const matchPeople = (people: MentionPerson[], q: string) => {
+  const t = q.trim().toLowerCase();
+  const hits = people.filter((p) => p.name.toLowerCase().includes(t));
+  return [...hits.filter((p) => p.name.toLowerCase().startsWith(t)), ...hits.filter((p) => !p.name.toLowerCase().startsWith(t))].slice(0, 6);
+};
 
 /** A button on the editor's toolbar. */
 function Tool({ on, label, title, onClick, children }: { on?: boolean; label: string; title?: string; onClick: () => void; children: React.ReactNode }) {
@@ -160,6 +210,22 @@ export function RichBodyEditor({ value = "", onChange, placeholder, collab, comp
   const submit = useRef(onSubmit);
   useEffect(() => { submit.current = onSubmit; });
   const previewTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // @mentions: who can be mentioned, what's being typed after an @, and which suggestion is picked.
+  const people = useContext(MentionPeople);
+  const [mq, setMq] = useState<(MentionQuery & { pick: number }) | null>(null);
+  const mention = useRef({ people, mq, dismissed: -1 });
+  useEffect(() => { mention.current.people = people; mention.current.mq = mq; });
+  const hits = mq ? matchPeople(people, mq.query) : [];
+  const lookForMention = (e: Editor) => {
+    if (!mention.current.people.length) return;
+    const q = mentionAt(e);
+    const open = q && q.from !== mention.current.dismissed && matchPeople(mention.current.people, q.query).length > 0;
+    setMq(open ? { ...q, pick: mention.current.mq?.from === q.from ? Math.min(mention.current.mq.pick, 5) : 0 } : null);
+  };
+  const putMention = (e: Editor, who: MentionPerson, at: MentionQuery) => {
+    e.chain().focus().insertContentAt({ from: at.from, to: at.to }, [{ type: "mention", attrs: { id: who.id, label: who.name } }, { type: "text", text: " " }]).run();
+    setMq(null);
+  };
   const showPreview = (e: Editor) => { clearTimeout(previewTimer.current); previewTimer.current = setTimeout(() => setPreview(e.getMarkdown()), 400); };
   const editor = useEditor({
     extensions: [
@@ -167,6 +233,7 @@ export function RichBodyEditor({ value = "", onChange, placeholder, collab, comp
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false, underline: false, link: { openOnClick: false, autolink: true, protocols: ["mailto"] }, ...(collab ? { undoRedo: false } : {}) }),
       Table.configure({ resizable: false }), TableRow, TableHeader, TableCell,
       MathInline,
+      Mention,
       Markdown,
       Placeholder.configure({ placeholder: placeholder ?? "" }),
       ...(collab ? [Collaboration.configure({ document: collab.doc }), CollaborationCaret.configure({ provider: collab.provider, user: collab.user })] : []),
@@ -177,7 +244,18 @@ export function RichBodyEditor({ value = "", onChange, placeholder, collab, comp
     immediatelyRender: false,
     editorProps: {
       attributes: { "aria-label": label, class: `rich-editor-content ${compact ? "min-h-[3.25rem]" : "min-h-[7.5rem]"} px-3 py-2.5 outline-none` },
-      handleKeyDown: (_view, e) => { if (submit.current && e.key === "Enter" && (e.metaKey || e.ctrlKey)) { submit.current(); return true; } return false; },
+      handleKeyDown: (_view, e) => {
+        // Choosing whom to @mention: arrows move, Enter or Tab picks, Escape closes.
+        const { mq: q, people: list } = mention.current;
+        if (q) {
+          const found = matchPeople(list, q.query);
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") { setMq({ ...q, pick: (q.pick + (e.key === "ArrowDown" ? 1 : found.length - 1)) % found.length }); return true; }
+          if ((e.key === "Enter" || e.key === "Tab") && found[q.pick] && editorRef.current) { putMention(editorRef.current, found[q.pick], q); return true; }
+          if (e.key === "Escape") { mention.current.dismissed = q.from; setMq(null); return true; }
+        }
+        if (submit.current && e.key === "Enter" && (e.metaKey || e.ctrlKey)) { submit.current(); return true; }
+        return false;
+      },
       // Click a math chip to change its source.
       handleClickOn: (view, pos, node) => {
         if (node.type.name !== "mathInline") return false;
@@ -192,8 +270,10 @@ export function RichBodyEditor({ value = "", onChange, placeholder, collab, comp
       },
     },
     onCreate: ({ editor: e }) => { collab?.onReady?.(e); showPreview(e); },
+    onSelectionUpdate: ({ editor: e }) => lookForMention(e),
     onUpdate: ({ editor: e, transaction }) => {
       showPreview(e);
+      if (!transaction.getMeta("y-sync$")) lookForMention(e);
       if (collab) {
         // Only this writer's own changes (not ones arriving from the others).
         if (!transaction.getMeta("y-sync$")) collab.onLocalChange?.(e);
@@ -204,8 +284,10 @@ export function RichBodyEditor({ value = "", onChange, placeholder, collab, comp
       onChange?.(md);
     },
     onFocus: () => setFocused(true),
-    onBlur: () => setFocused(false),
+    onBlur: () => { setFocused(false); setTimeout(() => setMq(null), 150); },
   });
+  const editorRef = useRef<Editor | null>(null);
+  useEffect(() => { editorRef.current = editor; }, [editor]);
   useEffect(() => {
     if (!editor || collab || value === sent.current) return;
     sent.current = value;
@@ -219,6 +301,20 @@ export function RichBodyEditor({ value = "", onChange, placeholder, collab, comp
       <div className="max-h-[28rem] overflow-y-auto text-[13.5px] leading-relaxed">
         <EditorContent editor={editor} />
       </div>
+      {mq && hits.length > 0 && editor && createPortal(
+        // On the page itself: a dialog's transform would move a fixed box inside it.
+        <div role="listbox" aria-label="Mention someone" className="fixed z-[80] w-56 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-lg"
+          style={{ left: Math.min(mq.x, (typeof window === "undefined" ? 9999 : window.innerWidth) - 232), top: mq.y + 6 }}>
+          {hits.map((who, i) => (
+            <button key={who.id} type="button" role="option" aria-selected={i === mq.pick} onMouseDown={(e) => { e.preventDefault(); putMention(editor, who, mq); }}
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] ${i === mq.pick ? "bg-lane text-ink" : "text-ink-2 hover:bg-lane/60"}`}>
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#eef0fb] text-[10.5px] font-semibold text-[#4b56a8]">{who.name.slice(0, 1).toUpperCase()}</span>
+              <span className="truncate">{who.name}</span>
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
       {/(^|\|)\s*=(SUM|AVERAGE|AVG|COUNT|MIN|MAX)\s*(\||$)|\\?\[chart/im.test(preview) && (
         <div className="border-t border-line bg-lane/40 px-3 py-2.5">
           <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">How it looks</div>

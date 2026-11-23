@@ -29,6 +29,7 @@ function Line({ text }: { text: string }) {
   return (
     <>
       {inline(text).map((x, i) => {
+        if (x.mention) return <span key={i} className="mention" data-mention={x.mention}>{x.t}</span>;
         let el: React.ReactNode = x.code ? <code className="rounded bg-lane px-1 py-px font-mono text-[0.9em]">{x.t}</code> : marks.length ? <Marked text={x.t} marks={marks} /> : <MathText text={x.t} />;
         if (x.b) el = <strong className="font-semibold text-ink">{el}</strong>;
         if (x.i) el = <em>{el}</em>;

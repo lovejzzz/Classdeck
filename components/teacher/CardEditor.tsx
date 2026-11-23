@@ -16,12 +16,13 @@ import { MathPreview } from "../MathText";
 import { RichBodyEditor } from "./RichBodyEditor";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Course, Lesson, Module, Question, Skill, Student } from "@/lib/types";
-import { GroupingPicker } from "./Groupings";
+import { GroupingPicker, SignupGroups } from "./Groupings";
 import { targetsOf } from "@/lib/branching";
 import { CardFace } from "../cards/CardFace";
 import { playableArt } from "../cards/PlayArt";
 import { Avatar, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
+import { signupGroupingId } from "@/lib/shared";
 
 /** The time, for grouping quick edits into one undo step (only ever read in event handlers). */
 const clock = () => Date.now();
@@ -380,6 +381,29 @@ export function CardEditor({
                 </>
               )}
               {isPoll(m) && <PollEditor question={m.questions?.[0]} cards={allCards ?? lesson.modules} onTree={onTree} onGo={onGo} onChange={(q) => set({ questions: [q] })} />}
+              {isPoll(m) && (
+                // A sign-up: each option is a group, and a student's vote puts them in it.
+                <div className="mt-3 space-y-2 rounded-xl border border-line px-3 py-2.5 text-[12.5px]">
+                  <label className="flex items-center gap-2 font-medium">
+                    <input type="checkbox" checked={!!m.signup} onChange={(e) => set({ signup: e.target.checked ? { names: true } : undefined })} className="accent-[#4b56a8]" />
+                    Make groups from the answers
+                  </label>
+                  {m.signup ? (
+                    <>
+                      <p className="text-ink-3">Each option is a group; students pick the one they want to join, and can change until you lock the groups. The groups are kept as “{m.title}”, for other cards (Each group) to use.</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-ink-2">At most</span>
+                        <input type="number" min={1} max={200} value={m.signup.max ?? ""} placeholder="any" aria-label="At most this many in each group"
+                          onChange={(e) => set({ signup: { ...m.signup, max: Number(e.target.value) > 0 ? Math.round(Number(e.target.value)) : undefined } })} className="field h-8 w-20 py-0 font-mono" />
+                        <span className="text-ink-2">in each group</span>
+                      </div>
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={m.signup.names !== false} onChange={(e) => set({ signup: { ...m.signup, names: e.target.checked } })} className="accent-[#4b56a8]" /> Students see who’s in each group</label>
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={!!m.signup.locked} onChange={(e) => set({ signup: { ...m.signup, locked: e.target.checked || undefined } })} className="accent-[#4b56a8]" /> Lock the groups (no more changes)</label>
+                      {course && <SignupGroups course={course} groupingId={signupGroupingId(m.id)} onChanged={() => onCourseChanged?.()} />}
+                    </>
+                  ) : <p className="text-ink-3">For example: “Which project group do you want to join?”</p>}
+                </div>
+              )}
               {kind === "discussion" && (
                 <div className="space-y-2.5 text-[12.5px]">
                   <div className="flex flex-wrap items-center gap-2">

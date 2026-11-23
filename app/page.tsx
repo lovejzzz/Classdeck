@@ -160,6 +160,8 @@ function JoinTile({ code: start, onJoined }: { code: string; onJoined: (r: { cou
   const [code, setCode] = useState(start);
   const [pass, setPass] = useState("");
   const [needPass, setNeedPass] = useState(false);
+  // A classmate already has this name: they choose another one.
+  const [name, setName] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function join(e: React.FormEvent) {
@@ -167,11 +169,12 @@ function JoinTile({ code: start, onJoined }: { code: string; onJoined: (r: { cou
     if (!code.trim()) return;
     setBusy(true);
     setError("");
-    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "joinCode", code, passcode: pass || undefined }) })
+    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "joinCode", code, passcode: pass || undefined, name: name?.trim() || undefined }) })
       .then((x) => x.json()).catch(() => ({ ok: false, error: "Couldn’t reach Questhand. Check your connection." }));
     setBusy(false);
-    if (r.ok) { setCode(""); onJoined(r); return; }
+    if (r.ok) { setCode(""); setName(null); setPass(""); setNeedPass(false); onJoined(r); return; }
     if (r.needPasscode) setNeedPass(true);
+    if (r.needName) setName(name ?? r.name ?? "");
     setError(r.error ?? "That didn’t work");
   }
   return (
@@ -180,6 +183,7 @@ function JoinTile({ code: start, onJoined }: { code: string; onJoined: (r: { cou
       <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Class code" aria-label="Class code" autoFocus={!!start}
         className="field h-10 text-center font-mono tracking-[0.2em]" />
       {needPass && <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="Passcode" aria-label="Class passcode" className="field h-9 text-center" />}
+      {name !== null && <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name in this class" aria-label="Your name in this class" autoFocus className="field h-9 text-center" />}
       <button disabled={busy || !code.trim()} className="btn btn-dark press h-9 justify-center">{busy ? "Joining…" : "Join"}</button>
       {error && <span className="text-[12px] leading-snug text-bad" role="alert">{error}</span>}
     </form>

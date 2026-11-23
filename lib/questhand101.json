@@ -932,6 +932,47 @@
        "suit": "content"
       },
       {
+       "id": "m-q1tpl-signup",
+       "type": "read",
+       "title": "Let students pick their group",
+       "body": "Sometimes students should choose: which project, which topic, which lab slot. Make a poll (Choices, Has a right answer: No) and tick **Make groups from the answers**.\n\n- Each option is a group. A student joins one by picking it, and can switch until you tick **Lock the groups**.\n- **At most** caps each group; a full group can't be picked.\n- **Students see who's in each group**, or untick it to show only how many.\n- The groups are kept under the card's name. Pick them in any other card's **Each group**, and press **Move students** on the poll to change them yourself.\n\n> The next card is one. Pick a group.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-pick-team",
+       "type": "practice",
+       "title": "Pick your study group",
+       "body": "Choose the group you want to be in for the rest of the course. You can switch until the groups are locked.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
+       "poll": true,
+       "questions": [
+        {
+         "id": "q-q1tpl-2-13",
+         "text": "Which group do you want to join?",
+         "options": [
+          "Short units",
+          "Full terms",
+          "Just exploring"
+         ]
+        }
+       ],
+       "signup": {
+        "names": true
+       }
+      },
+      {
        "id": "m-q1tpl-class-table",
        "type": "read",
        "title": "Our class in numbers",
@@ -990,7 +1031,7 @@
        "id": "m-q1tpl-walls",
        "type": "read",
        "title": "Setting up a discussion",
-       "body": "A Discussion card is a conversation, like a forum: a feed of posts, each with its replies, and replies to replies.\n\n- Posts and replies are written like a card: formatting, lists, tables and math, and Record, Upload, Draw or Link.\n- Students can select words in the card's text and **Quote** them in a post.\n\nIn its panel:\n\n- **Who discusses**: The whole class, or Each group (each group gets its own feed; pick or make the groups there).\n- **Reactions**: Likes, Votes or None. Sort the feed by Newest or Top.\n- **Topics**: give two or more (e.g. Questions, Ideas), and students tag each post with one; everyone can filter by topic.\n- **Each student replies to**: No one, or 1 to 3 classmates. The card is done once they've posted and replied.\n- Hide names from classmates, and I approve posts before others see them.\n\nStudents are told when someone replies to them.",
+       "body": "A Discussion card is a conversation, like a forum: a feed of posts, each with its replies, and replies to replies.\n\n- Posts and replies are written like a card: formatting, lists, tables and math, and Record, Upload, Draw or Link.\n- Students can select words in the card's text and **Quote** them in a post.\n\nIn its panel:\n\n- **Who discusses**: The whole class, or Each group (each group gets its own feed; pick or make the groups there).\n- **Reactions**: Likes, Votes or None. Sort the feed by Newest or Top.\n- **Topics**: give two or more (e.g. Questions, Ideas), and students tag each post with one; everyone can filter by topic.\n- **Each student replies to**: No one, or 1 to 3 classmates. The card is done once they've posted and replied.\n- Hide names from classmates, and I approve posts before others see them.\n\nType **@** in a post or reply to mention a classmate or the teacher: pick a name from the list, and they're told. Students are also told when someone replies to them.",
        "audience": {
         "kind": "all"
        },
@@ -1171,7 +1212,7 @@
        "id": "m-q1tpl-class-list",
        "type": "read",
        "title": "Your class list",
-       "body": "In Students, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nStudents → Groups lists the groups you've made on cards, to change or remove.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
+       "body": "In Students, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nStudents → Groups lists the groups you've made on cards, to change or remove.\n\nTwo students in one class can't share a name, since classmates find each other by name (to @mention someone, in groups and in messages). If someone joins with a name a classmate already has, they're asked to add something, like a last initial.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
        "audience": {
         "kind": "all"
        },
@@ -1194,7 +1235,7 @@
        "suit": "question",
        "questions": [
         {
-         "id": "q-q1tpl-2-13",
+         "id": "q-q1tpl-2-14",
          "text": "A student emails you: “I entered the class code, and it says I'm waiting.” What's going on?",
          "options": [
           "The code is wrong",
@@ -1399,7 +1440,7 @@
        ],
        "questions": [
         {
-         "id": "q-q1tpl-2-14",
+         "id": "q-q1tpl-2-15",
          "text": "How does a student get a card that an answer deals?",
          "options": [
           "The teacher sends it by hand",
@@ -1410,7 +1451,7 @@
          "explain": "The answer deals it: only students who pick it get the card."
         },
         {
-         "id": "q-q1tpl-2-15",
+         "id": "q-q1tpl-2-16",
          "text": "Can one answer deal more than one card?",
          "options": [
           "No, only one",
@@ -1420,7 +1461,7 @@
          "explain": "Drag the same answer's dot onto another card and a second line appears."
         },
         {
-         "id": "q-q1tpl-2-16",
+         "id": "q-q1tpl-2-17",
          "text": "Where do you try the course as a student, with nothing graded?",
          "options": [
           "Grades",
@@ -1430,7 +1471,7 @@
          "answer": 2
         },
         {
-         "id": "q-q1tpl-2-17",
+         "id": "q-q1tpl-2-18",
          "text": "A student handed in work. Where is it waiting?",
          "options": [
           "Grades and Students, ready for your feedback",
@@ -1440,7 +1481,7 @@
          "answer": 0
         },
         {
-         "id": "q-q1tpl-2-18",
+         "id": "q-q1tpl-2-19",
          "text": "Good feedback has two parts:",
          "options": [
           "A score and a grade",

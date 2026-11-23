@@ -51,3 +51,7 @@ export function writersOf(course: Course, key: string): string[] {
 }
 
 export const cardOf = (key: string) => key.split(":")[0];
+
+/** The grouping a sign-up poll makes: one group per option, named after it. */
+export const signupGroupingId = (moduleId: string) => `gs-${moduleId}`;
+export const signupGroupId = (moduleId: string, option: number) => `${moduleId}-o${option}`;

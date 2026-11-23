@@ -9,6 +9,20 @@ import { giveStarterCourse } from "@/lib/newcourse";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
 
+/**
+ * Names are how classmates find each other (to @mention them, in groups, in messages), so two students of a class
+ * can't share one. Returns a reply asking for another name, or null if the name is free.
+ */
+function nameTaken(course: { students: { id: string; name: string }[]; waiting?: { id: string; name: string }[] }, name: string, self?: string) {
+  const n = name.trim().toLowerCase();
+  const other = [...course.students, ...(course.waiting ?? [])].find((x) => x.id !== self && x.name.trim().toLowerCase() === n);
+  if (!other) return null;
+  return Response.json({
+    ok: false, needName: true, name,
+    error: `Someone in this class is already called ${other.name}. Add something so classmates can tell you apart, like your last name or its first letter.`,
+  }, { status: 409 });
+}
+
 /** Who is signed in on this browser. */
 export async function GET(request: Request) {
   const s = getSession(request);
@@ -80,7 +94,10 @@ export async function POST(request: Request) {
       const mode = course.access?.selfJoin;
       if (!mode) return fail("This class only takes students invited by email. Ask your teacher for an invitation.", 403);
       if (course.students.length + (course.waiting?.length ?? 0) >= 500) return fail("This class is full", 403);
-      const st = { id: uid("s-"), name: u.name, email: u.email, userId: u.id, joinedAt: Date.now() };
+      const name = String(body.name ?? "").trim().slice(0, 60) || u.name;
+      const taken = nameTaken(course, name);
+      if (taken) return taken;
+      const st = { id: uid("s-"), name, email: u.email, userId: u.id, joinedAt: Date.now() };
       if (mode === "approve") (course.waiting ??= []).push(st);
       else {
         course.students.push(st);
@@ -106,6 +123,10 @@ export async function POST(request: Request) {
       // Already in this class under another name (joined with the code, say): keep that place.
       const other = course.students.find((x) => x.userId === u.id && x.id !== st.id);
       if (other) return Response.json({ ok: true, courseId: course.id, studentId: other.id });
+      const chosen = String(body.name ?? "").trim().slice(0, 60);
+      const taken = nameTaken(course, chosen || st.name, st.id);
+      if (taken) return taken;
+      if (chosen) st.name = chosen;
       st.userId = u.id;
       save();
       return Response.json({ ok: true, courseId: course.id, studentId: st.id });

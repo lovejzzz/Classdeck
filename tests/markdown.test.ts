@@ -1,5 +1,5 @@
 // Card text as Markdown, checked without a server: npx tsx tests/markdown.test.ts
-import { blocks, chartData, computed, inline, isRich, plainText } from "../lib/markdown";
+import { blocks, chartData, computed, inline, isRich, mentionsIn, plainText } from "../lib/markdown";
 
 const rows: [string, boolean][] = [];
 const check = (name: string, ok: boolean) => rows.push([name, ok]);
@@ -47,6 +47,14 @@ const cd = tb[0].k === "table" ? chartData(tb[0]) : null;
 check("a chart leaves out the total rows and empty columns", cd?.labels.join() === "1,2,3" && cd.series.length === 1 && cd.series[0].values.join() === "4.2,3.8,");
 check("a [chart] line alone isn't a chart", blocks("[chart: bar]")[0].k === "p");
 check("plain text shows the worked-out total", plainText("| a | b |\n|---|---|\n| x | 2 |\n| y | 3 |\n| t | =SUM |").includes("t · 5"));
+
+// @mentions: a chip with the person's name, and who was mentioned.
+const mi = inline("Hi @[Ana Li](@s-1), see [docs](https://x.y) and @[Teacher](@teacher)");
+check("a mention is one run with its id", mi[1].t === "@Ana Li" && mi[1].mention === "s-1" && !mi[1].href);
+check("links still work next to mentions", mi.some((x) => x.href === "https://x.y"));
+check("plain text reads a mention as @Name", plainText("Ask @[Ana Li](@s-1)") === "Ask @Ana Li");
+check("who is mentioned (once each)", mentionsIn("@[A](@s-1) @[B](@teacher) @[A](@s-1)").join() === "s-1,teacher");
+check("an email address isn't a mention", mentionsIn("write to a@b.c").length === 0 && !inline("a@b.c").some((x) => x.mention));
 
 for (const [name, ok] of rows) console.log(`${ok ? "✓" : "✗"} ${name}`);
 const failed = rows.filter(([, ok]) => !ok).length;

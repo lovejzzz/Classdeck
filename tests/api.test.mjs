@@ -895,6 +895,83 @@ async function main() {
     void g2;
   }
 
+  // ---- Names, sign-up polls and @mentions
+  {
+    const nc = (await A.post("/api/courses", { title: `Names ${run}`, start: "blank" })).id;
+    made["names"] = nc;
+    await A.op(nc, { op: "addStudents", names: "Mia Chen\nLeo\nAva\nZed" });
+    const code = courseOf(await A.state(nc)).joinCode;
+    const dupe = await student("mia chen");
+    const j = await dupe.post("/api/auth", { action: "joinCode", code });
+    check("joining with a classmate's name asks for another", j.ok === false && j.needName === true && j.status === 409, j);
+    const j2 = await dupe.post("/api/auth", { action: "joinCode", code, name: "Mia Wu" });
+    check("with another name, they wait to be let in under it", j2.ok === true && j2.waiting === true && courseOf(await A.state(nc)).waiting?.some((x) => x.name === "Mia Wu"), j2);
+    const dupe2 = await student("Mia Wu");
+    check("a name someone waiting has is taken too", (await dupe2.post("/api/auth", { action: "joinCode", code })).needName === true);
+    check("the teacher can't add a name someone waiting has", (await A.op(nc, { op: "addStudents", names: "Mia Wu" })).added === 0);
+    const links = (await A.op(nc, { op: "setupLinks" })).links;
+    const tok = (n) => links.find((x) => x.name === n).link.split("#")[1];
+    const leoAcct = await student("Leo");
+    check("an invitation whose name a classmate shares works (it's their own seat)", (await leoAcct.post("/api/auth", { action: "invite", courseId: nc, token: tok("Leo") })).ok === true);
+    const avaAcct = await student("Ava");
+    const clash = await avaAcct.post("/api/auth", { action: "invite", courseId: nc, token: tok("Ava"), name: "Leo" });
+    check("renaming yourself to a classmate's name is refused", clash.needName === true, clash);
+    const ava = await avaAcct.post("/api/auth", { action: "invite", courseId: nc, token: tok("Ava"), name: "Ava B" });
+    check("renaming yourself on the invitation", ava.ok === true && courseOf(await A.state(nc)).students.find((x) => x.id === ava.studentId)?.name === "Ava B", ava);
+    const zed = await (await student("Zed")).post("/api/auth", { action: "invite", courseId: nc, token: tok("Zed") });
+    const st = Object.fromEntries(courseOf(await A.state(nc)).students.map((s) => [s.name, s.id]));
+    const leo = { c: leoAcct, id: st.Leo }, avaS = { c: avaAcct, id: st["Ava B"] };
+
+    // A sign-up poll: answers make groups.
+    const l0 = courseOf(await A.state(nc)).weeks[0].lessons[0];
+    const poll = { id: "m-pick", type: "practice", kind: "choice", title: "Pick a project", body: "", audience: { kind: "all" }, tools: [], attachments: [], poll: true, signup: { max: 1, names: true },
+      questions: [{ id: "q", text: "Which project?", options: ["Bridges", "Rockets"], answer: 0 }] };
+    await A.op(nc, { op: "saveLesson", lesson: { ...l0, modules: [poll] } });
+    const grouping = async () => (courseOf(await A.state(nc)).groupings ?? []).find((g) => g.id === "gs-m-pick");
+    const g0 = await grouping();
+    check("a sign-up poll makes a grouping named after the card", g0?.name === "Pick a project" && g0.groups.map((g) => g.name).join() === "Bridges,Rockets", g0);
+    const vote = (who, choice) => who.c.op(nc, { op: "answer", studentId: who.id, moduleId: "m-pick", qid: "q", choice });
+    check("voting joins that group", (await vote(leo, 0)).ok && (await grouping()).groups[0].studentIds.includes(leo.id));
+    const full = await vote(avaS, 0);
+    check("a full group is refused", full.ok !== true && /full/i.test(full.error ?? ""), full);
+    check("another group has room", (await vote(avaS, 1)).ok);
+    check("you can't move into a full group", (await vote(leo, 1)).ok !== true);
+    await A.op(nc, { op: "saveGrouping", grouping: { ...(await grouping()), groups: (await grouping()).groups.map((g, i) => ({ ...g, studentIds: i === 0 ? [] : g.studentIds })) } });
+    check("moving after the teacher frees a seat", (await vote(leo, 0)).ok && (await grouping()).groups[0].studentIds.join() === leo.id);
+    const view = (await avaS.c.get(`/api/course/${nc}?as=${avaS.id}`)).course;
+    const sv = modulesOf(view).find((m) => m.id === "m-pick").signupView;
+    check("a student sees counts, names and their own group", sv?.counts.join() === "1,1" && sv.names[0][0] === "Leo" && sv.mine === 1 && sv.max === 1, sv);
+    // Names hidden: counts only, and the payload doesn't say who's where.
+    await A.op(nc, { op: "saveLesson", lesson: { ...courseOf(await A.state(nc)).weeks[0].lessons[0], modules: [{ ...poll, signup: { max: 1, names: false } }] } });
+    const hid = (await avaS.c.get(`/api/course/${nc}?as=${avaS.id}`)).course;
+    const hv = modulesOf(hid).find((m) => m.id === "m-pick").signupView;
+    const hg = hid.groupings.find((g) => g.id === "gs-m-pick");
+    check("names hidden: counts only", hv.names === undefined && hv.counts.join() === "1,1" && hv.mine === 1, hv);
+    check("names hidden: classmates' places aren't sent", hg.groups[0].studentIds.length === 0 && hg.groups[1].studentIds.join() === avaS.id, hg);
+    // The teacher's change to the groups is kept when the card is saved again.
+    const ownMove = await grouping();
+    await A.op(nc, { op: "saveGrouping", grouping: { ...ownMove, groups: ownMove.groups.map((g, i) => ({ ...g, studentIds: i === 0 ? [leo.id, st.Zed] : g.studentIds })) } });
+    await A.op(nc, { op: "saveLesson", lesson: { ...courseOf(await A.state(nc)).weeks[0].lessons[0], modules: [{ ...poll, signup: { max: 1, names: true, locked: true } }] } });
+    check("saving the card keeps the teacher's changes", (await grouping()).groups[0].studentIds.includes(st.Zed));
+    check("locked: no more changes", (await vote(avaS, 0)).ok !== true);
+    // Taking out the first option: its members don't land in the next one.
+    await A.op(nc, { op: "saveLesson", lesson: { ...courseOf(await A.state(nc)).weeks[0].lessons[0], modules: [{ ...poll, signup: { max: 1, names: true, locked: true }, questions: [{ ...poll.questions[0], options: ["Rockets"] }] }] } });
+    const one = await grouping();
+    check("removing an option keeps the others' members", one.groups.length === 1 && one.groups[0].name === "Rockets" && one.groups[0].studentIds.join() === avaS.id, one);
+    void zed;
+
+    // @mentions: kept in the text; the teacher hears about one.
+    const wl = { id: "m-talk", type: "wall", kind: "discussion", title: "Talk", body: "", audience: { kind: "all" }, tools: [], attachments: [], wall: { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false } };
+    await A.op(nc, { op: "saveLesson", lesson: { ...courseOf(await A.state(nc)).weeks[0].lessons[0], modules: [{ ...poll, signup: { max: 1, names: true, locked: true } }, wl] } });
+    const text = `Hey @[Ava B](@${avaS.id}), ask @[Teacher](@teacher)`;
+    const mp = await leo.c.op(nc, { op: "addPost", studentId: leo.id, moduleId: "m-talk", text });
+    check("a post keeps its mentions", mp.ok && mp.post.text === text);
+    const ev = (await A.state(nc)).events ?? [];
+    check("the teacher is told they were mentioned", ev.some((e) => e.text === "Mentioned you: Hey @Ava B, ask @Teacher"), ev.slice(-2));
+    await avaS.c.op(nc, { op: "comment", who: avaS.id, postId: mp.post.id, text: `Thanks @[Teacher](@teacher)` });
+    check("a reply mentioning the teacher tells them too", ((await A.state(nc)).events ?? []).some((e) => e.text === "Mentioned you: Thanks @Teacher"));
+  }
+
   // ---- New teachers start with Questhand 101
   {
     const N = await teacher("new");

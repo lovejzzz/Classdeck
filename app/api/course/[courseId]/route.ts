@@ -2,7 +2,8 @@ import { publicOrigin } from "@/lib/origin";
 import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
-import { db, endPreview, logEvent, reset, runPreview, save } from "@/lib/store";
+import { db, endPreview, inPreview, logEvent, reset, runPreview, save } from "@/lib/store";
+import { mentionsIn, plainText } from "@/lib/markdown";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
@@ -12,7 +13,27 @@ import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
-import { DEFAULT_GROUPING, groupFor } from "@/lib/shared";
+import { DEFAULT_GROUPING, groupFor, signupGroupId, signupGroupingId } from "@/lib/shared";
+
+/**
+ * A sign-up poll's grouping, kept in step with the card: its name is the card's title and there's a group for each
+ * option (named after it). Who's in each group is kept as it is (votes, and the teacher's changes).
+ */
+function syncSignup(course: Course, m: Module) {
+  const q = m.questions?.[0];
+  if (!m.signup || !m.poll || !q) return;
+  const id = signupGroupingId(m.id);
+  const list = (course.groupings ??= []);
+  const was = list.find((g) => g.id === id);
+  const groups = q.options.map((o, i) => {
+    const gid = signupGroupId(m.id, i);
+    const name = (o.trim() || `Option ${i + 1}`).slice(0, 40);
+    // Members follow their option by its name (an option removed or moved), else by its place (an option renamed).
+    const before = was?.groups.find((g) => g.name === name) ?? was?.groups.find((g) => g.id === gid && !q.options.some((x) => x.trim() === g.name));
+    return { id: gid, name, studentIds: before?.studentIds ?? [] };
+  });
+  if (was) { was.name = m.title.slice(0, 60) || "Groups"; was.groups = groups; } else list.push({ id, name: m.title.slice(0, 60) || "Groups", groups });
+}
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
@@ -86,6 +107,11 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
     trash: undefined,
     waiting: undefined,
     students: course.students.map(({ id, name }) => ({ id, name })),
+    // A sign-up poll that hides who's in each group: a student learns only their own place in those groups.
+    groupings: (() => {
+      const hidden = new Set(course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.filter((m) => m.signup && m.signup.names === false).map((m) => signupGroupingId(m.id)))));
+      return course.groupings?.map((gs) => (hidden.has(gs.id) ? { ...gs, groups: gs.groups.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x === studentId) })) } : gs));
+    })(),
     weeks: course.weeks.map((w) => ({
       ...w,
       lessons: w.lessons.map((l) => ({
@@ -103,6 +129,16 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
           bands: undefined,
           dealtFor: tree.dealt.has(m.id) || undefined,
           tally: m.poll ? tallyOf(course, m) : undefined,
+          signupView: m.signup && m.poll ? (() => {
+            const gs = course.groupings?.find((g) => g.id === signupGroupingId(m.id));
+            const groups = (m.questions?.[0]?.options ?? []).map((_, i) => gs?.groups.find((g) => g.id === signupGroupId(m.id, i))?.studentIds ?? []);
+            // In Student View the course's groups aren't changed (it's a test), so the test student's pick shows from their answer.
+            const picked = prog[m.id]?.answers?.[m.questions?.[0]?.id ?? ""];
+            if (inPreview() && typeof picked === "number" && groups[picked] && !groups.some((ids) => ids.includes(studentId))) groups[picked] = [...groups[picked], studentId];
+            const nameOf = (id: string) => course.students.find((x) => x.id === id)?.name ?? "";
+            const mine = groups.findIndex((ids) => ids.includes(studentId));
+            return { counts: groups.map((ids) => ids.length), names: m.signup.names === false ? undefined : groups.map((ids) => ids.map(nameOf)), max: m.signup.max, mine: mine >= 0 ? mine : undefined, locked: m.signup.locked };
+          })() : undefined,
           paths: paths.get(m.id),
           audience: { kind: "all" as const },
           personal: m.audience.kind !== "all" && !m.choice && !m.picked,
@@ -457,6 +493,9 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (!course.waiting.length) course.waiting = undefined;
       if (body.allow) {
         for (const st of picked) {
+          // Names are unique in a class; should one have been taken meanwhile, a number tells them apart.
+          const taken = (n: string) => course.students.some((x) => x.name.trim().toLowerCase() === n.trim().toLowerCase());
+          if (taken(st.name)) { let k = 2; while (taken(`${st.name} ${k}`)) k++; st.name = `${st.name} ${k}`; }
           course.students.push(st);
           const g = course.groups?.length ? [...course.groups].sort((x, y) => x.studentIds.length - y.studentIds.length)[0] : undefined;
           g?.studentIds.push(st.id);
@@ -503,7 +542,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
     case "addStudents": {
       // One name per line (or comma-separated). Duplicates of existing names are skipped.
       const names: string[] = String(body.names ?? "").split(/[\n,]/).map((x: string) => x.trim()).filter(Boolean).slice(0, 200);
-      const have = new Set(course.students.map((x) => x.name.toLowerCase()));
+      // Someone waiting to be let in has their name already.
+      const have = new Set([...course.students, ...(course.waiting ?? [])].map((x) => x.name.toLowerCase()));
       const added = names.filter((n) => !have.has(n.toLowerCase()) && (have.add(n.toLowerCase()), true)).map((n) => ({ id: uid("s-"), name: n.slice(0, 60) }));
       course.students.push(...added);
       // Put each new student in the smallest group so they can use Collab Studio right away.
@@ -522,7 +562,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const emails: string[] = (Array.isArray(body.emails) ? body.emails : String(body.emails ?? "").split(/[\s,;]+/))
         .map((x: unknown) => String(x ?? "").trim().toLowerCase()).filter((x: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x) && x.length <= 120).slice(0, 200);
       const haveEmail = new Set(course.students.map((x) => x.email?.toLowerCase()).filter(Boolean));
-      const haveName = new Set(course.students.map((x) => x.name.toLowerCase()));
+      const haveName = new Set([...course.students, ...(course.waiting ?? [])].map((x) => x.name.toLowerCase()));
       const added: Student[] = [];
       for (const email of emails) {
         if (haveEmail.has(email)) continue;
@@ -726,6 +766,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (orphans.size) for (const w of course.weeks) for (const l of w.lessons) l.modules = l.modules.filter((m) => !orphans.has(m.id));
       // Card trees can reach into later lessons, so the wiring is checked across the whole course.
       cleanCourseWiring(course.weeks);
+      for (const l of list) for (const m of l.modules) syncSignup(course, m);
       if (orphans.size) extra = { removedFollowUps: [...orphans] };
       break;
     }
@@ -900,8 +941,20 @@ async function change(request: Request, courseId: string, body: Record<string, a
         : q.kind === "order" ? (Array.isArray(body.order) ? body.order : []).map(String).filter((x: string) => q.options.includes(x)).slice(0, q.options.length)
         : Number(body.choice);
       // A poll has no right answer: every vote counts.
-      // A vote is final once it's in.
-      if (found.mod.poll && p.answers?.[q.id] !== undefined) return fail("Your vote is already in");
+      // A vote is final once it's in; on a sign-up poll, it can change until the teacher locks the groups.
+      const signup = found.mod.poll && found.mod.signup ? found.mod.signup : null;
+      if (found.mod.poll && !signup && p.answers?.[q.id] !== undefined) return fail("Your vote is already in");
+      if (signup) {
+        if (signup.locked) return fail("The groups are set. Ask your teacher to move you.");
+        const choice = Number(body.choice);
+        if (!Number.isInteger(choice) || choice < 0 || choice >= q.options.length) return fail("Pick a group");
+        syncSignup(course, found.mod);
+        const gs = course.groupings!.find((g) => g.id === signupGroupingId(found.mod.id))!;
+        const target = gs.groups[choice];
+        if (signup.max && !target.studentIds.includes(body.studentId) && target.studentIds.length >= signup.max) return fail(`${target.name} is full. Pick another group.`);
+        for (const g of gs.groups) g.studentIds = g.studentIds.filter((x) => x !== body.studentId);
+        target.studentIds.push(body.studentId);
+      }
       const right = found.mod.poll ? true : isCorrect(q, given);
       (p.answers ??= {})[q.id] = given;
       // Card tree: the first answer decides which follow-up cards this student gets; later answers don't change it.
@@ -1308,7 +1361,9 @@ async function change(request: Request, courseId: string, body: Record<string, a
       };
       (d.posts[courseId] ??= []).push(post);
       if (!teacher) {
-        logEvent(courseId, { kind: "post", studentId: body.studentId, moduleId: body.moduleId, text: w.approval ? `Waiting for approval: ${text.slice(0, 80)}` : text.slice(0, 80) || "Posted an attachment" });
+        const said = plainText(text).replace(/\s+/g, " ").trim().slice(0, 80);
+        const toYou = mentionsIn(text).includes("teacher") ? "Mentioned you: " : "";
+        logEvent(courseId, { kind: "post", studentId: body.studentId, moduleId: body.moduleId, text: w.approval ? `Waiting for approval: ${said}` : said ? `${toYou}${said}` : "Posted an attachment" });
         const p = mine(body.studentId, body.moduleId);
         // With peer replies required, posting starts the card; replying to enough classmates finishes it.
         p.status = wallProgress(d.posts[courseId], body.moduleId, body.studentId, w.replies ?? 0).done ? "done" : "doing";
@@ -1368,6 +1423,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const replyTo = typeof body.replyTo === "string" && body.replyTo ? body.replyTo : undefined;
       if (replyTo && !(post.comments ?? []).some((x) => x.id === replyTo)) return fail("That reply is gone");
       (post.comments ??= []).push({ id: uid("c-"), from: who, text, at: Date.now(), work: work.length ? work : undefined, replyTo });
+      // A student @mentioning the teacher in a reply: the teacher hears about it.
+      if (who !== "teacher" && mentionsIn(text).includes("teacher")) logEvent(courseId, { kind: "post", studentId: who, moduleId: post.moduleId, text: `Mentioned you: ${plainText(text).replace(/\s+/g, " ").trim().slice(0, 80)}` });
       // A reply can be what finishes a peer-review card.
       if (who !== "teacher" && (w.replies ?? 0) > 0 && course.students.some((st) => st.id === who)) {
         const prog = wallProgress(d.posts[courseId], post.moduleId, who, w.replies);

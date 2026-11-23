@@ -256,3 +256,6 @@ body[data-panel="open"] .panel-shift-row { padding-right: var(--panel-row, 0px);
 .collaboration-carets__caret { position: relative; margin-left: -1px; margin-right: -1px; border-left: 1px solid #0d0d0d; border-right: 1px solid #0d0d0d; word-break: normal; pointer-events: none; }
 .collaboration-carets__label { position: absolute; top: -1.4em; left: -1px; padding: 0.1rem 0.35rem; border-radius: 4px 4px 4px 0; color: #fff; font-size: 11px; font-weight: 600; line-height: normal; white-space: nowrap; user-select: none; }
 .collaboration-carets__selection { background: rgba(75, 86, 168, 0.12); }
+
+/* @mentions, in the editor and in rendered text */
+.mention { display: inline; border-radius: 6px; background: #eef0fb; color: #4b56a8; font-weight: 500; padding: 0 3px; white-space: nowrap; }

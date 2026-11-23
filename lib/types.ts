@@ -221,6 +221,13 @@ export interface Module {
   writers?: "each" | "group" | "class";
   /** Which grouping "Each group" (writing together, or a discussion in groups) uses. Unset: the course's Discussion groups. */
   grouping?: string;
+  /**
+   * A poll whose answers make groups: each option is a group, and a student's vote puts them in it (they can change
+   * it until the groups are locked). The groups are a grouping of the course (signupGrouping), for other cards to use.
+   */
+  signup?: { max?: number; names?: boolean; locked?: boolean };
+  /** What a student sees of a sign-up poll: how many are in each option's group, who (if shown), and theirs. */
+  signupView?: { counts: number[]; names?: string[][]; max?: number; mine?: number; locked?: boolean };
   /** 为真时，必须先完成前面的模块才能打开（覆盖课程的自主权设置）。 */
   gate?: boolean;
   /** 只在发给学生时设置：这张卡片不是全班共有的（分支或个人模块）。 */

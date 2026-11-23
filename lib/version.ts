@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.64",
+    date: "2026-11-23",
+    changes: [
+      "Sign-up polls: tick Make groups from the answers on a poll, and each option becomes a group. Students join one by picking it and can switch until the teacher locks the groups. Set how many fit in each group (a full group can't be picked), and whether students see who's in each.",
+      "The groups a sign-up poll makes are kept under the card's name, for other cards' Each group to use. Move students on the poll changes them by hand, and those changes stay when the card is edited.",
+      "@mentions: type @ in a discussion post or reply and pick a classmate or the teacher from the list. The name shows as a tag, and the person mentioned is told.",
+      "Two students in a class can't share a name. Someone joining with a name a classmate already has is asked to add something, like a last initial, before they're in.",
+      "Questhand 101: a card on sign-up polls with one to try, and notes on @mentions and names.",
+    ],
+  },
+  {
     version: "0.1.63",
     date: "2026-11-23",
     changes: [
