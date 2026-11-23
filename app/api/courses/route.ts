@@ -10,13 +10,35 @@ import { DEFAULT_LEVELS } from "@/lib/skillsets";
 import { standardWeek } from "@/lib/templates";
 import { kindWeeks } from "@/lib/kinds";
 import type { Course } from "@/lib/types";
+import { treeView } from "@/lib/branching";
+import { visibleModules } from "@/lib/profile";
 
-/** The signed-in teacher's courses: their own and those shared with them. (The demo stays reachable by its address.) */
+/**
+ * The signed-in account's courses: the ones it teaches (its own and those shared with it), and the ones it's a student
+ * in (or waiting to be let into). (The demo stays reachable by its address.)
+ */
 export async function GET(request: Request) {
   const session = getSession(request);
   const t = teacherOf(session);
   const all = listCourses();
+  const d = db();
+  type Studying = { id: string; title: string; studentId: string; teacher: string | null; done?: number; total?: number; waiting?: boolean };
+  const studying = t ? Object.values(d.courses).flatMap((c): Studying[] => {
+    if (c.id === DEMO || c.sample) return [];
+    const owner = c.ownerId ? d.users[c.ownerId] : undefined;
+    const st = c.students.find((x) => x.userId === t.id);
+    if (st) {
+      const mine = d.progress[c.id]?.[st.id] ?? {};
+      const tree = treeView(c.weeks, mine);
+      const cards = c.weeks.flatMap((w) => w.lessons.flatMap((l) => visibleModules(l, st.id, d.choices[c.id]?.[st.id], tree)));
+      return [{ id: c.id, title: c.title, studentId: st.id, teacher: owner?.name ?? null, done: cards.filter((m) => mine[m.id]?.status === "done").length, total: cards.length }];
+    }
+    const w = c.waiting?.find((x) => x.userId === t.id);
+    return w ? [{ id: c.id, title: c.title, studentId: w.id, teacher: owner?.name ?? null, waiting: true }] : [];
+  }) : [];
   return Response.json({
+    firstRole: t?.firstRole ?? null,
+    studying,
     courses: t ? all.flatMap((c) => {
       if (c.id === DEMO) return [];
       const role = roleOf(session, db().courses[c.id]);

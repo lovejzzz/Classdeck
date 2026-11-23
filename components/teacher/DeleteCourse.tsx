@@ -23,7 +23,7 @@ export function DeleteCourse({ course }: { course: Course }) {
   return (
     <section className="card border-bad/30 p-6" aria-label="Delete this course">
       <h3 className="text-[15px] font-medium text-bad">Delete this course</h3>
-      <p className="mt-1 text-[13px] text-ink-3">Removes the course for good: its cards, its students and their PINs, all their work and feedback, and the files uploaded to it. This can’t be undone. Export the course first if you might want the cards again.</p>
+      <p className="mt-1 text-[13px] text-ink-3">Removes the course for good: its cards, its class list, all their work and feedback, and the files uploaded to it. This can’t be undone. Export the course first if you might want the cards again.</p>
       {!open ? (
         <button onClick={() => setOpen(true)} className="btn btn-ghost press mt-4 h-9 hover:!border-bad hover:!text-bad"><Icon name="trash" size={13} /> Delete course…</button>
       ) : (

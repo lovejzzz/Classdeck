@@ -3,10 +3,11 @@ import { db, save, type Session, type User } from "./store";
 import type { Course } from "./types";
 
 // Accounts and sessions.
-// Teachers sign in with email and password. Students sign in to one course with the class code,
-// their name, and a 4-digit PIN they choose the first time. The CaPS demo course is open to
-// everyone as a sandbox. Sessions are an opaque token in an HttpOnly cookie; only its SHA-256
-// is stored.
+// Everyone signs in with an account (email and password, or Google). The same account can teach some courses and be
+// a student in others: a student on a class list is linked to an account by their invitation link, or by joining
+// with the class code while signed in. (Older student-only sessions, from PINs and links before accounts, still
+// work until they expire.) The CaPS demo course is open to everyone as a sandbox. Sessions are an opaque token in an
+// HttpOnly cookie; only its SHA-256 is stored.
 
 export const COOKIE = "cd_s";
 const DAY = 86400_000;
@@ -116,15 +117,22 @@ export function canSeeTeacher(session: Session | null, course: Course): boolean 
   return canTeach(session, course) || roleOf(session, course) === "viewer";
 }
 
+/** Is this signed-in account that student (on the class list, or waiting to be let in)? */
+function isLinked(session: Session | null, course: Course, studentId?: string): boolean {
+  if (session?.kind !== "teacher" || !session.userId) return false;
+  return [...(course.students ?? []), ...(course.waiting ?? [])].some((s) => s.userId === session.userId && (!studentId || s.id === studentId));
+}
+
 /** May this visitor act as this student in this course? */
 export function canBeStudent(session: Session | null, course: Course, studentId: string): boolean {
   if (course.id === DEMO || canTeach(session, course)) return true;
+  if (isLinked(session, course, studentId)) return true;
   return session?.kind === "student" && session.courseId === course.id && session.studentId === studentId;
 }
 
 /** Any signed-in visitor of this course (for live updates). */
 export function canView(session: Session | null, course: Course): boolean {
-  return course.id === DEMO || canSeeTeacher(session, course) || (session?.kind === "student" && session.courseId === course.id);
+  return course.id === DEMO || canSeeTeacher(session, course) || isLinked(session, course) || (session?.kind === "student" && session.courseId === course.id);
 }
 
 // —— simple in-memory throttle for sign-in attempts ——

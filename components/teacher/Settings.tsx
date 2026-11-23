@@ -70,11 +70,21 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
                 <Avatar name={st.name} size={34} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14px]">{st.name}</span>
-                  <span className="block truncate text-[12.5px] text-ink-3">{st.email ?? "No email · joins by picking their name"}</span>
+                  <span className="block truncate text-[12.5px] text-ink-3">{st.userId ? `${st.email ?? "Has an account"} · joined` : `${st.email ? `${st.email} · ` : ""}not joined yet`}</span>
                 </span>
                 {!readOnly && (
                   <span className="flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
-                    <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(st.email ? `${st.name} is signed out and their links stopped working. Send a new invitation.` : `${st.name} is signed out everywhere and will choose a new PIN next time`, { icon: "lock", tone: "plain" }); }}
+                    {!st.userId && (
+                      // Their own invitation link, to send however you like: opening it signed in links their account.
+                      <button onClick={async () => {
+                        const r = await op<{ links?: { id: string; link: string }[] }>(course.id, { op: "setupLinks", studentIds: [st.id] });
+                        const link = r.links?.find((x) => x.id === st.id)?.link;
+                        if (!link) return toast("Couldn’t make a link", { icon: "x", tone: "bad" });
+                        try { await navigator.clipboard.writeText(link); toast(`Copied ${st.name}’s invitation link. Only send it to them.`, { icon: "link" }); }
+                        catch { window.prompt(`${st.name}’s invitation link`, link); }
+                      }} className="btn btn-quiet press h-8 px-2 text-[12px]" aria-label={`Copy ${st.name}’s invitation link`}><Icon name="link" size={12} /> Invitation link</button>
+                    )}
+                    <button onClick={async () => { await op(course.id, { op: "resetPin", studentId: st.id }); toast(`${st.name}’s account is unlinked and their invitation links stopped working. Send a new invitation.`, { icon: "lock", tone: "plain" }); }}
                       className="btn btn-quiet press h-8 px-2 text-[12px]" aria-label={`Reset ${st.name}’s sign-in`}><Icon name="lock" size={12} /> Reset sign-in</button>
                     <button onClick={async () => (await ask({ title: `Remove ${st.name} from the class?`, body: "Their work stays saved.", confirm: "Remove", danger: true })) && removeStudent(st.id, st.name)}
                       className="btn btn-quiet press h-8 px-2 text-[12px] hover:!text-bad" aria-label={`Remove ${st.name}`}><Icon name="x" size={12} /> Remove</button>

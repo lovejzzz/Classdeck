@@ -8,10 +8,10 @@ export function SignInNeeded({ who, courseId, next, detail }: { who: "teacher" |
       <LogoMark size={28} className="mx-auto" />
       <h1 className="mt-5 text-[20px] font-semibold tracking-tight">{who === "teacher" ? "Sign in to open this course" : "Sign in to your class"}</h1>
       <p className="mt-1.5 text-[13.5px] text-ink-2">
-        {detail ?? (who === "teacher" ? "Only the course’s teachers can open its teacher view." : "Use your class code, your name, and your PIN.")}
+        {detail ?? (who === "teacher" ? "Only the course’s teachers can open its teacher view." : "Sign in with the account you joined this class with. New to the class? Open the link in your invitation email, or join with the class code from your courses page.")}
       </p>
-      <Link href={who === "teacher" ? `/login?next=${encodeURIComponent(next)}` : `/learn/${courseId}`} className="btn btn-dark press mx-auto mt-5 h-9 px-5">
-        {who === "teacher" ? (detail ? "Sign in with another account" : "Sign in") : "Join with class code"}
+      <Link href={`/login?next=${encodeURIComponent(next)}`} data-course={courseId} className="btn btn-dark press mx-auto mt-5 h-9 px-5">
+        {detail ? "Sign in with another account" : "Sign in"}
       </Link>
     </main>
   );

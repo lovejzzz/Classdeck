@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.49",
+    date: "2026-11-22",
+    changes: [
+      "Everyone signs in. One Questhand account (Google, or email and password) is for everything: the courses you teach and the classes you take.",
+      "Your courses has two parts: As Teacher and As Student. As Student shows only when you're in a class. If you first came from an invitation or a class code, As Student comes first; if you came to teach, As Teacher does.",
+      "A student's invitation link asks them to sign in or make an account, then adds the class to it for good. A link already used by one account can't be used by another, and a teacher can't take a student's place with it.",
+      "The class code still works, after signing in: enter it under As Student (Join a class). The class link opens Questhand with the code ready. Whether anyone with the code can join, or only after you let them in, or only invited students, is set as before.",
+      "The old ways in without an account (picking your name and a 4-digit PIN, adding yourself by name) are gone. Students who used them can be sent their invitation link from Settings (Invitation link, beside each student who hasn't joined with an account yet). Reset sign-in now unlinks the account.",
+      "The home page is now the way in: the sample course and the feature cards are gone.",
+    ],
+  },
+  {
     version: "0.1.48",
     date: "2026-11-22",
     changes: [

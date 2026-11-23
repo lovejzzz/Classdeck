@@ -6,187 +6,182 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { useEffect, useState } from "react";
 import { AccountMenu } from "@/components/AccountMenu";
 import { GenArt } from "@/components/cards/GenArt";
-import { GoogleButton } from "@/components/GoogleButton";
+import { SignInPanel } from "@/components/SignInPanel";
+import { useQuery } from "@/lib/client";
 import { Icon } from "@/components/Icon";
 import { Clearable } from "@/components/Clearable";
 import { LogoMark, Wordmark } from "@/components/Logo";
-import { HeroTree } from "@/components/HeroTree";
 import { CARD_SIZE } from "@/lib/cards";
 
 type CourseTile = { id: string; title: string; subtitle?: string; weeks: number; cards: number; students: number; today?: string | null; toReview?: number; waiting?: number; role?: "owner" | "editor" | "viewer" };
 const SIZE = CARD_SIZE.deck;
 
+type Studying = { id: string; title: string; studentId: string; teacher: string | null; done?: number; total?: number; waiting?: boolean };
+
 export default function Home() {
   const router = useRouter();
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [needPass, setNeedPass] = useState(false);
-  const [pass, setPass] = useState("");
+  const query = useQuery();
+  // A class link (/?code=…) or the class code on a slide: sign in, then it's ready under As Student.
+  const codeParam = (query?.get("code") ?? "").trim().toUpperCase();
   const [courses, setCourses] = useState<CourseTile[] | null>(null);
+  const [studying, setStudying] = useState<Studying[]>([]);
+  const [firstRole, setFirstRole] = useState<"teacher" | "student" | null>(null);
   const [unclaimed, setUnclaimed] = useState<{ id: string; title: string; students: number }[]>([]);
   const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [me, setMe] = useState<{ kind: string | null; name?: string; courseId?: string; studentId?: string; courseTitle?: string } | null>(null);
-  useEffect(() => {
-    fetch("/api/courses").then((r) => r.json()).then((d) => { setCourses(d.courses ?? []); setUnclaimed(d.unclaimed ?? []); }).catch(() => setCourses([]));
+  const load = () => {
+    fetch("/api/courses").then((r) => r.json()).then((d) => { setCourses(d.courses ?? []); setStudying(d.studying ?? []); setFirstRole(d.firstRole ?? null); setUnclaimed(d.unclaimed ?? []); }).catch(() => setCourses([]));
     fetch("/api/auth").then((r) => r.json()).then(setMe).catch(() => setMe({ kind: null }));
-  }, []);
+  };
+  useEffect(load, []);
 
-  async function google(credential: string) {
-    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "google", credential }) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
-    if (r.ok) window.location.reload();
-    else setError(r.error ?? "Google sign-in didn’t work. Try again.");
-  }
-
-  // A private copy of the sample course, signed in as its one student.
-  const [trying, setTrying] = useState(false);
-  const [tryError, setTryError] = useState("");
-  async function trySample() {
-    setTrying(true);
-    setTryError("");
-    const r = await fetch("/api/try", { method: "POST" }).then((x) => x.json()).catch(() => ({ ok: false, error: "Couldn’t reach Questhand. Check your connection." }));
-    if (!r.ok) { setTrying(false); setTryError(r.error ?? "Couldn’t start the sample"); return; }
-    router.push(`/learn/${r.courseId}/${r.studentId}`);
-  }
-
-  async function join() {
-    if (!code.trim()) return;
-    setError("");
-    setBusy(true);
-    const res = await fetch(`/api/join?code=${encodeURIComponent(code)}${needPass ? `&passcode=${encodeURIComponent(pass)}` : ""}`);
-    const data = await res.json();
-    if (res.ok) {
-      try {
-        if (pass) sessionStorage.setItem(`passcode:${data.courseId}`, pass);
-      } catch {}
-      router.push(`/learn/${data.courseId}?code=${encodeURIComponent(code)}`);
-    } else {
-      setBusy(false);
-      if (data.needPasscode) setNeedPass(true);
-      setError(data.error);
-    }
-  }
-
-  // Until we know who's here, show nothing: otherwise a signed-in teacher sees the class-code page flash past.
+  // Until we know who's here, show nothing: otherwise a signed-in person sees the sign-in page flash past.
   if (me === null) return <main className="flex-1" aria-busy="true" />;
 
-  // A signed-in teacher lands on their courses: one card per course, and a card-shaped slot for a new one.
-  if (me?.kind === "teacher") {
-    const list = courses ?? [];
+  // Everyone signs in. Signed out, the home page is the way in: the name, one line, and signing in or making an account.
+  if (me.kind !== "teacher") {
     return (
       <>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">
-        <header className="flex items-center gap-3">
-          <span className="flex items-center gap-2 text-[13px] font-medium text-ink-2"><LogoMark size={15} />Questhand</span>
-          <span className="flex-1" />
-          <AccountMenu />
-        </header>
-        <h1 className="mt-8 text-[26px] font-semibold tracking-tight">Your courses</h1>
-        {error && <p className="mt-3 text-[13px] text-bad">{error}</p>}
-
-        <div className="mt-6 grid justify-start gap-5" style={{ gridTemplateColumns: `repeat(auto-fill, ${SIZE.w}px)` }}>
-          {courses === null && [0, 1].map((i) => <div key={i} className="skeleton rounded-[14px]" style={{ width: SIZE.w, height: SIZE.h }} />)}
-          {list.map((c) => <CourseCard key={c.id} c={c} />)}
-          {courses !== null && (
-            <button onClick={() => setCreating(true)} style={{ width: SIZE.w, height: SIZE.h }}
-              className="press flex flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-line-strong px-4 text-center text-[13px] text-ink-2 hover:border-ink-3 hover:text-ink">
-              <Icon name="plus" size={18} />{list.length ? "New course" : "Make your first course"}
-            </button>
+      <main className="flex w-full flex-1 flex-col items-center justify-center px-4 py-16">
+        <div className="rise"><Wordmark /></div>
+        <p className="rise mt-6 max-w-xl text-center text-[clamp(18px,2.6vw,24px)] font-medium leading-snug tracking-tight text-ink" style={{ "--i": 1 } as React.CSSProperties}>
+          Every answer opens a different door.
+        </p>
+        <div className="rise mt-8 w-full max-w-sm" style={{ "--i": 2 } as React.CSSProperties}>
+          <SignInPanel as={codeParam ? "student" : undefined} startMode={codeParam ? "signup" : "login"} onDone={() => window.location.reload()}
+            note={codeParam
+              ? <p className="rounded-xl bg-white px-4 py-3 text-[13.5px] text-ink-2 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">Sign in, or make an account, to join the class with code <span className="font-mono font-medium tracking-[0.15em] text-ink">{codeParam}</span>.</p>
+              : <p className="text-center text-[13.5px] text-ink-2">Sign in to your courses, or make an account to start one. Invited to a class? Open the link in your invitation email.</p>} />
+          {me.kind === "student" && me.courseId && (
+            // A student signed in the old way (before accounts) can still get to their board.
+            <Link href={`/learn/${me.courseId}/${me.studentId}`} className="mt-6 flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-[13px] text-ink-2 shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:text-ink">
+              <span className="flex-1">Continue as <span className="font-medium text-ink">{me.name}</span> in {me.courseTitle}</span><Icon name="arrow" size={13} />
+            </Link>
           )}
         </div>
-
-        {unclaimed.length > 0 && (
-          <section className="mt-10">
-            <h2 className="text-[13px] font-medium text-ink-2">Courses made before accounts</h2>
-            <div className="mt-2 divide-y divide-line rounded-xl border border-line bg-white">
-              {unclaimed.map((c) => (
-                <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="min-w-0 flex-1 text-[13.5px]">{c.title} <span className="mono">· {c.students} students</span></span>
-                  <button onClick={async () => {
-                    const r = await fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ claim: c.id }) }).then((x) => x.json());
-                    if (r.ok) router.push(`/teach/${c.id}`);
-                  }} className="btn btn-ghost press h-8">Make it mine</button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-        {creating && <NewCourse onClose={() => setCreating(false)} />}
       </main>
-        <SiteFooter />
+      <SiteFooter />
       </>
     );
   }
 
-  // Everyone else: the name, then a way in for teachers and for students. Nothing else.
-  return (
-    <>
-    <main className="flex w-full flex-1 flex-col items-center justify-center px-4 py-16">
-      <AccountMenu className="!fixed right-4 top-4 z-30 sm:right-6 sm:top-5" />
-      <div className="rise"><Wordmark /></div>
-      <p className="rise mt-6 max-w-xl text-center text-[clamp(18px,2.6vw,24px)] font-medium leading-snug tracking-tight text-ink" style={{ "--i": 1 } as React.CSSProperties}>
-        Every answer opens a different door.
-      </p>
-      <p className="rise mt-2 max-w-lg text-center text-[14.5px] leading-relaxed text-ink-2" style={{ "--i": 2 } as React.CSSProperties}>
-        Build a course as a map of cards. Students who struggle get help, students who fly get a challenge, and you see every path.
-      </p>
-      <div className="rise mt-8 w-full max-w-[600px]" style={{ "--i": 3 } as React.CSSProperties}><HeroTree /></div>
-      {me?.kind !== "teacher" && (
-        <div className="rise mt-6 flex flex-col items-center gap-1.5" style={{ "--i": 3 } as React.CSSProperties}>
-          <button onClick={trySample} disabled={trying} className="btn press h-10 gap-2 rounded-full border border-[#4b56a8]/25 bg-[#eef0fb] px-5 text-[14px] font-medium text-[#4b56a8] hover:bg-[#e3e6f8]">
-            <Icon name="play" size={14} /> {trying ? "Dealing your cards…" : "Try a sample course as a student"}
+  // Signed in: the courses they teach and the ones they're a student in. Whichever way they first came leads.
+  const list = courses ?? [];
+  const studentFirst = (firstRole ?? (list.length ? "teacher" : studying.length ? "student" : "teacher")) === "student";
+  const showStudent = studying.length > 0 || !!codeParam || joining;
+  const grid = { gridTemplateColumns: `repeat(auto-fill, ${SIZE.w}px)` };
+  const teacherPart = (
+    <section key="t" className="mt-8">
+      <h2 className="text-[13px] font-medium uppercase tracking-[0.08em] text-ink-3">As Teacher</h2>
+      <div className="mt-3 grid justify-start gap-5" style={grid}>
+        {courses === null && [0, 1].map((i) => <div key={i} className="skeleton rounded-[14px]" style={{ width: SIZE.w, height: SIZE.h }} />)}
+        {list.map((c) => <CourseCard key={c.id} c={c} />)}
+        {courses !== null && (
+          <button onClick={() => setCreating(true)} style={{ width: SIZE.w, height: SIZE.h }}
+            className="press flex flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-line-strong px-4 text-center text-[13px] text-ink-2 hover:border-ink-3 hover:text-ink">
+            <Icon name="plus" size={18} />{list.length ? "New course" : "Make your first course"}
           </button>
-          <span className="text-[12px] text-ink-3">No sign-up. Your own copy, gone after a day.</span>
-          {tryError && <span className="text-[12.5px] text-bad" role="alert">{tryError}</span>}
-        </div>
-      )}
-
-      <div className="rise mt-10 grid w-full max-w-md gap-6" style={{ "--i": 4 } as React.CSSProperties}>
-        {me?.kind === "student" && (
-          <Link href={`/learn/${me.courseId}/${me.studentId}`} className="flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-[13.5px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:bg-[#fafaf9]">
-            <span className="flex-1">Continue as <span className="font-medium">{me.name}</span> in {me.courseTitle}</span>
-            <Icon name="arrow" size={13} />
-          </Link>
-        )}
-        <div className="flex flex-col items-center gap-2">
-          <span className="text-[12px] uppercase tracking-[0.12em] text-ink-3">Students</span>
-          <div className="flex gap-2">
-            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && join()}
-              placeholder="Class code" aria-label="Class code" className="field h-11 w-40 text-center font-mono tracking-[0.2em]" />
-            <button onClick={join} disabled={busy || !code.trim()} className="btn btn-dark press h-11 px-5">{busy ? "Joining…" : "Join"}</button>
-          </div>
-          {needPass && (
-            <input autoFocus type="password" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && join()}
-              placeholder="Class passcode" aria-label="Class passcode" className="rise field h-11 w-[15.5rem] text-center" />
-          )}
-          {error && code && <p className="text-[13px] text-bad" role="alert">{error}</p>}
-        </div>
-        {me && me.kind !== "student" && (
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-[12px] uppercase tracking-[0.12em] text-ink-3">Teachers</span>
-            <GoogleButton onCredential={google} />
-            {error && !code && <p className="text-[13px] text-bad" role="alert">{error}</p>}
-            <Link href="/login" className="text-[12.5px] text-ink-3 underline-offset-2 hover:text-ink hover:underline">Use email and password instead</Link>
-          </div>
         )}
       </div>
+    </section>
+  );
+  const studentPart = showStudent ? (
+    <section key="s" className="mt-8">
+      <h2 className="text-[13px] font-medium uppercase tracking-[0.08em] text-ink-3">As Student</h2>
+      <div className="mt-3 grid justify-start gap-5" style={grid}>
+        {studying.map((c) => <StudyCard key={c.id} c={c} />)}
+        <JoinTile code={codeParam} onJoined={(r) => { if (r.waiting) load(); else router.push(`/learn/${r.courseId}/${r.studentId}`); }} />
+      </div>
+    </section>
+  ) : null;
+  return (
+    <>
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">
+      <header className="flex items-center gap-3">
+        <span className="flex items-center gap-2 text-[13px] font-medium text-ink-2"><LogoMark size={15} />Questhand</span>
+        <span className="flex-1" />
+        <AccountMenu />
+      </header>
+      <h1 className="mt-8 text-[26px] font-semibold tracking-tight">Your courses</h1>
+      {studentFirst ? <>{studentPart}{teacherPart}</> : <>{teacherPart}{studentPart}</>}
+      {!showStudent && (
+        <button onClick={() => setJoining(true)} className="mt-8 text-[13px] text-ink-2 hover:text-ink">Joining a class as a student? Enter its class code <Icon name="arrow" size={12} className="inline" /></button>
+      )}
 
-      <ul className="rise mt-16 grid w-full max-w-3xl gap-3 sm:grid-cols-3" style={{ "--i": 5 } as React.CSSProperties}>
-        {[
-          ["split", "Branch by answer or score", "What a student picks, or how they score, decides the card they get next."],
-          ["layers", "Paths across lessons", "Today’s answer can choose next week’s card."],
-          ["eye", "See every path", "The map shows how many students took each branch, and who is stuck."],
-        ].map(([icon, title, text]) => (
-          <li key={title} className="rounded-2xl border border-line bg-white px-4 py-4">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#eef0fb] text-[#4b56a8]"><Icon name={icon} size={15} /></span>
-            <div className="mt-3 text-[14px] font-semibold text-ink">{title}</div>
-            <p className="mt-1 text-[13px] leading-relaxed text-ink-2">{text}</p>
-          </li>
-        ))}
-      </ul>
+      {unclaimed.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-[13px] font-medium text-ink-2">Courses made before accounts</h2>
+          <div className="mt-2 divide-y divide-line rounded-xl border border-line bg-white">
+            {unclaimed.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+                <span className="min-w-0 flex-1 text-[13.5px]">{c.title} <span className="mono">· {c.students} students</span></span>
+                <button onClick={async () => {
+                  const r = await fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ claim: c.id }) }).then((x) => x.json());
+                  if (r.ok) router.push(`/teach/${c.id}`);
+                }} className="btn btn-ghost press h-8">Make it mine</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {creating && <NewCourse onClose={() => setCreating(false)} />}
     </main>
-      <SiteFooter />
+    <SiteFooter />
     </>
+  );
+}
+
+/** A course they're a student in, as a card: opens their board (or says they're waiting to be let in). */
+function StudyCard({ c }: { c: Studying }) {
+  const body = (
+    <>
+      <span className="pointer-events-none absolute inset-[5px] rounded-[10px] border border-line/70" />
+      <span className="relative mx-2.5 mt-2.5 h-[42%] flex-none overflow-hidden rounded-[8px] border border-line/80">
+        <GenArt id={c.id} tint="#4b56a8" cover="radial-gradient(55% 90% at 25% 30%, #dfe2f4 0%, transparent 70%), radial-gradient(50% 80% at 80% 80%, #eceefa 0%, transparent 70%), #f1f2fa" />
+      </span>
+      <span className="relative px-3 pt-2.5 text-[14px] font-medium leading-tight line-clamp-2">{c.title}</span>
+      {c.teacher && <span className="relative truncate px-3 pt-0.5 text-[11.5px] text-ink-3">{c.teacher}</span>}
+      <span className="flex-1" />
+      <span className="relative flex flex-wrap gap-1 px-3 pb-3 text-[11px]">
+        {c.waiting ? <span className="chip h-5 bg-warn/10 text-warn">Waiting for your teacher</span> : <span className="chip h-5">{c.done ?? 0}/{c.total ?? 0} cards done</span>}
+      </span>
+    </>
+  );
+  const cls = "group relative flex flex-col overflow-hidden rounded-[14px] border border-line bg-white";
+  return c.waiting
+    ? <div style={{ width: SIZE.w, height: SIZE.h }} className={`${cls} opacity-80`} title="Your teacher needs to let you in">{body}</div>
+    : <Link href={`/learn/${c.id}/${c.studentId}`} style={{ width: SIZE.w, height: SIZE.h }} className={`${cls} transition-transform duration-300 ease-[var(--ease-spring)] hover:-translate-y-1 hover:shadow-[0_16px_30px_-18px_rgba(20,20,18,0.45)]`}>{body}</Link>;
+}
+
+/** Join a class with its code (and passcode, if it has one), as the signed-in account. */
+function JoinTile({ code: start, onJoined }: { code: string; onJoined: (r: { courseId: string; studentId: string; waiting?: boolean }) => void }) {
+  const [code, setCode] = useState(start);
+  const [pass, setPass] = useState("");
+  const [needPass, setNeedPass] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function join(e: React.FormEvent) {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setBusy(true);
+    setError("");
+    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "joinCode", code, passcode: pass || undefined }) })
+      .then((x) => x.json()).catch(() => ({ ok: false, error: "Couldn’t reach Questhand. Check your connection." }));
+    setBusy(false);
+    if (r.ok) { setCode(""); onJoined(r); return; }
+    if (r.needPasscode) setNeedPass(true);
+    setError(r.error ?? "That didn’t work");
+  }
+  return (
+    <form onSubmit={join} style={{ width: SIZE.w, height: SIZE.h }} className="flex flex-col justify-center gap-2 rounded-[14px] border border-dashed border-line-strong px-4 text-center">
+      <span className="text-[13px] font-medium text-ink-2">Join a class</span>
+      <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Class code" aria-label="Class code" autoFocus={!!start}
+        className="field h-10 text-center font-mono tracking-[0.2em]" />
+      {needPass && <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="Passcode" aria-label="Class passcode" className="field h-9 text-center" />}
+      <button disabled={busy || !code.trim()} className="btn btn-dark press h-9 justify-center">{busy ? "Joining…" : "Join"}</button>
+      {error && <span className="text-[12px] leading-snug text-bad" role="alert">{error}</span>}
+    </form>
   );
 }
 

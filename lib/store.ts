@@ -26,6 +26,9 @@ export interface User {
   mail?: { day: string; n: number };
   /** Cards they saved to reuse in any of their courses (the "custom" choices in New card). */
   cards?: SavedCard[];
+  /** How they first came to Questhand: to teach (made an account themselves) or to learn (from an invitation or a
+   *  class code). Their course list puts that side first. */
+  firstRole?: "teacher" | "student";
   createdAt: number;
 }
 

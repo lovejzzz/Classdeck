@@ -5,7 +5,7 @@ export const MAX_UPLOAD = 25 * 1024 * 1024;
 const MB = 1024 * 1024;
 const num = (v: string | undefined, d: number) => (Number(v) > 0 ? Number(v) : d);
 
-/** Who an upload counts against: a teacher, a student in one course, or demo visitors (all together). */
+/** Who an upload counts against: an account (teaching or learning), an older student-only sign-in, or demo visitors. */
 export function uploaderOf(s: { kind: string; userId?: string; courseId?: string; studentId?: string }): string {
   if (s.kind === "teacher") return `u:${s.userId}`;
   if (s.kind === "student") return `s:${s.courseId}:${s.studentId}`;

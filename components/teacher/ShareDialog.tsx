@@ -102,9 +102,9 @@ function ShareBox({ title, placeholder, onAdd, rows, general, link, linkLabel, e
 }
 
 const ACCESS: { v: "off" | "approve" | "open"; label: string; hint: string }[] = [
-  { v: "off", label: "Restricted", hint: "Only students on the class list can join with the link" },
-  { v: "approve", label: "Anyone with the link, after you let them in", hint: "New students wait until you say yes" },
-  { v: "open", label: "Anyone with the link", hint: "New students join straight away" },
+  { v: "off", label: "Restricted", hint: "Only students you invite (by email, or with their own link) can join" },
+  { v: "approve", label: "Anyone with the link or code, after you let them in", hint: "They sign in, then wait until you say yes" },
+  { v: "open", label: "Anyone with the link or code", hint: "They sign in and join straight away" },
 ];
 
 /** Invite students: add them by email, or share the class link or QR code. Students have no permissions to set. */
@@ -123,7 +123,8 @@ export function InviteStudents({ course, me, onClose, onChanged }: { course: Cou
   }
   // eslint-disable-next-line react-hooks/set-state-in-effect -- the address is only known in the browser
   useEffect(() => setOrigin(window.location.origin), []);
-  const link = `${origin}/learn/${course.id}?code=${course.joinCode}`;
+  // The class link opens Questhand with the code ready: students sign in (or make an account), then join.
+  const link = `${origin}/?code=${course.joinCode}`;
   const mode = course.access?.selfJoin ?? "off";
   const waiting = course.waiting ?? [];
   const withEmail = course.students.filter((s) => s.email).map((s) => s.email!);
@@ -139,7 +140,7 @@ export function InviteStudents({ course, me, onClose, onChanged }: { course: Cou
     onChanged();
     toast(allow ? `Let in ${label}` : `Turned away ${label}`, { icon: allow ? "check" : "x", tone: allow ? "ok" : "plain" });
   }
-  const mail = `mailto:?bcc=${encodeURIComponent(withEmail.join(","))}&subject=${encodeURIComponent(`Join ${course.title} on Questhand`)}&body=${encodeURIComponent(`Join ${course.title} here: ${link}\n\nOpen the link, pick your name, and choose a 4-digit PIN.`)}`;
+  const mail = `mailto:?bcc=${encodeURIComponent(withEmail.join(","))}&subject=${encodeURIComponent(`Join ${course.title} on Questhand`)}&body=${encodeURIComponent(`Join ${course.title} on Questhand: ${link}\n\nOpen the link, sign in (or make a free account with Google or your email), and you’re in the class.`)}`;
 
   return (
     <>
@@ -204,8 +205,8 @@ export function InviteStudents({ course, me, onClose, onChanged }: { course: Cou
         note={mode === "off" && !course.students.length
           ? "The class list is empty and access is Restricted, so no one can join yet. Add students above, or open access to anyone with the link."
           : mailOn
-            ? "An invitation from Questhand carries each student’s own link: it opens their board, no PIN needed. Or share the class link: students open it, pick their name, and choose a 4-digit PIN."
-            : "Sending email from Questhand isn’t set up on this site yet. Copy the link (or use Email the link) to send it yourself. Students open it, pick their name, and choose a 4-digit PIN."}
+            ? "Everyone signs in to Questhand. An invitation from Questhand carries each student’s own link: they sign in (or make an account) and they’re in. Or share the class link or code: students sign in, then join."
+            : "Sending email from Questhand isn’t set up on this site yet. Copy the link (or use Email the link) to send it yourself. Students sign in to Questhand (or make an account), then join."}
         onClose={onClose}
       />
       <BackCloses name="qr" value={qr ? "1" : null} onBack={() => setQr(false)} />

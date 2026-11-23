@@ -494,12 +494,12 @@ async function change(request: Request, courseId: string, body: Record<string, a
       break;
     }
     case "setupLinks": {
-      // Sign-in links for students on the list who haven't set a PIN. Earlier links keep working (up to a few per student).
-      const pins = d.pins[courseId] ?? {};
+      // Invitation links for students on the list not yet linked to an account (or the ones asked for). Opening one
+      // signed in links that account to the student. Earlier links keep working (up to a few per student).
       const want = Array.isArray(body.studentIds) ? new Set(body.studentIds.map(String)) : null;
       const origin = publicOrigin(request);
       extra = {
-        links: course.students.filter((st) => !pins[st.id] && (!want || want.has(st.id))).map((st) => ({ id: st.id, name: st.name, email: st.email, link: inviteUrl(origin, courseId, issueInvite(st)) })),
+        links: course.students.filter((st) => (want ? want.has(st.id) : !st.userId)).map((st) => ({ id: st.id, name: st.name, email: st.email, link: inviteUrl(origin, courseId, issueInvite(st)) })),
       };
       break;
     }
@@ -1097,10 +1097,11 @@ async function change(request: Request, courseId: string, body: Record<string, a
       break;
     }
     case "resetPin": {
-      // Resetting a student's sign-in clears their PIN and turns off their links (a link that went to the wrong person).
+      // Resetting a student's sign-in unlinks the account that was them, turns off their links (a link that went to
+      // the wrong person) and clears an old PIN. A new invitation then links whoever opens it.
       if (d.pins[courseId]) delete d.pins[courseId][body.studentId];
       const st = course.students.find((s) => s.id === body.studentId);
-      if (st) revokeInvites(st);
+      if (st) { revokeInvites(st); st.userId = undefined; }
       // And whoever is signed in as them now is signed out, so the wrong person doesn't stay in.
       for (const [k, v] of Object.entries(d.sessions)) if (v.kind === "student" && v.courseId === courseId && v.studentId === body.studentId) delete d.sessions[k];
       break;

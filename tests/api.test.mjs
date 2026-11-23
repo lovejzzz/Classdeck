@@ -55,6 +55,19 @@ async function teacher(tag) {
   return c;
 }
 
+// A student is an account too: it signs up, then opens its invitation (or joins with the class code).
+let studentN = 0;
+async function student(name = `Student ${++studentN}`) {
+  const c = client();
+  await c.post("/api/auth", { action: "signup", email: `t-s${++studentN}-${run}@example.test`, name, password: randomBytes(12).toString("hex"), as: "student" });
+  return c;
+}
+async function invited(courseId, link, name) {
+  const c = await student(name);
+  const r = await c.post("/api/auth", { action: "invite", courseId, token: link.includes("#") ? link.split("#")[1] : link });
+  return { c, r, id: r.studentId };
+}
+
 const courseOf = (s) => s.course ?? s;
 const modulesOf = (c) => c.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules));
 
@@ -186,19 +199,24 @@ async function main() {
   // ---- Joining and students
   const fresh = courseOf(await A.state(made["template/writing"]));
   const code = fresh.joinCode;
-  const S1 = client();
-  const j1 = await S1.post("/api/auth", { action: "join", courseId: fresh.id, code, name: "Mia Chen", pin: "1234" });
-  check("student joins (waits for OK)", j1.ok && j1.waiting === true, j1);
-  check("wrong code refused", (await client().post("/api/auth", { action: "join", courseId: fresh.id, code: "ZZZZZZ", name: "Bo", pin: "1234" })).ok === false);
-  check("same name refused", (await client().post("/api/auth", { action: "join", courseId: fresh.id, code, name: "mia chen", pin: "1234" })).ok === false);
-  check("bad PIN refused", (await client().post("/api/auth", { action: "join", courseId: fresh.id, code, name: "Bo Li", pin: "12a4" })).ok === false);
+  const S1 = await student("Mia Chen");
+  const j1 = await S1.post("/api/auth", { action: "joinCode", code });
+  check("a signed-in student joins with the class code (waits for OK)", j1.ok && j1.waiting === true && j1.courseId === fresh.id, j1);
+  check("joining again keeps the same place", (await S1.post("/api/auth", { action: "joinCode", code })).studentId === j1.studentId);
+  check("wrong code refused", (await S1.post("/api/auth", { action: "joinCode", code: "ZZZZZZ" })).ok === false);
+  check("no account, no joining", (await client().post("/api/auth", { action: "joinCode", code })).status === 401);
+  check("the old name-and-PIN ways in are closed", (await client().post("/api/auth", { action: "join", courseId: fresh.id, code, name: "Bo Li", pin: "1234" })).ok === false && (await client().post("/api/auth", { action: "student", courseId: fresh.id, code, studentId: "x", pin: "1234" })).ok === false);
+  check("a teacher can't join their own course as a student", (await A.post("/api/auth", { action: "joinCode", code })).ok === false);
+  check("a waiting student's course is listed as waiting", (await S1.get("/api/courses")).studying?.some((c) => c.id === fresh.id && c.waiting), (await S1.get("/api/courses")).studying);
   const w = courseOf(await A.state(fresh.id)).waiting ?? [];
   check("teacher sees the waiting student", w.some((s) => s.name === "Mia Chen"), w);
   const li = await A.op(fresh.id, { op: "letIn", studentIds: w.map((s) => s.id), allow: true });
   check("let in", li.ok !== false, li);
   const inClass = courseOf(await A.state(fresh.id));
   const mia = inClass.students.find((s) => s.name === "Mia Chen");
-  check("student is on the list", !!mia, inClass.students);
+  check("student is on the list, still linked to their account", !!mia?.userId, inClass.students);
+  const mine = (await S1.get("/api/courses"));
+  check("their course list has it as a student, not as a teacher", mine.studying?.some((c) => c.id === fresh.id && c.studentId === mia?.id && !c.waiting) && !mine.courses.some((c) => c.id === fresh.id) && mine.firstRole === "student", mine);
   const asStudent = await S1.state(`${fresh.id}?as=${mia?.id}`);
   check("student reads the class", asStudent.status === 200, asStudent.status);
   const firstCard = modulesOf(inClass)[0];
@@ -209,7 +227,7 @@ async function main() {
   check("student can't act as another student", [401, 403].includes((await S1.op(fresh.id, { op: "setProgress", studentId: leo.id, moduleId: firstCard.id, status: "done" })).status));
   check("student can't do teacher ops", [401, 403].includes((await S1.op(fresh.id, { op: "addStudents", names: "Hacker" })).status));
   check("student can't send session notes", [401, 403].includes((await S1.op(fresh.id, { op: "sessionNotes", moduleId: firstCard.id, notes: {} })).status));
-  check("student can't use the library", (await S1.get("/api/library")).status === 401);
+  check("a student account's library is its own (empty)", ((await S1.get("/api/library")).cards ?? []).length === 0);
   check("student can't read another course", [401, 403, 404].includes((await S1.state(`${cid}?as=${mia.id}`)).status));
   check("student can't read as a classmate", [401, 403].includes((await S1.state(`${fresh.id}?as=${leo.id}`)).status));
   check("student can't read the teacher view", [401, 403].includes((await S1.state(fresh.id)).status));
@@ -316,22 +334,27 @@ async function main() {
   check("unknown op refused", (await A.op(fresh.id, { op: "nope" })).ok === false);
   check("unknown card refused", (await S1.op(fresh.id, { op: "setProgress", studentId: mia.id, moduleId: "m-nope", status: "done" })).ok === false);
 
-  // ---- A student's own link signs them straight in, no PIN, and keeps working
+  // ---- A student's own link links their place on the list to their account
   {
     const tokenOf = (r) => (r.links ?? []).find((x) => x.id === leo.id)?.link?.split("#")[1];
     const t1 = tokenOf(await A.op(fresh.id, { op: "setupLinks", studentIds: [leo.id] }));
     check("teacher gets a link for a listed student", !!t1);
-    const L1 = client();
+    const anon = await client().post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 });
+    check("opened signed out, the link asks for an account and says whose invitation it is", anon.status === 401 && anon.needAccount && anon.name === "Leo Park", anon);
+    const L1 = await student("Leo Park");
     const in1 = await L1.post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 });
-    check("link signs the student in", in1.ok && in1.studentId === leo.id && !!L1.cookie, in1);
-    check("signed-in student reads their board", (await L1.state(`${fresh.id}?as=${leo.id}`)).status === 200);
-    check("the same link works again (another device)", (await client().post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 })).ok === true);
+    check("signed in, the link links the student to the account", in1.ok && in1.studentId === leo.id && courseOf(await A.state(fresh.id)).students.find((x) => x.id === leo.id)?.userId, in1);
+    check("the student reads their board, just signed in", (await L1.state(`${fresh.id}?as=${leo.id}`)).status === 200);
+    check("the same link works again for the same account", (await L1.post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 })).ok === true);
+    const thief = await student("Not Leo");
+    check("another account can't use a link that's already linked", (await thief.post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 })).status === 409);
+    check("…and can't read Leo's board", [401, 403].includes((await thief.state(`${fresh.id}?as=${leo.id}`)).status));
+    check("the teacher's own account can't take a student's place", (await A.post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 })).status === 409);
     const t2 = tokenOf(await A.op(fresh.id, { op: "setupLinks", studentIds: [leo.id] }));
-    check("a new link doesn't break the first one", t2 !== t1 && (await client().post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 })).ok === true);
-    check("no one can claim the name with a PIN", (await client().post("/api/auth", { action: "student", courseId: fresh.id, code, studentId: leo.id, pin: "1111" })).ok === false);
-    check("a made-up link is refused", (await client().post("/api/auth", { action: "invite", courseId: fresh.id, token: "nope" })).ok === false);
+    check("a new link doesn't break the first one", t2 !== t1 && (await L1.post("/api/auth", { action: "invite", courseId: fresh.id, token: t1 })).ok === true);
+    check("a made-up link is refused", (await L1.post("/api/auth", { action: "invite", courseId: fresh.id, token: "nope" })).ok === false);
     await A.op(fresh.id, { op: "resetPin", studentId: leo.id });
-    check("reset sign-in turns the links off", (await client().post("/api/auth", { action: "invite", courseId: fresh.id, token: t2 })).ok === false);
+    check("reset sign-in unlinks the account and turns the links off", (await L1.post("/api/auth", { action: "invite", courseId: fresh.id, token: t2 })).ok === false && [401, 403].includes((await L1.state(`${fresh.id}?as=${leo.id}`)).status));
   }
 
   // "Only my list" with an empty list: nobody can add themselves.
@@ -339,7 +362,7 @@ async function main() {
   check("turn self-join off", off.ok !== false, off);
   const offState = courseOf(await A.state(made["blank/music"]));
   if (!offState.access?.selfJoin) {
-    check("joining refused when only listed names may join", (await client().post("/api/auth", { action: "join", courseId: offState.id, code: offState.joinCode, name: "Ann Lee", pin: "1234" })).ok === false);
+    check("joining refused when only invited students may join", (await (await student("Ann Lee")).post("/api/auth", { action: "joinCode", code: offState.joinCode })).ok === false);
   } else check("setAccess turned self-join off", false, offState.access);
 
   // ---- Card trees: each answer deals its own follow-up card
@@ -350,11 +373,7 @@ async function main() {
     const roster = courseOf(await A.state(tid)).students;
     const sid = (n) => roster.find((s) => s.name === n).id;
     const links = (await A.op(tid, { op: "setupLinks" })).links;
-    const as = async (name) => {
-      const c = client();
-      await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] });
-      return c;
-    };
+    const as = async (name) => (await invited(tid, links.find((x) => x.name === name).link, name)).c;
     const [SA, SB, SC] = [await as("Ana One"), await as("Ben Two"), await as("Cal Three")];
     const base = courseOf(await A.state(tid)).weeks[0].lessons[0];
     const card = (id, type, title, extra = {}) => ({ id, type, title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
@@ -432,11 +451,7 @@ async function main() {
     const roster = courseOf(await A.state(tid)).students;
     const sid = (n) => roster.find((s) => s.name === n).id;
     const links = (await A.op(tid, { op: "setupLinks" })).links;
-    const as = async (name) => {
-      const c = client();
-      await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] });
-      return c;
-    };
+    const as = async (name) => (await invited(tid, links.find((x) => x.name === name).link, name)).c;
     const S = { Dee: await as("Dee Low"), Eve: await as("Eve Mid"), Fay: await as("Fay Top") };
     const [L1, L2] = courseOf(await A.state(tid)).weeks[0].lessons;
     const card = (id, type, title, extra = {}) => ({ id, type, title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
@@ -541,8 +556,7 @@ async function main() {
     const l = courseOf(await A.state(tid)).weeks[0].lessons[0];
     const card = (id, type, title, extra = {}) => ({ id, type, title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
     await A.op(tid, { op: "saveLesson", lesson: { ...l, modules: [card("m-src", "practice", "Pick", { questions: [{ id: "q", text: "Which?", options: ["Left", "Right"], answer: 0, next: ["m-left", "m-right"] }] }), card("m-left", "read", "Left card"), card("m-right", "read", "Secret right card")] } });
-    const G = client();
-    await G.post("/api/auth", { action: "invite", courseId: tid, token: (await A.op(tid, { op: "setupLinks" })).links[0].link.split("#")[1] });
+    const G = (await invited(tid, (await A.op(tid, { op: "setupLinks" })).links[0].link)).c;
     const gid = courseOf(await A.state(tid)).students[0].id;
     const srcOf = async () => modulesOf(courseOf(await G.state(`${tid}?as=${gid}`))).find((m) => m.id === "m-src");
     const before = await srcOf();
@@ -577,7 +591,7 @@ async function main() {
     check("a Content card saves as Content", savedMods.find((m) => m.id === "m-ear")?.kind === "content", savedMods.find((m) => m.id === "m-ear")?.kind);
     check("a poll saves as a Choice card with no right answer, its wiring kept", saved.kind === "choice" && saved.poll === true && saved.type === "practice" && saved.questions[0].answer === undefined && saved.questions[0].next?.[0] === "m-ear", saved);
     const links = (await A.op(tid, { op: "setupLinks" })).links;
-    const as = async (name) => { const c = client(); const r = await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] }); return { c, id: r.studentId }; };
+    const as = async (name) => { const { c, id } = await invited(tid, links.find((x) => x.name === name).link, name); return { c, id }; };
     const h = await as("Hal One"), i = await as("Ivy Two");
     const v1 = await h.c.op(tid, { op: "answer", studentId: h.id, moduleId: "m-poll", qid: "p", choice: 0 });
     check("a vote counts (no wrong answers in a poll), and deals that choice's card", v1.correct === true && v1.dealt?.[0]?.id === "m-ear", v1);
@@ -608,7 +622,7 @@ async function main() {
     const ls = courseOf(await A.state(tid)).weeks[0].lessons[0];
     check("a group keeps real members only, right after it", JSON.stringify(ls.modules.find((m) => m.id === "m-g").members) === JSON.stringify(["m-c1", "m-c2", "m-c3"]) && ls.modules.map((m) => m.id).slice(0, 4).join() === "m-g,m-c1,m-c2,m-c3", ls.modules.map((m) => m.id));
     const links = (await A.op(tid, { op: "setupLinks" })).links;
-    const as = async (name) => { const c = client(); const r = await c.post("/api/auth", { action: "invite", courseId: tid, token: links.find((x) => x.name === name).link.split("#")[1] }); return { c, id: r.studentId }; };
+    const as = async (name) => { const { c, id } = await invited(tid, links.find((x) => x.name === name).link, name); return { c, id }; };
     const jo = await as("Jo Low"), kit = await as("Kit High");
     const view = async (s) => courseOf(await s.c.state(`${tid}?as=${s.id}`));
     const v0 = await view(jo);
@@ -634,7 +648,7 @@ async function main() {
     const fresh = await A.op(tid, { op: "addStudents", names: "Lou New" });
     void fresh;
     const l3 = (await A.op(tid, { op: "setupLinks" })).links.find((x) => x.name === "Lou New");
-    const lou = client(); const lr = await lou.post("/api/auth", { action: "invite", courseId: tid, token: l3.link.split("#")[1] });
+    const { c: lou, r: lr } = await invited(tid, l3.link);
     const louIds = modulesOf(courseOf(await lou.state(`${tid}?as=${lr.studentId}`))).map((m) => m.id);
     check("a group dealt by an answer keeps its cards hidden until then", !louIds.some((x) => ["m-c1", "m-c2", "m-c3"].includes(x)) && louIds.includes("m-gate"), louIds);
     await lou.op(tid, { op: "answer", studentId: lr.studentId, moduleId: "m-gate", qid: "m-gate-q", choice: 0 });
@@ -644,30 +658,6 @@ async function main() {
     const gateNext = courseOf(await A.state(tid)).weeks[0].lessons[0].modules.find((m) => m.id === "m-gate").questions[0].next;
     check("a card inside a group can't be dealt on its own (deal the group)", gateNext?.[0] === "m-g" && !gateNext?.[1], gateNext);
     await A.del("/api/courses", { id: tid, confirm: `Group ${run}` });
-  }
-
-  // ---- The public sample: anyone gets a private copy as its one student
-  {
-    const V = client();
-    const r = await V.post("/api/try", {});
-    check("a visitor gets their own sample copy, signed in as its student", r.ok && r.courseId?.startsWith("sample-") && !!V.cookie, r);
-    const sv = courseOf(await V.state(`${r.courseId}?as=${r.studentId}`));
-    check("the copy has the sample lessons and only this student", sv.weeks?.[0]?.lessons?.length === 2 && sv.students?.length === 1 && !!sv.sample, sv.title);
-    // The sample's check is a card group of three Multiple choice cards; all right deals the lesson-2 challenge.
-    const deck = sv.weeks[0].lessons[0].decks?.[0];
-    let sub = {};
-    for (const id of deck?.members ?? []) {
-      const m = modulesOf(sv).find((x) => x.id === id);
-      const right = { "A phrase ends on chord V. Which cadence is it?": 1 }[m.questions[0].text] ?? 0;
-      sub = await V.op(r.courseId, { op: "answer", studentId: r.studentId, moduleId: id, qid: m.questions[0].id, choice: right });
-    }
-    check("full marks on the sample's card group deal the challenge in lesson 2", deck?.members?.length === 3 && sub.dealt?.some((d) => /Challenge/.test(d.title) && d.lesson === "Using cadences"), sub);
-    const way = modulesOf(sv).find((m) => m.title === "Pick your way in");
-    check("the sample's “pick your way in” is a poll", way?.kind === "choice" && way.poll === true, way?.kind);
-    check("nobody can edit a sample copy", [401, 403].includes((await V.op(r.courseId, { op: "addStudents", names: "Intruder" })).status) && [401, 403].includes((await A.op(r.courseId, { op: "addStudents", names: "Intruder" })).status));
-    check("sample copies never show in a teacher's courses", !(await A.get("/api/courses")).courses.some((c) => c.id === r.courseId));
-    check("two visitors get two separate copies", (await client().post("/api/try", {})).courseId !== r.courseId);
-    check("a signed-in teacher is asked to sign out first", (await A.post("/api/try", {})).status === 409);
   }
 
   // ---- Uploads used by a saved card survive deleting a course

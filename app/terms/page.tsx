@@ -13,7 +13,7 @@ export default function Terms() {
         <li>Questhand is offered as is, while it’s being built. Features may change.</li>
         <li>Teachers are responsible for the courses they create and for having the right to share what they upload.</li>
         <li>Upload only work that is yours to share. Don’t upload anything unlawful, hateful, or private about someone else.</li>
-        <li>Keep your sign-in to yourself. A student’s PIN is for that student only.</li>
+        <li>Keep your sign-in to yourself. An invitation link is for the person it was sent to.</li>
         <li>Uploads have size limits, and files may be cleared after a course ends.</li>
         <li>We may remove content or accounts that break these rules.</li>
       </ul>

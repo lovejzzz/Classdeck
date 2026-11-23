@@ -315,6 +315,8 @@ export interface Student {
   joinedAt?: number;
   /** When Questhand last emailed them an invitation. */
   invitedAt?: number;
+  /** The Questhand account that is this student: linked by their invitation link, or by joining with the class code. */
+  userId?: string;
 }
 
 export interface Skill {

@@ -1,8 +1,8 @@
 import { clientIp } from "@/lib/origin";
-import { checkSecret, endSession, getSession, hashSecret, startSession, teacherOf, throttled } from "@/lib/auth";
+import { canTeach, checkSecret, endSession, getSession, hashSecret, roleOf, startSession, teacherOf, throttled } from "@/lib/auth";
 import { uid } from "@/lib/profile";
 import { verifyGoogle } from "@/lib/google";
-import { findInvite, liveInvites } from "@/lib/hooks";
+import { findInvite } from "@/lib/hooks";
 import { db, save } from "@/lib/store";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -14,7 +14,8 @@ export async function GET(request: Request) {
   const t = teacherOf(s);
   // The Google client id is public: it's what the "Sign in with Google" button needs.
   const google = process.env.GOOGLE_CLIENT_ID || null;
-  if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email, picture: t.picture ?? null, google });
+  // An account (it can teach some courses and be a student in others). "teacher" is its kind for older pages.
+  if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email, picture: t.picture ?? null, firstRole: t.firstRole ?? null, google });
   if (s?.kind === "student" && s.courseId) {
     const c = db().courses[s.courseId];
     const st = c?.students.find((x) => x.id === s.studentId) ?? c?.waiting?.find((x) => x.id === s.studentId);
@@ -36,10 +37,11 @@ export async function POST(request: Request) {
       if (!EMAIL.test(email)) return fail("Enter a valid email address");
       if (!name) return fail("Enter your name");
       if (password.length < 8) return fail("Use a password of at least 8 characters");
-      if (throttled(`signup:${ip}`, 10)) return fail("Too many attempts. Try again in a few minutes.", 429);
+      // A whole class often signs up at once from one school address, so the limit per address is generous.
+      if (throttled(`signup:${ip}`, 80)) return fail("Too many attempts. Try again in a few minutes.", 429);
       if (Object.values(d.users).some((u) => u.email === email)) return fail("There’s already an account with that email. Sign in instead.");
       const id = uid("u-");
-      d.users[id] = { id, email, name, ...hashSecret(password), createdAt: Date.now() };
+      d.users[id] = { id, email, name, ...hashSecret(password), firstRole: body.as === "student" ? "student" : "teacher", createdAt: Date.now() };
       save();
       return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: id }) } });
     }
@@ -51,77 +53,71 @@ export async function POST(request: Request) {
       if (!u || !checkSecret(String(body.password ?? ""), u.salt, u.hash)) return fail("That email and password don’t match", 401);
       return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: u.id }) } });
     }
-    case "student": {
-      const course = d.courses[body.courseId];
-      if (!course || course.joinCode !== String(body.code ?? "").trim().toUpperCase()) return fail("That class code doesn’t match", 403);
-      if (course.access?.passcode && body.passcode !== course.access.passcode) return fail("That passcode isn’t right", 403);
-      const st = course.students.find((s) => s.id === body.studentId);
-      if (!st) return fail("Pick your name from the list");
-      const pin = String(body.pin ?? "");
-      if (!/^\d{4}$/.test(pin)) return fail("Your PIN is 4 digits");
-      if (throttled(`pin:${course.id}:${st.id}`, 8)) return fail("Too many tries. Ask your teacher to reset your PIN, or wait a few minutes.", 429);
-      const pins = (d.pins[course.id] ??= {});
-      // Someone invited by email (or from a form) signs in with their own link, so no one else can claim their name.
-      if (!pins[st.id] && liveInvites(st).length) return fail("Open the link in your invitation email to get to your board. Can’t find it? Ask your teacher to send it again.", 403);
-      if (!pins[st.id]) {
-        const h = hashSecret(pin);
-        pins[st.id] = `${h.salt}:${h.hash}`;
-        save();
-      } else {
-        const [salt, hash] = pins[st.id].split(":");
-        if (!checkSecret(pin, salt, hash)) return fail("That PIN isn’t right. If you forgot it, ask your teacher to reset it.", 401);
-      }
-      return Response.json({ ok: true, studentId: st.id }, { headers: { "Set-Cookie": startSession({ kind: "student", courseId: course.id, studentId: st.id }) } });
-    }
-    case "join": {
-      // Someone not on the class list adds themselves with the class code, if the teacher allows it.
-      // A whole class often shares one school address, so the limit is per class and generous.
-      if (throttled(`join:${ip}:${body.courseId}`, 60)) return fail("Too many attempts. Try again in a few minutes.", 429);
-      const course = d.courses[body.courseId];
-      if (!course || course.joinCode !== String(body.code ?? "").trim().toUpperCase()) return fail("That class code doesn’t match", 403);
+    case "student":
+    case "join":
+      // Before accounts, students signed in with a name and a PIN, or added themselves by name. Now everyone has an
+      // account: sign in, then join with the class code (under As Student) or from the invitation email.
+      return fail("Sign in to Questhand first (or make an account), then enter the class code under As Student.", 410);
+    case "joinCode": {
+      // A signed-in account joins a class with its code, if the teacher lets people join that way.
+      const u = teacherOf(getSession(request));
+      if (!u) return fail("Sign in first", 401);
+      if (throttled(`code:${u.id}`, 20)) return fail("Too many attempts. Try again in a few minutes.", 429);
+      const code = String(body.code ?? "").trim().toUpperCase();
+      const course = code ? Object.values(d.courses).find((c) => c.joinCode === code && !c.sample) : undefined;
+      if (!course) return fail("That class code doesn’t match a class", 404);
+      const session = getSession(request);
+      if (roleOf(session, course)) return fail("You teach this course. To see it as a student, use Student View.", 409);
+      const mine = course.students.find((x) => x.userId === u.id);
+      if (mine) return Response.json({ ok: true, courseId: course.id, studentId: mine.id });
+      const waitingAs = course.waiting?.find((x) => x.userId === u.id);
+      if (waitingAs) return Response.json({ ok: true, courseId: course.id, studentId: waitingAs.id, waiting: true });
       if (course.access?.joinOpen === false) return fail("This class isn’t accepting new students right now", 403);
-      if (course.access?.passcode && body.passcode !== course.access.passcode) return fail("That passcode isn’t right", 403);
+      if (course.access?.passcode && body.passcode !== course.access.passcode) return Response.json({ ok: false, needPasscode: true, error: body.passcode ? "That passcode isn’t right" : "This class also needs a passcode" }, { status: 403 });
       const mode = course.access?.selfJoin;
-      if (!mode) return fail("Ask your teacher to add you to the class list", 403);
-      const name = String(body.name ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
-      if (name.length < 2) return fail("Enter your name");
-      const same = (x: { name: string }) => x.name.toLowerCase() === name.toLowerCase();
-      const taken = course.students.find(same) ?? course.waiting?.find(same);
-      if (taken) return fail(`${taken.name} is already on the class list. If that’s you, go back and pick your name. If not, add your last name or initial.`);
+      if (!mode) return fail("This class only takes students invited by email. Ask your teacher for an invitation.", 403);
       if (course.students.length + (course.waiting?.length ?? 0) >= 500) return fail("This class is full", 403);
-      const pin = String(body.pin ?? "");
-      if (!/^\d{4}$/.test(pin)) return fail("Your PIN is 4 digits");
-      const st = { id: uid("s-"), name, joinedAt: Date.now() };
+      const st = { id: uid("s-"), name: u.name, email: u.email, userId: u.id, joinedAt: Date.now() };
       if (mode === "approve") (course.waiting ??= []).push(st);
       else {
         course.students.push(st);
         const g = course.groups?.length ? [...course.groups].sort((a, b) => a.studentIds.length - b.studentIds.length)[0] : undefined;
         g?.studentIds.push(st.id);
       }
-      const h = hashSecret(pin);
-      (d.pins[course.id] ??= {})[st.id] = `${h.salt}:${h.hash}`;
       save();
-      return Response.json({ ok: true, studentId: st.id, waiting: mode === "approve" }, { headers: { "Set-Cookie": startSession({ kind: "student", courseId: course.id, studentId: st.id }) } });
+      return Response.json({ ok: true, courseId: course.id, studentId: st.id, waiting: mode === "approve" });
     }
     case "invite": {
-      // A student's own link (emailed, or from a form): it signs them straight in to their board. No PIN.
-      if (throttled(`invite:${ip}`, 30)) return fail("Too many attempts. Try again in a few minutes.", 429);
+      // A student's own link (emailed, copied, or from a form). Signed in, it links their place on the class list to
+      // this account, for good; not signed in, it says whose invitation it is so they can sign in or make an account.
+      if (throttled(`invite:${ip}`, 200)) return fail("Too many attempts. Try again in a few minutes.", 429);
       const course = d.courses[body.courseId];
       const st = course && findInvite(course, String(body.token ?? ""));
       if (!course || !st) return fail("This link has expired or your teacher turned it off. Ask your teacher to send you a new one.", 404);
-      return Response.json({ ok: true, studentId: st.id }, { headers: { "Set-Cookie": startSession({ kind: "student", courseId: course.id, studentId: st.id }) } });
+      const session = getSession(request);
+      const u = teacherOf(session);
+      const owner = course.ownerId ? d.users[course.ownerId] : undefined;
+      if (!u) return Response.json({ ok: false, needAccount: true, courseTitle: course.title, teacher: owner?.name ?? null, name: st.name, email: st.email ?? null }, { status: 401 });
+      if (canTeach(session, course) && course.id !== "demo") return fail("You teach this course, so this invitation is for one of your students. To see the course as a student, use Student View.", 409);
+      if (st.userId && st.userId !== u.id) return fail("This invitation has already been used by another account. If that wasn’t you, ask your teacher to send a new one.", 409);
+      // Already in this class under another name (joined with the code, say): keep that place.
+      const other = course.students.find((x) => x.userId === u.id && x.id !== st.id);
+      if (other) return Response.json({ ok: true, courseId: course.id, studentId: other.id });
+      st.userId = u.id;
+      save();
+      return Response.json({ ok: true, courseId: course.id, studentId: st.id });
     }
     case "google": {
-      // Teachers sign in (or sign up) with Google. An existing account with the same email is the same person.
+      // Anyone signs in (or signs up) with Google. An existing account with the same email is the same person.
       const clientId = process.env.GOOGLE_CLIENT_ID;
       if (!clientId) return fail("Google sign-in isn’t set up on this site");
-      if (throttled(`google:${ip}`, 30)) return fail("Too many attempts. Try again in a few minutes.", 429);
+      if (throttled(`google:${ip}`, 200)) return fail("Too many attempts. Try again in a few minutes.", 429);
       const who = await verifyGoogle(String(body.credential ?? ""), clientId).catch(() => null);
       if (!who) return fail("Google sign-in didn’t work. Try again.", 401);
       let u = Object.values(d.users).find((x) => x.google === who.sub) ?? Object.values(d.users).find((x) => x.email === who.email);
       if (!u) {
         const id = uid("u-");
-        u = d.users[id] = { id, email: who.email, name: who.name, hash: "", salt: "", google: who.sub, picture: who.picture, createdAt: Date.now() };
+        u = d.users[id] = { id, email: who.email, name: who.name, hash: "", salt: "", google: who.sub, picture: who.picture, firstRole: body.as === "student" ? "student" : "teacher", createdAt: Date.now() };
       } else if (u.google && u.google !== who.sub) {
         return fail("That email belongs to a different Google account here.", 401);
       } else if (!u.google) {

@@ -36,7 +36,7 @@ export function inviteHtml(p: { course: string; teacher: string; link: string })
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>You’re invited to ${course}</title></head>
 <body style="margin:0;padding:0;background:#f6f6f4;-webkit-text-size-adjust:100%">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f6f6f4">${teacher} added you to ${course}. Your board is ready: open it with one tap.</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f6f6f4">${teacher} added you to ${course}. Sign in (or make an account) to open your board.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f6f4">
 <tr><td align="center" style="padding:40px 16px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px">
@@ -51,12 +51,12 @@ export function inviteHtml(p: { course: string; teacher: string; link: string })
         <tr><td style="padding:14px 36px 0;font:400 16px/1.6 ${font};color:#3f3f3c"><strong style="color:#1b1b1a;font-weight:600">${teacher}</strong> added you to the class on Questhand. Your board is ready: this week’s cards, what to do, and what comes back from your teacher.</td></tr>
         <tr><td style="padding:28px 36px 0">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-radius:12px;background:#1b1b1a">
-            <a href="${link}" style="display:inline-block;padding:14px 26px;font:600 16px/1 ${font};color:#ffffff;text-decoration:none;border-radius:12px">Open my board &rarr;</a>
+            <a href="${link}" style="display:inline-block;padding:14px 26px;font:600 16px/1 ${font};color:#ffffff;text-decoration:none;border-radius:12px">Join the class &rarr;</a>
           </td></tr></table>
         </td></tr>
         <tr><td style="padding:24px 36px 0">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#f6f6f4;border-radius:12px;padding:14px 16px;font:400 13.5px/1.55 ${font};color:#5f5f5c">
-            <strong style="color:#1b1b1a;font-weight:600">This link is just for you.</strong> Keep this email: the same link gets you back in on any device for 120 days. No password or PIN to remember.
+            <strong style="color:#1b1b1a;font-weight:600">This link is just for you.</strong> It asks you to sign in to Questhand (or make a free account with Google or your email) and adds the class to your account. After that, just sign in: your courses are all in one place.
           </td></tr></table>
         </td></tr>
         <tr><td style="padding:22px 36px 34px;font:400 12.5px/1.5 ${font};color:#6b6b66">Button not working? Copy this into your browser:<br><a href="${link}" style="color:#3d68a6;word-break:break-all;text-decoration:underline">${link}</a></td></tr>

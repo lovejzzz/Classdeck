@@ -206,9 +206,9 @@ export function applyItem(courseId: string, raw: HookItem, origin = ""): HookRes
     }
   } else if (email && !st.email) st.email = email;
 
-  // A student who hasn't set a PIN yet gets a private link to their board from the form that set it up.
+  // A student not yet linked to an account gets their invitation link from the form that set it up.
   let link: string | undefined;
-  if (wantsChoices && origin && !d.pins[courseId]?.[st.id]) {
+  if (wantsChoices && origin && !st.userId) {
     link = inviteUrl(origin, courseId, issueInvite(st));
     did.push("made a sign-in link");
   }

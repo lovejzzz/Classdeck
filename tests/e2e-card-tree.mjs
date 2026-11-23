@@ -34,6 +34,8 @@ await T.post(`/api/course/${cid}`, { op: "saveLesson", lesson: { ...L1, modules:
 const sam = (await T.get(`/api/course/${cid}`)).course.students[0];
 const link = (await T.post(`/api/course/${cid}`, { op: "setupLinks" })).links[0].link;
 const S = jar();
+// The student is an account too: it signs up, then opens its invitation.
+await S.post("/api/auth", { action: "signup", email: `t-e2e-s-${Date.now()}@example.test`, name: "Sam", password: `pw-${Date.now()}-x`, as: "student" });
 await S.post("/api/auth", { action: "invite", courseId: cid, token: link.split("#")[1] });
 
 const server = async () => {
