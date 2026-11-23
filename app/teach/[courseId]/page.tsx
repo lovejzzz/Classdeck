@@ -17,7 +17,7 @@ import { Deck } from "@/components/teacher/Deck";
 import { Settings } from "@/components/teacher/Settings";
 import { InviteStudents } from "@/components/teacher/ShareDialog";
 import { LogoMark } from "@/components/Logo";
-import { op, useConnectors, useCourse } from "@/lib/client";
+import { op, setPreview, useConnectors, useCourse } from "@/lib/client";
 import { toast } from "@/lib/toast";
 import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
@@ -50,6 +50,8 @@ function readSeen(key: string) {
 
 export default function TeachPage() {
   const { courseId } = useParams<{ courseId: string }>();
+  // Back from Student View: this is the teacher again, not the student they were testing as.
+  if (typeof window !== "undefined") setPreview(null);
   const { state, error, refresh, needAuth, authDetail } = useCourse(courseId, undefined, 3000);
   const { connectors } = useConnectors();
   // The tab lives in the address, so Back returns to the previous tab and a reload stays put.

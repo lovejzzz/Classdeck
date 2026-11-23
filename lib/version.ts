@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.74",
+    date: "2026-11-23",
+    changes: [
+      "Fixed: after trying the course in Student View and going Back to teaching, the map's changes could fail to save (“Not saved: That student isn’t in this class”). Your saves were still being sent as the student you'd tested as.",
+      "If a save doesn't go through, your changes stay on screen and saving is tried again by itself; Try now tries at once.",
+      "History, beside Undo and Redo: every change since you opened the course, newest first (Added, Deleted, Renamed, Moved, Edited…). Pick one to go back to before it; Redo brings the steps back.",
+    ],
+  },
+  {
     version: "0.1.73",
     date: "2026-11-23",
     changes: [

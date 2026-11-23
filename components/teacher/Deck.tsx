@@ -56,6 +56,32 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   }, [editorOpen]);
   const [saving, setSaving] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Lessons whose last save didn't go through: tried again by themselves (sooner at first, then less often).
+  const failed = useRef(new Set<string>());
+  const retry = useRef<{ timer?: ReturnType<typeof setTimeout>; tries: number }>({ tries: 0 });
+  const [retries, setRetries] = useState(0);
+  function saveFailed(ids: string[], error?: string) {
+    ids.forEach((id) => failed.current.add(id));
+    setSaveError(error ?? "Couldn’t save");
+    if (retry.current.timer) return;
+    const wait = Math.min(30_000, 3000 * 2 ** retry.current.tries);
+    retry.current.timer = setTimeout(retryNow, wait);
+  }
+  async function retryNow() {
+    if (retry.current.timer) { clearTimeout(retry.current.timer); retry.current.timer = undefined; }
+    const ids = [...failed.current];
+    if (!ids.length) return;
+    retry.current.tries++;
+    setRetries(retry.current.tries);
+    const sent = ids.map((id) => latest.current[id]).filter(Boolean);
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent });
+    if (r.ok === false) return saveFailed(ids, r.error);
+    ids.forEach((id) => failed.current.delete(id));
+    retry.current.tries = 0;
+    setRetries(0);
+    setSaveError(null);
+    await onRefresh();
+  }
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const latest = useRef<Record<string, Lesson>>({});
   const openRef = useRef(false);
@@ -94,21 +120,26 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   // Undo and redo cover changes to lessons and their cards (not adding weeks or lessons). Quick edits to the same
   // lesson, like typing, count as one step.
   // Each step holds every lesson it changed: an edit that spans lessons (a card and its follow-ups) undoes as one.
-  const undoStack = useRef<{ lessons: Lesson[]; at: number }[]>([]);
+  // Each step also says what it was and when, for the history list beside Undo.
+  const undoStack = useRef<{ lessons: Lesson[]; at: number; label: string; when: number }[]>([]);
   const redoStack = useRef<Lesson[][]>([]);
   const [counts, setCounts] = useState({ undo: 0, redo: 0 });
-  const syncCounts = () => setCounts({ undo: undoStack.current.length, redo: redoStack.current.length });
+  // The steps as state (for the history list), mirrored from the stack whenever it changes.
+  const [steps, setSteps] = useState<{ label: string; when: number }[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const syncCounts = () => { setCounts({ undo: undoStack.current.length, redo: redoStack.current.length }); setSteps(undoStack.current.map(({ label, when }) => ({ label, when }))); };
   /** Remember a lesson as it was, for Undo. Quick edits to the same lesson count as one step. */
   function remember(next: Lesson) {
     const prev = lessonOf(next.id);
     const last = undoStack.current[undoStack.current.length - 1];
-    if (!(last && last.lessons.length === 1 && last.lessons[0].id === next.id && clock() - last.at < 1000)) undoStack.current = [...undoStack.current, { lessons: [prev], at: clock() }].slice(-100);
-    else last.at = clock();
+    if (!(last && last.lessons.length === 1 && last.lessons[0].id === next.id && clock() - last.at < 1000)) undoStack.current = [...undoStack.current, { lessons: [prev], at: clock(), label: describeChange([prev], [next]), when: Date.now() }].slice(-100);
+    else { last.at = clock(); last.when = Date.now(); last.label = describeChange(last.lessons, [next]); }
     redoStack.current = [];
     syncCounts();
   }
   function rememberAll(list: Lesson[]) {
-    undoStack.current = [...undoStack.current, { lessons: list.map((l) => lessonOf(l.id)), at: 0 }].slice(-100);
+    const before = list.map((l) => lessonOf(l.id));
+    undoStack.current = [...undoStack.current, { lessons: before, at: 0, label: describeChange(before, list), when: Date.now() }].slice(-100);
     redoStack.current = [];
     syncCounts();
   }
@@ -142,8 +173,9 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     const sent = list.map((l) => latest.current[l.id]);
     const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent });
     setSaving((n) => n - 1);
-    if (r.ok === false) { setSaveError(r.error ?? "Couldn’t save"); return; }
-    setSaveError(null);
+    if (r.ok === false) return saveFailed(sent.map((l) => l.id), r.error);
+    sent.forEach((l) => failed.current.delete(l.id));
+    if (!failed.current.size) setSaveError(null);
     await onRefresh();
     setDrafts((d) => {
       const n = { ...d };
@@ -157,16 +189,20 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent });
     setSaving((n) => n - 1);
     if (r.ok === false) {
-      // Keep the edit on screen and say so; the next change tries again.
-      setSaveError(r.error ?? "Couldn’t save");
-      return;
+      // Keep the edit on screen, say so, and try again by itself.
+      return saveFailed([id], r.error);
     }
-    setSaveError(null);
+    failed.current.delete(id);
+    if (!failed.current.size) setSaveError(null);
     await onRefresh();
     // Once the server has this version, show the server's copy again (so edits made elsewhere appear).
     setDrafts((d) => (d[id] === sent && latest.current[id] === sent ? Object.fromEntries(Object.entries(d).filter(([k]) => k !== id)) : d));
   }
 
+  /** Go back to how the course was before step `i` of the history (undoing it and everything after it). */
+  function undoTo(i: number) {
+    while (undoStack.current.length > i) undo();
+  }
   function undo() {
     const u = undoStack.current.pop();
     if (!u) return;
@@ -177,7 +213,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   function redo() {
     const r = redoStack.current.pop();
     if (!r) return;
-    undoStack.current.push({ lessons: r.map((l) => lessonOf(l.id)), at: 0 });
+    undoStack.current.push({ lessons: r.map((l) => lessonOf(l.id)), at: 0, label: describeChange(r.map((l) => lessonOf(l.id)), r), when: Date.now() });
     restore(r);
     syncCounts();
   }
@@ -475,11 +511,25 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             <>
               <button onClick={undo} disabled={!counts.undo} aria-label="Undo" title="Undo (⌘Z)" className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><UndoIcon /></button>
               <button onClick={redo} disabled={!counts.redo} aria-label="Redo" title="Redo (⇧⌘Z)" className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><UndoIcon flip /></button>
+              {/* History: every change since the page opened; pick one to go back to before it. */}
+              <span className="relative">
+                <button onClick={() => setHistoryOpen((o) => !o)} disabled={!steps.length} aria-expanded={historyOpen} aria-label="History of changes" title="History of changes"
+                  className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><Icon name="clock" size={15} /></button>
+                {historyOpen && steps.length > 0 && (
+                  <History steps={steps} onPick={(i) => { undoTo(i); setHistoryOpen(false); }} onClose={() => setHistoryOpen(false)} />
+                )}
+              </span>
             </>
           )}
           <span className="ml-1 flex items-center gap-1.5" aria-live="polite">
             <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${saveError ? "bg-bad" : saving ? "bg-warn" : "bg-ok"}`} />
-            {saveError && !saving ? <span className="text-bad">Not saved: {saveError}</span> : saving ? "Saving" : "Saved"}
+            {saveError && !saving ? (
+              // Changes stay on screen; saving is tried again by itself. The server's reason is in the tooltip.
+              <span className="flex items-center gap-1.5 text-bad" title={saveError}>
+                {retries < 3 ? "Saving didn’t work. Trying again…" : "Your latest changes aren’t saved yet."}
+                <button onClick={() => void retryNow()} className="underline underline-offset-2 hover:text-ink">Try now</button>
+              </span>
+            ) : saving ? "Saving" : "Saved"}
           </span>
         </span>,
         statusSlot,
@@ -754,5 +804,70 @@ function WeekRename({ title, onSave, onClose }: { title: string; onSave: (t: str
       <button type="submit" disabled={!v.trim()} className="btn btn-dark press h-8">Save</button>
       <button type="button" onClick={onClose} className="btn btn-quiet press h-8">Cancel</button>
     </form>
+  );
+}
+
+const q = (t?: string) => `“${(t || "Untitled card").trim().slice(0, 40)}”`;
+/** What an edit did, in a few words, from the lessons before and after it (for the history list). */
+function describeChange(before: Lesson[], after: Lesson[]): string {
+  const changed = after.filter((a) => JSON.stringify(a) !== JSON.stringify(before.find((b) => b.id === a.id)));
+  const was = new Map(before.flatMap((l) => l.modules.map((m) => [m.id, { m, l }] as const)));
+  const now = new Map(after.flatMap((l) => l.modules.map((m) => [m.id, { m, l }] as const)));
+  const added = [...now.values()].filter((x) => !was.has(x.m.id) && x.m.type !== "group");
+  const removed = [...was.values()].filter((x) => !now.has(x.m.id) && x.m.type !== "group");
+  const more = (n: number) => (n > 1 ? ` and ${n - 1} more` : "");
+  const moved = [...now.values()].find((x) => was.has(x.m.id) && was.get(x.m.id)!.l.id !== x.l.id);
+  if (moved) return `Moved ${q(moved.m.title)} to ${q(moved.l.title)}`;
+  if (added.length && removed.length) return `Changed cards in ${q(changed[0]?.title)}`;
+  if (added.length) return added[0].m.type === "group" || added.some((x) => x.m.type === "group") ? "Made a card group" : `Added ${q(added[0].m.title)}${more(added.length)}`;
+  if (removed.length) return `Deleted ${q(removed[0].m.title)}${more(removed.length)}`;
+  if ([...now.values()].some((x) => x.m.type === "group" && !was.has(x.m.id))) return "Made a card group";
+  for (const a of changed) {
+    const b = before.find((x) => x.id === a.id);
+    if (!b) continue;
+    if (a.title !== b.title) return `Renamed the lesson to ${q(a.title)}`;
+    const order = (l: Lesson) => l.modules.map((m) => m.id).join();
+    if (order(a) !== order(b)) { const i = a.modules.findIndex((m, k) => m.id !== b.modules[k]?.id); return `Moved ${q(a.modules[i]?.title)}`; }
+    for (const m of a.modules) {
+      const o = b.modules.find((x) => x.id === m.id);
+      if (!o || JSON.stringify(o) === JSON.stringify(m)) continue;
+      if (o.title !== m.title) return `Renamed ${q(o.title)} to ${q(m.title)}`;
+      if (JSON.stringify(o.questions?.map((x) => x.next)) !== JSON.stringify(m.questions?.map((x) => x.next)) || JSON.stringify(o.bands) !== JSON.stringify(m.bands)) return `Changed what ${q(m.title)} deals`;
+      return `Edited ${q(m.title)}`;
+    }
+    return `Changed the lesson ${q(a.title)}`;
+  }
+  return changed.length > 1 ? `Changed ${changed.length} lessons` : "Changed a lesson";
+}
+
+/** The list of changes since the page opened, newest first. Picking one puts the course back to before it (Redo brings the steps back). */
+function History({ steps, onPick, onClose }: { steps: { label: string; when: number }[]; onPick: (i: number) => void; onClose: () => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    const away = (e: PointerEvent) => { if (!box.current?.parentElement?.contains(e.target as Node)) onClose(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("pointerdown", away);
+    window.addEventListener("keydown", esc);
+    return () => { clearInterval(t); window.removeEventListener("pointerdown", away); window.removeEventListener("keydown", esc); };
+  }, [onClose]);
+  const ago = (t: number) => { const m = Math.round((now - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+  return (
+    <div ref={box} role="menu" className="pop absolute right-0 top-10 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-1.5 shadow-[0_20px_50px_-18px_rgba(20,20,18,0.3)]">
+      <div className="px-2.5 pb-1.5 pt-1 text-[12px] text-ink-3">Go back to before a change. Redo brings it back.</div>
+      <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-ink"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Now</div>
+      <ul className="max-h-80 overflow-y-auto">
+        {steps.map((st, i) => ({ st, i })).reverse().map(({ st, i }) => (
+          <li key={i}>
+            <button role="menuitem" onClick={() => onPick(i)} className="press group flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] hover:bg-lane">
+              <span className="min-w-0 flex-1 truncate text-ink-2 group-hover:text-ink">{st.label}</span>
+              <span className="flex-none text-[11.5px] text-ink-3 group-hover:hidden">{ago(st.when)}</span>
+              <span className="hidden flex-none text-[11.5px] text-[#4b56a8] group-hover:inline">Go back</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

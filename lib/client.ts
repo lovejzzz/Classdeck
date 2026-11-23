@@ -12,7 +12,11 @@ import type { CourseState } from "./types";
  */
 let previewAs: string | null = null;
 export function setPreview(studentId: string | null) { previewAs = studentId; }
-export const previewing = () => previewAs;
+/**
+ * Who Student View is testing as, but only while on that student's own pages. Leaving them (Back to teaching is an
+ * in-app link, so nothing reloads) must not leave the teacher's own saves marked as the student's.
+ */
+export const previewing = () => (previewAs && typeof location !== "undefined" && location.pathname.startsWith(`/learn/`) && location.pathname.includes(`/${previewAs}`) ? previewAs : null);
 
 /** Fired when a request finds the session has ended, so the page can ask the person to sign in again. */
 export const SIGNED_OUT = "qh:signed-out";
@@ -25,7 +29,7 @@ export const SIGNED_OUT = "qh:signed-out";
 export async function op<T = Record<string, unknown>>(courseId: string, body: Record<string, unknown>): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`/api/course/${courseId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(previewAs ? { ...body, preview: true, as: previewAs } : body) });
+    res = await fetch(`/api/course/${courseId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(previewing() ? { ...body, preview: true, as: previewing() } : body) });
   } catch {
     toast("Can’t reach the server. Your last change wasn’t saved; check your connection and try again.", { icon: "x", tone: "bad" });
     return { ok: false, error: "Can’t reach the server" } as T;
@@ -60,7 +64,7 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`/api/course/${courseId}${as ? (as.startsWith("guest:") ? `?guest=${encodeURIComponent(as.slice(6))}` : `?as=${as}${previewAs === as ? "&preview=1" : ""}`) : ""}`, { cache: "no-store" });
+      const res = await fetch(`/api/course/${courseId}${as ? (as.startsWith("guest:") ? `?guest=${encodeURIComponent(as.slice(6))}` : `?as=${as}${previewing() === as ? "&preview=1" : ""}`) : ""}`, { cache: "no-store" });
       const raw = await res.text();
       if (!alive.current) return;
       const data = JSON.parse(raw);
