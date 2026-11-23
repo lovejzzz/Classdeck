@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.39",
+    date: "2026-11-22",
+    changes: [
+      "After a vote or an answer that deals cards, the card says which ones it opened (all of them, each a link to the card), not only a passing notice. A quiz says which cards its score opened. A notice for two or three new cards names them.",
+      "A discussion you've posted on, with no classmate's post to reply to yet, no longer holds up your next card: the board moves on, and the discussion comes back once someone posts.",
+      "The audio player on a card shows the recording's real waveform.",
+      "The sample media for the Questhand 101 course (short narrated videos, voice notes and pictures) is part of the site.",
+    ],
+  },
+  {
     version: "0.1.38",
     date: "2026-11-22",
     changes: [

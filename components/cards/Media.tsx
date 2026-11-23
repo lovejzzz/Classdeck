@@ -5,6 +5,7 @@ import { fileExt, formatSize, hash, hostOf } from "@/lib/cards";
 import { fmtTime, videoEmbed } from "@/lib/media";
 import type { Attachment } from "@/lib/types";
 import { Icon } from "../Icon";
+import { useWaveform } from "./Waveform";
 
 const fmt = (s: number) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}` : "0:00");
 
@@ -19,6 +20,9 @@ export function AudioPlayer({ a, onMedia, pins = [] }: { a: Attachment; onMedia?
   const [dur, setDur] = useState(0);
   const seed = hash(a.id);
   const bars = 44;
+  // The recording's real waveform once it's read (a stand-in until then, or if it can't be).
+  const strip = useRef<HTMLDivElement>(null);
+  const real = useWaveform(a.url, bars, strip);
   const progress = dur ? t / dur : 0;
 
   useEffect(() => {
@@ -63,6 +67,7 @@ export function AudioPlayer({ a, onMedia, pins = [] }: { a: Attachment; onMedia?
         </svg>
       </button>
       <div
+        ref={strip}
         className="relative flex h-9 flex-1 cursor-pointer items-center gap-[2px]"
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
@@ -75,7 +80,7 @@ export function AudioPlayer({ a, onMedia, pins = [] }: { a: Attachment; onMedia?
         aria-valuenow={Math.round(t)}
       >
         {Array.from({ length: bars }, (_, i) => {
-          const base = 0.2 + Math.abs(Math.sin(i * 1.3 + seed * 11)) * 0.8;
+          const base = real ? 0.12 + real[i] * 0.88 : 0.2 + Math.abs(Math.sin(i * 1.3 + seed * 11)) * 0.8;
           const live = playing ? 0.75 + 0.25 * Math.sin(t * 9 + i * 0.9) : 1;
           const on = i / bars < progress;
           return (

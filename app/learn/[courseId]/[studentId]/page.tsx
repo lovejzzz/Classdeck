@@ -238,7 +238,15 @@ export default function LearnPage() {
   // The next card to play: something already started, else the first open card today, else the next week's first.
   const currentWeek = course.weeks.find((w) => w.lessons.some((l) => l.id === current.id)) ?? course.weeks[0];
   const weeksShown = profile.horizon === "week" ? [currentWeek] : course.weeks;
-  const playable = (l: Lesson) => l.modules.filter((m) => statusOf(m.id) !== "done");
+  // A discussion you've posted on, with no classmate's post left to reply to yet: you're waiting on others, so it
+  // isn't your next card (it would hold up everything after it). It comes back once someone posts.
+  const waitingOnClass = (m: Module) => {
+    if (m.type !== "wall" || statusOf(m.id) === "done") return false;
+    const posts = state.posts.filter((x) => x.moduleId === m.id);
+    if (!posts.some((x) => x.studentId === studentId)) return false;
+    return posts.filter((x) => x.studentId !== studentId).every((x) => x.comments?.some((c) => c.from === studentId));
+  };
+  const playable = (l: Lesson) => l.modules.filter((m) => statusOf(m.id) !== "done" && !waitingOnClass(m));
   const upNext = (() => {
     // A revision the teacher asked for comes first, whichever lesson it's in.
     for (const l of lessons) {

@@ -447,8 +447,10 @@ function Questions(p: DetailProps) {
   const total = set.length;
   const [pending, setPending] = useState<Record<string, AnswerValue>>({});
   const [drafts, setDrafts] = useState<Record<string, AnswerValue>>({});
-  // The card each question's answer just opened (shown with a wrong answer, so "try again" doesn't hide it).
-  const [opened, setOpened] = useState<Record<string, { id: string; title: string }>>({});
+  // The cards each question's answer just opened (said on the card, so they're easy to find, even after a wrong answer).
+  const [opened, setOpened] = useState<Record<string, { id: string; title: string }[]>>({});
+  // The cards a quiz's score just opened (said on the quiz, not only in a passing notice).
+  const [scoreOpened, setScoreOpened] = useState<{ id: string; title: string }[]>([]);
   const answers: Record<string, AnswerValue> = { ...(progress?.answers ?? {}), ...pending };
   const results = progress?.results ?? {};
   const reveal = progress?.reveal ?? {};
@@ -470,7 +472,8 @@ function Questions(p: DetailProps) {
   function announceDealt(dealt?: { id: string; title: string; lesson?: string }[]) {
     if (!dealt?.length) return;
     const first = dealt[0];
-    const text = dealt.length === 1 ? `New card${first.lesson ? ` in ${first.lesson}` : ""}: “${first.title}”` : `${dealt.length} new cards on your board`;
+    const text = dealt.length === 1 ? `New card${first.lesson ? ` in ${first.lesson}` : ""}: “${first.title}”`
+      : dealt.length <= 3 ? `New cards: ${dealt.map((d) => `“${d.title}”`).join(dealt.length === 2 ? " and " : ", ")}` : `${dealt.length} new cards on your board`;
     const show = () => window.dispatchEvent(new CustomEvent("questhand:show-card", { detail: first.id }));
     setTimeout(() => toast(text, { icon: "split", action: { label: "Show", run: show } }), 900);
   }
@@ -483,7 +486,7 @@ function Questions(p: DetailProps) {
     const r = await op<{ ok: boolean; error?: string; dealt?: { id: string; title: string; lesson?: string }[] }>(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...payload });
     if (!r.ok) toast(r.error ?? "Couldn’t save that answer", { icon: "quiz", tone: "plain" });
     announceDealt(r.dealt);
-    if (r.dealt?.length) setOpened((x) => ({ ...x, [qid]: r.dealt![0] }));
+    if (r.dealt?.length) setOpened((x) => ({ ...x, [qid]: r.dealt! }));
     await p.onChanged();
     setPending((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== qid)));
   }
@@ -506,6 +509,7 @@ function Questions(p: DetailProps) {
     p.onChanged();
     toast(`${auto ? "Time’s up. " : ""}Submitted. Score: ${r.score ?? 0}/${total}`, { icon: "quiz" });
     announceDealt(r.dealt);
+    if (r.dealt?.length) setScoreOpened(r.dealt);
   }
 
   // When the clock runs out, hand in whatever is answered.
@@ -566,6 +570,12 @@ function Questions(p: DetailProps) {
             </span>
           )}
         </div>
+      )}
+      {scoreOpened.length > 0 && (
+        <p className="rise flex items-start gap-1.5 rounded-xl bg-[#eef0fb] px-3.5 py-2.5 text-[13px] text-ink-2">
+          <Icon name="split" size={13} className="mt-[3px] flex-none text-[#4b56a8]" />
+          <span>Your score opened <CardLinks cards={scoreOpened} /> on your board.</span>
+        </p>
       )}
       {set.map((q, qi) => {
         const picked = answers[q.id];
@@ -709,13 +719,18 @@ function Questions(p: DetailProps) {
             {showResult && !right && !isQuiz && !m.poll && (!q.kind || q.kind === "choice" || q.kind === "short") && (
               opened[q.id] ? (
                 <p className="rise mt-1.5 text-[12.5px] text-ink-2">
-                  <span className="text-bad">Not quite.</span> Your answer opened{" "}
-                  <button onClick={() => window.dispatchEvent(new CustomEvent("questhand:show-card", { detail: opened[q.id].id }))} className="font-medium text-[#4b56a8] underline underline-offset-2">“{opened[q.id].title}”</button>{" "}
-                  to help. You can also have another go here.
+                  <span className="text-bad">Not quite.</span> Your answer opened <CardLinks cards={opened[q.id]} /> to help. You can also have another go here.
                 </p>
               ) : (
                 <p className="rise mt-1.5 text-[12.5px] text-bad">Not quite. Have another go.</p>
               )
+            )}
+            {/* A vote, or a right answer, that dealt cards: say which, so they're easy to find. */}
+            {opened[q.id] && (m.poll || (showResult && right)) && (
+              <p className="rise mt-1.5 flex items-start gap-1.5 text-[12.5px] text-ink-2">
+                <Icon name="split" size={12} className="mt-[3px] flex-none text-[#4b56a8]" />
+                <span>Your answer opened <CardLinks cards={opened[q.id]} /> on your board.</span>
+              </p>
             )}
             {submitted && q.kind === "short" && !right && rv?.accept && (
               <p className="rise mt-1.5 text-[12.5px] text-ink-2">Accepted answer: <span className="font-medium text-ok">{rv.accept}</span></p>
@@ -749,5 +764,19 @@ function Questions(p: DetailProps) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Cards an answer opened, each a link that shows it on the board: “A”, “B” and “C”. */
+function CardLinks({ cards }: { cards: { id: string; title: string }[] }) {
+  return (
+    <>
+      {cards.map((c, i) => (
+        <span key={c.id}>
+          {i > 0 && (i === cards.length - 1 ? " and " : ", ")}
+          <button onClick={() => window.dispatchEvent(new CustomEvent("questhand:show-card", { detail: c.id }))} className="font-medium text-[#4b56a8] underline underline-offset-2">“{c.title}”</button>
+        </span>
+      ))}
+    </>
   );
 }
