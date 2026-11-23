@@ -184,8 +184,6 @@ function view(request: Request, courseId: string): Response {
   if (!course) return Response.json({ error: "No such course" }, { status: 404 });
   // Demo students added in 0.1.71 had made-up names: they're Demo Student A and B now.
   for (const st of course.students) { const ds = st.demo ? demoStudent(st.id) : undefined; if (ds && st.name !== ds.name) st.name = ds.name; }
-  // …and, from before 0.1.75, out of the class's own groups.
-  if (course.students.some((st) => st.demo) && course.groups?.some((g) => g.studentIds.some(isDemoStudent))) course.groups = course.groups.map((g) => ({ ...g, studentIds: g.studentIds.filter((id) => !isDemoStudent(id)) }));
   const query = new URL(request.url).searchParams;
   const as = query.get("as");
   // Read-only guest view: course content only, no students, no work.
@@ -435,6 +433,12 @@ async function change(request: Request, courseId: string, body: Record<string, a
     course!.groups = course!.groups?.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x !== gone) }));
     for (const gs of course!.groupings ?? []) for (const g of gs.groups) g.studentIds = g.studentIds.filter((x) => x !== gone);
     if (d.live[courseId]?.hands) delete d.live[courseId].hands[gone];
+  }
+  /** Whose progress shares one piece of work with this student's: everyone who wrote a group's worksheet, or just them. */
+  function sharers(mod: Module, sid: string): string[] {
+    const key = mod.writers === "group" && kindOf(mod) === "worksheet" ? docKey(course!, mod, sid) : null;
+    const who = key ? writersOf(course!, key).filter((x) => course!.students.some((st) => st.id === x)) : [];
+    return who.includes(sid) ? who : [sid];
   }
   /** Everything a (demo) student did: their progress, choices and posts. */
   function clearWork(sid: string) {
@@ -1337,9 +1341,15 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (!rf) return fail("No such card");
       if (!course.students.some((st) => st.id === body.studentId)) return fail("No such student");
       const p = mine(body.studentId, body.moduleId);
-      // A group's worksheet is one piece of work: the review goes to everyone who wrote it.
-      const gkey = rf.mod.writers === "group" && kindOf(rf.mod) === "worksheet" ? docKey(course, rf.mod, body.studentId) : null;
-      const reviewed = gkey ? writersOf(course, gkey).filter((sid) => course.students.some((st) => st.id === sid)).map((sid) => mine(sid, body.moduleId)) : [p];
+      // A group's worksheet is one piece of work: the review goes to everyone who wrote it. For work each student did on
+      // their own, "toGroup" sends the same feedback to everyone in the student's group (on this card) who handed it in.
+      let ids = sharers(rf.mod, body.studentId);
+      if (body.toGroup && ids.length === 1) {
+        const g = groupFor(course, rf.mod, body.studentId);
+        if (g && g.id !== "all") ids = g.studentIds.filter((sid) => course.students.some((st) => st.id === sid) && (sid === body.studentId || d.progress[courseId]?.[sid]?.[body.moduleId]?.status === "done"));
+      }
+      const reviewed = ids.map((sid) => mine(sid, body.moduleId));
+      extra = { reviewed: ids.length };
       if (body.clear) {
         for (const x of reviewed) x.review = undefined;
         break;
@@ -1374,9 +1384,16 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (replyTo && !notes.some((n) => n.id === replyTo)) return fail("That comment is gone");
       if (body.op === "docReply" && !replyTo) return fail("Reply to one of your teacher’s comments");
       const quote = body.op === "docNote" && !replyTo && body.quote ? String(body.quote).slice(0, 400) : undefined;
-      const note = { id: uid("dn-"), by: body.op === "docNote" ? "teacher" as const : "student" as const, text, at: Date.now(), quote, replyTo };
-      notes.push(note);
-      if (notes.length > 300) notes.splice(0, notes.length - 300);
+      const note = { id: uid("dn-"), by: body.op === "docNote" ? "teacher" as const : "student" as const, text, at: Date.now(), quote, replyTo, ...(body.op === "docReply" ? { from: body.studentId } : {}) };
+      // On a group's worksheet, comments and replies are on the group's copy: everyone in the group sees them.
+      const found = findModule(course, body.moduleId)!;
+      for (const sid of sharers(found.mod, body.studentId)) {
+        const list = (mine(sid, body.moduleId).notes ??= []);
+        if (sid !== body.studentId && list.some((n) => n.id === note.id)) continue;
+        list.push(sid === body.studentId ? note : { ...note });
+        if (list.length > 300) list.splice(0, list.length - 300);
+      }
+      void notes;
       extra = { note };
       break;
     }
@@ -1401,10 +1418,13 @@ async function change(request: Request, courseId: string, body: Record<string, a
     }
     case "docNoteDelete": {
       // —— teacher —— Remove a comment (and the replies to it).
-      const p = mine(body.studentId, body.moduleId);
       const id = String(body.noteId ?? "");
-      p.notes = (p.notes ?? []).filter((n) => n.id !== id && n.replyTo !== id);
-      if (!p.notes.length) p.notes = undefined;
+      const dm = findModule(course, body.moduleId);
+      for (const sid of dm ? sharers(dm.mod, body.studentId) : [body.studentId]) {
+        const p = mine(sid, body.moduleId);
+        p.notes = (p.notes ?? []).filter((n) => n.id !== id && n.replyTo !== id);
+        if (!p.notes.length) p.notes = undefined;
+      }
       break;
     }
     case "addPost": {

@@ -384,7 +384,7 @@ export function CardDetail(p: DetailProps) {
           <div className="mt-6">
             <div className="eyebrow mb-1.5">{m.writers === "class" ? "The class’s copy · everyone writes in it" : "Your group’s copy · you write in it together"}</div>
             <SharedDoc courseId={p.courseId} docKey={sharedKey} template={m.body} name={p.course.students.find((x) => x.id === p.studentId)?.name ?? "A student"} />
-            <DocNotes notes={p.progress?.notes ?? []} me="student" courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onChanged={p.onChanged} />
+            <DocNotes notes={p.progress?.notes ?? []} me="student" courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onChanged={p.onChanged} names={Object.fromEntries(p.students.map((x) => [x.id, x.name]))} />
           </div>
         )}
 
@@ -392,7 +392,7 @@ export function CardDetail(p: DetailProps) {
           <div className="mt-6">
             <div className="eyebrow mb-1.5">Your copy · it saves as you go</div>
             <RichBodyEditor value={output} onChange={setOutput} placeholder="Write here." label={`Your copy of ${m.title}`} />
-            <DocNotes notes={p.progress?.notes ?? []} me="student" courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onChanged={p.onChanged} />
+            <DocNotes notes={p.progress?.notes ?? []} me="student" courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onChanged={p.onChanged} names={Object.fromEntries(p.students.map((x) => [x.id, x.name]))} />
           </div>
         )}
 

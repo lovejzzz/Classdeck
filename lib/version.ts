@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.76",
+    date: "2026-11-23",
+    changes: [
+      "Feedback to a group. On a group’s worksheet, the panel says who wrote it together, and your feedback, Ask to revise and comments on passages go to the whole group; it’s listed once, under the group’s name, in Ready for your feedback. Replies on it say which member wrote them.",
+      "On work each student did on their own, Send the same feedback to everyone in the group gives the whole group one note at once (everyone in the group who handed it in).",
+      "View-only co-teachers read discussions without the post, reply, approve or pin controls.",
+      "Collab Studio’s feedback goal follows the card’s own groups (a small group’s goal is smaller), and the class total adds those up.",
+      "The week tabs on a student’s board count a path’s versions once, like each lesson does.",
+      "Demo students a teacher puts in groups stay there.",
+    ],
+  },
+  {
     version: "0.1.75",
     date: "2026-11-23",
     changes: [

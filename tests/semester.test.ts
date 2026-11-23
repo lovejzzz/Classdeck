@@ -249,6 +249,19 @@ async function main() {
   check("no feedback on a card that's only read", (await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-intro", verdict: "good", text: "Nice reading." })).ok === false);
   check("approve it", (await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-notice", verdict: "good", text: "Great." })).ok);
   check("Dev sees it approved", (await board("Dev")).progress?.["m-notice"]?.review?.verdict === "good");
+  // Feedback to a whole group on work each did on their own: the card uses the teams, and Ana's team gets one note.
+  {
+    const c0 = await course();
+    const ln = c0.weeks.flatMap((w) => w.lessons).find((l) => l.modules.some((m) => m.id === "m-notice"))!;
+    await op(T, { op: "saveLessons", lessons: [{ ...ln, modules: ln.modules.map((m) => (m.id === "m-notice" ? { ...m, grouping: "gs-m-team" } : m)) }] });
+    const team = (await course()).groupings?.find((g) => g.id === "gs-m-team")?.groups.find((g) => g.studentIds.includes(S.Ana.id));
+    const tv0 = ((await teacherView()).progress ?? {}) as J;
+    const handedIn = (team?.studentIds ?? []).filter((id) => tv0[id]?.["m-notice"]?.status === "done");
+    const gr = await op(T, { op: "review", studentId: S.Ana.id, moduleId: "m-notice", verdict: "good", text: "Great team observations.", toGroup: true });
+    check("feedback to Ana's whole team", gr.ok && gr.reviewed === handedIn.length && handedIn.length > 1, { gr, handedIn });
+    const tv2 = (await teacherView()).progress as J;
+    check("…each teammate who handed in has it", handedIn.every((id) => tv2[id]?.["m-notice"]?.review?.text === "Great team observations."));
+  }
   // Gus hasn't handed in: a reminder.
   check("remind Gus", (await op(T, { op: "nudge", studentIds: [S.Gus.id], text: "Please hand in “What did you notice?”", moduleId: "m-notice" })).sent === 1);
   check("Gus gets the reminder", ((await board("Gus")).nudges ?? []).some((n: J) => /hand in/.test(n.text)));

@@ -191,6 +191,8 @@ export interface DocNote {
   quote?: string;
   /** The comment this replies to. */
   replyTo?: string;
+  /** On a group's worksheet: which student wrote a reply (everyone in the group sees the comments). */
+  from?: string;
 }
 
 export type AnswerValue = number | string | number[] | string[];

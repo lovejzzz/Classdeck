@@ -569,8 +569,8 @@ export default function LearnPage() {
             <WeekNav
               className="top-0 mt-8"
               weeks={weeksShown.map((w) => {
-                const ms = w.lessons.flatMap((l) => l.modules);
-                return { id: w.id, label: w.title.split(" · ")[0], done: ms.filter((m) => statusOf(m.id) === "done").length, total: ms.length, current: w.lessons.some((l) => l.id === current.id) };
+                // Counted the way each lesson counts its cards (a path's versions once), so the totals agree.
+                return { id: w.id, label: w.title.split(" · ")[0], done: w.lessons.reduce((n, l) => n + doneCount(l), 0), total: w.lessons.reduce((n, l) => n + countable(l).length, 0), current: w.lessons.some((l) => l.id === current.id) };
               })}
               onPick={(id) => {
                 setOpenWeeks((o) => new Set(o).add(id));

@@ -8,7 +8,7 @@ import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { awaitingFeedback, faceMeta, isPoll, kindOf, reviewableCard, sharedDoc, writesOwn } from "@/lib/kinds";
-import { docKey, groupingOf } from "@/lib/shared";
+import { docKey, groupFor, groupingOf } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { DocReview } from "./DocReview";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
@@ -46,7 +46,17 @@ export function Classroom({
   // Same rule as the server: peers' posts given feedback (each post counted once), against a goal of 2,
   // or fewer in a small group.
   const feedbackGiven = (sid: string) => new Set(state.studio.feedback.filter((f) => f.fromId === sid && lessonPosts.some((p) => p.id === f.postId && p.studentId !== sid)).map((f) => f.postId)).size;
-  const feedbackGoal = (sid: string) => Math.min(2, Math.max(0, (course.groups?.find((g) => g.studentIds.includes(sid))?.studentIds.length ?? 1) - 1));
+  /** A student's group on a card, for feedback to the group: its name and members, and whether they wrote one worksheet. */
+  const groupOnCard = (m: Module, sid: string) => {
+    const shared = kindOf(m) === "worksheet" && m.writers === "group";
+    const hasGroups = !!(m.grouping || course.groups?.length || course.groupings?.length);
+    const g = hasGroups ? groupFor(course, m, sid) : undefined;
+    if (!g || g.id === "all" || g.studentIds.length < 2) return undefined;
+    return { name: g.name, members: g.studentIds.map((id) => course.students.find((x) => x.id === id)?.name).filter((x): x is string => !!x), shared };
+  };
+  // The same group the server uses: the studio card's own groups (its grouping), so a small group's goal is smaller.
+  const studioCard = lesson.modules.find((m) => m.type === "studio");
+  const feedbackGoal = (sid: string) => Math.min(2, Math.max(0, (groupFor(course, studioCard, sid)?.studentIds.length ?? 1) - 1));
   const helpfulGiven = (sid: string) => state.studio.feedback.filter((f) => f.fromId === sid && f.helpful && lessonPosts.some((p) => p.id === f.postId)).length;
   // A student's group is worth showing only once the course has a discussion run in groups (or several groups).
   const usesGroups = course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => m.type === "studio"))) || (course.groups?.length ?? 0) > 1;
@@ -86,7 +96,21 @@ export function Classroom({
   // Finished written work the teacher hasn't responded to yet.
   const reviewable = (m: Module) => reviewableCard(m);
   const toReviewCell = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && reviewable(m) && awaitingFeedback(progress[sid]?.[m.id]))?.id;
-  const toReview = course.students.filter((st) => !!toReviewCell(st.id));
+  // A group's worksheet is one piece of work: it's listed once, under the group's name.
+  const groupWork = (sid: string) => {
+    const mid = toReviewCell(sid);
+    const m = mid ? lesson.modules.find((x) => x.id === mid) : undefined;
+    return m && kindOf(m) === "worksheet" && m.writers === "group" ? groupFor(course, m, sid) : undefined;
+  };
+  const toReview = (() => {
+    const seen = new Set<string>();
+    return course.students.filter((st) => {
+      if (!toReviewCell(st.id)) return false;
+      const g = groupWork(st.id);
+      const key = g ? `${toReviewCell(st.id)}:${g.id}` : st.id;
+      return seen.has(key) ? false : (seen.add(key), true);
+    });
+  })();
   const firstVisible = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id))?.id;
   // A quiz handed in (best try) or a card group finished, under half right.
   const lowCell = (sid: string) => lesson.modules.find((m) => {
@@ -211,7 +235,7 @@ export function Classroom({
         {[
           ["Cards done", `${totals.cards ? Math.round((totals.done / totals.cards) * 100) : 0}%`, `${totals.done} of ${totals.cards}`],
           ["Started", `${real.length - notStarted.filter((st) => real.includes(st)).length}/${real.length}`, "students"],
-          ...(studioIds.size ? [["Posted to Studio", `${posted}/${course.students.length}`, "students"], ["Feedback given", `${feedbackTotal}`, `goal ${course.students.length * 2}`]] : []),
+          ...(studioIds.size ? [["Posted to Studio", `${posted}/${course.students.length}`, "students"], ["Feedback given", `${feedbackTotal}`, `goal ${course.students.reduce((n, st) => n + feedbackGoal(st.id), 0)}`]] : []),
         ].map(([k, v, sub], i) => (
           <div key={k} className="rise card px-4 py-3" style={{ "--i": i } as React.CSSProperties}>
             <div className="text-[12px] text-ink-3">{k}</div>
@@ -246,7 +270,7 @@ export function Classroom({
                         if (mid) setSel({ sid: st.id, mid });
                       }}
                       className="press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
-                      <Avatar name={st.name} size={20} />{st.name}
+                      {(() => { const g = a.key === "review" ? groupWork(st.id) : undefined; return g ? <><Icon name="users" size={13} className="ml-1 text-ink-3" />{g.name}</> : <><Avatar name={st.name} size={20} />{st.name}</>; })()}
                     </button>
                   ))}
                 </div>
@@ -282,7 +306,7 @@ export function Classroom({
                 <th className="min-w-[6rem] border-b border-line px-2 py-3 text-left font-normal">
                   <div style={{ color: "#367195" }}><Icon name="message" size={13} /></div>
                   <div className="mt-1.5 text-[12.5px] font-medium text-ink">Feedback given</div>
-                  <div className="mono mt-1 text-[11px]">goal 2</div>
+                  <div className="mono mt-1 text-[11px]">goal up to 2</div>
                 </th>
               )}
             </tr>
@@ -430,7 +454,7 @@ export function Classroom({
             })()}
             {selProgress?.output && (writesOwn(selModule) || sharedDoc(selModule)) ? (
               // Their own copy of a Text card: formatted, and open to comments on any passage.
-              readOnly ? <div className="mt-3 rounded-lg bg-lane px-3.5 py-3"><RichText text={selProgress.output} className="text-[13.5px] leading-relaxed" /></div> : <DocReview doc={selProgress.output} notes={selProgress.notes ?? []} courseId={courseId} studentId={sel!.sid} moduleId={selModule.id} onChanged={() => {}} />
+              readOnly ? <div className="mt-3 rounded-lg bg-lane px-3.5 py-3"><RichText text={selProgress.output} className="text-[13.5px] leading-relaxed" /></div> : <DocReview doc={selProgress.output} notes={selProgress.notes ?? []} courseId={courseId} studentId={sel!.sid} moduleId={selModule.id} onChanged={() => {}} names={Object.fromEntries(course.students.map((x) => [x.id, x.name]))} />
             ) : selProgress?.output ? (
               <p className="mt-3 whitespace-pre-wrap rounded-lg bg-lane px-3.5 py-3 text-[13.5px] leading-relaxed">{selProgress.output}</p>
             ) : (
@@ -473,7 +497,7 @@ export function Classroom({
               <p className="mt-6 border-t border-line pt-5 text-[13px] text-ink-2"><span className="font-medium">{selProgress.review.verdict === "revise" ? "Asked to revise" : "Looks good"}</span>{selProgress.review.text ? `: ${selProgress.review.text}` : ""}</p>
             )}
             {!readOnly && reviewable(selModule) && (
-              <ReviewBox key={`${sel.sid}-${sel.mid}`} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"}
+              <ReviewBox key={`${sel.sid}-${sel.mid}-${selProgress?.review?.at ?? 0}`} group={groupOnCard(selModule, sel.sid)} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"}
                 skills={selModule.skills?.length ? (course.skills ?? []).filter((sk) => selModule.skills!.includes(sk.id)) : course.skills ?? []} rateOpen={!!selModule.skills?.length} levels={course.levels ?? []} onNext={() => nextWaiting(sel.sid)} />
             )}
             </div>
@@ -534,13 +558,13 @@ export function Classroom({
       ))}
 
       {lesson.modules.filter((m) => m.type === "wall").map((m) => (
-        <WallPanel key={m.id} courseId={courseId} module={m} state={state} aiReady={!!connectors.find((c) => c.id === "ai")?.configured} />
+        <WallPanel key={m.id} courseId={courseId} module={m} state={state} readOnly={readOnly} aiReady={!!connectors.find((c) => c.id === "ai")?.configured} />
       ))}
     </div>
   );
 }
 
-function WallPanel({ courseId, module: m, state, aiReady }: { courseId: string; module: Module; state: CourseState; aiReady: boolean }) {
+function WallPanel({ courseId, module: m, state, aiReady, readOnly = false }: { courseId: string; module: Module; state: CourseState; aiReady: boolean; readOnly?: boolean }) {
   const [summary, setSummary] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -573,6 +597,7 @@ function WallPanel({ courseId, module: m, state, aiReady }: { courseId: string; 
         courseId={courseId}
         me="teacher"
         teacher
+        readOnly={readOnly}
         module={m}
         posts={state.posts}
         students={course.students}
@@ -640,27 +665,37 @@ function ExportMenu({ items }: { items: [string, () => void][] }) {
 }
 
 /** The teacher's response to one piece of work: a note, and either "looks good" or "revise". */
-function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels, onNext, rateOpen = false }: { courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean; skills: Skill[]; rateOpen?: boolean; levels: Level[]; onNext?: () => void }) {
+function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels, onNext, rateOpen = false, group }: {
+  /**
+   * The student's group on this card. `shared`: the group wrote one worksheet, so feedback always goes to all of them.
+   * Otherwise each member did their own work, and the teacher can choose to send the same feedback to the whole group.
+   */
+  group?: { name: string; members: string[]; shared: boolean };
+  courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean; skills: Skill[]; rateOpen?: boolean; levels: Level[]; onNext?: () => void }) {
   const [text, setText] = useState(review?.text ?? "");
   const [rubric, setRubric] = useState<Record<string, number>>(review?.levels ?? {});
   const [files, setFiles] = useState<Attachment[]>(review?.attachments ?? []);
   const [busy, setBusy] = useState(false);
   // Rating skills is optional: open when the card names its skills or levels were already given.
   const [rating, setRating] = useState(rateOpen || Object.keys(review?.levels ?? {}).length > 0);
+  const [toGroup, setToGroup] = useState(false);
+  const whole = !!group && (group.shared || toGroup);
+  const who = whole ? group!.name : name;
   async function send(verdict: "good" | "revise" | "clear") {
     setBusy(true);
-    const r = await op<{ ok: boolean; error?: string }>(courseId, verdict === "clear" ? { op: "review", studentId, moduleId, clear: true } : { op: "review", studentId, moduleId, verdict, text, levels: rubric, attachments: files });
+    const r = await op<{ ok: boolean; error?: string; reviewed?: number }>(courseId, verdict === "clear" ? { op: "review", studentId, moduleId, clear: true } : { op: "review", studentId, moduleId, verdict, text, levels: rubric, attachments: files, toGroup: whole || undefined });
     setBusy(false);
     if (r.ok === false) return toast(r.error ?? "Couldn’t save", { icon: "message", tone: "plain" });
     if (verdict === "clear") { setText(""); setFiles([]); }
-    toast(verdict === "revise" ? `Sent back to ${name} for a revision` : verdict === "good" ? `Sent to ${name}` : "Feedback removed", { icon: verdict === "revise" ? "reset" : "message" });
-    // Marking down a list of work: go straight on to the next one waiting.
-    if (verdict !== "clear") onNext?.();
+    const many = (r.reviewed ?? 1) > 1 ? ` (${r.reviewed} students)` : "";
+    toast(verdict === "revise" ? `Sent back to ${who} for a revision${many}` : verdict === "good" ? `Sent to ${who}${many}` : "Feedback removed", { icon: verdict === "revise" ? "reset" : "message" });
+    // Marking down a list of work: go straight on to the next one waiting (not a teammate who just got this feedback).
+    if (verdict !== "clear" && !whole) onNext?.();
   }
   return (
     <section aria-label="Your feedback" className="mt-6 border-t border-line pt-5">
       <div className="mb-2 flex items-center gap-2">
-        <span className="flex-1 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">Your feedback</span>
+        <span className="flex-1 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{whole ? "Feedback to the group" : "Your feedback"}</span>
         {review && (
           <span className={`flex items-center gap-1 text-[12px] ${review.verdict === "revise" ? "text-warn" : "text-ok"}`}>
             <Icon name={review.verdict === "revise" ? "reset" : "check"} size={12} />{review.verdict === "revise" ? "Revision asked" : "Looks good"} · {new Date(review.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
@@ -690,7 +725,18 @@ function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, 
           ))}
         </div>
       )}
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder={`What ${name} did well, and one thing to try next`} aria-label="Feedback for the student" className="field resize-y leading-relaxed"
+      {group && (
+        // Who the feedback reaches: a group's own worksheet always goes to the group; individual work, the teacher's choice.
+        group.shared ? (
+          <p className="mb-2 rounded-lg bg-[#eef0fb] px-3 py-2 text-[12.5px] text-[#4b56a8]"><span className="font-medium">{group.name}</span> wrote this together: your feedback and comments go to all of them ({group.members.join(", ")}).</p>
+        ) : (
+          <label className="mb-2 flex items-start gap-2 text-[12.5px] text-ink-2">
+            <input type="checkbox" checked={toGroup} onChange={(e) => setToGroup(e.target.checked)} className="mt-0.5 accent-[#4b56a8]" />
+            <span>Send the same feedback to everyone in <span className="font-medium text-ink">{group.name}</span> who handed this in <span className="text-ink-3">({group.members.join(", ")})</span></span>
+          </label>
+        )
+      )}
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder={whole ? `What ${who} did well, and one thing to try next` : `What ${name} did well, and one thing to try next`} aria-label={whole ? "Feedback for the group" : "Feedback for the student"} className="field resize-y leading-relaxed"
         onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send("good"); } }} />
       {files.length > 0 && (
         <div className="mt-2 space-y-2">

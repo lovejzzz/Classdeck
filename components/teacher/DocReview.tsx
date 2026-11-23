@@ -12,8 +12,8 @@ import { Icon } from "../Icon";
  * A student's own copy of a Text card, as the teacher reviews it: formatted as they wrote it. Select any words and
  * press Comment to leave a comment on that passage; comments and the student's replies are listed under it.
  */
-export function DocReview({ doc, notes, courseId, studentId, moduleId, onChanged }: {
-  doc: string; notes: DocNote[]; courseId: string; studentId: string; moduleId: string; onChanged: () => void | Promise<unknown>;
+export function DocReview({ doc, notes, courseId, studentId, moduleId, onChanged, names }: {
+  doc: string; notes: DocNote[]; courseId: string; studentId: string; moduleId: string; onChanged: () => void | Promise<unknown>; names?: Record<string, string>;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [pick, setPick] = useState<{ quote: string; x: number; y: number } | null>(null);
@@ -67,7 +67,7 @@ export function DocReview({ doc, notes, courseId, studentId, moduleId, onChanged
         )}
       </div>
       <p className="mt-1 text-[11.5px] text-ink-3">Select any words to comment on them.</p>
-      <DocNotes notes={notes} me="teacher" courseId={courseId} studentId={studentId} moduleId={moduleId} onChanged={onChanged} />
+      <DocNotes notes={notes} me="teacher" courseId={courseId} studentId={studentId} moduleId={moduleId} onChanged={onChanged} names={names} />
     </div>
   );
 }

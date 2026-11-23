@@ -171,8 +171,8 @@ function Reply({ c, all, depth, ctx }: { c: Comment; all: Comment[]; depth: numb
 type ThreadCtx = { me: Who; teacher: boolean; canReply: boolean; name: (id: string) => string; send: (text: string, work: Draft[], replyTo?: string) => Promise<boolean>; remove: (c: Comment) => void };
 
 /** One post in the feed: who wrote it, its text and media, reactions, and its replies as threads. */
-function PostCard({ post, me, teacher, module: m, students, courseId, onChanged, index, groupName }: {
-  post: Post; me: Who; teacher: boolean; module: Module; students: Student[]; courseId: string; onChanged: () => void; index: number; groupName?: (id: string) => string;
+function PostCard({ post, me, teacher, readOnly = false, module: m, students, courseId, onChanged, index, groupName }: {
+  post: Post; me: Who; teacher: boolean; readOnly?: boolean; module: Module; students: Student[]; courseId: string; onChanged: () => void; index: number; groupName?: (id: string) => string;
 }) {
   const w = wallOf(m);
   const [local, setLocal] = useState<{ likes?: string[]; votes?: string[] }>({});
@@ -190,9 +190,10 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
   const shown = showAll || top.length <= 3 ? top : top.slice(-2);
   const showLikes = w.reactions === "likes" || w.reactions === "both";
   const showVotes = w.reactions === "votes" || w.reactions === "both";
-  const canComment = w.comments || teacher;
+  const canComment = !readOnly && (w.comments || teacher);
 
   async function react(kind: "like" | "vote") {
+    if (readOnly) return;
     const key = kind === "like" ? "likes" : "votes";
     const cur = key === "likes" ? likes : votes;
     setLocal((l) => ({ ...l, [key]: cur.includes(me) ? cur.filter((x) => x !== me) : [...cur, me] }));
@@ -202,7 +203,7 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
     setLocal({});
   }
   const ctx: ThreadCtx = {
-    me, teacher, canReply: canComment, name,
+    me, teacher: teacher && !readOnly, canReply: canComment, name,
     async send(text, work, replyTo) {
       const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: me, postId: post.id, text, work, replyTo });
       if (!r.ok) { toast(r.error ?? "Couldn’t send your reply", { icon: "x", tone: "bad" }); return false; }
@@ -284,7 +285,7 @@ function PostCard({ post, me, teacher, module: m, students, courseId, onChanged,
                 }} aria-label="Delete your post" className="btn btn-quiet press h-7 w-7 justify-center px-0 hover:!text-bad"><Icon name="trash" size={13} /></button>
               </span>
             )}
-            {teacher && (
+            {teacher && !readOnly && (
               <span className="flex items-center gap-0.5">
                 {sections.length > 1 && (
                   <select value={post.section ?? sections[0]} onChange={(e) => moderate({ section: e.target.value }, `Moved to #${e.target.value}`)} aria-label="Move to topic" className="h-7 max-w-28 rounded-md bg-transparent px-1 text-[12px] text-ink-2 outline-none hover:bg-lane">
@@ -330,8 +331,10 @@ export function WallBoard(props: WallProps) {
   return <MentionPeople.Provider value={people}><Feed {...props} /></MentionPeople.Provider>;
 }
 
-function Feed({ courseId, me, teacher = false, module: m, posts, students, onChanged, header, groupName }: {
+function Feed({ courseId, me, teacher = false, readOnly = false, module: m, posts, students, onChanged, header, groupName }: {
   courseId: string; me: Who; teacher?: boolean; module: Module; posts: Post[]; students: Student[]; onChanged: () => void; header?: React.ReactNode;
+  /** A co-teacher who can only view: they read the discussion (with what a teacher sees) but don't post, reply or moderate. */
+  readOnly?: boolean;
   /** A discussion by groups: a group's name, shown to the teacher on each post. */
   groupName?: (id: string) => string;
 }) {
@@ -339,7 +342,7 @@ function Feed({ courseId, me, teacher = false, module: m, posts, students, onCha
   const [sort, setSort] = useState<"new" | "top">(w.reactions === "votes" ? "top" : "new");
   const topics = w.sections?.filter((x) => x.trim()) ?? [];
   const [filter, setFilter] = useState<string | null>(null);
-  const canPost = teacher || w.posting === "students";
+  const canPost = !readOnly && (teacher || w.posting === "students");
   const score = (p: Post) => (p.votes?.length ?? 0) * 2 + (p.likes?.length ?? 0) + (p.comments?.length ?? 0) * 0.5;
   const all = posts.filter((p) => p.moduleId === m.id);
   const list = all
@@ -371,7 +374,7 @@ function Feed({ courseId, me, teacher = false, module: m, posts, students, onCha
       {canPost ? (
         <Composer placeholder={teacher ? "Post to the discussion as the teacher…" : "Share something with the class…"} topics={topics} onSend={post} />
       ) : (
-        <p className="rounded-xl border border-line bg-[#fafaf9] px-4 py-3 text-[13px] text-ink-3">Only your teacher starts posts here. You can still react{w.comments ? " and reply" : ""}.</p>
+        <p className="rounded-xl border border-line bg-[#fafaf9] px-4 py-3 text-[13px] text-ink-3">{readOnly ? "You can view this discussion; posting, replying and approving are for the course’s editors." : `Only your teacher starts posts here. You can still react${w.comments ? " and reply" : ""}.`}</p>
       )}
       {(w.anonymous || w.approval) && !teacher && canPost && (
         <p className="mt-1.5 text-[12px] text-ink-3">
@@ -404,7 +407,7 @@ function Feed({ courseId, me, teacher = false, module: m, posts, students, onCha
         <div className="hatch flex h-24 items-center justify-center text-[13px] text-ink-3">{filter ? `Nothing in #${filter} yet.` : "No posts yet. Be the first."}</div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-line bg-white">
-          {list.map((p, i) => <PostCard key={p.id} post={p} me={me} teacher={teacher} module={m} students={students} courseId={courseId} onChanged={onChanged} index={i} groupName={groupName} />)}
+          {list.map((p, i) => <PostCard key={p.id} post={p} me={me} teacher={teacher} readOnly={readOnly} module={m} students={students} courseId={courseId} onChanged={onChanged} index={i} groupName={groupName} />)}
         </div>
       )}
     </div>

@@ -12,7 +12,9 @@ const when = (at: number) => new Date(at).toLocaleDateString("en-US", { month: "
  * The teacher's comments on a student's writing (each on a passage, quoted), with the replies under each. Both sides
  * reply; the teacher can also remove a comment. Nothing shows for a student until there's a comment.
  */
-export function DocNotes({ notes, me, courseId, studentId, moduleId, onChanged }: {
+export function DocNotes({ notes, me, courseId, studentId, moduleId, onChanged, names = {} }: {
+  /** Students' names, for replies on a group's worksheet. */
+  names?: Record<string, string>;
   notes: DocNote[];
   me: "teacher" | "student";
   courseId: string;
@@ -55,7 +57,7 @@ export function DocNotes({ notes, me, courseId, studentId, moduleId, onChanged }
             {replies.map((r) => (
               <div key={r.id} className="mt-2 border-t border-[#f0cf62]/50 pt-2">
                 <p className="whitespace-pre-wrap leading-snug">{r.text}</p>
-                <p className="mt-0.5 text-[11px] text-ink-3">{r.by === me ? "You" : r.by === "teacher" ? "Your teacher" : "The student"} · {when(r.at)}</p>
+                <p className="mt-0.5 text-[11px] text-ink-3">{r.by === "teacher" ? (me === "teacher" ? "You" : "Your teacher") : me === "student" && (!r.from || r.from === studentId) ? "You" : (r.from && names[r.from]) || "The student"} · {when(r.at)}</p>
               </div>
             ))}
             {replying === n.id ? (
