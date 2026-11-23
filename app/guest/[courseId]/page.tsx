@@ -7,6 +7,7 @@ import { CardTable } from "@/components/cards/CardTable";
 import { Lift } from "@/components/cards/Lift";
 import { MediaView } from "@/components/cards/Media";
 import { HScroll } from "@/components/HScroll";
+import { RichText } from "@/components/RichText";
 import { Icon } from "@/components/Icon";
 import { CARD_SIZE } from "@/lib/cards";
 import { useCourse, useQuery } from "@/lib/client";
@@ -81,7 +82,7 @@ function Guest({ courseId, token }: { courseId: string; token: string }) {
               <button onClick={() => setLift((x) => (x ? { ...x, open: false } : x))} aria-label="Close" className="btn btn-quiet press h-9 w-9 justify-center px-0"><Icon name="x" size={17} /></button>
             </div>
             {m.minutes && <span className="chip mt-3"><Icon name="clock" size={12} />{m.minutes} min</span>}
-            <p className="mt-5 whitespace-pre-wrap text-[15px] leading-[1.7] text-[#353532]">{m.body}</p>
+            <RichText text={m.body} className="mt-5 text-[15px] leading-[1.7] text-[#353532]" />
             {(m.attachments ?? []).map((a) => <div key={a.id} className="mt-4"><MediaView a={a} /></div>)}
             {m.questions?.length ? (
               <ol className="mt-5 list-decimal space-y-1 pl-5 text-[14px]">{m.questions.map((q) => <li key={q.id}>{q.text} <span className="text-ink-3">({q.options.join(" · ")})</span></li>)}</ol>

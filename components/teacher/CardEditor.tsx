@@ -13,6 +13,7 @@ import { ask } from "../Confirm";
 import { Clearable } from "../Clearable";
 import { clearOlder, olderSettings } from "@/lib/cardmodel";
 import { MathPreview } from "../MathText";
+import { RichBodyEditor } from "./RichBodyEditor";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { targetsOf } from "@/lib/branching";
@@ -244,7 +245,7 @@ export function CardEditor({
         <div className="space-y-2.5 px-4 pb-8">
           <Panel n={1} title="Title and what to do">
             <Clearable><input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" /></Clearable>
-            <Clearable multiline className="mt-2"><textarea value={m.body} onChange={(e) => set({ body: e.target.value })} rows={5} placeholder="What students should read, watch or do" aria-label="Body" className="field resize-y leading-relaxed" /></Clearable>
+            <div className="mt-2"><RichBodyEditor key={m.id} value={m.body} onChange={(body) => set({ body })} placeholder="What students should read, watch or do" /></div>
             <MathPreview text={m.body} />
             <div className="mt-3">
           <div className="space-y-1.5">

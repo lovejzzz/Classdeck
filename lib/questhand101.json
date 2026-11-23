@@ -366,7 +366,7 @@
        "id": "m-q1tpl-weeks",
        "type": "read",
        "title": "Weeks and lessons",
-       "body": "Each lesson is a row on the Map, and lessons sit in weeks.\n\n- + Card at a lesson's row adds a card; + Lesson at the end of the map adds a lesson.\n- New week: from a template (give it a theme) or a Blank week.\n- Click a lesson's name to rename it.\n- A lesson's ⋯ menu: Duplicate lesson, Add a lesson to the week, Rename or Duplicate the week.",
+       "body": "Each lesson is a row on the Map, and lessons sit in weeks.\n\n- The **+ Card** button on a lesson's row adds a card; **+ Lesson** at the end of the map adds a lesson.\n- New week: from a template (give it a theme) or a Blank week.\n- Click a lesson's name to rename it.\n- A lesson's ⋯ menu: Duplicate lesson, Add a lesson to the week, Rename or Duplicate the week.",
        "audience": {
         "kind": "all"
        },
@@ -877,6 +877,19 @@
     {
      "title": "Media and discussions",
      "modules": [
+      {
+       "id": "m-q1tpl-format",
+       "type": "read",
+       "title": "Format a card",
+       "body": "## Text that's easy to read\n\nA Text card can have **headings**, *emphasis*, lists, links, dividers and tables. Use the bar above the text box, or type the shortcuts: **⌘B** for bold, a line starting with - for a list.\n\n> A callout like this one is good for a tip or the one idea students should keep.\n\n| To make… | In the text box |\n| --- | --- |\n| A heading | H on the bar |\n| A list | • or 1. on the bar |\n| A callout | the sparkle button |\n| A table | the table button, or paste one from Google Sheets or Excel |\n\nMath still works anywhere: $\\frac{3}{4}$.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
       {
        "id": "m-q1tpl-media",
        "type": "read",

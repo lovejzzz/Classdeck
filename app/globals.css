@@ -231,3 +231,23 @@ button:disabled { cursor: not-allowed; }
 .panel-shift-head, .panel-shift-row { transition: padding-right 0.5s var(--ease-out); }
 body[data-panel="open"] .panel-shift-head { padding-right: var(--panel-head, 1rem); }
 body[data-panel="open"] .panel-shift-row { padding-right: var(--panel-row, 0px); }
+
+/* —— The card text editor (RichBodyEditor): the same look students get from RichText —— */
+.rich-editor-content > * + * { margin-top: 0.6em; }
+.rich-editor-content h1 { font-size: 1.35em; font-weight: 600; letter-spacing: -0.01em; }
+.rich-editor-content h2 { font-size: 1.18em; font-weight: 600; letter-spacing: -0.01em; }
+.rich-editor-content h3 { font-size: 1.05em; font-weight: 600; }
+.rich-editor-content ul { list-style: disc; padding-left: 1.4em; }
+.rich-editor-content ol { list-style: decimal; padding-left: 1.4em; }
+.rich-editor-content li > p { margin: 0; }
+.rich-editor-content blockquote { border-left: 4px solid rgba(75, 86, 168, 0.5); background: rgba(238, 240, 251, 0.7); border-radius: 10px; padding: 0.45em 0.9em; }
+.rich-editor-content hr { border: 0; border-top: 1px solid var(--color-line, #e7e5e0); margin: 0.9em 0; }
+.rich-editor-content a { color: #4b56a8; text-decoration: underline; text-underline-offset: 2px; }
+.rich-editor-content code { background: #f1f0ec; border-radius: 4px; padding: 0 0.25em; font-size: 0.9em; }
+.rich-editor-content table { width: 100%; border-collapse: collapse; font-size: 0.95em; table-layout: fixed; }
+.rich-editor-content th, .rich-editor-content td { border: 1px solid #e3e1dc; padding: 0.35em 0.6em; vertical-align: top; }
+.rich-editor-content th { background: #f4f3ef; font-weight: 600; text-align: left; }
+.rich-editor-content td p, .rich-editor-content th p { margin: 0; }
+.rich-editor-content .selectedCell { background: rgba(75, 86, 168, 0.08); }
+.rich-editor-content p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #a3a19b; float: left; height: 0; pointer-events: none; }
+.rich-editor-content .math-chip { display: inline-block; padding: 0 0.35em; margin: 0 0.05em; border-radius: 6px; background: #eef0fb; color: #3d4794; font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.88em; cursor: pointer; }

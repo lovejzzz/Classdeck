@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.58",
+    date: "2026-11-23",
+    changes: [
+      "A card's text is written like a document now: headings, bold, italic, strikethrough, links, bulleted and numbered lists (lists inside lists too), callouts for a tip or a key idea, dividers, and tables. Use the bar above the text box. A table can grow and shrink (+ Row, + Column, − Row, − Column), and one pasted from Google Sheets, Excel or Docs stays a table.",
+      "Students see it formatted, on their cards and on guest links. Cards written before look the same as they did; their lists now show as lists.",
+      "Math keeps working: $…$ in the text box becomes a small math chip (click it to change it), and it's kept exactly as written.",
+      "Map previews, read-aloud and card search read the words, without the formatting marks.",
+      "Questhand 101 has a new card, Format a card, showing what a card's text can do.",
+    ],
+  },
+  {
     version: "0.1.57",
     date: "2026-11-23",
     changes: [

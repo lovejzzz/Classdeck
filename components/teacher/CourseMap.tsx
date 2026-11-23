@@ -6,6 +6,7 @@ import { bandTone, pathColor, suitOfCard, suitOfKind } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
 import { MathText, plainMath } from "../MathText";
+import { plainText } from "@/lib/markdown";
 import type { Attachment, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
 import { videoEmbed } from "@/lib/media";
 import { MediaLift } from "../cards/MediaLift";
@@ -1692,7 +1693,7 @@ function CardRest({ m, far, art, tint, cover, onMedia }: { m: Module; far: boole
   // A video or a picture opens big (the media area is its own button, so the card's click leaves it be); a recording
   // plays right here.
   const open = (e: React.MouseEvent<HTMLElement>) => first && onMedia?.(first, e.currentTarget, e);
-  const body = m.body.trim();
+  const body = plainText(m.body).trim();
   return (
     <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-hidden ${far ? "px-4 pb-4 pt-1" : "px-3.5 pb-3.5 pt-1.5"}`}>
       {art && (
@@ -1815,7 +1816,7 @@ function TrashBin({ entries, hot, dragging, onRestore, onForget }: { entries: Tr
 /** All the words on a card, for search: its title, text, questions, choices and explanations. */
 function cardWords(m: Module): string {
   const qs = (m.questions ?? []).flatMap((q) => [q.text, ...(q.options ?? []), q.explain ?? "", ...(q.accept ?? [])]);
-  return [m.title, m.body ?? "", ...qs].join(" \n ");
+  return [m.title, plainText(m.body ?? ""), ...qs].join(" \n ");
 }
 
 /**

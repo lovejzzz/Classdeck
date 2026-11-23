@@ -19,6 +19,8 @@ import { WallBoard } from "../WallBoard";
 import { SelfCheck } from "./SelfCheck";
 import { CardForm } from "./CardForm";
 import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, ReviewNote, UpdatesNote } from "./CardExtras";
+import { RichText } from "../RichText";
+import { isRich, plainText } from "@/lib/markdown";
 import { SpeechBuilder } from "./SpeechBuilder";
 import { SpeechFlow } from "./SpeechFlow";
 import { Studio } from "./Studio";
@@ -240,7 +242,7 @@ export function CardDetail(p: DetailProps) {
                     {x.minutes && <span className="mono">{x.minutes} min</span>}
                   </div>
                   <div className="mt-2.5 text-[15px] font-medium">{x.title}</div>
-                  <p className="mt-1.5 line-clamp-[8] flex-1 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-2">{x.body}</p>
+                  <p className="mt-1.5 line-clamp-[8] flex-1 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-2">{plainText(x.body)}</p>
                   <button
                     onClick={async () => {
                       await op(p.courseId, { op: "chooseBranch", studentId: p.studentId, lessonId: p.lessonId, slot: x.choice!.slot, variant: x.choice!.variant });
@@ -264,10 +266,10 @@ export function CardDetail(p: DetailProps) {
 
         {m.body && !m.choice && (
           <>
-            <div className="mt-5"><ReadAloud text={`${m.title}. ${plainMath(m.body)}`} big={p.big} /></div>
+            <div className="mt-5"><ReadAloud text={`${m.title}. ${plainMath(plainText(m.body))}`} big={p.big} /></div>
             <div className="mt-3">
               {/* Math is typeset; highlighting works on plain text, so a card with math shows it without highlights. */}
-              {hasMath(m.body) ? <div className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}><MathText text={m.body} /></div> : <HighlightableText text={m.body} highlights={highlights} className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}
+              {isRich(m.body) ? <RichText text={m.body} className={`leading-[1.7] text-[#353532] ${body}`} /> : hasMath(m.body) ? <div className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}><MathText text={m.body} /></div> : <HighlightableText text={m.body} highlights={highlights} className={`whitespace-pre-wrap leading-[1.7] text-[#353532] ${body}`}
                 onChange={(h) => {
                   setHighlights(h);
                   p.optimistic({ highlights: h });
