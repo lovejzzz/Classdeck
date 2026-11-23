@@ -7,6 +7,7 @@ import { DEFAULT_GROUPING, groupingsOf, signupGroupingId } from "@/lib/shared";
 import { toast } from "@/lib/toast";
 import type { Course, Group, Grouping } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
+import { ask } from "../Confirm";
 
 const newId = () => `g-${Math.random().toString(36).slice(2, 9)}`;
 /** How many cards use a grouping. */
@@ -178,7 +179,7 @@ export function GroupingsList({ course, onChanged, readOnly }: { course: Course;
                   <>
                     <button onClick={() => setEditing(g)} className="btn btn-quiet press h-8 px-2 text-[12px]"><Icon name="users" size={12} /> Edit</button>
                     {g.id !== DEFAULT_GROUPING && (
-                      <button onClick={async () => { await op(course.id, { op: "deleteGrouping", id: g.id }); await onChanged(); toast(n ? `Removed “${g.name}”; its cards use the Discussion groups now` : `Removed “${g.name}”`, { icon: "users", tone: "plain" }); }}
+                      <button onClick={async () => { if (n && !(await ask({ title: `Remove “${g.name}”?`, body: `${n} card${n === 1 ? " uses" : "s use"} these groups. Worksheets that groups were filling in start again with new, empty copies for the other groups, and discussions in groups regroup.`, confirm: "Remove", danger: true }))) return; await op(course.id, { op: "deleteGrouping", id: g.id }); await onChanged(); toast(n ? `Removed “${g.name}”; its cards use the Discussion groups now` : `Removed “${g.name}”`, { icon: "users", tone: "plain" }); }}
                         className="btn btn-quiet press h-8 px-2 text-[12px] hover:!text-bad"><Icon name="x" size={12} /> Remove</button>
                     )}
                   </>

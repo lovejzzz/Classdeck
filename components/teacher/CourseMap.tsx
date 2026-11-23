@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, mapSlot, picked, SCORE, SHARED_ONLY, slotOf, targetsOf, wiresOf, type Wire } from "@/lib/branching";
+import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, mapSlot, picked, SCORE, sharedOnly, slotOf, targetsOf, wiresOf, type Wire } from "@/lib/branching";
 import { bandTone, pathColor, suitOfCard } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
@@ -46,7 +46,8 @@ const DAY = 86400000;
 export type Level = "far" | "mid" | "near";
 const levelOf = (z: number): Level => (z < 0.55 ? "far" : z >= 1.2 ? "near" : "mid");
 
-const branchQs = (m: Module) => (m.questions ?? []).filter((q) => canBranch(q));
+// (A sign-up poll's answers make groups and can change; they don't deal cards.)
+const branchQs = (m: Module) => (m.signup ? [] : (m.questions ?? []).filter((q) => canBranch(q)));
 /** Questions asked that can't branch (put in order, short answer): shown on the card, without ports. */
 const otherQs = (m: Module) => (m.questions ?? []).filter((q) => !canBranch(q) && isAsked(q));
 /** Rows an unbranching question takes under its title: one per option to order, or the accepted answers. */
@@ -680,7 +681,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       grew = false;
       for (const w of wires) if (above.has(w.to) && !above.has(w.from)) { above.add(w.from); grew = true; }
     }
-    return all.filter((x) => from && x.at >= from.at && !above.has(x.m.id) && !SHARED_ONLY.has(x.m.type));
+    const cards = all.map((x) => x.m);
+    return all.filter((x) => from && x.at >= from.at && !above.has(x.m.id) && !sharedOnly(x.m, cards));
   }
   const canTarget = (port: Port, id: string) => targetsFor(port).some((x) => x.m.id === id);
   const lessonWith = (id: string) => lessons.find((l) => l.modules.some((m) => m.id === id))!;
@@ -871,6 +873,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     if (ms.some((m) => groupOf.has(m.id))) return "One of these cards is already in a card group.";
     const dealt = ms.find((m) => wires.some((w) => w.to === m.id));
     if (dealt) return `“${dealt.title}” is dealt by an answer. Group the cards first, then deal the group.`;
+    // A group's score counts its questions answered once; a quiz (with tries) has its own score.
+    const quiz = ms.find((m) => m.type === "quiz");
+    if (quiz) return `“${quiz.title}” is a quiz with its own score and tries, so it can’t join a card group.`;
+    // Everyone answers every card in a group, or its score never comes.
+    const some = ms.find((m) => m.audience.kind === "student");
+    if (some) return `“${some.title}” is only for some students, so it can’t join a card group everyone answers.`;
     return null;
   }
   /** Put the picked cards in a new card group, where the first of them was. */

@@ -259,7 +259,15 @@ export const sharedDoc = (m: KindFields & Pick<Module, "writers">) => kindOf(m) 
  * card, or their group's shared copy.
  */
 export const reviewableCard = (m: KindFields & Pick<Module, "writers" | "choice">) =>
-  (["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && !m.choice) || writesOwn(m) || (kindOf(m) === "worksheet" && m.writers === "group");
+  // A Content card is only read (an older "Watch & listen" card included): nothing to review.
+  (kindOf(m) !== "content" && ["explore", "practice", "submit", "reflect"].includes(m.type) && !m.questions?.length && !m.choice) || writesOwn(m) || (kindOf(m) === "worksheet" && m.writers === "group");
+
+/**
+ * Handed-in work waiting for the teacher: done, and either not reviewed yet, or handed in again after the teacher asked
+ * for a revision.
+ */
+export const awaitingFeedback = (p?: { status: string; updatedAt: number; review?: { verdict?: string; at: number } }) =>
+  !!p && p.status === "done" && (!p.review || (p.review.verdict === "revise" && p.updatedAt > p.review.at));
 
 /** A card with choices that has neither words nor options yet: students don't see it until the teacher writes them. */
 export const unasked = (m: KindFields) => kindOf(m) === "choice" && !(m.questions ?? []).some(isAsked);

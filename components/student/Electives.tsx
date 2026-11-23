@@ -26,7 +26,7 @@ export function ElectiveRow({ state, studentId, lesson: l, size, onChanged }: {
   const { course } = state;
   const [busy, setBusy] = useState(false);
   const all = course.weeks.flatMap((w) => w.lessons).filter((x) => x.elective);
-  const min = course.electiveMin ?? 2;
+  const min = Math.min(course.electiveMin ?? 2, all.length);
   const chosen = all.filter((x) => x.chosen).length;
   const { self, teacher } = skillPicture(state.progress[studentId] ?? {});
   const level = (id: string) => teacher[id] ?? self[id] ?? 3;

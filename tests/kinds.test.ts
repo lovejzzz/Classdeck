@@ -1,6 +1,6 @@
 // Card kinds and faces, checked without a server: npx tsx tests/kinds.test.ts
 import { mixedOrder, wallProgress } from "../lib/grading";
-import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, asKind, faceMeta, faceOf, familyOf, isPoll, kindOf, newCard, unfinished, withKind } from "../lib/kinds";
+import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, asKind, faceMeta, faceOf, familyOf, isPoll, kindOf, newCard, reviewableCard, unfinished, withKind } from "../lib/kinds";
 import type { Attachment, Lesson, Module } from "../lib/types";
 import { studentsOf, visibleModules } from "../lib/profile";
 
@@ -108,6 +108,12 @@ check("a poll that makes groups: Sign-up", faceOf(ch([{ id: "q", text: "Which?",
   check("a card made for one student before still reaches them", sees("s2") === "one" && studentsOf(one.audience).join() === "s2");
   check("some students with no one picked yet: no one", studentsOf({ kind: "student", studentId: "", studentIds: [] }).length === 0);
 }
+
+// Feedback is for work handed in: an open answer or a worksheet, never a card that's only read.
+check("an open answer can be reviewed", reviewableCard(card({ kind: "answer", type: "submit" })));
+check("a worksheet each student fills in can be reviewed", reviewableCard(card({ kind: "worksheet", writers: "each" })));
+check("a Content card can't, not even an older Watch & listen one", !reviewableCard(card({ kind: "content" })) && !reviewableCard(card({ kind: "content", type: "explore" })));
+check("a quiz question and a discussion can't", !reviewableCard(card({ kind: "choice", type: "practice", questions: [{ id: "q", text: "A?", options: ["a", "b"], answer: 0 }] })) && !reviewableCard(card({ kind: "discussion", type: "wall" })));
 
 const failed = rows.filter(([, ok]) => !ok);
 for (const [n] of failed) console.log("  ✗", n);

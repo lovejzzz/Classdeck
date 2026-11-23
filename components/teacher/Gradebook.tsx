@@ -10,7 +10,7 @@ import { SkillRadar } from "../SkillRadar";
 import { FeedbackInbox, Journal } from "../student/Progress";
 import { groupScore, treeView } from "@/lib/branching";
 
-import { reviewableCard } from "@/lib/kinds";
+import { awaitingFeedback, reviewableCard } from "@/lib/kinds";
 
 /**
  * The whole course per student: where the teacher placed them on each skill (from rubric
@@ -53,7 +53,7 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
     const scores = scored.map((x) => x.right / x.total);
     const quizPct = scores.length ? scores.reduce((t, x) => t + x, 0) / scores.length : undefined;
     const reviews = cards.filter(({ m }) => mine[m.id]?.review).map(({ m, week }) => ({ m, week, r: mine[m.id].review! })).sort((a, b) => b.r.at - a.r.at);
-    const toReview = cards.filter(({ m }) => reviewableCard(m) && mine[m.id]?.status === "done" && !mine[m.id]?.review);
+    const toReview = cards.filter(({ m }) => reviewableCard(m) && awaitingFeedback(mine[m.id]));
     const waiting = toReview.length;
     // Latest teacher level per skill, and the student's latest self-rating.
     // Teacher levels come from reviews and from forms (the teacher's card forms), latest wins.
@@ -64,15 +64,17 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
     ]).sort((a, b) => a.at - b.at);
     for (const g of given) Object.assign(teacher, g.levels);
     const self: Record<string, number> = {};
-    const checks = cards.filter(({ m }) => m.type === "selfcheck" && mine[m.id]?.ratings).sort((a, b) => mine[a.m.id].updatedAt - mine[b.m.id].updatedAt);
-    for (const { m } of checks) Object.assign(self, mine[m.id].ratings);
+    // Self-ratings from any card (a rating poll, a form), latest wins: the same picture the student's own suggestions use.
+    const rated = cards.filter(({ m }) => mine[m.id]?.ratings).sort((a, b) => mine[a.m.id].updatedAt - mine[b.m.id].updatedAt);
+    for (const { m } of rated) Object.assign(self, mine[m.id].ratings);
     return { st, total: cards.length, done, late, quizPct, scored, reviews, waiting, toReview, teacher, self };
   });
 
   function exportCsv() {
     const head = ["Student", "Group", "Cards done", "Cards total", "Late", "Quiz average %", ...skills.flatMap((s) => [`${s.name} (teacher)`, `${s.name} (self)`]), "Reviews given"];
     const group = (id: string) => course.groups?.find((g) => g.studentIds.includes(id))?.name ?? "";
-    const body = rows.map((r) => [
+    // The demo students are the teacher's own tests: not in the exported grades.
+    const body = rows.filter((r) => !r.st.demo).map((r) => [
       r.st.name, group(r.st.id), r.done, r.total, r.late, r.quizPct === undefined ? "" : Math.round(r.quizPct * 100),
       ...skills.flatMap((s) => [r.teacher[s.id] ?? "", r.self[s.id] ?? ""]), r.reviews.length,
     ]);
@@ -110,7 +112,7 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
                   <td className="sticky left-0 z-10 whitespace-nowrap border-b border-line/70 bg-white px-4 py-2 group-hover:bg-[#fafaf9]">
                     <span className="inline-flex items-center gap-2 font-medium">
                       <Icon name="chevron" size={12} className={`text-ink-3 transition-transform ${open === r.st.id ? "" : "-rotate-90"}`} />
-                      <Avatar name={r.st.name} size={20} />{r.st.name}
+                      <Avatar name={r.st.name} size={20} />{r.st.name}{r.st.demo && <span className="chip h-5 bg-[#fff2c7] text-[10.5px] font-medium text-[#7a5a00]">Demo</span>}
                     </span>
                   </td>
                   <td className="border-b border-line/70 px-2 py-2">

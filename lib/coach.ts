@@ -193,7 +193,7 @@ export function recommend(state: CourseState, studentId: string, now: number): R
 
   const electives = course.weeks.flatMap((w) => w.lessons).filter((l) => l.elective);
   const picked = electives.filter((l) => l.chosen).length;
-  const need = (course.electiveMin ?? 2) - picked;
+  const need = Math.min(course.electiveMin ?? 2, electives.length) - picked;
   if (electives.length && need > 0) {
     const weak = scored[0]?.s.id;
     const fit = electives.find((l) => !l.chosen && weak && l.catalog?.skills.includes(weak));

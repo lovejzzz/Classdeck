@@ -3,6 +3,21 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.75",
+    date: "2026-11-23",
+    changes: [
+      "Feedback is for work handed in: an Open answer or a Worksheet. A Content card, a quiz question or a discussion has no feedback box; instead the panel says why and offers Message.",
+      "Work handed in again after Ask to revise comes back to Ready for your feedback (and Grades’ To review).",
+      "A group worksheet is one piece of work: feedback (or Ask to revise) goes to everyone in the group. Handing it in records the time.",
+      "A worksheet filled in by a group or the class, or a discussion, always goes to everyone: answers can’t deal it and Only some students isn’t offered. A sign-up poll’s answers make groups and no longer deal cards.",
+      "Card groups can’t take a quiz (it has its own score and tries) or a card for only some students (the group’s score would never come).",
+      "A started elective stays on the student’s board (no Drop once there’s work in it).",
+      "Students: Haven’t started and the class numbers count only students with cards in the lesson; demo students are tagged and left out of the class numbers and the grade export, and don’t join the class’s own groups. View-only co-teachers see the work without feedback, reminder or form controls.",
+      "Quizzes that draw from a question bank show the right total everywhere. Grades shows students’ self-ratings from any card. The electives prompt no longer asks for more than the course has. A class worksheet says Done (nothing is reviewed one by one).",
+      "Removing a set of groups that cards use asks first. The guest link no longer shows groups or unfinished cards.",
+    ],
+  },
+  {
     version: "0.1.74",
     date: "2026-11-23",
     changes: [

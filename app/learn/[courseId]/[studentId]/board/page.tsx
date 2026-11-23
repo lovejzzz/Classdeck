@@ -14,6 +14,7 @@ import { suitOfCard } from "@/lib/ui";
 import { faceMeta, writesOwn } from "@/lib/kinds";
 import { RichText } from "@/components/RichText";
 import { recommend } from "@/lib/coach";
+import { quizSet } from "@/lib/grading";
 import type { Module, Progress } from "@/lib/types";
 
 /** A student's own board: everything they made, and the feedback they got. */
@@ -54,7 +55,7 @@ export default function BoardPage() {
   const cardLink = (mid: string) => `/learn/${courseId}/${studentId}?card=${mid}${testing ? "&preview=1" : ""}`;
   const shown = tab;
   // Quizzes handed in, by their best try.
-  const quizScores = all.filter((x) => x.m.type === "quiz" && x.m.questions?.length && mine[x.m.id]?.status === "done").map((x) => (mine[x.m.id].best ?? mine[x.m.id].score ?? 0) / x.m.questions!.length);
+  const quizScores = all.filter((x) => x.m.type === "quiz" && x.m.questions?.length && mine[x.m.id]?.status === "done").map((x) => (mine[x.m.id].best ?? mine[x.m.id].score ?? 0) / Math.max(1, quizSet(x.m, studentId, mine[x.m.id].attempt ?? 1).length));
   const quizAvg = quizScores.length ? Math.round((100 * quizScores.reduce((a, b) => a + b, 0)) / quizScores.length) : undefined;
   const reviewed = all.filter((x) => mine[x.m.id]?.review).length;
   const takes = all.reduce((n, x) => n + (mine[x.m.id]?.work?.filter((w) => w.kind === "audio" || w.kind === "video").length ?? 0), 0);

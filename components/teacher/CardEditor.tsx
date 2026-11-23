@@ -17,7 +17,7 @@ import { RichBodyEditor } from "./RichBodyEditor";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
 import type { Attachment, Course, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { GroupingPicker, SignupGroups } from "./Groupings";
-import { SCORE, targetsOf, wiresOf } from "@/lib/branching";
+import { SCORE, sharedOnly, targetsOf, wiresOf } from "@/lib/branching";
 import { CardFace } from "../cards/CardFace";
 import { AudioPlayer } from "../cards/Media";
 import { MediaLift } from "../cards/MediaLift";
@@ -400,6 +400,9 @@ export function CardEditor({
                       : "The whole class shares one copy and fills it in together, live: good for a class table of results. Each student presses Hand in for themselves."}
                     {" "}History keeps a version every few minutes, with who wrote in it.
                   </p>
+                  {(m.writers === "group" || m.writers === "class") && dealtBy.length > 0 && (
+                    <p className="mt-1.5 rounded-lg bg-warn/10 px-2.5 py-1.5 text-[12px] text-warn">An answer deals this card, but a worksheet filled in together goes to everyone in the group or class. The answer won’t deal it any more.</p>
+                  )}
                   {m.writers === "group" && course && <div className="mt-2"><GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} /></div>}
                 </div>
               )}
@@ -507,7 +510,7 @@ export function CardEditor({
                 ) : (
                   <>Everyone gets this card.</>
                 )}
-                {a.kind === "all" && !dealtBy.length && (
+                {a.kind === "all" && !dealtBy.length && !sharedOnly(m, everyCard) && (
                   <button onClick={() => set({ audience: { kind: "student", studentId: "", studentIds: [] } })} className="mt-1 block underline underline-offset-2 hover:text-ink">Only some students…</button>
                 )}
               </span>

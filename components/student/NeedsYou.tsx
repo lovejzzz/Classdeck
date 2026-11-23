@@ -46,8 +46,9 @@ export function NeedsYou({ state, studentId, onOpen, onElectives }: {
   if (soon.length) groups.push({ kind: "soon", label: `${soon.length} due soon`, items: soon });
   if (behind.length) groups.push({ kind: "behind", label: `${behind.length} to catch up`, items: behind });
   const electives = order.filter((l) => l.elective);
-  const need = (state.course.electiveMin ?? 2) - electives.filter((l) => l.chosen).length;
-  if (electives.length && need > 0) groups.push({ kind: "electives", label: `Choose ${Math.min(need, electives.filter((l) => !l.chosen).length)} elective${need === 1 ? "" : "s"}`, items: [] });
+  // No more than the course has: one elective and a minimum of 2 still means choose that one.
+  const need = Math.min(state.course.electiveMin ?? 2, electives.length) - electives.filter((l) => l.chosen).length;
+  if (need > 0) groups.push({ kind: "electives", label: `Choose ${need} elective${need === 1 ? "" : "s"}`, items: [] });
 
   // A reminder from the teacher while this tab is in the background: a system notification.
   const nudges = (state.nudges ?? []).filter((n) => n.studentId === studentId && !n.from && now - n.at < 7 * 86400_000).sort((a, b) => b.at - a.at);

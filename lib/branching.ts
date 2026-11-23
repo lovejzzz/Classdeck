@@ -10,12 +10,22 @@
 // earlier is taken away.
 import type { AnswerValue, Lesson, Module, Progress, Question, ScoreBand, Week } from "./types";
 import { isAsked } from "./grading";
+import { kindOf } from "./kinds";
 
 /** Question kinds that can deal cards: the ones with options a student picks. */
 export const canBranch = (q: Question) => !q.kind || q.kind === "choice" || q.kind === "multi";
 
 /** Card types that can't be dealt to some students only: they assume the whole class or group has them. */
 export const SHARED_ONLY = new Set(["studio", "wall"]);
+/**
+ * A card the whole class (or every member of a group) has together, so it can't go to some students only: a
+ * discussion, a worksheet written together by a group or the class, or a card group with one of those in it.
+ */
+export function sharedOnly(m: Module, cards: Module[] = []): boolean {
+  if (SHARED_ONLY.has(m.type)) return true;
+  if (kindOf(m) === "worksheet" && (m.writers === "group" || m.writers === "class")) return true;
+  return m.type === "group" && (m.members ?? []).some((id) => { const c = cards.find((x) => x.id === id); return !!c && c.type !== "group" && sharedOnly(c); });
+}
 
 /** progress.dealt key that holds a quiz's submitted scores, in percent: a number (one) or a list (every try). A card group's
  *  single score is a number. */
@@ -140,15 +150,17 @@ export function cleanCourseWiring(weeks: Week[]): void {
   const cards = cardsOf(weeks);
   const inGroup = new Set(cards.flatMap((c) => (c.m.type === "group" ? c.m.members ?? [] : [])));
   const where = new Map(cards.map((c) => [c.m.id, c]));
+  const allCards = cards.map((c) => c.m);
   const ok = (from: { m: Module; at: number }, to: unknown) => {
     const t = typeof to === "string" ? where.get(to) : undefined;
     // Not a card inside a group (deal the group instead), not a class-wide activity, never backwards.
-    return t && t.m.id !== from.m.id && !SHARED_ONLY.has(t.m.type) && !inGroup.has(t.m.id) && t.at >= from.at ? t.m.id : null;
+    return t && t.m.id !== from.m.id && !sharedOnly(t.m, allCards) && !inGroup.has(t.m.id) && t.at >= from.at ? t.m.id : null;
   };
   for (const c of cards) {
     const m = c.m;
     for (const q of m.questions ?? []) {
-      if (!canBranch(q) || !Array.isArray(q.next)) { delete q.next; continue; }
+      // A sign-up poll's answers make groups (and can change until they're locked): they don't deal cards.
+      if (!canBranch(q) || !Array.isArray(q.next) || m.signup) { delete q.next; continue; }
       q.next = q.next.slice(0, q.options.length).map((slot) => mapSlot(slot as Slot, (to) => ok(c, to)));
       if (!q.next.some(Boolean)) delete q.next;
     }

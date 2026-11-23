@@ -7,7 +7,7 @@ import { mentionsIn, plainText } from "@/lib/markdown";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
-import { kindWeeks, withKind } from "@/lib/kinds";
+import { kindOf, kindWeeks, reviewableCard, unfinished, withKind } from "@/lib/kinds";
 import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, orphansOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
@@ -184,6 +184,8 @@ function view(request: Request, courseId: string): Response {
   if (!course) return Response.json({ error: "No such course" }, { status: 404 });
   // Demo students added in 0.1.71 had made-up names: they're Demo Student A and B now.
   for (const st of course.students) { const ds = st.demo ? demoStudent(st.id) : undefined; if (ds && st.name !== ds.name) st.name = ds.name; }
+  // …and, from before 0.1.75, out of the class's own groups.
+  if (course.students.some((st) => st.demo) && course.groups?.some((g) => g.studentIds.some(isDemoStudent))) course.groups = course.groups.map((g) => ({ ...g, studentIds: g.studentIds.filter((id) => !isDemoStudent(id)) }));
   const query = new URL(request.url).searchParams;
   const as = query.get("as");
   // Read-only guest view: course content only, no students, no work.
@@ -192,9 +194,9 @@ function view(request: Request, courseId: string): Response {
     if (!course.access?.guestToken || guest !== course.access.guestToken) return Response.json({ error: "This guest link has been turned off" }, { status: 403 });
     const view: CourseState = {
       course: {
-        ...course, students: [], groups: [], joinCode: "", access: undefined, waiting: undefined, people: undefined, ownerId: undefined, trash: undefined,
+        ...course, students: [], groups: [], groupings: undefined, joinCode: "", access: undefined, waiting: undefined, people: undefined, ownerId: undefined, trash: undefined,
         // Cards made for one student stay private; shared and path cards are shown without who they're for.
-        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student").map((m) => ({ ...m, bands: undefined, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
+        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student" && !unfinished(m)).map((m) => ({ ...m, bands: undefined, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
       },
       progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} }, uptake: {}, nudges: [], plans: {},
     };
@@ -632,8 +634,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
         for (const ds of DEMO_STUDENTS) {
           if (course.students.some((x) => x.id === ds.id || x.id === ds.was)) continue;
           if ([...course.students, ...(course.waiting ?? [])].some((x) => x.name.toLowerCase() === ds.name.toLowerCase())) return fail(`A student in this class is already called ${ds.name}`);
+          // Not put in the class's own groups: a test student shouldn't change a real group's work or goals.
           course.students.push({ id: ds.id, name: ds.name, demo: true });
-          if (course.groups?.length) [...course.groups].sort((a, b) => a.studentIds.length - b.studentIds.length)[0].studentIds.push(ds.id);
         }
       } else {
         for (const ds of DEMO_STUDENTS) for (const id of [ds.id, ds.was]) { dropStudent(id); clearWork(id); }
@@ -910,7 +912,12 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (!lesson?.elective) return fail("That isn’t an elective");
       const mineC = ((d.choices[courseId] ??= {})[body.studentId] ??= {});
       if (body.on) mineC[`elective:${lesson.id}`] = "yes";
-      else delete mineC[`elective:${lesson.id}`];
+      else {
+        // Dropping it would hide work already started (drafts, posts, tries): only before any of it.
+        const started = lesson.modules.some((m) => { const st = d.progress[courseId]?.[body.studentId]?.[m.id]?.status; return st && st !== "todo"; });
+        if (started && !canTeach(session, course)) return fail("You’ve started this elective, so it stays on your board");
+        delete mineC[`elective:${lesson.id}`];
+      }
       break;
     }
     case "setElectiveMin": {
@@ -1326,13 +1333,19 @@ async function change(request: Request, courseId: string, body: Record<string, a
     }
     case "review": {
       // —— teacher ——
-      if (!findModule(course, body.moduleId)) return fail("No such card");
+      const rf = findModule(course, body.moduleId);
+      if (!rf) return fail("No such card");
       if (!course.students.some((st) => st.id === body.studentId)) return fail("No such student");
       const p = mine(body.studentId, body.moduleId);
+      // A group's worksheet is one piece of work: the review goes to everyone who wrote it.
+      const gkey = rf.mod.writers === "group" && kindOf(rf.mod) === "worksheet" ? docKey(course, rf.mod, body.studentId) : null;
+      const reviewed = gkey ? writersOf(course, gkey).filter((sid) => course.students.some((st) => st.id === sid)).map((sid) => mine(sid, body.moduleId)) : [p];
       if (body.clear) {
-        p.review = undefined;
+        for (const x of reviewed) x.review = undefined;
         break;
       }
+      // Feedback is for work handed in (an open answer, a worksheet); a card that's only read, a quiz or a discussion has none.
+      if (!reviewableCard(rf.mod)) return fail("There’s nothing handed in on this card to give feedback on");
       const verdict = body.verdict === "revise" ? "revise" : "good";
       const levels: Record<string, number> = {};
       for (const sk of course.skills ?? []) {
@@ -1340,9 +1353,12 @@ async function change(request: Request, courseId: string, body: Record<string, a
         if (v >= 1 && v <= 4) levels[sk.id] = v;
       }
       const attachments = (Array.isArray(body.attachments) ? body.attachments : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 3);
-      p.review = { verdict, text: String(body.text ?? "").slice(0, 2000), at: Date.now(), levels: Object.keys(levels).length ? levels : undefined, attachments: attachments.length ? attachments : undefined };
-      // Asking for a revision puts the card back in the student's hand.
-      if (verdict === "revise" && p.status === "done") p.status = "doing";
+      const review: NonNullable<Progress["review"]> = { verdict, text: String(body.text ?? "").slice(0, 2000), at: Date.now(), levels: Object.keys(levels).length ? levels : undefined, attachments: attachments.length ? attachments : undefined };
+      for (const x of reviewed) {
+        x.review = { ...review };
+        // Asking for a revision puts the card back in the student's hand.
+        if (verdict === "revise" && x.status === "done") x.status = "doing";
+      }
       break;
     }
     case "docNote":
@@ -1378,6 +1394,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
         const p = mine(sid, body.moduleId);
         p.output = md;
         p.status = "done";
+        p.updatedAt = Date.now();
       }
       extra = { handedIn: who.length };
       break;

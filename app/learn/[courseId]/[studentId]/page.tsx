@@ -643,7 +643,7 @@ export default function LearnPage() {
                                 {l.elective && <span className="chip h-5 bg-[#eef0fb] text-[11px] text-[#4b56a8]"><Icon name="split" size={10} />Elective</span>}
                                 <span className="mono">{doneCount(l)}/{countable(l).length}</span>
                                 {l.session && <span className="chip h-5 text-[11px]"><Icon name="studio" size={11} />Class session · {l.session.minutes} min</span>}
-                                {l.elective && doneCount(l) === 0 && <button onClick={() => chooseElective(courseId, studentId, l, false, synced)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">Drop</button>}
+                                {l.elective && l.modules.every((m) => statusOf(m.id) === "todo") && <button onClick={() => chooseElective(courseId, studentId, l, false, synced)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">Drop</button>}
                               </div>
                               {l.goal && !isToday && <p className="mt-1 text-[12.5px] text-ink-3" style={{ maxWidth: Math.min(Math.max(rowWidth, 280), 576) }}>{l.goal}</p>}
                               {l.modules.length ? (

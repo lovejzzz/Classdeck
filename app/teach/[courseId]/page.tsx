@@ -304,7 +304,7 @@ export default function TeachPage() {
             </button>
           )}
           {tab === "map" && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} view="map" />}
-          {tab === "students" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
+          {tab === "students" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} onMessage={viewer ? undefined : setTalkingTo} readOnly={viewer} />}
           {tab === "students" && <div className={course.students.length ? "mt-8" : ""}><Settings part="students" course={course} readOnly={viewer} onInvite={() => setInviting(true)} onChanged={refresh} nudges={state.nudges} onMessage={setTalkingTo} /></div>}
           {tab === "grades" && (course.students.length > 0 || courseId === "demo") && <Gradebook state={state} onReview={(sid, lid, mid) => { setPicked(lid); setTab("students"); setSel({ sid, mid }); }} />}
           {tab === "settings" && !viewer && <><Settings course={course} me={state.me} onChanged={refresh} /><SiteFooter /></>}

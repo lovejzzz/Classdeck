@@ -3,7 +3,7 @@
 // Every step checks what each side sees afterwards. Throwaway accounts use @example.test emails: remove them with
 // `node tests/cleanup.mjs` (server stopped).
 import { randomBytes } from "node:crypto";
-import { newCard } from "../lib/kinds";
+import { awaitingFeedback, newCard } from "../lib/kinds";
 import type { Course, Module } from "../lib/types";
 
 const BASE = process.argv[2] ?? "http://localhost:3000";
@@ -245,6 +245,8 @@ async function main() {
   const devBoard = await board("Dev");
   check("Dev sees the request", devBoard.progress?.["m-notice"]?.review?.verdict === "revise", devBoard.progress?.["m-notice"]);
   await op(S.Dev, { op: "setProgress", studentId: S.Dev.id, moduleId: "m-notice", output: "Grass, ants, a robin; rocks, a puddle, sunlight, wind.", status: "done" });
+  check("the revision is waiting for feedback again", awaitingFeedback(((await teacherView()).progress as J)?.[S.Dev.id]?.["m-notice"]));
+  check("no feedback on a card that's only read", (await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-intro", verdict: "good", text: "Nice reading." })).ok === false);
   check("approve it", (await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-notice", verdict: "good", text: "Great." })).ok);
   check("Dev sees it approved", (await board("Dev")).progress?.["m-notice"]?.review?.verdict === "good");
   // Gus hasn't handed in: a reminder.

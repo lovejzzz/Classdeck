@@ -7,7 +7,7 @@ import { invokeTool, op } from "@/lib/client";
 import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
-import { faceMeta, isPoll, reviewableCard, sharedDoc, writesOwn } from "@/lib/kinds";
+import { awaitingFeedback, faceMeta, isPoll, kindOf, reviewableCard, sharedDoc, writesOwn } from "@/lib/kinds";
 import { docKey, groupingOf } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { DocReview } from "./DocReview";
@@ -22,13 +22,18 @@ import { MediaView } from "../cards/Media";
 import { draftOf } from "../student/SpeechBuilder";
 import { Present } from "../Present";
 import { WallBoard } from "../WallBoard";
+import { RichText } from "../RichText";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
 import { groupScore, treeView } from "@/lib/branching";
 
 export function Classroom({
-  courseId, state, lesson, connectors, sel, setSel,
+  courseId, state, lesson, connectors, sel, setSel, onMessage, readOnly = false,
 }: {
+  /** A co-teacher who can only view: they see the class's work but don't give feedback, remind or fill in forms. */
+  readOnly?: boolean;
+  /** Open a conversation with a student (for cards with nothing to give feedback on). */
+  onMessage?: (studentId: string) => void;
   courseId: string; state: CourseState; lesson: Lesson; connectors: ConnectorInfo[];
   sel: { sid: string; mid: string } | null; setSel: (s: { sid: string; mid: string } | null) => void;
 }) {
@@ -59,7 +64,11 @@ export function Classroom({
       .filter((m) => !m.choice || (!seen.has(m.choice.slot) && (seen.add(m.choice.slot), true)))
       .map((m) => progress[sid]?.[m.id]);
   };
-  const notStarted = course.students.filter((st) => statusIn(st.id).every((p) => !p || p.status === "todo"));
+  // Students who have cards in this lesson (an elective they didn't choose, or cards dealt only to others, leave some with none).
+  const inLesson = course.students.filter((st) => statusIn(st.id).length > 0);
+  const notStarted = inLesson.filter((st) => statusIn(st.id).every((p) => !p || p.status === "todo"));
+  // The class's numbers leave out the demo students (the teacher's own tests), unless they're all there is.
+  const real = inLesson.some((st) => !st.demo) ? inLesson.filter((st) => !st.demo) : inLesson;
   const stalled = course.students.filter((st) => {
     const ps = statusIn(st.id).filter(Boolean);
     const doing = ps.filter((p) => p!.status === "doing");
@@ -76,7 +85,7 @@ export function Classroom({
   const overdue = course.students.filter((st) => !!lateCard(st.id));
   // Finished written work the teacher hasn't responded to yet.
   const reviewable = (m: Module) => reviewableCard(m);
-  const toReviewCell = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && reviewable(m) && progress[sid]?.[m.id]?.status === "done" && !progress[sid]?.[m.id]?.review)?.id;
+  const toReviewCell = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && reviewable(m) && awaitingFeedback(progress[sid]?.[m.id]))?.id;
   const toReview = course.students.filter((st) => !!toReviewCell(st.id));
   const firstVisible = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id))?.id;
   // A quiz handed in (best try) or a card group finished, under half right.
@@ -97,7 +106,7 @@ export function Classroom({
     { key: "owe", icon: "studio", tint: "#367195", title: "Owe feedback", hint: "Posted, but gave feedback to fewer than 2 peers (fewer in a small group).", who: owing, cell: () => studioId },
     ...(unpicked.length ? [{ key: "path", icon: "split", tint: "#4b56a8", title: "Haven’t picked a path", hint: "Working, but no Guided/Stretch choice yet.", who: unpicked, cell: firstVisible }] : []),
   ];
-  const totals = course.students.reduce(
+  const totals = real.reduce(
     (acc, st) => {
       const ps = statusIn(st.id);
       acc.cards += ps.length;
@@ -161,7 +170,7 @@ export function Classroom({
     const list = course.students.filter((st) => visible[st.id].has(sel.mid));
     const i = list.findIndex((st) => st.id === sel.sid);
     const order = [...list.slice(i + 1), ...list.slice(0, i)];
-    const next = order.find((st) => st.id !== justDone && progress[st.id]?.[sel.mid]?.status === "done" && !progress[st.id]?.[sel.mid]?.review);
+    const next = order.find((st) => st.id !== justDone && awaitingFeedback(progress[st.id]?.[sel.mid]));
     if (next) setSel({ sid: next.id, mid: sel.mid });
     else toast("That’s everyone who finished this card", { icon: "check", tone: "ok" });
   }
@@ -201,7 +210,7 @@ export function Classroom({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           ["Cards done", `${totals.cards ? Math.round((totals.done / totals.cards) * 100) : 0}%`, `${totals.done} of ${totals.cards}`],
-          ["Started", `${course.students.length - notStarted.length}/${course.students.length}`, "students"],
+          ["Started", `${real.length - notStarted.filter((st) => real.includes(st)).length}/${real.length}`, "students"],
           ...(studioIds.size ? [["Posted to Studio", `${posted}/${course.students.length}`, "students"], ["Feedback given", `${feedbackTotal}`, `goal ${course.students.length * 2}`]] : []),
         ].map(([k, v, sub], i) => (
           <div key={k} className="rise card px-4 py-3" style={{ "--i": i } as React.CSSProperties}>
@@ -225,7 +234,7 @@ export function Classroom({
                   <span className="font-mono text-[18px]">{a.who.length}</span>
                 </div>
                 <p className="mt-1.5 text-[12.5px] text-ink-3">{a.hint}</p>
-                {(a.key === "late" || a.key === "start" || a.key === "stall") && (
+                {!readOnly && (a.key === "late" || a.key === "start" || a.key === "stall") && (
                   <RemindButton courseId={courseId} ids={a.who.map((st) => st.id)} names={a.who.length === 1 ? a.who[0].name : `${a.who.length} students`}
                     text={a.key === "late" ? "You have a card past its due date. Can you finish it today?" : a.key === "start" ? `Time to start “${lesson.title}”. Open your first card when you can.` : "Pick up where you left off when you have a moment."} />
                 )}
@@ -286,6 +295,7 @@ export function Classroom({
                     <Avatar name={s.name} size={20} />
                     {s.name}
                   </Link>
+                  {s.demo && <span className="chip ml-2 h-5 bg-[#fff2c7] text-[10.5px] font-medium text-[#7a5a00]">Demo</span>}
                   {groupName(s.id) && <span className="ml-2 text-[11px] text-ink-3">{groupName(s.id)}</span>}
                 </td>
                 {cards.map((m) => {
@@ -311,7 +321,7 @@ export function Classroom({
                         <span className="flex-1" />
                         {late && <span className={`font-mono text-[10.5px] font-medium ${active ? "text-white" : "text-bad"}`}>late</span>}
                         {m.form && (m.form.by === "student" ? p?.form : p?.updates?.some((u) => u.id === `form:${m.id}`)) && <span title={m.form.by === "student" ? "They sent the form" : "You filled in the form"} className={active ? "text-white/80" : "text-[#3d6f91]"}><Icon name="text" size={11} /></span>}
-                        {rv && <span title={rv.verdict === "revise" ? "You asked for a revision" : "You reviewed this"} className={active ? "text-white/80" : rv.verdict === "revise" ? "text-warn" : "text-ok"}><Icon name={rv.verdict === "revise" ? "reset" : "message"} size={11} /></span>}
+                        {rv && reviewable(m) && <span title={rv.verdict === "revise" ? "You asked for a revision" : "You reviewed this"} className={active ? "text-white/80" : rv.verdict === "revise" ? "text-warn" : "text-ok"}><Icon name={rv.verdict === "revise" ? "reset" : "message"} size={11} /></span>}
                         {tools ? <span className={`flex items-center gap-0.5 font-mono text-[11px] ${active ? "text-white/70" : "text-ink-3"}`}><Icon name="tool" size={10} />{tools}</span> : null}
                       </button>
                     </td>
@@ -372,7 +382,7 @@ export function Classroom({
                 ))}
               </div>
             ))}
-            {selProgress?.status !== "done" && <RemindButton courseId={courseId} ids={[selStudent.id]} names={selStudent.name} moduleId={selModule.id} text={`Reminder: “${selModule.title}”${selModule.due ? " is due soon" : ""}. Open it when you can.`} />}
+            {!readOnly && selProgress?.status !== "done" && <RemindButton courseId={courseId} ids={[selStudent.id]} names={selStudent.name} moduleId={selModule.id} text={`Reminder: “${selModule.title}”${selModule.due ? " is due soon" : ""}. Open it when you can.`} />}
             {selModule.due && (
               <p className={`mt-2 text-[12.5px] ${isLate(selModule, selProgress ?? undefined, now) ? "text-bad" : "text-ink-3"}`}>
                 Due {new Date(dueAt(selModule.due)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}{isLate(selModule, selProgress ?? undefined, now) ? " · late" : ""}
@@ -414,20 +424,20 @@ export function Classroom({
               return key ? (
                 <details className="mt-3 rounded-lg border border-line px-3 py-2" open={!selProgress?.output}>
                   <summary className="cursor-pointer text-[12.5px] font-medium text-ink-2">{selModule.writers === "class" ? "The class’s live copy" : "This group’s live copy"}</summary>
-                  <div className="mt-2"><SharedDoc courseId={courseId} docKey={key} template={selModule.body} name="Teacher" /></div>
+                  <div className="mt-2"><SharedDoc courseId={courseId} docKey={key} template={selModule.body} name="Teacher" readOnly={readOnly} /></div>
                 </details>
               ) : null;
             })()}
             {selProgress?.output && (writesOwn(selModule) || sharedDoc(selModule)) ? (
               // Their own copy of a Text card: formatted, and open to comments on any passage.
-              <DocReview doc={selProgress.output} notes={selProgress.notes ?? []} courseId={courseId} studentId={sel!.sid} moduleId={selModule.id} onChanged={() => {}} />
+              readOnly ? <div className="mt-3 rounded-lg bg-lane px-3.5 py-3"><RichText text={selProgress.output} className="text-[13.5px] leading-relaxed" /></div> : <DocReview doc={selProgress.output} notes={selProgress.notes ?? []} courseId={courseId} studentId={sel!.sid} moduleId={selModule.id} onChanged={() => {}} />
             ) : selProgress?.output ? (
               <p className="mt-3 whitespace-pre-wrap rounded-lg bg-lane px-3.5 py-3 text-[13.5px] leading-relaxed">{selProgress.output}</p>
             ) : (
-              !selModule.questions && <p className="mt-3 text-[13px] text-ink-3">Nothing written yet.</p>
+              !selModule.questions && kindOf(selModule) !== "content" && <p className="mt-3 text-[13px] text-ink-3">Nothing written yet.</p>
             )}
             {selModule.questions && selProgress?.attempt && selProgress.attempt > 1 ? (
-              <p className="mt-3 text-[12.5px] text-ink-3">Try {selProgress.attempt} of {selModule.attempts ?? 1} · best score {selProgress.best ?? 0}/{selModule.questions.length}</p>
+              <p className="mt-3 text-[12.5px] text-ink-3">Try {selProgress.attempt} of {selModule.attempts ?? 1} · best score {selProgress.best ?? 0}/{quizSet(selModule, sel!.sid, selProgress.attempt ?? 1).length}</p>
             ) : null}
             {selModule.questions && (
               <ul className="mt-3 space-y-1.5 text-[13px]">
@@ -447,11 +457,22 @@ export function Classroom({
               </ul>
             )}
             {selModule.form?.by === "student" && <FormAnswers m={selModule} progress={selProgress ?? undefined} skills={course.skills ?? []} levels={course.levels ?? []} />}
-            {selModule.form && selModule.form.by !== "student" && (
+            {!readOnly && selModule.form && selModule.form.by !== "student" && (
               <FormFill key={`${sel.sid}-${sel.mid}-form`} courseId={courseId} studentId={sel.sid} name={selStudent.name} m={selModule} skills={course.skills ?? []} levels={course.levels ?? []}
                 prev={selProgress?.updates?.find((u) => u.id === `form:${selModule.id}`)} onNext={() => stepStudent(1)} />
             )}
-            {!selModule.questions?.length && selModule.type !== "wall" && (
+            {/* Feedback is for work handed in (an open answer, a worksheet). Reading, choices and discussions have none to
+                review; a message says anything else. */}
+            {!reviewable(selModule) && onMessage && (
+              <div className="mt-6 flex items-center gap-3 border-t border-line pt-5 text-[12.5px] text-ink-3">
+                <span className="flex-1">{kindOf(selModule) === "discussion" ? "Reply in the discussion, or write to them yourself." : kindOf(selModule) === "content" ? "Nothing to hand in on this card." : kindOf(selModule) === "worksheet" ? "The whole class writes one copy together, so there’s no copy of their own to give feedback on." : "Checked by the card itself."}</span>
+                <button onClick={() => onMessage(sel.sid)} className="btn btn-ghost press h-8 px-3 text-[12.5px]"><Icon name="message" size={12} /> <span className="max-w-[10rem] truncate">Message {selStudent.name}</span></button>
+              </div>
+            )}
+            {readOnly && reviewable(selModule) && selProgress?.review && (
+              <p className="mt-6 border-t border-line pt-5 text-[13px] text-ink-2"><span className="font-medium">{selProgress.review.verdict === "revise" ? "Asked to revise" : "Looks good"}</span>{selProgress.review.text ? `: ${selProgress.review.text}` : ""}</p>
+            )}
+            {!readOnly && reviewable(selModule) && (
               <ReviewBox key={`${sel.sid}-${sel.mid}`} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"}
                 skills={selModule.skills?.length ? (course.skills ?? []).filter((sk) => selModule.skills!.includes(sk.id)) : course.skills ?? []} rateOpen={!!selModule.skills?.length} levels={course.levels ?? []} onNext={() => nextWaiting(sel.sid)} />
             )}
