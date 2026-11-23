@@ -54,7 +54,7 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
     const toReview = cards.filter(({ m }) => WORK.has(m.type) && !m.questions?.length && mine[m.id]?.status === "done" && !mine[m.id]?.review);
     const waiting = toReview.length;
     // Latest teacher level per skill, and the student's latest self-rating.
-    // Teacher levels come from reviews and from forms (the teacher's card forms and Google Forms), latest wins.
+    // Teacher levels come from reviews and from forms (the teacher's card forms), latest wins.
     const teacher: Record<string, number> = {};
     const given = cards.flatMap(({ m }) => [
       ...(mine[m.id]?.review?.levels ? [{ at: mine[m.id].review!.at, levels: mine[m.id].review!.levels! }] : []),

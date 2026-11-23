@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.56",
+    date: "2026-11-23",
+    changes: [
+      "Every new teacher account starts with Questhand 101 in its courses: a four-week course on using Questhand, made in Questhand. Try it as a student with Student View, or borrow from it.",
+      "When an answer deals cards, they're dealt onto the board: once the card closes, each new card flies into its place and glows, and it says New until it's opened.",
+      "A map menu (an answer's menu, or + Card) that would run past the edge of the map moves back into view.",
+      "The Google Forms connection is gone: Questhand's own card forms do the same job.",
+    ],
+  },
+  {
     version: "0.1.55",
     date: "2026-11-23",
     changes: [

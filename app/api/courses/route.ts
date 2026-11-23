@@ -1,15 +1,13 @@
 import { DEMO, getSession, isAdmin, roleOf, teacherOf, unauthorized } from "@/lib/auth";
 import { cloneWeek } from "@/lib/clone";
-import { fromPreset, uid } from "@/lib/profile";
+import { uid } from "@/lib/profile";
 import fs from "fs/promises";
 import path from "path";
 import { r2Ready, remove } from "@/lib/blob";
 import { db, listCourses, removeCourse, save } from "@/lib/store";
-import { randomCode, UPLOAD_DIR } from "@/lib/uploads";
-import { DEFAULT_LEVELS } from "@/lib/skillsets";
+import { UPLOAD_DIR } from "@/lib/uploads";
 import { standardWeek } from "@/lib/templates";
-import { kindWeeks } from "@/lib/kinds";
-import type { Course } from "@/lib/types";
+import { makeCourse } from "@/lib/newcourse";
 import { treeView } from "@/lib/branching";
 import { visibleModules } from "@/lib/profile";
 
@@ -65,14 +63,6 @@ export async function POST(request: Request) {
   }
   const title = String(body.title ?? "").trim().slice(0, 80);
   if (!title) return Response.json({ ok: false, error: "Give the course a name" }, { status: 400 });
-  const d = db();
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "course";
-  let id = slug;
-  while (d.courses[id]) id = `${slug}-${randomCode(4).toLowerCase()}`;
-  const codes = new Set(Object.values(d.courses).map((c) => c.joinCode));
-  let code = "";
-  do code = randomCode(6); while (codes.has(code));
-
   // Blank, or the standard weekly template. (Copying the CaPS course and picking subject skills were retired.)
   const start = body.start === "template" ? "template" : "blank";
   const weeks =
@@ -81,32 +71,7 @@ export async function POST(request: Request) {
       : [{ id: uid("w-"), title: "Week 1", lessons: [{ id: uid("l-"), title: "Lesson 1", modules: [], branches: {} }] }];
   // New courses have no skills to rate; cards and reviews then leave skills out entirely.
   for (const w of weeks) for (const l of w.lessons) for (const m of l.modules) m.skills = undefined;
-  kindWeeks(weeks);
-  const course: Course = {
-    id,
-    ownerId: t.id,
-    title,
-    subtitle: String(body.subtitle ?? "").trim().slice(0, 120) || undefined,
-    createdAt: Date.now(),
-    joinCode: code,
-    // A new class list is empty, so students who scan the code add themselves and the teacher lets them in.
-    access: { joinOpen: true, selfJoin: "approve" },
-    profile: { ...fromPreset("secondary"), preset: "custom", horizon: "term" },
-    students: [],
-    skills: [],
-    levels: DEFAULT_LEVELS,
-    groups: [{ id: uid("g-"), name: "Studio A", studentIds: [] }],
-    currentLessonId: weeks[0].lessons[0].id,
-    enabledConnectors: ["wikipedia", "dictionary", "ai"],
-    weeks,
-  };
-  d.courses[id] = course;
-  d.progress[id] = {};
-  d.posts[id] = [];
-  d.toolLog[id] = [];
-  d.events[id] = [];
-  d.choices[id] = {};
-  d.studio[id] = { posts: [], feedback: [] };
+  const { id } = makeCourse(t.id, title, weeks, { subtitle: String(body.subtitle ?? "").trim().slice(0, 120) || undefined });
   save();
   return Response.json({ ok: true, id });
 }

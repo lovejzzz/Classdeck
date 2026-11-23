@@ -1,0 +1,66 @@
+import { cloneWeek } from "./clone";
+import { fromPreset, uid } from "./profile";
+import { db } from "./store";
+import { randomCode } from "./uploads";
+import { DEFAULT_LEVELS } from "./skillsets";
+import { kindWeeks } from "./kinds";
+import type { Course, Lesson, Module, SessionPlan, Week } from "./types";
+import starter from "./questhand101.json";
+
+/**
+ * Make a course for a teacher from its weeks, with a fresh id and class code, and put it in the store (the caller
+ * saves). Shared by New course and by the starter course every new teacher gets.
+ */
+export function makeCourse(ownerId: string, title: string, weeks: Week[], extra: Partial<Course> = {}): Course {
+  const d = db();
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "course";
+  let id = slug;
+  while (d.courses[id]) id = `${slug}-${randomCode(4).toLowerCase()}`;
+  const codes = new Set(Object.values(d.courses).map((c) => c.joinCode));
+  let code = "";
+  do code = randomCode(6); while (codes.has(code));
+  kindWeeks(weeks);
+  const course: Course = {
+    id,
+    ownerId,
+    title,
+    createdAt: Date.now(),
+    joinCode: code,
+    // A new class list is empty, so students who scan the code add themselves and the teacher lets them in.
+    access: { joinOpen: true, selfJoin: "approve" },
+    profile: { ...fromPreset("secondary"), preset: "custom", horizon: "term" },
+    students: [],
+    skills: [],
+    levels: DEFAULT_LEVELS,
+    groups: [{ id: uid("g-"), name: "Studio A", studentIds: [] }],
+    currentLessonId: weeks[0].lessons[0].id,
+    enabledConnectors: ["wikipedia", "dictionary", "ai"],
+    weeks,
+    ...extra,
+  };
+  d.courses[id] = course;
+  d.progress[id] = {};
+  d.posts[id] = [];
+  d.toolLog[id] = [];
+  d.events[id] = [];
+  d.choices[id] = {};
+  d.studio[id] = { posts: [], feedback: [] };
+  return course;
+}
+
+type StarterLesson = { title: string; modules: Module[]; elective?: boolean; session?: SessionPlan };
+type Starter = { title: string; subtitle?: string; electiveMin?: number; weeks: { title: string; lessons: StarterLesson[] }[] };
+
+/**
+ * Questhand 101, the short course on Questhand made in Questhand, as a new course for a teacher: every new teacher
+ * account starts with one, to take as a student (Student View) and to look at as an example. Fresh ids throughout.
+ */
+export function giveStarterCourse(ownerId: string): Course {
+  const s = starter as unknown as Starter;
+  const weeks = s.weeks.map((w) => cloneWeek({
+    id: "",
+    title: w.title,
+    lessons: w.lessons.map((l): Lesson => ({ id: "", title: l.title, modules: l.modules, branches: {}, elective: l.elective, session: l.session })),
+  }, w.title));
+  return makeCourse(ownerId, s.title, weeks, { subtitle: s.subtitle, electiveMin: s.electiveMin });
+}

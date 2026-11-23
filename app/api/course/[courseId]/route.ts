@@ -10,7 +10,7 @@ import { kindWeeks, withKind } from "@/lib/kinds";
 import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, orphansOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
-import { applyMany, inviteUrl, issueInvite, newHookKey, postUpdate, revokeInvites } from "@/lib/hooks";
+import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
@@ -404,23 +404,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
     case "setProfile":
       course.profile = body.profile;
       break;
-    case "hookKey": {
-      // A key for outside tools. Creating one replaces any earlier key.
-      if (body.revoke) {
-        if (course.access) course.access.hook = undefined;
-        break;
-      }
-      const { token, hook } = newHookKey();
-      course.access = { joinOpen: course.access?.joinOpen ?? true, ...course.access, hook };
-      extra = { key: token };
-      break;
-    }
-    case "importRows": {
-      // Rows from a CSV of form responses, applied the same way as the webhook.
-      if (!Array.isArray(body.rows)) return fail("No rows");
-      extra = { results: applyMany(courseId, course, body.rows.map((row: unknown) => ({ row, source: body.source || undefined, card: body.card || undefined })), publicOrigin(request)) };
-      break;
-    }
     case "formResponse": {
       // The teacher fills in a card's form for one student. Filling it again replaces their earlier answers.
       const found = findModule(course, body.moduleId);
@@ -1303,7 +1286,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
         passcode: a.passcode ? String(a.passcode).slice(0, 40) : undefined,
         guestToken: a.guestToken === true ? randomCode(16).toLowerCase() : a.guestToken === null ? undefined : course.access?.guestToken,
         selfJoin: a.selfJoin === "open" || a.selfJoin === "approve" ? a.selfJoin : undefined,
-        hook: course.access?.hook,
       };
       if (body.newCode) {
         const codes = new Set(Object.values(d.courses).map((c) => c.joinCode));

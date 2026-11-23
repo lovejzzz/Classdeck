@@ -305,7 +305,7 @@ export interface Week {
 export interface Student {
   id: string;
   name: string;
-  /** Used only to match responses from outside tools (e.g. a Google Form) to this student. */
+  /** The student's email (from an invitation or their account). */
   email?: string;
   /** An older single sign-in link, from before links could be reused. Only its SHA-256 is stored. */
   invite?: { hash: string; exp: number };
@@ -372,9 +372,7 @@ export interface Course {
   joinCode: string;
   access?: { joinOpen: boolean; passcode?: string; guestToken?: string;
     /** Students not on the class list may add themselves: straight in, or after the teacher lets them in. Unset: they can't. */
-    selfJoin?: "open" | "approve";
-    /** Key for outside tools (Google Forms via Apps Script) to send updates. Only its SHA-256 is stored. */
-    hook?: { hash: string; hint: string; createdAt: number; lastUsed?: number; uses?: number } };
+    selfJoin?: "open" | "approve" };
   profile: Profile;
   students: Student[];
   /** Students who added themselves and are waiting for the teacher to let them in. Teacher only. */
@@ -426,7 +424,7 @@ export interface Progress {
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
-  /** Updates sent in from outside tools, such as a workshop Google Form. */
+  /** Updates posted onto the card: a teacher's form, or notes from a class session. */
   updates?: ExternalUpdate[];
   /** The student's answers to the card's student form, by question id. */
   form?: { answers: Record<string, string>; at: number };

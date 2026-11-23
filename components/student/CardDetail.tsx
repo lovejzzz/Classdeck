@@ -481,6 +481,8 @@ function Questions(p: DetailProps) {
     const text = dealt.length === 1 ? `New card${first.lesson ? ` in ${first.lesson}` : ""}: “${first.title}”`
       : dealt.length <= 3 ? `New cards: ${dealt.map((d) => `“${d.title}”`).join(dealt.length === 2 ? " and " : ", ")}` : `${dealt.length} new cards on your board`;
     const show = () => window.dispatchEvent(new CustomEvent("questhand:show-card", { detail: first.id }));
+    // The board deals them into place (flying in once this card closes) and marks them New.
+    window.dispatchEvent(new CustomEvent("questhand:dealt", { detail: dealt.map((d) => d.id) }));
     setTimeout(() => toast(text, { icon: "split", action: { label: "Show", run: show } }), 900);
   }
 

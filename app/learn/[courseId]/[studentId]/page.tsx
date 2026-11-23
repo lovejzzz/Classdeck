@@ -134,6 +134,51 @@ export default function LearnPage() {
     return () => window.removeEventListener("questhand:show-card", show);
   }, [state]);
 
+  // Cards an answer just dealt: marked New until opened, and dealt into place on the board with a short flight once
+  // the card that dealt them closes (or at once, if no card is open).
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const toDeal = useRef<string[]>([]);
+  const liftOpen = useRef(false);
+  useEffect(() => { liftOpen.current = !!lift; }, [lift]);
+  function deal(ids: string[]) {
+    const targets = ids.map((id) => ({ id, el: els.current.get(id) })).filter((x): x is { id: string; el: HTMLElement } => !!x.el);
+    if (!targets.length) return;
+    targets[0].el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(() => targets.forEach(({ id, el }, i) => {
+      const glow = () => { el.classList.add("dealt-glow"); setTimeout(() => el.classList.remove("dealt-glow"), 3600); };
+      const m = course?.weeks.flatMap((w) => w.lessons).flatMap((l) => l.modules).find((x) => x.id === id);
+      if (still || !m) return glow();
+      // A plain card in the card's colours with its title flies from the middle of the screen into its place.
+      const to = el.getBoundingClientRect();
+      const g = document.createElement("div");
+      g.setAttribute("aria-hidden", "true");
+      g.style.cssText = `position:fixed;left:${to.left}px;top:${to.top}px;width:${to.width}px;height:${to.height}px;z-index:80;pointer-events:none;border-radius:14px;background:#fff;border:1px solid rgba(0,0,0,0.08);box-shadow:0 24px 50px -18px rgba(20,20,18,0.55);overflow:hidden;font:600 14px/1.3 var(--font-sans, system-ui);color:#1b1b1a`;
+      g.innerHTML = `<div style="height:6px;background:${suitOfCard(m).tint}"></div><div style="padding:10px 12px"><span style="display:inline-block;margin-bottom:6px;padding:1px 8px;border-radius:99px;background:#eef0fb;color:#4b56a8;font-size:11px">New</span><div></div></div>`;
+      (g.querySelector("div > div > div") as HTMLElement).textContent = m.title;
+      document.body.appendChild(g);
+      const dx = innerWidth / 2 - (to.left + to.width / 2), dy = innerHeight / 2 - (to.top + to.height / 2);
+      const a = g.animate([
+        { transform: `translate(${dx}px, ${dy + 40}px) scale(0.6) rotate(-8deg)`, opacity: 0 },
+        { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 30}px) scale(1.06) rotate(4deg)`, opacity: 1, offset: 0.45 },
+        { transform: "none", opacity: 1 },
+      ], { duration: 720, delay: i * 140, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "backwards" });
+      a.onfinish = () => { g.remove(); glow(); };
+      a.oncancel = () => g.remove();
+    }), 420);
+  }
+  useEffect(() => {
+    const on = (e: Event) => {
+      const ids = (e as CustomEvent<string[]>).detail ?? [];
+      setFresh((f) => new Set([...f, ...ids]));
+      if (liftOpen.current) toDeal.current.push(...ids);
+      else setTimeout(() => deal(ids), 300);
+    };
+    window.addEventListener("questhand:dealt", on);
+    return () => window.removeEventListener("questhand:dealt", on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
 
   if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}`} />;
   if (error && !state) return <Centered>{error}</Centered>;
@@ -172,6 +217,7 @@ export default function LearnPage() {
   };
 
   function open(lessonId: string, id: string, el: HTMLElement) {
+    setFresh((f) => (f.has(id) ? new Set([...f].filter((x) => x !== id)) : f));
     setLift({ id, lessonId, from: el.getBoundingClientRect(), open: true, completed: false, el });
   }
   function close(completed = false) {
@@ -185,7 +231,7 @@ export default function LearnPage() {
     return {
       id: m.id,
       label: `${m.title}, ${status === "done" ? "done" : locked ? "locked" : status === "doing" ? "in progress" : "not started"}`,
-      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal || m.dealtFor} big={big && !narrow} due={dueInfo(m.due, now)} badge={revising(m.id) ? "Revise" : m.dealtFor && status !== "done" ? "For you" : undefined} />,
+      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal || m.dealtFor} big={big && !narrow} due={dueInfo(m.due, now)} badge={revising(m.id) ? "Revise" : fresh.has(m.id) && status !== "done" ? "New" : m.dealtFor && status !== "done" ? "For you" : undefined} />,
       back: <CardBack locked={locked} />,
       faceDown: locked,
       locked,
@@ -653,6 +699,9 @@ export default function LearnPage() {
               if (r) setBurst({ x: r.left + r.width / 2, y: r.top + r.height / 2, colors: [suitOfCard(openModule).tint, "#247b46", "#f2c94c", "#1b1b1a"], key: Date.now() });
             }
             setLift(null);
+            // Cards this one dealt fly into place now that it's closed (after the board redraws with them).
+            const queued = toDeal.current.splice(0);
+            if (queued.length) setTimeout(() => deal(queued), 250);
           }}
         >
           <CardDetail

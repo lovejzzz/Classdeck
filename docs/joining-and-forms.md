@@ -48,7 +48,3 @@ Under **Who fills it in**, choose **Each student** instead of **Me, for each stu
 - In the **Class** tab, the lesson has a table of everyone's answers, with who hasn't sent theirs yet, and **Download CSV**. Opening a student's cell shows their answers too, and a small form icon marks who has sent theirs.
 - Self-ratings count on the student's skill chart as their own rating. Links are added to their work on that card.
 - Only you see a student's answers. Classmates never do.
-
-## Google Forms is still there
-
-If you already use Google Forms, [the Google Forms connection](google-forms.md) keeps working. Answers from it look the same to students.

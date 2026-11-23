@@ -4,6 +4,7 @@ import { uid } from "@/lib/profile";
 import { verifyGoogle } from "@/lib/google";
 import { findInvite } from "@/lib/hooks";
 import { db, save } from "@/lib/store";
+import { giveStarterCourse } from "@/lib/newcourse";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -42,6 +43,8 @@ export async function POST(request: Request) {
       if (Object.values(d.users).some((u) => u.email === email)) return fail("There’s already an account with that email. Sign in instead.");
       const id = uid("u-");
       d.users[id] = { id, email, name, ...hashSecret(password), firstRole: body.as === "student" ? "student" : "teacher", createdAt: Date.now() };
+      // A new teacher starts with Questhand 101 in their courses: a short course on Questhand, to try and to copy from.
+      if (body.as !== "student") giveStarterCourse(id);
       save();
       return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: id }) } });
     }
@@ -118,6 +121,7 @@ export async function POST(request: Request) {
       if (!u) {
         const id = uid("u-");
         u = d.users[id] = { id, email: who.email, name: who.name, hash: "", salt: "", google: who.sub, picture: who.picture, firstRole: body.as === "student" ? "student" : "teacher", createdAt: Date.now() };
+        if (body.as !== "student") giveStarterCourse(id);
       } else if (u.google && u.google !== who.sub) {
         return fail("That email belongs to a different Google account here.", 401);
       } else if (!u.google) {

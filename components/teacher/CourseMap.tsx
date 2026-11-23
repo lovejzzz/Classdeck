@@ -231,6 +231,25 @@ function useGlide(target: Map<string, { x: number; y: number }>, spawnAt: (id: s
 }
 
 type Port = { from: string; q: string; option: number };
+/**
+ * Keep a pop-up menu inside the map's visible area: once it's drawn, nudge it left or up by as much as it sticks out
+ * past the map's edge (or the window's). Measured on screen, then turned back into the map's own units, since the
+ * map may be zoomed.
+ */
+function keepInView(el: HTMLElement | null) {
+  if (!el) return;
+  el.style.translate = "";
+  const r = el.getBoundingClientRect();
+  const box = el.closest(".tree-canvas")?.getBoundingClientRect();
+  const right = Math.min(box?.right ?? innerWidth, innerWidth) - 10, bottom = Math.min(box?.bottom ?? innerHeight, innerHeight) - 10;
+  const left = Math.max(box?.left ?? 0, 0) + 10, top = Math.max(box?.top ?? 0, 0) + 10;
+  const dx = r.right > right ? Math.max(right - r.right, left - r.left) : 0;
+  const dy = r.bottom > bottom ? Math.max(bottom - r.bottom, top - r.top) : 0;
+  if (!dx && !dy) return;
+  const k = r.width / (el.offsetWidth || r.width);
+  el.style.translate = `${dx / k}px ${dy / k}px`;
+}
+
 // `saved`: the menu is showing the teacher's saved cards instead of Content / Question.
 type Menu = { port: Port; x: number; y: number; mode: "port" | "new"; saved?: boolean } | { add: string; x: number; y: number; saved?: boolean };
 
@@ -1525,7 +1544,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               );
             })()}
             {menu && "add" in menu && (
-              <div className="pop absolute z-20 w-64 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
+              <div ref={keepInView} className="pop absolute z-20 w-64 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
                 <div className="px-2 pb-1.5 pt-0.5 text-[12px] font-medium text-ink">New card for everyone in {lessons.find((l) => l.id === menu.add)?.title}</div>
                 {kindPicker((t) => addCard(menu.add, t), (sc) => addCard(menu.add, "content", sc))}
               </div>
@@ -1543,7 +1562,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               const groups = lessons.map((l) => ({ l, cards: others.filter((x) => x.lessonId === l.id) })).filter((g) => g.cards.length);
               const into = menuLesson ?? lessons[fromLi].id;
               return (
-                <div className="pop absolute z-20 w-72 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x + 14, top: Math.max(8, menu.y - 24) }} onPointerDown={(e) => e.stopPropagation()}>
+                <div ref={keepInView} className="pop absolute z-20 w-72 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]" style={{ left: menu.x + 14, top: Math.max(8, menu.y - 24) }} onPointerDown={(e) => e.stopPropagation()}>
                   <div className="px-2 pb-1.5 pt-0.5 text-[12px] font-medium text-ink">
                     {isScore ? `Score ${band ? bandLabel(band) : ""}` : `Answer ${letter(menu.port.option)}${q?.options[menu.port.option]?.trim() ? ` · “${plainMath(q.options[menu.port.option].trim())}”` : ""}`}
                   </div>
