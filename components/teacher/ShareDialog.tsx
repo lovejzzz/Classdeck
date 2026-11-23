@@ -279,9 +279,10 @@ export function InviteTeachers({ course, me, onClose, onChanged }: { course: Cou
 /** Full screen, for the projector: a big QR code and the class code. */
 export function JoinScreen({ title, code, url, onClose }: { title: string; code: string; url: string; onClose: () => void }) {
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
+    // Esc closes this screen only, not the invite box under it too (so this listens first, and stops it there).
+    const k = (e: KeyboardEvent) => { if (e.key !== "Escape") return; e.stopImmediatePropagation(); e.preventDefault(); onClose(); };
+    window.addEventListener("keydown", k, true);
+    return () => window.removeEventListener("keydown", k, true);
   }, [onClose]);
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label={`Join ${title}`} className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-white p-6 text-center" style={{ animation: "panel-in 0.3s var(--ease-out) both" }}>

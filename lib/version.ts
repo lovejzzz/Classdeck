@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.53",
+    date: "2026-11-23",
+    changes: [
+      "Questhand 101's sample media has two new narrated videos (getting around the map, and inviting your class), and the Student View video shows the student board as it is now.",
+      "Pressing Esc on the full-screen QR code closes only the QR code, not the invite box under it too.",
+      "The demo course's tour and Student View cards are worded for the current site (no List tab; Student View is never graded).",
+    ],
+  },
+  {
     version: "0.1.52",
     date: "2026-11-23",
     changes: [
