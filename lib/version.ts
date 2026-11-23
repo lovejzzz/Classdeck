@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.48",
+    date: "2026-11-22",
+    changes: [
+      "The Privacy and Terms links and the version number now show only on the home page and in Settings, not at the bottom of every page.",
+    ],
+  },
+  {
     version: "0.1.47",
     date: "2026-11-22",
     changes: [

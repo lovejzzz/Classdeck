@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { SiteFooter } from "@/components/SiteFooter";
 import { useEffect, useState } from "react";
 import { AccountMenu } from "@/components/AccountMenu";
 import { GenArt } from "@/components/cards/GenArt";
@@ -73,6 +74,7 @@ export default function Home() {
   if (me?.kind === "teacher") {
     const list = courses ?? [];
     return (
+      <>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">
         <header className="flex items-center gap-3">
           <span className="flex items-center gap-2 text-[13px] font-medium text-ink-2"><LogoMark size={15} />Questhand</span>
@@ -111,11 +113,14 @@ export default function Home() {
         )}
         {creating && <NewCourse onClose={() => setCreating(false)} />}
       </main>
+        <SiteFooter />
+      </>
     );
   }
 
   // Everyone else: the name, then a way in for teachers and for students. Nothing else.
   return (
+    <>
     <main className="flex w-full flex-1 flex-col items-center justify-center px-4 py-16">
       <AccountMenu className="!fixed right-4 top-4 z-30 sm:right-6 sm:top-5" />
       <div className="rise"><Wordmark /></div>
@@ -180,6 +185,8 @@ export default function Home() {
         ))}
       </ul>
     </main>
+      <SiteFooter />
+    </>
   );
 }
 

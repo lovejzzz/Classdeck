@@ -22,6 +22,7 @@ import { toast } from "@/lib/toast";
 import { useUrlState } from "@/lib/urlState";
 import type { ClassEvent } from "@/lib/types";
 import { StudentViewButton } from "@/components/teacher/StudentViewButton";
+import { SiteFooter } from "@/components/SiteFooter";
 
 // Map (the course as a card tree) is the default; List is the same cards in rows of weeks.
 const TABS = [["map", "Map"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
@@ -295,7 +296,7 @@ export default function TeachPage() {
           {tab === "students" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} />}
           {tab === "students" && <div className={course.students.length ? "mt-8" : ""}><Settings part="students" course={course} readOnly={viewer} onInvite={() => setInviting(true)} onChanged={refresh} /></div>}
           {tab === "grades" && (course.students.length > 0 || courseId === "demo") && <Gradebook state={state} onReview={(sid, lid, mid) => { setPicked(lid); setTab("students"); setSel({ sid, mid }); }} />}
-          {tab === "settings" && !viewer && <Settings course={course} me={state.me} onChanged={refresh} />}
+          {tab === "settings" && !viewer && <><Settings course={course} me={state.me} onChanged={refresh} /><SiteFooter /></>}
         </main>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { ToolRunner } from "@/components/ToolTray";
 import { useConnectors } from "@/lib/client";
 import { CATEGORIES } from "@/lib/connectors/types";
 import { toast } from "@/lib/toast";
+import { SiteFooter } from "@/components/SiteFooter";
 
 const EXAMPLE = `{
   "id": "holidays",
@@ -177,6 +178,7 @@ export default function ConnectorsPage() {
           {error && <span key={error} className="rise text-[13px] text-bad">{error}</span>}
         </div>
       </section>
+      <SiteFooter />
     </main>
   );
 }
