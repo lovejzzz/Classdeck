@@ -54,7 +54,16 @@ function usePromptSelection() {
  * Write a post or a reply: the same text box as a card (formatting, lists, tables, math), and media (record audio,
  * video or the screen, a photo, upload, draw, a link). It can quote the words selected in the card's prompt.
  */
-function Composer({ placeholder, onSend, compact, topics, onCancel, autoFocusLabel }: {
+/** The three parts of structured feedback on a classmate's post, in order. */
+const PARTS = [
+  { key: "noticed", label: "What I noticed", hint: "Something specific in their work", required: true },
+  { key: "effect", label: "The effect it had on me", hint: "How it landed for you (optional)", required: false },
+  { key: "next", label: "One thing to try next", hint: "One concrete suggestion", required: true },
+] as const;
+
+function Composer({ placeholder, onSend, compact, topics, onCancel, autoFocusLabel, structured = false }: {
+  /** Feedback on a classmate's post, in three parts (the discussion asks for structured feedback). */
+  structured?: boolean;
   placeholder: string;
   onSend: (text: string, work: Draft[], topic?: string) => Promise<boolean>;
   compact?: boolean;
@@ -67,17 +76,33 @@ function Composer({ placeholder, onSend, compact, topics, onCancel, autoFocusLab
   const [topic, setTopic] = useState(topics?.[0]);
   const [busy, setBusy] = useState(false);
   const [quote, setQuote] = usePromptSelection();
-  const empty = !text.trim() && !work.length;
+  const [parts, setParts] = useState<Record<string, string>>({});
+  const empty = structured ? PARTS.some((x) => x.required && !parts[x.key]?.trim()) : !text.trim() && !work.length;
   async function send() {
     if (empty || busy) return;
     setBusy(true);
-    const ok = await onSend(text, work, topic);
+    // Structured feedback goes in as one reply, its parts as labelled paragraphs.
+    const body = structured ? PARTS.filter((x) => parts[x.key]?.trim()).map((x) => `**${x.label}:** ${parts[x.key].trim()}`).join("\n\n") : text;
+    const ok = await onSend(body, work, topic);
     setBusy(false);
-    if (ok) { setText(""); setWork([]); }
+    if (ok) { setText(""); setWork([]); setParts({}); }
   }
   return (
     <div className={compact ? "" : "rounded-xl border border-line bg-white p-2.5"}>
-      <RichBodyEditor value={text} onChange={setText} placeholder={placeholder} compact label={autoFocusLabel ?? "Write a post"} onSubmit={() => void send()} />
+      {structured ? (
+        <div className="space-y-2 rounded-xl border border-line bg-[#fafaf9] p-2.5">
+          {PARTS.map((x, i) => (
+            <label key={x.key} className="block">
+              <span className="text-[12px] font-medium text-ink-2">{x.label}{x.required ? "" : <span className="font-normal text-ink-3"> (optional)</span>}</span>
+              <textarea autoFocus={i === 0} value={parts[x.key] ?? ""} onChange={(e) => setParts((p) => ({ ...p, [x.key]: e.target.value }))} rows={2} placeholder={x.hint}
+                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void send(); } }}
+                className="field mt-1 resize-y bg-white text-[13.5px] leading-relaxed" />
+            </label>
+          ))}
+        </div>
+      ) : (
+        <RichBodyEditor value={text} onChange={setText} placeholder={placeholder} compact label={autoFocusLabel ?? "Write a post"} onSubmit={() => void send()} />
+      )}
       {work.length > 0 && (
         <div className="mt-2 space-y-2">
           {work.map((a, i) => (
@@ -142,9 +167,16 @@ function Reply({ c, all, depth, ctx }: { c: Comment; all: Comment[]; depth: numb
             <span className="font-medium text-ink-2">{who}</span>
             {c.from === "teacher" && <span className="chip h-4 text-[10px]">Teacher</span>}
             <span className="mono">{ago(c.at)}</span>
+            {c.helpful && <span className="chip h-5 gap-1 bg-ok/10 text-[10.5px] text-ok"><Icon name="check" size={10} />Helpful</span>}
           </div>
           <div className="mt-0.5"><Body text={c.text} work={c.work} /></div>
           <div className="mt-1 flex items-center gap-1">
+            {/* The post's author marks feedback on their work helpful (or not). */}
+            {ctx.structured && !c.replyTo && ctx.author === ctx.me && c.from !== ctx.me && (
+              <button onClick={() => ctx.helpful(c)} aria-pressed={!!c.helpful} className={`press flex h-7 items-center gap-1 rounded-md px-1.5 text-[12px] hover:bg-lane ${c.helpful ? "text-ok" : "text-ink-3 hover:text-ink"}`}>
+                <Icon name="check" size={12} />{c.helpful ? "Marked helpful" : "Helpful"}
+              </button>
+            )}
             {ctx.canReply && <button onClick={() => setReplying((r) => !r)} className="press flex h-7 items-center gap-1 rounded-md px-1.5 text-[12px] text-ink-3 hover:bg-lane hover:text-ink"><Icon name="message" size={12} /> Reply</button>}
             {(ctx.teacher || c.from === ctx.me) && (
               <button onClick={() => ctx.remove(c)} aria-label="Delete this reply" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-3 hover:bg-lane hover:text-bad"><Icon name="trash" size={12} /></button>
@@ -168,7 +200,9 @@ function Reply({ c, all, depth, ctx }: { c: Comment; all: Comment[]; depth: numb
   );
 }
 
-type ThreadCtx = { me: Who; teacher: boolean; canReply: boolean; name: (id: string) => string; send: (text: string, work: Draft[], replyTo?: string) => Promise<boolean>; remove: (c: Comment) => void };
+type ThreadCtx = { me: Who; teacher: boolean; canReply: boolean; name: (id: string) => string; send: (text: string, work: Draft[], replyTo?: string) => Promise<boolean>; remove: (c: Comment) => void;
+  /** Structured feedback: the post's author can mark a reply to their post helpful. */
+  structured: boolean; author?: string; helpful: (c: Comment) => void };
 
 /** One post in the feed: who wrote it, its text and media, reactions, and its replies as threads. */
 function PostCard({ post, me, teacher, readOnly = false, module: m, students, courseId, onChanged, index, groupName }: {
@@ -204,6 +238,12 @@ function PostCard({ post, me, teacher, readOnly = false, module: m, students, co
   }
   const ctx: ThreadCtx = {
     me, teacher: teacher && !readOnly, canReply: canComment, name,
+    structured: !!w.structured, author: post.studentId,
+    async helpful(c) {
+      const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: me, postId: post.id, helpful: c.id });
+      if (!r.ok) return toast(r.error ?? "Couldn’t mark it", { icon: "x", tone: "bad" });
+      onChanged();
+    },
     async send(text, work, replyTo) {
       const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "comment", who: me, postId: post.id, text, work, replyTo });
       if (!r.ok) { toast(r.error ?? "Couldn’t send your reply", { icon: "x", tone: "bad" }); return false; }
@@ -300,7 +340,7 @@ function PostCard({ post, me, teacher, readOnly = false, module: m, students, co
           </div>
           {replying && (
             <div className="mt-2">
-              <Composer compact placeholder={`Reply to ${author === "You" ? "your post" : author}…`} autoFocusLabel="Write a reply" onCancel={() => setReplying(false)}
+              <Composer compact structured={!!w.structured && !own && !teacher} placeholder={`Reply to ${author === "You" ? "your post" : author}…`} autoFocusLabel="Write a reply" onCancel={() => setReplying(false)}
                 onSend={async (text, work) => { const ok = await ctx.send(text, work); if (ok) setReplying(false); return ok; }} />
             </div>
           )}

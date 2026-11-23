@@ -460,7 +460,7 @@ export function CardEditor({
                     {/* One kind of discussion: a feed for the whole class, or one feed per group. (Older group discussions,
                         "Collab Studio", become a feed per group when changed here.) */}
                     <Seg value={m.type === "studio" || m.wall?.byGroup ? "groups" : "class"} options={[["class", "The whole class"], ["groups", "Each group"]]}
-                      onPick={(v) => set(asKind({ ...m, type: "wall", submitTo: undefined, wall: { ...wallDefaults, ...m.wall, byGroup: v === "groups" || undefined } }, "discussion"))} />
+                      onPick={(v) => set(asKind({ ...m, type: "wall", submitTo: undefined, wall: { ...wallDefaults, ...m.wall, byGroup: v === "groups" || undefined, ...(m.type === "studio" ? { replies: m.wall?.replies ?? 2, structured: true } : {}) } }, "discussion"))} />
                   </div>
                   {(m.type === "studio" || m.wall?.byGroup) && course && <GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} />}
                   {m.wall?.byGroup && <p className="-mt-1 text-ink-3">Each group has its own feed; students see their group’s posts and yours. You see every group’s.</p>}
@@ -476,6 +476,10 @@ export function CardEditor({
                         <Seg value={String(m.wall?.replies ?? 0)} options={[["0", "No one"], ["1", "1 classmate"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ wall: { ...wallDefaults, ...m.wall, replies: Number(v) || undefined } })} />
                       </div>
                       {(m.wall?.replies ?? 0) > 0 && <p className="-mt-1 text-ink-3">The card counts as done once a student has posted and replied to {m.wall!.replies} classmate{m.wall!.replies === 1 ? "" : "s"}. Replies can be words, a video, a voice recording or a file.</p>}
+                      <label className="flex items-start gap-2">
+                        <input type="checkbox" checked={!!m.wall?.structured} onChange={(e) => set({ wall: { ...wallDefaults, ...m.wall, structured: e.target.checked || undefined } })} className="mt-0.5 accent-[#4b56a8]" />
+                        <span><span className="text-ink-2">Structured feedback</span><span className="block text-ink-3">A reply to a classmate’s post has three parts: what I noticed, the effect it had on me, one thing to try next. The post’s author can mark a reply helpful. Good for peer review of work students post.</span></span>
+                      </label>
                       <label className="flex items-center gap-2"><input type="checkbox" checked={!!m.wall?.approval} onChange={(e) => set({ wall: { ...wallDefaults, ...m.wall, approval: e.target.checked } })} className="accent-[#4b56a8]" /> I approve posts before others see them</label>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-ink-2">Topics</span>
@@ -486,7 +490,7 @@ export function CardEditor({
                       <p className="-mt-1 text-ink-3">With two or more topics, students pick one for each post, and everyone can filter the discussion by topic.</p>
                     </>
                   )}
-                  {m.type === "studio" && <p className="text-ink-3">This is an older group discussion (Collab Studio). Pick The whole class or Each group above to make it a discussion feed.</p>}
+                  {m.type === "studio" && <p className="text-ink-3">This is an older group peer review (Collab Studio). It still works as it is. To make it a discussion that works the same way, pick Each group above, then Each student replies to 2 and Structured feedback.</p>}
                 </div>
               )}
             </div>

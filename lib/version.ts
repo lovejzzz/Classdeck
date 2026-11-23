@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.77",
+    date: "2026-11-23",
+    changes: [
+      "Collab Studio is folded into Discussion. A discussion can ask for Structured feedback: a reply to a classmate’s post has three parts (what I noticed, the effect it had on me, one thing to try next), and the post’s author can mark a reply helpful.",
+      "Importing a document makes a peer-review session a discussion in groups: each student posts their work and gives structured feedback to two groupmates.",
+      "An older Collab Studio card keeps working with its posts and feedback; switching it to Each group carries the peer review over (reply to 2, structured feedback).",
+      "Questhand 101 describes Structured feedback.",
+    ],
+  },
+  {
     version: "0.1.76",
     date: "2026-11-23",
     changes: [

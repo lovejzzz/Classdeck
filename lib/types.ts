@@ -68,6 +68,11 @@ export interface WallSettings {
   replies?: number;
   /** Each group has its own feed (the card's grouping): students see their group's posts, and the teacher's. */
   byGroup?: boolean;
+  /**
+   * Structured feedback: a classmate's reply to a post comes in three parts (what I noticed, the effect it had, one
+   * thing to try next), and the post's author can mark a reply helpful. What Collab Studio did, in a discussion.
+   */
+  structured?: boolean;
 }
 
 export interface Comment {
@@ -80,6 +85,8 @@ export interface Comment {
   work?: Attachment[];
   /** The reply it answers (a thread); unset: it answers the post. */
   replyTo?: string;
+  /** Marked helpful by the post's author (structured feedback). */
+  helpful?: boolean;
 }
 
 export interface Question {

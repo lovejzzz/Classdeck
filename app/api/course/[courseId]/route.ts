@@ -1501,6 +1501,14 @@ async function change(request: Request, courseId: string, body: Record<string, a
         }
         break;
       }
+      if (typeof body.helpful === "string") {
+        // Structured feedback: the post's author marks a reply to their post helpful (or takes it back).
+        const c = (post.comments ?? []).find((x) => x.id === body.helpful);
+        if (!c) return fail("That reply is gone");
+        if (post.studentId !== who) return fail("Only the person who posted can mark feedback helpful");
+        c.helpful = !c.helpful || undefined;
+        break;
+      }
       if (!w.comments && who !== "teacher") return fail("Comments are off on this wall");
       // In a discussion by groups, students reply only within their group (and to the teacher's posts).
       if (who !== "teacher" && post.groupId && post.studentId !== who && groupFor(course, findModule(course, post.moduleId)?.mod, who)?.id !== post.groupId) return fail("You can only reply in your own group");

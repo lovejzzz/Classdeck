@@ -286,6 +286,13 @@ async function main() {
   const devTalk = (await board("Dev")).posts.filter((p: J) => p.moduleId === "m-team-talk");
   check("other teams don't see it", !devTalk.some((p: J) => p.id === tp.post?.id), devTalk);
   check("teammates do", (await board("Ben")).posts.some((p: J) => p.id === tp.post?.id));
+  // Structured feedback: Ben replies to Ana's post; only Ana can mark it helpful.
+  const fbReply = await op(S.Ben, { op: "comment", who: S.Ben.id, postId: tp.post?.id, text: "**What I noticed:** a clear plan. **One thing to try next:** say who brings the nets." });
+  check("Ben gives feedback on Ana's post", fbReply.ok !== false, fbReply);
+  const replyId = ((await board("Ana")).posts.find((p: J) => p.id === tp.post?.id)?.comments ?? []).find((c: J) => c.from === S.Ben.id)?.id;
+  check("only the post's author can mark it helpful", (await op(S.Ben, { op: "comment", who: S.Ben.id, postId: tp.post?.id, helpful: replyId })).ok === false);
+  check("Ana marks Ben's feedback helpful", (await op(S.Ana, { op: "comment", who: S.Ana.id, postId: tp.post?.id, helpful: replyId })).ok !== false
+    && ((await board("Ben")).posts.find((p: J) => p.id === tp.post?.id)?.comments ?? []).some((c: J) => c.id === replyId && c.helpful));
   // The quiz: two tries, the best score counts.
   const quizIds = ["q-w1", "q-w2", "q-w3"], right = [0, 1, 0];
   for (const k of all) {

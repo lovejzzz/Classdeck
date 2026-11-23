@@ -111,11 +111,19 @@ function guessType(title: string, body: string): ModuleType {
 function card(title: string, body: string, forceType?: ModuleType): Module {
   const minutes = Number(body.match(/(\d{1,3})\s*(?:min|minutes)\b/i)?.[1]) || undefined;
   const type = forceType ?? guessType(title, body);
+  // A peer-review session (what Collab Studio was) is a discussion in groups: each student posts their work and gives
+  // structured feedback to two groupmates.
+  if (type === "studio") return {
+    id: uid("m-"), type: "wall", kind: "discussion", title: title.replace(/[.:]\s*$/, "").slice(0, 90), body: body.trim().slice(0, 4000),
+    audience: { kind: "all" }, tools: [],
+    minutes: minutes && minutes <= 180 ? minutes : undefined,
+    wall: { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false, replies: 2, byGroup: true, structured: true },
+  };
   return {
     id: uid("m-"), type, title: title.replace(/[.:]\s*$/, "").slice(0, 90), body: body.trim().slice(0, 4000),
     audience: { kind: "all" }, tools: [],
     minutes: minutes && minutes <= 180 ? minutes : undefined,
-    submitTo: type === "studio" ? "studio" : type === "practice" || type === "reflect" || type === "submit" ? "personal" : undefined,
+    submitTo: type === "practice" || type === "reflect" || type === "submit" ? "personal" : undefined,
   };
 }
 
@@ -189,7 +197,7 @@ Return only JSON, no prose, in this shape:
 Rules:
 - One entry per week or unit in the plan, in order. Keep the plan's own wording where it's student-facing.
 - Cards are what students do. Leave out notes meant only for teachers (rationale, implementation, sources).
-- "wall" is a shared class board, "studio" a small-group feedback session, "selfcheck" a skills self-rating, "reflect" a private reflection.
+- "wall" is a shared class board, "studio" a small-group feedback session (each student posts their work and gives structured feedback to two groupmates), "selfcheck" a skills self-rating, "reflect" a private reflection.
 - Don't use "quiz" unless the plan has actual questions. Keep each body under 120 words. minutes and criteria are optional.`;
 
 /** Validate what the AI returned and turn it into weeks. Anything malformed is dropped. */
