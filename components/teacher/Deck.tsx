@@ -228,6 +228,31 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     else changeMany(after);
     return before;
   }
+  /** Delete several cards at once (picked on the map): one step to undo, one entry in the trash. */
+  function deleteCards(ids: string[]): Lesson[] {
+    const original = allLessons();
+    let lessons = original;
+    const gone = new Set<string>();
+    for (const id of ids) {
+      if (gone.has(id)) continue;
+      const res = deleteCardIn(lessons, id);
+      res.gone.forEach((x) => gone.add(x));
+      const by = new Map(res.after.map((l) => [l.id, l]));
+      lessons = lessons.map((l) => by.get(l.id) ?? l);
+    }
+    const changed = lessons.filter((l, i) => l !== original[i]);
+    const before = original.filter((l, i) => l !== lessons[i]);
+    const all = original.flatMap((l) => l.modules);
+    const entry: TrashEntry = {
+      id: uid("t-"), at: Date.now(), title: `${gone.size} cards`,
+      lessons: before.map((l) => ({ lessonId: l.id, lessonTitle: l.title, cards: l.modules.map((m, index) => ({ m, index })).filter((x) => gone.has(x.m.id)) })).filter((x) => x.cards.length),
+      inbound: wiresOf(all).filter((w) => gone.has(w.to) && !gone.has(w.from)).map((w) => ({ from: w.from, q: w.q, option: w.option, to: w.to })),
+    };
+    lastTrash.current = entry.id;
+    void op(course.id, { op: "trashPut", entry });
+    if (changed.length === 1) change(changed[0]); else if (changed.length) changeMany(changed);
+    return before;
+  }
   const deletedToast = (title: string, before: Lesson[]) => {
     const tid = lastTrash.current;
     toast(`Deleted “${title}”`, { icon: "trash", tone: "plain", action: { label: "Undo", run: () => { if (before.length === 1) change(before[0]); else changeMany(before); if (tid) void op(course.id, { op: "trashDrop", id: tid }); toast(`Restored “${title}”`); } } });
@@ -442,6 +467,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           <CourseMap
             lessons={allLessons()}
             weekOf={Object.fromEntries(course.weeks.flatMap((w) => w.lessons.map((l) => [l.id, w.title.split(" · ")[0]])))}
+            weekNames={Object.fromEntries(course.weeks.flatMap((w) => w.lessons.map((l) => [l.id, w.title])))}
             todayId={course.currentLessonId}
             students={course.students}
             progress={progress}
@@ -471,6 +497,12 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             trash={course.trash ?? []}
             onRestore={readOnly ? undefined : (e) => void restoreTrash(e)}
             onForget={readOnly ? undefined : async (id) => { await op(course.id, { op: "trashDrop", id }); onRefresh(); }}
+            onDeleteMany={readOnly ? undefined : async (ms) => {
+              if (!ms.length) return;
+              if (ms.length === 1) { const m = ms[0]; removeCard(allLessons().find((l) => l.modules.some((x) => x.id === m.id))!, m); return; }
+              if (!(await ask({ title: `Delete these ${ms.length} cards?`, body: "Cards their answers deal (and a group's cards) go with them. You can undo this, or put them back from the Trash.", confirm: "Delete", danger: true }))) return;
+              deletedToast(`${ms.length} cards`, deleteCards(ms.map((m) => m.id)));
+            }}
             onDelete={readOnly ? undefined : async (m) => {
               if (m.type === "group") {
                 if (!(await ask({ title: `Delete “${m.title}” and its ${m.members?.length ?? 0} cards?`, body: "To keep the cards, open the group and use Ungroup instead. You can undo this.", confirm: "Delete all", danger: true }))) return;

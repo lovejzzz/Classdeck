@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.44",
+    date: "2026-11-22",
+    changes: [
+      "The course map has a contents panel on the left: every week and its lessons, with today's lesson marked and the lesson you're looking at highlighted. Click a lesson to go there. (It replaces “Go to a lesson”.)",
+      "Pick several cards by dragging a box around them on the map's empty space (Shift adds to what's picked). Then make them a card group, or delete them all at once, with one Undo. To move the map by dragging, hold Space (on a touch screen, drag as before).",
+      "A card group can hold any kind of card, not only questions. Its score ranges show only when it has question cards in it.",
+    ],
+  },
+  {
     version: "0.1.43",
     date: "2026-11-22",
     changes: [

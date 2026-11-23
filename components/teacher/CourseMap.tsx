@@ -40,7 +40,8 @@ const levelOf = (z: number): Level => (z < 0.55 ? "far" : z >= 1.2 ? "near" : "m
 
 const branchQs = (m: Module) => (m.questions ?? []).filter((q) => canBranch(q));
 /** Cards that branch by score: a quiz, and a card group. */
-const isQuiz = (m: Module) => m.type === "quiz" || m.type === "group";
+/** A card with a score that can deal cards: a quiz, or a card group with question cards in it (`cards`: its lesson's). */
+const isQuiz = (m: Module, cards?: Module[]) => m.type === "quiz" || (m.type === "group" && (!cards || scoreCount(m, cards) > 0));
 const wantsQuestion = (m: Module) => kindOf(m) === "choice" && !branchQs(m).length && m.type !== "quiz";
 /** Whether a card's node has anything under its head: answers, score ranges, its group's cards, or that invitation. */
 const hasBody = (m: Module) => branchQs(m).length > 0 || isQuiz(m) || wantsQuestion(m);
@@ -62,7 +63,7 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
     y += SEC;
     q.options.forEach((_, i) => { ports.set(`${q.id}:${i}`, y + ROW / 2); y += ROW; });
   }
-  if (isQuiz(m)) {
+  if (isQuiz(m, m.type === "group" ? members : undefined)) {
     y += SEC;
     const bands = bandsOf(m);
     bands.forEach((_, i) => { ports.set(`${SCORE}:${i}`, y + ROW / 2); y += ROW; });
@@ -235,7 +236,11 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new" } | { add: 
  * lesson or into a later one). Zoomed out, cards shrink to their titles; zoomed in, they show what to do. Drag from a
  * port onto a card to deal it, or into empty space for a new card. Click a card to edit it in the panel.
  */
-export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, lessonGoal, footer }: {
+export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, lessonGoal, footer, weekNames = {}, onDeleteMany }: {
+  /** Delete several picked cards at once (it asks first, and offers Undo). */
+  onDeleteMany?: (ms: Module[]) => void;
+  /** Lesson id → its week's full title, for the contents panel. */
+  weekNames?: Record<string, string>;
   /** Beside a lesson's name: its date and a menu of lesson and week actions (the course page fills it in). */
   lessonBar?: (lessonId: string) => React.ReactNode;
   /** Under a lesson's name: its one-line goal. */
@@ -349,6 +354,16 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   // "Group cards" from the toolbar: tapping a card picks it (shift-click does the same at any time).
   const [picking, setPicking] = useState(false);
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  // Space held down: dragging the map's background moves it (as in drawing apps), instead of drawing a box.
+  const spaceDown = useRef(false);
+  useEffect(() => {
+    const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+    const down = (e: KeyboardEvent) => { if (e.code === "Space" && !typing(e.target)) { if (!spaceDown.current && scroller.current) scroller.current.style.cursor = "grab"; spaceDown.current = true; e.preventDefault(); } };
+    const up = (e: KeyboardEvent) => { if (e.code === "Space") { spaceDown.current = false; if (scroller.current) scroller.current.style.cursor = ""; } };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, []);
   const [live, setLive] = useState(false);
   // Hold a card (like an app on a phone's home screen): the cards jiggle and each shows a button to delete it.
   const [jiggle, setJiggle] = useState(false);
@@ -452,6 +467,31 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gap, selected]);
+
+  // The lesson in the middle of the view, for the contents panel.
+  const [inView, setInView] = useState<string | null>(null);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    let raf = 0;
+    const look = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const cx = (el.scrollLeft + el.clientWidth / 2) / zoom, cy = (el.scrollTop + el.clientHeight / 3) / zoom;
+        let best: string | null = null, d = Infinity;
+        for (const r of regions) {
+          const dx = cx < r.x ? r.x - cx : cx > r.x + r.w ? cx - r.x - r.w : 0;
+          const dy = cy < r.y ? r.y - cy : cy > r.y + r.h ? cy - r.y - r.h : 0;
+          const k = dx * dx + dy * dy;
+          if (k < d) { d = k; best = r.lesson.id; }
+        }
+        setInView(best);
+      });
+    };
+    look();
+    el.addEventListener("scroll", look, { passive: true });
+    return () => { el.removeEventListener("scroll", look); cancelAnimationFrame(raf); };
+  }, [regions, zoom]);
 
   /** Scroll so a card (or a lesson's region) sits in view (the map already stops at the editor panel when it's open). */
   function bringIntoView(id: string, z = zoom) {
@@ -967,8 +1007,39 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const snap = drag?.over && canTarget(drag.port, drag.over) ? inPos(drag.over) : null;
   const nothing = !all.length;
 
+  // The course's weeks, each with its lessons, for the contents panel on the left.
+  const contents: { week: string; lessons: Lesson[] }[] = [];
+  for (const l of lessons) {
+    const w = weekNames[l.id] ?? weekOf[l.id] ?? "";
+    const last = contents[contents.length - 1];
+    if (last && last.week === w) last.lessons.push(l); else contents.push({ week: w, lessons: [l] });
+  }
   return (
-    <div className="relative">
+    <div className="flex items-start gap-3">
+      {/* Contents: every week and its lessons. Click one to go there on the map. */}
+      <nav aria-label="Course contents" className="sticky top-3 hidden w-56 flex-none overflow-y-auto rounded-2xl border border-line bg-white/70 py-2 lg:block" style={{ height: fill ?? undefined }}>
+        {contents.map((c, ci) => (
+          <div key={ci} className="px-2 pb-2">
+            {c.week && <div className="truncate px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3" title={c.week}>{c.week}</div>}
+            {c.lessons.map((l) => {
+              const n = lessons.indexOf(l) + 1;
+              const on = inView === l.id;
+              const cards = l.modules.filter((m) => m.type !== "group").length;
+              return (
+                <button key={l.id} onClick={() => goTo(l.id)} aria-current={on ? "location" : undefined}
+                  className={`press flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] transition-colors ${on ? "bg-[#eef0fb] text-ink" : "text-ink-2 hover:bg-lane hover:text-ink"}`}>
+                  <span className={`mt-[1px] flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-[10px] font-semibold ${l.id === todayId ? "bg-ok text-white" : on ? "bg-[#4b56a8] text-white" : "bg-lane text-ink-3"}`}>{n}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`block leading-snug ${on ? "font-medium" : ""}`}>{l.title}</span>
+                    <span className="mono block text-[10.5px] text-ink-3">{l.id === todayId ? "Today · " : ""}{cards} card{cards === 1 ? "" : "s"}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+      <div className="relative min-w-0 flex-1">
       {viewing && (
         <MediaLift a={viewing.a} title={viewing.title} from={viewing.from} open={viewing.open}
           onClose={() => setViewing((v) => (v ? { ...v, open: false } : v))} onGone={() => setViewing(null)} />
@@ -983,8 +1054,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       {(picks.size > 0 || picking) && (
         <div className="pop absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 text-[13px] shadow-[0_16px_40px_-16px_rgba(20,20,18,0.4)]">
           <Icon name="layers" size={14} className="text-[#4b56a8]" />
-          <span>{picks.size ? `${picks.size} card${picks.size === 1 ? "" : "s"} picked` : "Tap the Question cards to put in a group"}</span>
+          <span>{picks.size ? `${picks.size} card${picks.size === 1 ? "" : "s"} picked` : "Tap cards, or drag a box around them, to put them in a group"}</span>
           <button onClick={makeGroup} disabled={!!whyNoGroup([...picks])} title={whyNoGroup([...picks]) ?? "Put these cards in a card group"} className="btn btn-dark press h-8 px-3 text-[12.5px] disabled:opacity-40">Make a card group</button>
+          {picks.size > 0 && onDeleteMany && (
+            <button onClick={() => { const ms = [...picks].map((id) => all.find((x) => x.m.id === id)?.m).filter((m): m is Module => !!m); setPicks(new Set()); setPicking(false); onDeleteMany(ms); }}
+              className="btn btn-ghost press h-8 px-3 text-[12.5px] hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
+          )}
           <button onClick={() => { setPicks(new Set()); setPicking(false); }} className="btn btn-quiet press h-8 px-2 text-[12.5px]">Cancel</button>
         </div>
       )}
@@ -994,17 +1069,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           <button onClick={fitAll} className="mono h-7 w-12 rounded-lg text-center hover:bg-lane" title="Fit the map’s width (press again to see the whole course)">{Math.round(zoom * 100)}%</button>
           <button onClick={() => zoomTo(zoom + 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom in">+</button>
         </div>
-        <select
-          value=""
-          onChange={(e) => { if (e.target.value) { goTo(e.target.value); e.target.value = ""; } }}
-          aria-label="Go to a lesson"
-          className="pointer-events-auto h-8 rounded-xl border border-line bg-white/95 px-2 text-[12.5px] shadow-sm"
-        >
-          <option value="">Go to a lesson…</option>
-          {lessons.map((l) => <option key={l.id} value={l.id}>{weekOf[l.id] ? `${weekOf[l.id]} · ` : ""}{l.title}</option>)}
-        </select>
         {!readOnly && (
-          <button onClick={() => { setPicking((v) => !v); setJiggle(false); }} aria-pressed={picking} title="Pick cards to answer together; their total score can deal cards"
+          <button onClick={() => { setPicking((v) => !v); setJiggle(false); }} aria-pressed={picking} title="Put cards together as one card group (any kind of card). With question cards in it, its score can deal cards"
             className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${picking ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
             <Icon name="layers" size={13} /> Group cards
           </button>
@@ -1040,25 +1106,33 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.canvas) return;
           setMenu(null);
           if (jiggle) setJiggle(false);
-          if (e.shiftKey && !readOnly) {
-            // Shift-drag: a box that picks every card it touches.
+          // With a mouse, dragging on empty space draws a box that picks every card it touches (Shift adds to what's
+          // picked). Holding Space, the middle button, or a finger on a touch screen moves the map instead.
+          if (!readOnly && e.pointerType === "mouse" && e.button === 0 && !spaceDown.current) {
             const a = toCanvas(e.clientX, e.clientY);
+            const keep = e.shiftKey || picking;
+            const start = { x: e.clientX, y: e.clientY };
+            // Drawing a box mustn't select the words it passes over.
+            e.preventDefault();
+            window.getSelection()?.removeAllRanges();
+            scroller.current?.focus({ preventScroll: true });
             setBox({ x0: a.x, y0: a.y, x1: a.x, y1: a.y });
             const mv = (ev: PointerEvent) => { const b = toCanvas(ev.clientX, ev.clientY); setBox({ x0: a.x, y0: a.y, x1: b.x, y1: b.y }); };
             const done = (ev: PointerEvent) => {
               window.removeEventListener("pointermove", mv);
               window.removeEventListener("pointerup", done);
+              setBox(null);
+              // A click on empty space (no box) lets go of what was picked.
+              if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) { if (!keep) setPicks(new Set()); return; }
               const b = toCanvas(ev.clientX, ev.clientY);
               const [l, r, t, bt] = [Math.min(a.x, b.x), Math.max(a.x, b.x), Math.min(a.y, b.y), Math.max(a.y, b.y)];
               const hit = [...nodes.values()].filter((n) => n.x < r && n.x + W > l && n.y < bt && n.y + n.h > t).map((n) => n.m.id);
-              setPicks((s) => new Set([...s, ...hit]));
-              setBox(null);
+              setPicks((s) => new Set([...(keep ? s : []), ...hit]));
             };
             window.addEventListener("pointermove", mv);
             window.addEventListener("pointerup", done);
             return;
           }
-          if (picks.size && !picking) setPicks(new Set());
           // Drag the background to move around.
           const el = scroller.current!;
           const s = { x: e.clientX, y: e.clientY, l: el.scrollLeft, t: el.scrollTop };
@@ -1159,8 +1233,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               const targetable = drag ? canTarget(drag.port, m.id) : false;
               const here = live ? onCard.get(m.id) ?? [] : [];
               const stuck = here.filter((s) => s.stuck).length;
-              const bands = isQuiz(m) ? bandsOf(m) : [];
-              const nQ = isQuiz(m) ? scoreCount(m, lessons.find((l) => l.id === nd.lessonId)?.modules ?? []) : 0;
+              const lessonCards = lessons.find((l) => l.id === nd.lessonId)?.modules ?? [];
+              const scoring = isQuiz(m, lessonCards);
+              const bands = scoring ? bandsOf(m) : [];
+              const nQ = scoring ? scoreCount(m, lessonCards) : 0;
               const isSel = selected === m.id;
               // While its title is being typed, the head isn't a button (a text box can't sit inside one).
               const Head = typing?.id === m.id && typing.field === "title" ? "div" : "button";
@@ -1271,7 +1347,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                           })}
                         </div>
                       ))}
-                      {isQuiz(m) && (
+                      {scoring && (
                         <div>
                           <div className="flex items-center justify-between px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }}>
                             <span>Score (best try)</span>
@@ -1464,6 +1540,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
