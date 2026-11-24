@@ -55,8 +55,10 @@ export function todoList(course: Course, mine: Record<string, Progress>, now: nu
   const lessons = course.weeks.flatMap((w) => w.lessons.map((l) => ({ w, l })));
   const cur = Math.max(0, lessons.findIndex((x) => x.l.id === course.currentLessonId));
   const out: Todo[] = [];
-  // Up to one lesson past today's, plus any electives the student chose (they set their own pace).
-  lessons.filter(({ l }, i) => i < cur + 2 || (l.elective && l.chosen)).forEach(({ w, l }) => {
+  // Up to one lesson past today's, plus any electives the student chose (they set their own pace). Further on, only
+  // what can't wait: work the teacher asked to revise, and cards overdue or due soon (wherever they are in the course).
+  lessons.forEach(({ w, l }, i) => {
+    const near = i < cur + 2 || (l.elective && l.chosen);
     const seen = new Set<string>();
     for (const m of l.modules) {
       if (m.choice) {
@@ -66,7 +68,8 @@ export function todoList(course: Course, mine: Record<string, Progress>, now: nu
       }
       const p = mine[m.id];
       if (p?.status === "done") continue;
-      out.push({ m, lesson: l, week: w.title, due: dueInfo(m.due, now), revise: p?.review?.verdict === "revise", status: p?.status ?? "todo" });
+      const t: Todo = { m, lesson: l, week: w.title, due: dueInfo(m.due, now), revise: p?.review?.verdict === "revise", status: p?.status ?? "todo" };
+      if (near || t.revise || t.due?.tone === "late" || t.due?.tone === "soon") out.push(t);
     }
   });
   const rank = (t: Todo) => (t.revise ? 0 : t.due?.tone === "late" ? 1 : t.due?.tone === "soon" ? 2 : t.status === "doing" ? 3 : t.due ? 4 : 5);

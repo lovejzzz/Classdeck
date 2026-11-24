@@ -64,6 +64,8 @@ export function CardDetail(p: DetailProps) {
   // A Text card a group (or the class) writes in together: one shared copy, live.
   const shared = sharedDoc(m);
   const sharedKey = shared ? docKey(p.course, m, p.studentId) : null;
+  // A group copy whose groups come from a sign-up poll: that poll (to pick a group on, before writing).
+  const pollFor = m.grouping?.startsWith("gs-") ? p.course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules)).find((x) => `gs-${x.id}` === m.grouping && x.signup) : undefined;
   const [output, setOutput] = useState(p.progress?.output ?? (personal ? m.body : ""));
   const prompts = m.prompts?.filter((x) => x.trim()) ?? [];
   const [responses, setResponses] = useState<string[]>(p.progress?.responses ?? []);
@@ -380,7 +382,14 @@ export function CardDetail(p: DetailProps) {
           </div>
         )}
 
-        {shared && sharedKey && !m.choice && (
+        {/* Groups made by a sign-up poll the student hasn't answered yet: they pick a group first, so what they write
+            goes in their group's copy (not one of their own, left behind when they join). */}
+        {shared && sharedKey?.includes(":g:solo-") && pollFor && (
+          <p className="mt-6 rounded-xl bg-lane px-4 py-3 text-[13.5px] text-ink-2">
+            You write this with your group. Pick a group on <span className="font-medium text-ink">“{pollFor.title}”</span> first, then come back to write together.
+          </p>
+        )}
+        {shared && sharedKey && !m.choice && !(sharedKey.includes(":g:solo-") && pollFor) && (
           <div className="mt-6">
             <div className="eyebrow mb-1.5">{m.writers === "class" ? "The class’s copy · everyone writes in it" : "Your group’s copy · you write in it together"}</div>
             <SharedDoc courseId={p.courseId} docKey={sharedKey} template={m.body} name={p.course.students.find((x) => x.id === p.studentId)?.name ?? "A student"} />
@@ -428,7 +437,7 @@ export function CardDetail(p: DetailProps) {
           </div>
         )}
 
-        {(hasOutput || doneOnly || shared) && !m.choice && (
+        {(hasOutput || doneOnly || shared) && !m.choice && !(sharedKey?.includes(":g:solo-") && pollFor) && (
           // Stays in view at the bottom of the card while you scroll through long content.
           <div className="sticky -bottom-3 z-10 -mx-6 -mb-6 mt-7 flex flex-wrap items-center gap-3 rounded-b-[inherit] border-t border-line bg-white/95 px-6 pb-6 pt-3 backdrop-blur sm:-bottom-8 sm:-mx-8 sm:-mb-8 sm:px-8 sm:pb-11">
             <button onClick={() => (shared ? void handInShared() : save("done"))} disabled={finishing} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>

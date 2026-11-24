@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.86",
+    date: "2026-11-24",
+    changes: [
+      "The map’s contents (every week and lesson) slide out from the window’s left edge, over the page, instead of from the map’s edge.",
+      "A student’s tags under today’s progress count work the teacher asked to revise, and cards overdue or due soon, wherever they are in the course (a card two lessons ahead was missed).",
+      "A worksheet written with the groups from a sign-up poll: a student who hasn’t picked a group yet is asked to pick one first, instead of writing in a copy of their own that would be left behind.",
+      "Duplicating a lesson (or week) with a sign-up poll makes the copy’s groups at once, so the copied cards that use them, or go to one of them, find them.",
+      "Saving refuses two cards with the same id in one course (one of them would vanish from the map and share the other’s work).",
+    ],
+  },
+  {
     version: "0.1.85",
     date: "2026-11-23",
     changes: [

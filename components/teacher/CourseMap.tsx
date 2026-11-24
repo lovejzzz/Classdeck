@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, mapSlot, picked, SCORE, sharedOnly, slotOf, targetsOf, wiresOf, type Wire } from "@/lib/branching";
 import { bandTone, pathColor, suitOfCard } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
@@ -541,6 +542,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 
   // The contents panel opens while the pointer is over the map's left edge or the panel (it closes a moment after).
   const [toc, setToc] = useState(false);
+  // The contents panel goes into <body>, once the page is in the browser.
+  const [portalReady, setPortalReady] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- document.body exists only in the browser
+  useEffect(() => setPortalReady(true), []);
   const tocTimer = useRef<number>(0);
   const openToc = () => { window.clearTimeout(tocTimer.current); setToc(true); };
   const closeToc = () => { window.clearTimeout(tocTimer.current); tocTimer.current = window.setTimeout(() => setToc(false), 280); };
@@ -1190,18 +1195,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   return (
     <div className="flex items-start gap-3">
       {/* Contents: every week and its lessons. Click one to go there on the map. */}
-      {/* Hidden until the pointer reaches the map's left edge; it slides in and pushes the map over. */}
-      {/* It hangs from the window's left edge (over the page margin), so the pointer that opened it is already inside
-          it: no gap to slip through, so it doesn't open and close over and over. */}
-      <div className="group relative -ml-4 flex-none overflow-hidden" onMouseEnter={openToc} onMouseLeave={closeToc} onFocus={openToc} onBlur={closeToc}
-        style={{ width: toc ? 244 : 22, height: fill ?? undefined, marginRight: toc ? 0 : -16, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1), margin-right 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
+      {/* Rendered into <body>: an animated ancestor would otherwise become what "fixed" is measured from. */}
+      {portalReady && createPortal(<>
+      {/* Fixed to the window's left edge (not the map's), under the page header: hidden until the pointer reaches the
+          edge, then it slides out over the page. The pointer that opened it is already inside it, so it doesn't open
+          and close over and over. */}
+      <div className="group fixed bottom-3 left-0 top-[4.25rem] z-30 overflow-hidden" onMouseEnter={openToc} onMouseLeave={closeToc} onFocus={openToc} onBlur={closeToc}
+        style={{ width: toc ? 252 : 22, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
         {/* The marker: a short bar with a › in it, saying there's something to pull out from this edge. */}
         <span aria-hidden="true" className={`absolute left-[4px] top-1/2 flex -translate-y-1/2 flex-col items-center gap-1 text-ink/45 transition-[opacity,color] duration-300 group-hover:text-ink/75 ${toc ? "opacity-0" : "opacity-100"}`}>
           <span className="h-9 w-[5px] rounded-full bg-current" />
           <Icon name="chevron" size={16} strokeWidth={3} className="-rotate-90" />
           <span className="h-9 w-[5px] rounded-full bg-current" />
         </span>
-      <nav aria-label="Course contents" className="h-full w-[244px] overflow-y-auto overflow-x-hidden rounded-r-2xl border border-l-0 border-line bg-white/90 py-2 pl-2"
+      <nav aria-label="Course contents" className="h-full w-[244px] overflow-y-auto overflow-x-hidden rounded-r-2xl border border-l-0 border-line bg-white/95 py-2 pl-2 shadow-[16px_0_40px_-24px_rgba(20,20,18,0.35)] backdrop-blur"
         style={{ opacity: toc ? 1 : 0, transform: toc ? "none" : "translateX(-28px)", transition: "opacity 0.3s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)", pointerEvents: toc ? "auto" : "none" }}>
         {contents.map((c, ci) => (
           <div key={ci} className="px-2 pb-2">
@@ -1225,6 +1232,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
         ))}
       </nav>
       </div>
+      </>, document.body)}
       <div className="relative min-w-0 flex-1">
       {viewing && (
         <MediaLift a={viewing.a} title={viewing.title} from={viewing.from} open={viewing.open}

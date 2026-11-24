@@ -1022,6 +1022,17 @@ async function main() {
     await A.op(xc, { op: "addWeek", title: "Week 2" });
     const w = courseOf(await A.state(xc)).weeks[1];
     check("delete a week", (await A.op(xc, { op: "deleteWeek", weekId: w.id })).ok && courseOf(await A.state(xc)).weeks.length === 1);
+    // A lesson with a sign-up poll, copied: the copy's poll has its own groups at once.
+    const lx = courseOf(await A.state(xc)).weeks[0].lessons[0];
+    const sp = { id: "m-sp", type: "practice", kind: "choice", title: "Pick a team", body: "", audience: { kind: "all" }, tools: [], attachments: [], poll: true, signup: { names: true }, questions: [{ id: "q-sp", text: "Team?", options: ["Red", "Blue"] }] };
+    await A.op(xc, { op: "saveLesson", lesson: { ...lx, modules: [sp] } });
+    await A.op(xc, { op: "duplicateLesson", lessonId: lx.id });
+    const cx = courseOf(await A.state(xc));
+    const copied = cx.weeks.flatMap((w) => w.lessons).flatMap((l) => l.modules).find((m) => m.signup && m.id !== "m-sp");
+    check("a copied sign-up poll has its own groups at once", !!copied && (cx.groupings ?? []).some((g) => g.id === `gs-${copied.id}` && g.groups.length === 2));
+    const ly = courseOf(await A.state(xc)).weeks[0].lessons[0];
+    const twin = await A.op(xc, { op: "saveLesson", lesson: { ...ly, modules: [...ly.modules, { ...ly.modules[0] }] } });
+    check("two cards with one id are refused", twin.ok === false && courseOf(await A.state(xc)).weeks[0].lessons[0].modules.length === ly.modules.length, twin);
     check("the last week can't be deleted", (await A.op(xc, { op: "deleteWeek", weekId: courseOf(await A.state(xc)).weeks[0].id })).ok === false);
   }
 

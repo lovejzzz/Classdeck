@@ -797,6 +797,13 @@ async function change(request: Request, courseId: string, body: Record<string, a
       // they're all in place.
       const list = (body.op === "saveLessons" ? (Array.isArray(body.lessons) ? body.lessons : []) : [body.lesson]) as Lesson[];
       if (!list.length || list.length > 80 || list.some((l) => !l || !Array.isArray(l.modules))) return fail("Nothing to save");
+      // Every card in a course has its own id (two cards with one id would show as one, and share students' work).
+      {
+        const saving = new Set(list.map((l) => l.id));
+        const ids = [...course.weeks.flatMap((w) => w.lessons.filter((l) => !saving.has(l.id)).flatMap((l) => l.modules.map((m) => m.id))), ...list.flatMap((l) => l.modules.map((m) => m?.id))];
+        if (ids.some((id) => typeof id !== "string" || !id)) return fail("A card has no id");
+        if (new Set(ids).size !== ids.length) return fail("Two cards in this course have the same id");
+      }
       const cardsBefore = cardsOf(course.weeks).map((c) => c.m);
       for (const next of list) {
         next.modules = next.modules.map((m) => withKind(fold(m)));
@@ -1697,6 +1704,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
       renumberLessons(course);
       // Card trees span lessons: after lessons are added or copied, check every wire still points forward.
       cleanCourseWiring(course.weeks);
+      // A copied sign-up poll gets its own groups now, so cards that use them (or go to one of them) find them.
+      for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) syncSignup(course, m);
     }
   } catch (e) {
     // Malformed input (a null where an object belongs, and so on) is the sender's mistake, not a server crash.
