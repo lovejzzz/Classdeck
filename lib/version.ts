@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.81",
+    date: "2026-11-23",
+    changes: [
+      "A card group’s panel shows its cards as a hand, fanned like in a card game. Point at a card and it lifts while its neighbours lean away; click it and it rises out of the hand, and its title, question and choices open right under the hand to edit, so a whole quiz is written in one place.",
+      "On each card in the hand, a green dot means it’s ready and an amber one that it still needs something. The dashed card at the end adds a question (and opens it); ← and → move the open card, and Take out of the group removes it. The arrow keys move between cards.",
+    ],
+  },
+  {
     version: "0.1.80",
     date: "2026-11-23",
     changes: [

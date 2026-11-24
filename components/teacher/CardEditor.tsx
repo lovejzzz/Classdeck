@@ -8,7 +8,6 @@ import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { isoDay } from "@/lib/grading";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
-import { suitOfCard } from "@/lib/ui";
 import { ask } from "../Confirm";
 import { Clearable } from "../Clearable";
 import { clearOlder, olderSettings } from "@/lib/cardmodel";
@@ -26,6 +25,7 @@ import { uploadFile } from "@/lib/client";
 import { playableArt } from "../cards/PlayArt";
 import { Avatar, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
+import { GroupHand } from "./GroupHand";
 import { groupingsOf, signupGroupingId } from "@/lib/shared";
 
 /** A card preview that tilts toward the pointer, so teachers see exactly what students will hold. */
@@ -144,6 +144,8 @@ export function CardEditor({
   // Changes go through the course's own undo and history (in the bar above the map), like every other edit.
   const set = (patch: Partial<Module>) => put({ ...m, ...patch });
   const attachments = m.attachments ?? [];
+  // A card group: which of its cards is picked in the hand (and edited under it).
+  const [handSel, setHandSel] = useState<string | null>(null);
   // An attachment opened to check it: a video or picture grown big, or a recording playing under its row.
   const [viewing, setViewing] = useState<{ a: Attachment; from: DOMRect; open: boolean } | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
@@ -312,26 +314,39 @@ export function CardEditor({
 
           {kind === "content" ? null : kind === "group" ? (
           <Panel n={2} title="Cards in this group">
-            <div className="space-y-1.5">
-              {(m.members ?? []).map((id, i, arr) => {
-                const c = lesson.modules.find((x) => x.id === id);
-                if (!c) return null;
-                const move = (d: number) => { const n = [...arr]; [n[i], n[i + d]] = [n[i + d], n[i]]; set({ members: n }); };
-                return (
-                  <div key={id} className="flex items-center gap-2 rounded-lg border border-line bg-white px-2.5 py-1.5">
-                    <span className="mono w-4">{i + 1}</span>
-                    <span style={{ color: suitOfCard(c).tint }}><Icon name={faceMeta(c).icon} size={13} /></span>
-                    <span className="min-w-0 flex-1 truncate text-[13px]">{c.title || "Untitled card"}</span>
-                    <span className="text-[11px] text-ink-3">{faceMeta(c).name}</span>
-                    <button onClick={() => move(-1)} disabled={i === 0} aria-label="Move up" className="btn btn-quiet press h-7 w-7 justify-center px-0 disabled:opacity-30">↑</button>
-                    <button onClick={() => move(1)} disabled={i === arr.length - 1} aria-label="Move down" className="btn btn-quiet press h-7 w-7 justify-center px-0 disabled:opacity-30">↓</button>
-                    <button onClick={() => set({ members: arr.filter((x) => x !== id) })} aria-label={`Take ${c.title} out of the group`} title="Take it out of the group" className="btn btn-quiet press h-7 w-7 justify-center px-0 hover:!text-bad"><Icon name="x" size={12} /></button>
-                  </div>
-                );
-              })}
-            </div>
-            <button onClick={() => { const { lesson: next, card } = addToGroup(lessonRef.current, m.id); onChange(next); toast(`Added “${card.title}” to the group`, { icon: "plus" }); }}
-              className="btn btn-ghost press mt-2 h-8 w-full justify-center border-dashed text-[12.5px]"><Icon name="plus" size={12} /> Add a question</button>
+            {(() => {
+              // The group's cards as a fanned hand; the picked one is edited right here.
+              const members = (m.members ?? []).map((id) => lesson.modules.find((x) => x.id === id)).filter((x): x is Module => !!x);
+              const cur = members.find((c) => c.id === handSel) ?? members[0];
+              const i = cur ? members.indexOf(cur) : -1;
+              const putMember = (id: string, patch: Partial<Module>) => onChange({ ...lessonRef.current, modules: lessonRef.current.modules.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
+              const move = (d: number) => { const ids = members.map((c) => c.id); [ids[i], ids[i + d]] = [ids[i + d], ids[i]]; set({ members: ids }); };
+              return (
+                <>
+                  <GroupHand cards={members} selected={cur?.id ?? null} onSelect={setHandSel}
+                    onAdd={() => { const { lesson: next, card } = addToGroup(lessonRef.current, m.id); onChange(next); setHandSel(card.id); toast(`Added “${card.title}” to the group`, { icon: "plus" }); }} />
+                  {cur && (
+                    <div key={cur.id} className="hand-edit mt-1 rounded-xl border border-line bg-[#fbfbfa] p-3">
+                      <input value={cur.title} onChange={(e) => putMember(cur.id, { title: e.target.value })} placeholder="Title" aria-label={`Title of card ${i + 1}`} className="field font-semibold" />
+                      {kindOf(cur) === "choice" && !isPoll(cur) ? (
+                        <div className="mt-2.5">
+                          <QuestionsEditor single questions={cur.questions ?? []} cards={allCards ?? lesson.modules} onTree={onTree} onGo={onGo}
+                            onChange={(questions) => putMember(cur.id, { questions: questions.length ? questions : undefined })} />
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-[12.5px] text-ink-3">A {faceMeta(cur).name.toLowerCase()} card: open it to change what’s on it.</p>
+                      )}
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[12.5px]">
+                        {onOpen && <button onClick={() => onOpen(cur.id)} className="mr-auto text-[#4b56a8] hover:underline">Open the whole card ›</button>}
+                        <button onClick={() => move(-1)} disabled={i <= 0} aria-label="Move it left" title="Move it left" className="btn btn-quiet press h-7 w-7 justify-center px-0 disabled:opacity-30">←</button>
+                        <button onClick={() => move(1)} disabled={i >= members.length - 1} aria-label="Move it right" title="Move it right" className="btn btn-quiet press h-7 w-7 justify-center px-0 disabled:opacity-30">→</button>
+                        <button onClick={() => { set({ members: members.map((c) => c.id).filter((x) => x !== cur.id) }); setHandSel(null); }} className="btn btn-quiet press h-7 px-2 text-[12px] hover:!text-bad">Take out of the group</button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <p className="mt-2.5 text-[12px] text-ink-3">
               Students see these cards together. The group’s score counts its questions with a right answer (first answers); once they’re all answered, it can deal a card by score: set the ranges on the map. A group of fewer than two cards comes apart.
             </p>
