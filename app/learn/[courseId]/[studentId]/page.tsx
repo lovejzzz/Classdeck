@@ -595,8 +595,8 @@ export default function LearnPage() {
                   notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) })).filter((n) => n.cat !== "teacher")}
                   sections={STUDENT_SECTIONS}
                   muteKey="notify-off:student:v2"
-              defaultOn={["feedback"]}
-              noMessages={isPreview}
+                  defaultOn={["feedback"]}
+                  noMessages={isPreview}
                   emptyText="You’re all caught up"
                   onClear={inbox.clear}
                   onPick={(n) => {

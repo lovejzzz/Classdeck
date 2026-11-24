@@ -1,5 +1,6 @@
 "use client";
 
+import { usePanelShift } from "./usePanelShift";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -231,6 +232,7 @@ export function Classroom({
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  usePanelShift(!!(sel && selModule && selStudent));
   // A student's work on one card, in a panel at the right (opened from the grid, the lists, or a student's view).
   const drawer = sel && selModule && selStudent ? (
           createPortal(

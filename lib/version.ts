@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.91",
+    date: "2026-11-24",
+    changes: [
+      "Inbox: a notification you’ve opened loses its blue dot and isn’t counted any more. It stays in the list, quieter, until you clear notifications.",
+      "While a student’s work is open on the right, the top bar moves over to make room, so the Inbox and the rest of the bar stay in reach (as with the card panel).",
+      "The card panel no longer says “Everyone gets this card” over a card kept for some students or groups.",
+    ],
+  },
+  {
     version: "0.1.90",
     date: "2026-11-24",
     changes: [

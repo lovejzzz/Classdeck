@@ -1,5 +1,6 @@
 "use client";
 
+import { usePanelShift } from "./usePanelShift";
 import { createPortal } from "react-dom";
 import { lessonDates, localDay, shortDate, type LessonDate } from "@/lib/dates";
 import { ScheduleDialog } from "./ScheduleDialog";
@@ -44,20 +45,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   /** Show a card or lesson on the course map. */
   const showOnMap = (id: string) => { setMapFocus({ id, at: clock() }); if (view !== "map") onView?.("map"); };
   const [editorOpen, setEditorOpen] = useState(false);
-  // The page's top bar and tabs make room for the card panel while it's open (see .panel-shift-* in globals.css).
-  useEffect(() => {
-    const b = document.body;
-    const fit = () => {
-      // The page's content fills the window up to 100rem (1600px, centred beyond that, 24px in from the right); the
-      // panel is 480px wide. Room enough for the controls to end just left of it (not on a phone, where the panel
-      // covers the page anyway).
-      const w = window.innerWidth, side = (w - Math.min(w, 1600)) / 2;
-      b.style.setProperty("--panel-head", w < 900 ? "1rem" : `${Math.max(24, 492 - side)}px`);
-      b.style.setProperty("--panel-row", w < 900 ? "0px" : `${Math.max(0, 468 - side)}px`);
-    };
-    if (editorOpen) { fit(); b.dataset.panel = "open"; window.addEventListener("resize", fit); } else delete b.dataset.panel;
-    return () => { delete b.dataset.panel; window.removeEventListener("resize", fit); };
-  }, [editorOpen]);
+  usePanelShift(editorOpen);
   const [saving, setSaving] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
   // Lessons whose last save didn't go through: tried again by themselves (sooner at first, then less often).

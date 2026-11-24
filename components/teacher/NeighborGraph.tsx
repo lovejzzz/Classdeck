@@ -29,6 +29,9 @@ export function NeighborGraph({ card, lessons, onGo, onMap }: {
     return `${String.fromCharCode(65 + w.option)}${o ? ` · ${o}` : ""}`;
   };
   const inbound = wires.filter((w) => w.to === card.id);
+  // A card kept for some students or groups (set under Access) isn't everyone's.
+  const some = card.audience?.kind === "student" && !!(card.audience.studentIds?.length || card.audience.studentId || card.audience.groups?.length);
+  const who = some ? "Only some students get this card (see Access)" : "Everyone gets this card";
   const outbound = wires.filter((w) => w.from === card.id);
   const chip = (x: { m: Module; l: Lesson }, note: string, side: "in" | "out") => (
     <button key={`${side}-${x.m.id}-${note}`} onClick={() => onGo(x.l.id, x.m.id)}
@@ -44,7 +47,7 @@ export function NeighborGraph({ card, lessons, onGo, onMap }: {
     return (
       <div className="flex items-center gap-2 rounded-2xl border border-dashed border-line px-3 py-2.5 text-[12px] text-ink-3">
         <Icon name="split" size={13} />
-        <span className="flex-1">Everyone gets this card. A Question card with choices can deal different cards by answer: drag an answer to a card on the map.</span>
+        <span className="flex-1">{who}. A Question card with choices can deal different cards by answer: drag an answer to a card on the map.</span>
         {onMap && <button onClick={onMap} className="press flex-none rounded-lg px-2 py-1 font-medium text-[#4b56a8] hover:bg-[#eef0fb]">Open in map</button>}
       </div>
     );
@@ -53,12 +56,12 @@ export function NeighborGraph({ card, lessons, onGo, onMap }: {
     <div className="rounded-2xl border border-line bg-canvas/60 p-2.5">
       <div className="mb-2 flex items-center gap-1.5 px-0.5 text-[11.5px] text-ink-3">
         <Icon name="split" size={12} />
-        <span className="flex-1">{inbound.length ? "Dealt by an answer" : "Everyone gets this card"} · {outbound.length} branch{outbound.length === 1 ? "" : "es"} out</span>
+        <span className="flex-1">{inbound.length ? "Dealt by an answer" : who} · {outbound.length} branch{outbound.length === 1 ? "" : "es"} out</span>
         {onMap && <button onClick={onMap} className="press rounded-lg px-2 py-0.5 font-medium text-[#4b56a8] hover:bg-[#eef0fb]">Open in map</button>}
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
         <div className="min-w-0 space-y-1.5">
-          {inbound.length ? inbound.map((w) => { const x = find(w.from); return x ? chip(x, portName(w), "in") : null; }) : <div className="px-1 text-center text-[11.5px] text-ink-3">everyone</div>}
+          {inbound.length ? inbound.map((w) => { const x = find(w.from); return x ? chip(x, portName(w), "in") : null; }) : <div className="px-1 text-center text-[11.5px] text-ink-3">{some ? "some students" : "everyone"}</div>}
         </div>
         <div className="flex flex-col items-center gap-1 px-0.5">
           <Icon name="arrow" size={12} className="text-[#a3a8cf]" />

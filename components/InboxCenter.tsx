@@ -52,6 +52,18 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
   const [muted, setMuted] = useState<Set<string>>(() => new Set());
   // eslint-disable-next-line react-hooks/set-state-in-effect -- read from this browser's storage after hydration
   useEffect(() => setMuted(readMuted(muteKey, defaultOn ? sections.map((x) => x.id).filter((id) => !defaultOn.includes(id)) : [])), [muteKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The notifications already opened (kept in this browser): they stay listed, quieter, until cleared, but aren't new.
+  const readKey = `inbox-read:${muteKey}:${courseId}`;
+  const [read, setRead] = useState<Set<string>>(() => new Set());
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- read from this browser's storage after hydration
+  useEffect(() => setRead(readMuted(readKey, [])), [readKey]);
+  const markRead = (id: string) => {
+    if (read.has(id)) return;
+    // Only the ids still listed are kept, so the list doesn't grow for ever.
+    const next = new Set([...read].filter((x) => allNotes.some((n) => n.id === x)).concat(id));
+    setRead(next);
+    try { localStorage.setItem(readKey, JSON.stringify([...next])); } catch {}
+  };
 
   const load = useCallback(() => { fetch("/api/inbox").then((r) => (r.ok ? r.json() : null)).then((d) => d && setData(d)).catch(() => {}); }, []);
   useEffect(() => {
@@ -64,7 +76,8 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
   const notes = allNotes.filter((n) => !n.cat || !muted.has(n.cat)).sort((a, b) => b.at - a.at);
   const threads = data?.threads ?? [];
   const unreadMsgs = threads.reduce((s, t) => s + t.unread, 0);
-  const count = notes.length + unreadMsgs;
+  const fresh = notes.filter((n) => !read.has(n.id));
+  const count = fresh.length + unreadMsgs;
   const live = sections.filter((x) => !muted.has(x.id));
   const courses = [...new Map(threads.map((t) => [t.course, t.courseTitle])).entries()];
   if (!courses.some(([id]) => id === courseId)) courses.unshift([courseId, courseTitle]);
@@ -124,9 +137,9 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
             <nav aria-label="Inbox sections" className="flex w-48 flex-none flex-col gap-0.5 overflow-y-auto border-r border-line bg-[#fafaf9] p-2 max-sm:w-full max-sm:flex-row max-sm:overflow-x-auto max-sm:border-b max-sm:border-r-0">
               {railItem({ kind: "all" }, "All", count, "submit")}
               {!noMessages && railItem({ kind: "messages" }, "Messages", unreadMsgs, "message")}
-              {live.map((x) => railItem({ kind: "section", id: x.id }, x.label, notes.filter((n) => n.cat === x.id).length))}
+              {live.map((x) => railItem({ kind: "section", id: x.id }, x.label, fresh.filter((n) => n.cat === x.id).length))}
               {courses.length > 1 && <div className="px-2.5 pb-1 pt-3 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-ink-3 max-sm:hidden">Courses</div>}
-              {courses.length > 1 && courses.map(([id, name]) => railItem({ kind: "course", id }, name, threads.filter((t) => t.course === id).reduce((s, t) => s + t.unread, 0) + (id === courseId ? notes.length : 0)))}
+              {courses.length > 1 && courses.map(([id, name]) => railItem({ kind: "course", id }, name, threads.filter((t) => t.course === id).reduce((s, t) => s + t.unread, 0) + (id === courseId ? fresh.length : 0)))}
               <span className="flex-1 max-sm:hidden" />
               {railItem({ kind: "settings" }, "Notify me about…", 0, "settings")}
             </nav>
@@ -193,24 +206,24 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
                             {r.thread.unread > 0 && <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-[#4f7cf2]" aria-label={`${r.thread.unread} unread`} />}
                           </button>
                         ) : (
-                          <button key={`n:${r.note!.id}`} onClick={() => { onPick?.(r.note!); close(); }} className="press flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-[#fafaf9]">
+                          <button key={`n:${r.note!.id}`} onClick={() => { markRead(r.note!.id); onPick?.(r.note!); close(); }} className="press flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-[#fafaf9]">
                             <span className="mt-0.5 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg bg-[#f3f3f1]" style={{ color: r.note!.tint }}><Icon name={r.note!.icon} size={14} /></span>
                             <span className="min-w-0 flex-1">
                               <span className="flex items-baseline gap-2">
-                                <span className="truncate text-[13.5px] font-medium">{r.note!.title}</span>
+                                <span className={`truncate text-[13.5px] ${read.has(r.note!.id) ? "font-medium text-ink-2" : "font-semibold"}`}>{r.note!.title}</span>
                                 <span className="truncate text-[11.5px] text-ink-3">{r.note!.source}</span>
                                 <span className="mono ml-auto flex-none text-[11px]">{ago(r.note!.at)}</span>
                               </span>
-                              <span className="mt-0.5 block truncate text-[12.5px] text-ink-2">{plain(r.note!.text)}</span>
+                              <span className={`mt-0.5 block truncate text-[12.5px] ${read.has(r.note!.id) ? "text-ink-3" : "text-ink"}`}>{plain(r.note!.text)}</span>
                             </span>
-                            <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-[#4f7cf2]" />
+                            {!read.has(r.note!.id) && <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-[#4f7cf2]" aria-label="New" />}
                           </button>
                         ))}
                       </div>
                       {notes.length > 0 && view.kind !== "messages" && (
                         <footer className="flex items-center border-t border-line px-4 py-2.5 text-[12.5px] text-ink-3">
-                          <span className="flex-1"><span className="font-medium text-ink">{notes.length}</span> notification{notes.length === 1 ? "" : "s"}{unreadMsgs ? <> · <span className="font-medium text-ink">{unreadMsgs}</span> unread message{unreadMsgs === 1 ? "" : "s"}</> : null}</span>
-                          <button onClick={onClear} className="btn press h-7 rounded-full bg-lane px-3 text-[12px] text-ink-2 hover:bg-[#e8e8e5] hover:text-ink">Clear notifications</button>
+                          <span className="flex-1"><span className="font-medium text-ink">{fresh.length}</span> new notification{fresh.length === 1 ? "" : "s"}{unreadMsgs ? <> · <span className="font-medium text-ink">{unreadMsgs}</span> unread message{unreadMsgs === 1 ? "" : "s"}</> : null}</span>
+                          <button onClick={() => { onClear(); setRead(new Set()); try { localStorage.removeItem(readKey); } catch {} }} className="btn press h-7 rounded-full bg-lane px-3 text-[12px] text-ink-2 hover:bg-[#e8e8e5] hover:text-ink">Clear notifications</button>
                         </footer>
                       )}
                     </>
