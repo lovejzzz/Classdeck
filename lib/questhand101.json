@@ -1271,7 +1271,7 @@
        "id": "m-q1tpl-class-list",
        "type": "read",
        "title": "Your class list",
-       "body": "In Students → Class list, groups and demo students, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nStudents → Class list, groups and demo students lists the groups you've made on cards, to change or remove.\n\nTwo students in one class can't share a name, since classmates find each other by name (to @mention someone, in groups and in messages). If someone joins with a name a classmate already has, they're asked to add something, like a last initial.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
+       "body": "In Students → Class list and groups, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nStudents → Class list and groups lists the groups you've made on cards, to change or remove.\n\nTwo students in one class can't share a name, since classmates find each other by name (to @mention someone, in groups and in messages). If someone joins with a name a classmate already has, they're asked to add something, like a last initial.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
        "audience": {
         "kind": "all"
        },
@@ -1284,7 +1284,7 @@
        "id": "m-q1tpl-demo-student",
        "type": "read",
        "title": "Demo students",
-       "body": "Demo students are made-up students on your class list, for you to try the course as. **Students → Class list, groups and demo students**: type a name (or leave it, for Demo Student A, B, C…) and press **Add a demo student**. Add as many as you need. This course has eight.\n\nOpen **Student View** and pick one: you act as them, and what you do is kept, like a real student's. It shows in Students, in groups and discussions, ready for your feedback. **Start over** clears their work. They never get email, and once real students join, class numbers leave them out.\n\nStudent View can also show **New student** (a blank test where nothing is saved) or any student in your class (a test on their board; nothing is saved).",
+       "body": "Demo students are made-up students on your class list, for you to try the course as. **Students → Class list and groups**: type a name (or leave it, for Demo Student A, B, C…) and press **Add a demo student**. Add as many as you need. This course has eight.\n\nOpen **Student View** and pick one: you act as them, and what you do is kept, like a real student's. It shows in Students, in groups and discussions, ready for your feedback. **Start over** clears their work. They never get email, and once real students join, class numbers leave them out.\n\nStudent View can also show **New student** (a blank test where nothing is saved) or any student in your class (a test on their board; nothing is saved).",
        "audience": {
         "kind": "all"
        },

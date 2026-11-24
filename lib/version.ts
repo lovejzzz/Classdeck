@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.85",
+    date: "2026-11-23",
+    changes: [
+      "Questhand 101 names the Students tab’s Class list and groups as it’s labelled.",
+    ],
+  },
+  {
     version: "0.1.84",
     date: "2026-11-23",
     changes: [
