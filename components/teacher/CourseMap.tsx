@@ -1194,12 +1194,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       {/* It hangs from the window's left edge (over the page margin), so the pointer that opened it is already inside
           it: no gap to slip through, so it doesn't open and close over and over. */}
       <div className="group relative -ml-4 flex-none overflow-hidden" onMouseEnter={openToc} onMouseLeave={closeToc} onFocus={openToc} onBlur={closeToc}
-        style={{ width: toc ? 244 : 16, height: fill ?? undefined, marginRight: toc ? 0 : -12, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1), margin-right 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
+        style={{ width: toc ? 244 : 22, height: fill ?? undefined, marginRight: toc ? 0 : -16, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1), margin-right 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
         {/* The marker: a short bar with a › in it, saying there's something to pull out from this edge. */}
-        <span aria-hidden="true" className={`absolute left-[3px] top-1/2 flex -translate-y-1/2 flex-col items-center gap-[3px] text-ink/35 transition-[opacity,color] duration-300 group-hover:text-ink/60 ${toc ? "opacity-0" : "opacity-100"}`}>
-          <span className="h-6 w-[3px] rounded-full bg-current" />
-          <Icon name="chevron" size={11} strokeWidth={2.4} className="-rotate-90" />
-          <span className="h-6 w-[3px] rounded-full bg-current" />
+        <span aria-hidden="true" className={`absolute left-[4px] top-1/2 flex -translate-y-1/2 flex-col items-center gap-1 text-ink/45 transition-[opacity,color] duration-300 group-hover:text-ink/75 ${toc ? "opacity-0" : "opacity-100"}`}>
+          <span className="h-9 w-[5px] rounded-full bg-current" />
+          <Icon name="chevron" size={16} strokeWidth={3} className="-rotate-90" />
+          <span className="h-9 w-[5px] rounded-full bg-current" />
         </span>
       <nav aria-label="Course contents" className="h-full w-[244px] overflow-y-auto overflow-x-hidden rounded-r-2xl border border-l-0 border-line bg-white/90 py-2 pl-2"
         style={{ opacity: toc ? 1 : 0, transform: toc ? "none" : "translateX(-28px)", transition: "opacity 0.3s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)", pointerEvents: toc ? "auto" : "none" }}>
@@ -1461,7 +1461,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                     if ((e.shiftKey || picking) && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
                     onEdit(nd.lessonId, m.id);
                   }}
-                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? "isolate" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "border-[#4b56a8] ring-4 ring-[#4b56a8]/20" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
+                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? "isolate" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "tree-picked border-[#4b56a8]" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
                   style={{ left: p.x, top: p.y, width: W, height: nd.h, animationDelay: `${Math.min(i, 14) * 25}ms` }}
                 >
                   {jiggle && onDelete && (

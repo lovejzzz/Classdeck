@@ -40,6 +40,14 @@ const KIND: Record<ClassEvent["kind"], { icon: string; tint: string }> = {
   feedback: { icon: "message", tint: "#367195" },
 };
 
+/** The bell's sections for a teacher, each of which can be turned off. */
+const TEACHER_SECTIONS = [
+  { id: "messages", label: "Messages", hint: "Students writing to you, and @mentions of you" },
+  { id: "handins", label: "Handed in", hint: "Work waiting for your feedback" },
+  { id: "discussion", label: "Discussions", hint: "Posts and replies on discussion cards" },
+  { id: "progress", label: "Progress", hint: "Cards finished, answers (and wrong ones), quizzes" },
+];
+
 function readSeen(key: string) {
   try {
     return Number(localStorage.getItem(key) ?? 0);
@@ -126,6 +134,8 @@ export default function TeachPage() {
       group: e.studentId,
       groupLabel: studentName(e.studentId),
       source: one ? moduleOf(e.moduleId)?.m.title ?? "" : lessonsHit.length === 1 ? lessonsHit[0]! : `${lessonsHit.length} lessons`,
+      // Its section: work handed in, a discussion (a mention of you is a message), or progress (answers, quizzes, done).
+      cat: r.length === 1 && handIn(e) ? "handins" : e.kind === "post" && e.text.startsWith("Mentioned you") ? "messages" : e.kind === "post" || e.kind === "studio" || e.kind === "feedback" ? "discussion" : "progress",
       icon: KIND[wrong.length ? "wrong" : e.kind].icon,
       tint: KIND[wrong.length ? "wrong" : e.kind].tint,
       title: studentName(e.studentId),
@@ -143,7 +153,7 @@ export default function TeachPage() {
   }).reverse();
   // Students' messages the teacher hasn't read yet, newest first among the notes.
   const unreadMsgs = (state.nudges ?? []).filter((n) => n.from === "student" && !n.read);
-  for (const n of unreadMsgs) notes.push({ id: `msg:${n.id}`, at: n.at, group: n.studentId, groupLabel: studentName(n.studentId), source: "Message", icon: "message", title: studentName(n.studentId), text: n.text.length > 160 ? `${n.text.slice(0, 160)}…` : n.text });
+  for (const n of unreadMsgs) notes.push({ id: `msg:${n.id}`, at: n.at, group: n.studentId, groupLabel: studentName(n.studentId), source: "Message", icon: "message", cat: "messages", title: studentName(n.studentId), text: n.text.length > 160 ? `${n.text.slice(0, 160)}…` : n.text });
   notes.sort((a, b) => b.at - a.at);
 
   return (
@@ -181,6 +191,8 @@ export default function TeachPage() {
           <NotificationCenter
             title="Class activity"
             notes={notes}
+            sections={TEACHER_SECTIONS}
+            muteKey="notify-off:teacher"
             emptyText="You’re all caught up"
             modes={[
               { id: "stack", label: "Stack" },

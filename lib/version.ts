@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.80",
+    date: "2026-11-23",
+    changes: [
+      "A picked card stands out more: on the map, a card open in the editor (or picked with others) has a thick blue edge; in a card’s panel, the chosen answer form has a thicker border.",
+      "The bell has sections. Teachers: Messages, Handed in, Discussions, Progress. Students: Your teacher, Feedback, Discussions, New cards. Each is a tab with how many are new, and the settings button turns any section off, so it isn’t counted or listed (kept on that device).",
+      "The handle on the map’s left edge (it opens the contents) is bigger and bolder.",
+      "A student’s board: picking a reply or mention in the bell (in the week view) opens its discussion again.",
+    ],
+  },
+  {
     version: "0.1.79",
     date: "2026-11-23",
     changes: [

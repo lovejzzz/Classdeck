@@ -18,6 +18,22 @@ export interface Note {
   tint?: string;
   title: string;
   text: string;
+  /** Which section the note belongs to (one of the center's `sections`). */
+  cat?: string;
+}
+
+/** A section of the notifications (Messages, Handed in…): its own tab, and something you can choose not to be told about. */
+export interface Section {
+  id: string;
+  label: string;
+  /** What it covers, under its name in the settings. */
+  hint?: string;
+}
+
+/** The sections someone chose not to be told about, kept in this browser. */
+function readMuted(key?: string): Set<string> {
+  if (!key) return new Set();
+  try { return new Set(JSON.parse(localStorage.getItem(key) ?? "[]") as string[]); } catch { return new Set(); }
 }
 
 export interface Mode {
@@ -63,9 +79,13 @@ function NoteCard({ n, onPick, front = true, interactive = true, grouped = false
  * 面板里有两种视图，叠放和分组；清空时卡片先滑走，再显示“都看过了”。
  */
 export function NotificationCenter({
-  notes, modes, onClear, onPick, emptyText = "You’re all caught up", title = "Activity", align = "right",
+  notes: allNotes, modes, onClear, onPick, emptyText = "You’re all caught up", title = "Activity", align = "right", sections = [], muteKey,
 }: {
   notes: Note[];
+  /** Sections the notes sort into: a row of tabs, and a settings view to turn any of them off. */
+  sections?: Section[];
+  /** Where the sections turned off are remembered (localStorage). */
+  muteKey?: string;
   modes: Mode[];
   onClear: () => void;
   onPick?: (n: Note) => void;
@@ -78,7 +98,24 @@ export function NotificationCenter({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [leaving, setLeaving] = useState(false);
   const root = useRef<HTMLDivElement>(null);
-  const count = notes.length;
+  // Sections turned off: their notes aren't counted or shown. Read once the page is in the browser.
+  const [muted, setMuted] = useState<Set<string>>(() => new Set());
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- read from this browser's storage after hydration
+  useEffect(() => setMuted(readMuted(muteKey)), [muteKey]);
+  const [section, setSection] = useState("all");
+  const [settings, setSettings] = useState(false);
+  const shown = allNotes.filter((n) => !n.cat || !muted.has(n.cat));
+  const inSection = (id: string) => shown.filter((n) => n.cat === id).length;
+  const live = sections.filter((x) => !muted.has(x.id));
+  const sec = section !== "all" && live.some((x) => x.id === section) ? section : "all";
+  const notes = sec === "all" ? shown : shown.filter((n) => n.cat === sec);
+  const count = shown.length;
+  function toggleMute(id: string) {
+    const next = new Set(muted);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setMuted(next);
+    try { if (muteKey) localStorage.setItem(muteKey, JSON.stringify([...next])); } catch {}
+  }
   const current = modes.find((m) => m.id === mode) ?? modes[0];
 
   useEffect(() => {
@@ -138,15 +175,15 @@ export function NotificationCenter({
       </button>
 
       <div
-        className={`absolute top-10 z-30 w-[23rem] max-w-[calc(100vw-2rem)] origin-top-right rounded-2xl border border-line bg-white p-3 shadow-[0_20px_50px_-18px_rgba(20,20,18,0.3)] transition-[opacity,transform] duration-300 ease-[var(--ease-out)] ${align === "right" ? "right-0" : "left-0 origin-top-left"} ${open ? "scale-100 opacity-100" : "pointer-events-none scale-95 -translate-y-1 opacity-0"}`}
+        className={`absolute top-10 z-30 w-[25.5rem] max-w-[calc(100vw-2rem)] origin-top-right rounded-2xl border border-line bg-white p-3 shadow-[0_20px_50px_-18px_rgba(20,20,18,0.3)] transition-[opacity,transform] duration-300 ease-[var(--ease-out)] ${align === "right" ? "right-0" : "left-0 origin-top-left"} ${open ? "scale-100 opacity-100" : "pointer-events-none scale-95 -translate-y-1 opacity-0"}`}
         role="dialog"
         aria-label={title}
         aria-hidden={!open}
         inert={!open}
       >
         <div className="flex items-center gap-2 px-1 pb-3">
-          <span className="flex-1 text-[14px] font-medium">{title}</span>
-          {modes.length > 1 && (
+          <span className="flex-1 text-[14px] font-medium">{settings ? "Notifications" : title}</span>
+          {modes.length > 1 && !settings && (
             <div className="relative flex rounded-full bg-lane p-0.5" role="tablist">
               <span
                 className="absolute inset-y-0.5 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-[var(--ease-out)]"
@@ -165,11 +202,47 @@ export function NotificationCenter({
               ))}
             </div>
           )}
+          {sections.length > 0 && (
+            <button onClick={() => setSettings((v) => !v)} aria-pressed={settings} aria-label={settings ? "Back to notifications" : "Choose what to be told about"} title={settings ? "Back" : "Choose what to be told about"}
+              className={`btn press h-7 w-7 justify-center px-0 ${settings ? "bg-black/[0.06] text-ink" : "btn-quiet"}`}><Icon name={settings ? "x" : "settings"} size={14} /></button>
+          )}
         </div>
 
+        {sections.length > 0 && !settings && live.length > 1 && (
+          // Sections: one tab each (with how many are new), and All.
+          <div className="-mt-1 mb-2.5 flex gap-1 overflow-x-auto px-1 [scrollbar-width:none]" role="tablist" aria-label="Sections">
+            {[{ id: "all", label: "All", n: count }, ...live.map((x) => ({ id: x.id, label: x.label, n: inSection(x.id) }))].map((x) => (
+              <button key={x.id} role="tab" aria-selected={sec === x.id} onClick={() => setSection(x.id)}
+                className={`press inline-flex h-6 flex-none items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11.5px] ${sec === x.id ? "border-ink bg-ink text-white" : x.n ? "border-line text-ink-2 hover:border-line-strong" : "border-line text-ink-3"}`}>
+                {x.label}{x.n > 0 && <span className={`font-mono text-[10px] ${sec === x.id ? "text-white/75" : "text-ink-3"}`}>{x.n}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {settings ? (
+          // Which sections to be told about: a section turned off isn't counted on the bell or listed.
+          <div className="px-1 pb-1">
+            <p className="mb-2 text-[12.5px] text-ink-3">Notify me about:</p>
+            <ul className="space-y-1">
+              {sections.map((x) => (
+                <li key={x.id}>
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-xl px-2 py-2 hover:bg-lane">
+                    <input type="checkbox" checked={!muted.has(x.id)} onChange={() => toggleMute(x.id)} className="mt-0.5 h-4 w-4 flex-none accent-[#1b1b1a]" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-medium">{x.label}</span>
+                      {x.hint && <span className="block text-[12px] text-ink-3">{x.hint}</span>}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 px-2 text-[11.5px] text-ink-3">Kept on this device. What you turn off still happens; it just isn’t counted on the bell.</p>
+          </div>
+        ) : (
         <AutoHeight>
           <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden px-1 pb-1">
-            {count === 0 ? (
+            {notes.length === 0 ? (
               <p className="fade py-10 text-center text-[13px] text-ink-3">{emptyText}</p>
             ) : (
               <div
@@ -212,6 +285,7 @@ export function NotificationCenter({
             )}
           </div>
         </AutoHeight>
+        )}
 
         <div className="mt-2 flex items-center px-1 pt-1">
           <span className="flex-1 text-[12.5px] text-ink-3">

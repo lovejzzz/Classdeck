@@ -345,7 +345,7 @@ export function CardEditor({
             <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="How students answer">
               {ANSWER_FORMS.map((k) => (
                 <button key={k.id} role="radio" aria-checked={kind === k.id} onClick={() => toKind(k.id)}
-                  className={`press flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-[12.5px] transition-colors ${kind === k.id ? "border-[#a0561f] bg-[#a0561f]/[0.06] font-medium text-ink" : "border-line bg-white text-ink-2 hover:border-line-strong"}`}>
+                  className={`press flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-[12.5px] transition-colors ${kind === k.id ? "border-[#a0561f] bg-[#a0561f]/[0.06] font-medium text-ink shadow-[inset_0_0_0_1.5px_#a0561f]" : "border-line bg-white text-ink-2 hover:border-line-strong"}`}>
                   <Icon name={k.icon} size={16} />{k.name}
                 </button>
               ))}

@@ -66,6 +66,16 @@ interface LiftState {
 
 const FIXED_PROFILE: Profile = { preset: "custom", density: "comfortable", autonomy: "free", horizon: "term", entry: "code" };
 
+/** The bell's sections for a student, each of which can be turned off. */
+const STUDENT_SECTIONS = [
+  { id: "teacher", label: "Your teacher", hint: "Messages and reminders from your teacher" },
+  { id: "feedback", label: "Feedback", hint: "Your teacher looked at your work" },
+  { id: "discussion", label: "Discussions", hint: "Replies to you, and @mentions of you" },
+  { id: "cards", label: "New cards", hint: "Cards added or dealt to you, and today’s lesson" },
+];
+/** A student's note's section, from its id ("n:" teacher, "r:" feedback, "m:card#reply" discussion, else new cards). */
+const studentSection = (id: string) => (id.startsWith("n:") ? "teacher" : id.startsWith("r:") ? "feedback" : id.startsWith("m:") && id.includes("#") ? "discussion" : "cards");
+
 export default function LearnPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
   // Student View (a teacher testing as this student): set before the course is read, so every request is a test.
@@ -378,7 +388,9 @@ export default function LearnPage() {
             <NotificationCenter
               title="Notifications"
               align="left"
-              notes={inbox.notes}
+              notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) }))}
+              sections={STUDENT_SECTIONS}
+              muteKey="notify-off:student"
               modes={[{ id: "stack", label: "Stack" }]}
               emptyText="You’re all caught up"
               onClear={inbox.clear}
@@ -469,13 +481,16 @@ export default function LearnPage() {
               />
               <NotificationCenter
                 title="Notifications"
-                notes={inbox.notes}
+                notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) }))}
+                sections={STUDENT_SECTIONS}
+                muteKey="notify-off:student"
                 modes={[{ id: "stack", label: "Stack" }]}
                 emptyText="You’re all caught up"
                 onClear={inbox.clear}
                 onPick={(n) => {
                   if (!n.id.startsWith("m:")) return;
-                  const id = n.id.slice(2);
+                  // "m:<card>" or, for a reply in a discussion, "m:<card>#<reply>".
+                  const id = n.id.slice(2).split("#")[0];
                   setTimeout(() => {
                     const el = els.current.get(id);
                     const l = lessons.find((x) => x.modules.some((m) => m.id === id));
