@@ -13,7 +13,7 @@ import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
-import { DEFAULT_GROUPING, DEMO_PREFIX, DEMO_STUDENTS, demoStudent, groupFor, isDemoStudent, nextDemoName, repliesNeeded, signupGroupId, signupGroupingId, syncSignup } from "@/lib/shared";
+import { DEFAULT_GROUPING, DEMO_PREFIX, DEMO_STUDENTS, demoStudent, groupFor, isDemoStudent, nameGroups, nextDemoName, repliesNeeded, signupGroupId, signupGroupingId, syncSignup } from "@/lib/shared";
 
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
@@ -1692,6 +1692,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
     default:
       return fail("Unknown operation");
   }
+    // Every group is "… Group": named that way whatever made it (the teacher, a sign-up poll, Make groups).
+    nameGroups(course);
     // Groups changed: a card for some groups forgets the ones that are gone.
     if (["saveGrouping", "deleteGrouping", "setGroups", "autoGroup", "deleteGroup"].includes(body.op)) {
       for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) {

@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { op } from "@/lib/client";
-import { DEFAULT_GROUPING, groupingsOf, signupGroupingId } from "@/lib/shared";
+import { DEFAULT_GROUPING, GROUP_COLORS, groupBase, groupingsOf, signupGroupingId } from "@/lib/shared";
 import { toast } from "@/lib/toast";
 import type { Course, Group, Grouping } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { ask } from "../Confirm";
 
 const newId = () => `g-${Math.random().toString(36).slice(2, 9)}`;
+/** A colour no group here has yet, for a new group's name (the word Group is added to every name). */
+const freeColor = (taken: string[]) => GROUP_COLORS.find((c) => !taken.some((x) => x.trim().toLowerCase() === c.toLowerCase())) ?? `${taken.length + 1}`;
 /** How many cards use a grouping. */
 /** How many cards use a grouping: written in groups, discussed in groups, or the sign-up poll that makes it. */
 const usedBy = (course: Course, id: string) => course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules)).filter((m) =>
@@ -21,7 +23,7 @@ const usedBy = (course: Course, id: string) => course.weeks.flatMap((w) => w.les
  */
 export function GroupingEditor({ course, grouping, onClose, onSaved }: { course: Course; grouping?: Grouping; onClose: () => void; onSaved: (id: string) => void }) {
   const [name, setName] = useState(grouping?.name ?? "");
-  const [groups, setGroups] = useState<Group[]>(grouping?.groups.map((g) => ({ ...g, studentIds: [...g.studentIds] })) ?? [{ id: newId(), name: "Group 1", studentIds: [] }, { id: newId(), name: "Group 2", studentIds: [] }]);
+  const [groups, setGroups] = useState<Group[]>(grouping?.groups.map((g) => ({ ...g, name: groupBase(g.name), studentIds: [...g.studentIds] })) ?? [{ id: newId(), name: "Red", studentIds: [] }, { id: newId(), name: "Blue", studentIds: [] }]);
   const [active, setActive] = useState(groups[0]?.id ?? "");
   const [split, setSplit] = useState(Math.max(2, groups.length));
   const [busy, setBusy] = useState(false);
@@ -31,7 +33,9 @@ export function GroupingEditor({ course, grouping, onClose, onSaved }: { course:
   const move = (sid: string, to: string | null) => setGroups((gs) => gs.map((g) => ({ ...g, studentIds: g.id === to ? [...g.studentIds.filter((x) => x !== sid), sid] : g.studentIds.filter((x) => x !== sid) })));
   function randomSplit(n: number) {
     const ids = [...course.students.map((s) => s.id)].sort(() => Math.random() - 0.5);
-    const next = Array.from({ length: n }, (_, i) => ({ id: groups[i]?.id ?? newId(), name: groups[i]?.name ?? `Group ${i + 1}`, studentIds: ids.filter((_, k) => k % n === i) }));
+    const names: string[] = [];
+    for (let i = 0; i < n; i++) names.push(groups[i]?.name ?? freeColor([...groups.map((g) => g.name), ...names]));
+    const next = Array.from({ length: n }, (_, i) => ({ id: groups[i]?.id ?? newId(), name: names[i], studentIds: ids.filter((_, k) => k % n === i) }));
     setGroups(next);
     setActive(next[0].id);
   }
@@ -58,7 +62,7 @@ export function GroupingEditor({ course, grouping, onClose, onSaved }: { course:
           <input type="number" min={1} max={20} value={split} onChange={(e) => setSplit(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} aria-label="How many groups" className="field h-8 w-16 py-0 font-mono" />
           <button onClick={() => randomSplit(split)} className="btn btn-ghost press h-8 px-2.5 text-[12.5px]"><Icon name="users" size={12} /> groups</button>
           <span className="flex-1" />
-          <button onClick={() => { const g = { id: newId(), name: `Group ${groups.length + 1}`, studentIds: [] }; setGroups([...groups, g]); setActive(g.id); }} className="btn btn-ghost press h-8 px-2.5 text-[12.5px]"><Icon name="plus" size={12} /> Group</button>
+          <button onClick={() => { const g = { id: newId(), name: freeColor(groups.map((x) => x.name)), studentIds: [] }; setGroups([...groups, g]); setActive(g.id); }} className="btn btn-ghost press h-8 px-2.5 text-[12.5px]"><Icon name="plus" size={12} /> Group</button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <p className="mb-3 text-[12.5px] text-ink-3">Tap a group, then tap students to put them in it. Tap a student in a group to take them out.</p>
@@ -66,9 +70,10 @@ export function GroupingEditor({ course, grouping, onClose, onSaved }: { course:
             {groups.map((g) => (
               <div key={g.id} onClick={() => setActive(g.id)} className={`cursor-pointer rounded-xl border p-2.5 transition-colors ${active === g.id ? "border-[#4b56a8] bg-[#eef0fb]/60" : "border-line hover:border-line-strong"}`}>
                 <div className="flex items-center gap-1.5">
-                  <input value={g.name} onClick={(e) => e.stopPropagation()} onFocus={() => setActive(g.id)} onChange={(e) => setGroups(groups.map((x) => (x.id === g.id ? { ...x, name: e.target.value } : x)))} aria-label="Group name" className="min-w-0 flex-1 rounded-md bg-transparent px-1 py-0.5 text-[13.5px] font-medium outline-none hover:bg-white focus:bg-white" />
+                  <input value={g.name} onClick={(e) => e.stopPropagation()} onFocus={() => setActive(g.id)} onChange={(e) => setGroups(groups.map((x) => (x.id === g.id ? { ...x, name: e.target.value } : x)))} aria-label="Group name (the word Group is added)" placeholder="Name" style={{ width: `calc(${Math.max(4, g.name.length + 1)}ch + 0.5rem)` }} className="min-w-0 max-w-[70%] rounded-md bg-transparent px-1 py-0.5 text-[13.5px] font-medium outline-none hover:bg-white focus:bg-white" />
+                  <span className="flex-1 text-[13.5px] font-medium text-ink-3">Group</span>
                   <span className="mono text-[11px] text-ink-3">{g.studentIds.length}</span>
-                  <button onClick={(e) => { e.stopPropagation(); setGroups(groups.filter((x) => x.id !== g.id)); if (active === g.id) setActive(groups.find((x) => x.id !== g.id)?.id ?? ""); }} aria-label={`Remove ${g.name}`} className="press flex h-6 w-6 items-center justify-center rounded-md text-ink-3 hover:bg-white hover:text-bad"><Icon name="x" size={11} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); setGroups(groups.filter((x) => x.id !== g.id)); if (active === g.id) setActive(groups.find((x) => x.id !== g.id)?.id ?? ""); }} aria-label={`Remove ${g.name} Group`} className="press flex h-6 w-6 items-center justify-center rounded-md text-ink-3 hover:bg-white hover:text-bad"><Icon name="x" size={11} /></button>
                 </div>
                 <div className="mt-1.5 flex min-h-[2rem] flex-wrap gap-1">
                   {g.studentIds.map((sid) => (

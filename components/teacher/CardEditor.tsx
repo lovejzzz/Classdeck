@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { CARD_SIZE, formatSize, heroAttachment, hostOf } from "@/lib/cards";
 import { audienceStudents, groupByRef, groupsOf, studentsOf, uid } from "@/lib/profile";
 import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
-import { isoDay } from "@/lib/grading";
+import { DueCalendar } from "./DueCalendar";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
 import { ask } from "../Confirm";
@@ -177,7 +177,11 @@ export function CardEditor({
     if (names.length <= 2) return names.join(" and ");
     return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
   })();
-  const reach = course ? audienceStudents(course, a).filter((id) => students.some((s) => s.id === id)).length : chosen.length;
+  const reachIds = course ? audienceStudents(course, a).filter((id) => students.some((s) => s.id === id)) : chosen;
+  const reach = reachIds.length;
+  // Who a card for some groups reaches today, listed when asked (folded by default).
+  const [showReach, setShowReach] = useState(false);
+  const [calendar, setCalendar] = useState(false);
   const kind = kindOf(m);
   const older = olderSettings(m);
   // The answers (or score ranges) that deal this card, or the card group it's in: who gets it is set on the map.
@@ -212,18 +216,19 @@ export function CardEditor({
       aria-hidden={!open}
       inert={!open}
     >
-      <div className="flex h-14 flex-none items-center gap-1.5 border-b border-line px-4">
+      <div className="flex h-14 flex-none items-center gap-1 border-b border-line pl-4 pr-2.5">
         <div className="flex items-center rounded-lg bg-lane p-0.5">
           <button onClick={onPrev} disabled={!onPrev} aria-label="Previous card ([)" title="Previous card ([)" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white disabled:opacity-30"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
           <button onClick={onNext} disabled={!onNext} aria-label="Next card (])" title="Next card (])" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white disabled:opacity-30"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
         </div>
-        <span className="min-w-0 flex-1 truncate text-[13px]">
-          <span className="font-medium">Card {position ? position.index + 1 : ""}</span>
-          {position && <span className="text-ink-3"> of {position.total} · {position.lesson}</span>}
-        </span>
+        {/* Which card this is, short ("4/9"): the header also holds undo, Duplicate, Collect and Delete. */}
+        <span className="mono flex-none px-1 text-[12px] text-ink-2" title={position ? `Card ${position.index + 1} of ${position.total} · ${position.lesson}` : undefined}>{position ? `${position.index + 1}/${position.total}` : ""}</span>
+        <span className="min-w-0 flex-1" />
         {undoBar && <span className="flex items-center">{undoBar}</span>}
-        <button onClick={onDuplicate} className="btn btn-quiet press h-8 px-2"><Icon name="layers" size={13} /> Duplicate</button>
-        <button onClick={onDelete} className="btn btn-quiet press h-8 px-2 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
+        <button onClick={onDuplicate} className="btn btn-quiet press h-8 gap-1 px-1.5"><Icon name="layers" size={13} /> Duplicate</button>
+        {/* Collect: a copy kept in My cards, to reuse in any course. */}
+        {onSaveToLibrary && <button onClick={onSaveToLibrary} className="btn btn-quiet press h-8 gap-1 px-1.5" title="Keep a copy in My cards, to reuse in any of your courses"><Icon name="star" size={13} /> Collect</button>}
+        <button onClick={onDelete} className="btn btn-quiet press h-8 gap-1 px-1.5 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
         <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
       </div>
 
@@ -250,7 +255,7 @@ export function CardEditor({
         </div>
 
         <div className="space-y-2.5 px-4 pb-8">
-          <Panel n={1} title="Title and what to do">
+          <Panel n={1} title="Content">
             <Clearable><input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" /></Clearable>
             <div className="mt-2"><RichBodyEditor key={m.id} value={m.body} onChange={(body) => set({ body })} placeholder={kind === "worksheet" ? "The worksheet students fill in: headings, prompts, a table with empty cells…" : "What students should read, watch or do"} /></div>
             <MathPreview text={m.body} />
@@ -485,7 +490,17 @@ export function CardEditor({
                 {a.kind === "branch" ? (
                   <>Only students on the “{a.variant}” path get this card (set up before paths were removed). <button onClick={() => set({ audience: { kind: "all" } })} className="underline underline-offset-2 hover:text-ink">Give it to everyone</button></>
                 ) : a.kind === "student" ? (
-                  chosen.length || chosenGroups.length ? <>Only <span className="font-medium text-ink">{someLabel}</span> {chosen.length + chosenGroups.length === 1 ? "gets" : "get"} this card{chosenGroups.length ? <span className="text-ink-3"> ({reach} student{reach === 1 ? "" : "s"} now)</span> : null}.</>
+                  chosen.length || chosenGroups.length ? <>Only <span className="font-medium text-ink">{someLabel}</span> {chosen.length + chosenGroups.length === 1 ? "gets" : "get"} this card.{chosenGroups.length ? (
+                    <button onClick={() => setShowReach((v) => !v)} aria-expanded={showReach}
+                      className="press ml-1.5 inline-flex h-6 items-center gap-1 rounded-full bg-lane px-2 align-middle text-[11.5px] text-ink-2 hover:bg-black/[0.06] hover:text-ink">
+                      {reach} student{reach === 1 ? "" : "s"}<Icon name="chevron" size={10} className={`transition-transform ${showReach ? "rotate-180" : ""}`} />
+                    </button>
+                  ) : null}
+                  {chosenGroups.length > 0 && showReach && (
+                    <span className="pop mt-1.5 block rounded-lg border border-line bg-white px-2.5 py-1.5 text-[12px] leading-relaxed text-ink-2">
+                      {reach ? reachIds.map((id) => students.find((s) => s.id === id)?.name ?? "A student").join(", ") : "No one is in these groups yet."}
+                    </span>
+                  )}</>
                     : <span className="text-[#a0561f]">No one gets this card yet: pick who does.</span>
                 ) : dealtBy.length ? (
                   <>Students get it from {dealtBy.slice(0, 2).map((w, k) => (
@@ -503,7 +518,7 @@ export function CardEditor({
               <div className="mt-2 pl-[34px]">
                 {pickableGroups.length > 0 && (
                   <>
-                    <p className="mb-1 text-[11.5px] text-ink-3">Groups: whoever is in the group gets it, also if the group changes.</p>
+                    <p className="mb-1 text-[11.5px] text-ink-3">Groups</p>
                     <div className="mb-2.5 flex flex-wrap gap-1.5" role="group" aria-label="Groups that get this card">
                       {pickableGroups.map((g) => {
                         const on = chosenGroups.includes(g.ref);
@@ -539,19 +554,18 @@ export function CardEditor({
               {/* No due date is the default: picked until a date is set. */}
               <button onClick={() => set({ due: undefined })} aria-pressed={!m.due}
                 className={`press inline-flex h-7 items-center whitespace-nowrap rounded-full border px-2.5 text-[12px] ${!m.due ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>No due date</button>
-              {([["Today", 0], ["+3 days", 3], ["+1 week", 7]] as const).map(([label, n]) => (
-                <button key={label} onClick={() => set({ due: isoDay(n) })} aria-pressed={m.due === isoDay(n)}
-                  className={`press inline-flex h-7 items-center whitespace-nowrap rounded-full border px-2.5 text-[12px] ${m.due === isoDay(n) ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>{label}</button>
-              ))}
-              <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className={`field h-8 w-[136px] px-2 py-0 ${m.due ? "border-ink" : ""}`} />
+              {/* A date, typed or picked; the calendar button opens the whole course's calendar to pick it from. */}
+              <span className={`inline-flex h-8 items-center overflow-hidden rounded-[10px] border bg-white ${m.due ? "border-ink" : "border-line"}`}>
+                <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="h-full w-[112px] bg-transparent pl-2 text-[12.5px] outline-none [&::-webkit-calendar-picker-indicator]:hidden" />
+                {course && (
+                  <button onClick={() => setCalendar(true)} aria-label="Open the calendar" title="Pick from the course calendar"
+                    className="press grid h-full w-8 place-items-center border-l border-line text-ink-2 hover:bg-lane hover:text-ink"><Icon name="calendar" size={13} /></button>
+                )}
+              </span>
+              {calendar && course && <DueCalendar course={course} moduleId={m.id} cardTitle={m.title} due={m.due} onPick={(day) => set({ due: day })} onClose={() => setCalendar(false)} />}
             </div>
           </Panel>
 
-          {onSaveToLibrary && (
-            <button onClick={onSaveToLibrary} className="btn btn-ghost press h-10 w-full justify-center bg-white" title="Save a copy to reuse in any of your courses">
-              <Icon name="star" size={14} /> Save to my cards
-            </button>
-          )}
 
           {older.length > 0 && (
             <p className="px-1 text-[12px] text-ink-3">

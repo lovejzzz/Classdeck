@@ -45,11 +45,12 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   useEffect(() => {
     const b = document.body;
     const fit = () => {
-      // The page's content is centred in up to 72rem; the panel is 480px wide. Room enough for the controls to end
-      // just left of it (not on a phone, where the panel covers the page anyway).
-      const w = window.innerWidth, side = (w - Math.min(w, 1152)) / 2;
-      b.style.setProperty("--panel-head", w < 900 ? "1rem" : `${Math.max(16, 492 - side)}px`);
-      b.style.setProperty("--panel-row", w < 900 ? "0px" : `${Math.max(0, 476 - side)}px`);
+      // The page's content fills the window up to 100rem (1600px, centred beyond that, 24px in from the right); the
+      // panel is 480px wide. Room enough for the controls to end just left of it (not on a phone, where the panel
+      // covers the page anyway).
+      const w = window.innerWidth, side = (w - Math.min(w, 1600)) / 2;
+      b.style.setProperty("--panel-head", w < 900 ? "1rem" : `${Math.max(24, 492 - side)}px`);
+      b.style.setProperty("--panel-row", w < 900 ? "0px" : `${Math.max(0, 468 - side)}px`);
     };
     if (editorOpen) { fit(); b.dataset.panel = "open"; window.addEventListener("resize", fit); } else delete b.dataset.panel;
     return () => { delete b.dataset.panel; window.removeEventListener("resize", fit); };
@@ -547,7 +548,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     <div>
       {statusSlot && createPortal(
         <span className="flex items-center gap-1 text-[12.5px] text-ink-3">
-          {!readOnly && undoBar("bar")}
+          {/* While the card panel is open, its own undo, redo and history are the ones to use: not shown twice. */}
+          {!readOnly && !editorOpen && undoBar("bar")}
           <span className="ml-1 flex items-center gap-1.5" aria-live="polite">
             <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${saveError ? "bg-bad" : saving ? "bg-warn" : "bg-ok"}`} />
             {saveError && !saving ? (
@@ -575,6 +577,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             readOnly={readOnly}
             busy={editorOpen}
             selected={editorOpen ? editing?.moduleId : null}
+            onDeselect={editorOpen ? () => closeEditor() : undefined}
             focus={mapFocus ?? (course.currentLessonId ? { id: course.currentLessonId, at: 0 } : null)}
             onChange={change}
             onChangeMany={changeMany}

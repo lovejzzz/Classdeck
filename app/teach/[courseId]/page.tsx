@@ -84,7 +84,7 @@ export default function TeachPage() {
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
   if (!state) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-6">
+      <div className="mx-auto w-full max-w-[100rem] pl-4 pr-4 sm:pl-10 sm:pr-6 py-6">
         <div className="skeleton h-8 w-72" />
         <div className="mt-8 flex gap-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="skeleton h-[238px] w-[170px]" />)}</div>
       </div>
@@ -163,7 +163,7 @@ export default function TeachPage() {
     <div className="flex-1 overflow-x-clip">
       {courseId !== "demo" && <ConnectionBanner needAuth={needAuth} error={error} signInHref={`/login?next=/teach/${courseId}`} />}
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
-        <div className="panel-shift-head mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
+        <div className="panel-shift-head mx-auto w-full max-w-[100rem] pl-4 pr-4 sm:pl-10 sm:pr-6 flex h-14 items-center gap-3">
           <Link href="/" className="flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink">
             <LogoMark size={15} />Questhand
           </Link>
@@ -236,7 +236,7 @@ export default function TeachPage() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-6xl px-4 py-6">
+      <div className="mx-auto w-full max-w-[100rem] pl-4 pr-4 sm:pl-10 sm:pr-6 py-6">
         <div className="panel-shift-row flex flex-wrap items-center gap-2.5">
           <div className="relative flex max-w-full overflow-x-auto rounded-lg bg-lane p-0.5 [--tab:4.25rem] [scrollbar-width:none] sm:[--tab:5rem]" role="tablist">
             <span

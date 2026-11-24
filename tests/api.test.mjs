@@ -836,7 +836,13 @@ async function main() {
     const r = await A.op(gc, { op: "saveGrouping", grouping: { name: "Lab partners", groups: [{ name: "Red", studentIds: [st.Wes, st.Xia] }, { name: "Blue", studentIds: [st.Yan, st.Xia] }] } });
     check("a teacher makes named groups", typeof r.id === "string" && r.id.startsWith("gs-"));
     let gsets = courseOf(await A.state(gc)).groupings ?? [];
-    check("they're kept in the course", gsets.length === 1 && gsets[0].name === "Lab partners" && gsets[0].groups.map((g) => g.name).join() === "Red,Blue");
+    check("they're kept in the course", gsets.length === 1 && gsets[0].name === "Lab partners" && gsets[0].groups.map((g) => g.name).join() === "Red Group,Blue Group");
+    {
+      const r2 = await A.op(gc, { op: "saveGrouping", grouping: { name: "Naming", groups: [{ name: "Teal group", studentIds: [] }, { name: "Group 2", studentIds: [] }, { name: "", studentIds: [] }, { name: "Review group 1", studentIds: [] }] } });
+      const named = (courseOf(await A.state(gc)).groupings ?? []).find((g) => g.id === r2.id)?.groups.map((g) => g.name).join();
+      check("every group is called … Group, never twice; Group 2 and no name become colours", named === "Teal Group,Blue Group,Green Group,Review 1 Group", named);
+      await A.op(gc, { op: "deleteGrouping", id: r2.id });
+    }
     check("a student is in one group only", gsets[0].groups[1].studentIds.length === 1);
     const l0 = courseOf(await A.state(gc)).weeks[0].lessons[0];
     const card = (id) => ({ id, type: "read", kind: "content", title: id, body: "start", audience: { kind: "all" }, tools: [], attachments: [], writers: "group", grouping: r.id });
@@ -936,7 +942,7 @@ async function main() {
     await A.op(nc, { op: "saveLesson", lesson: { ...l0, modules: [poll] } });
     const grouping = async () => (courseOf(await A.state(nc)).groupings ?? []).find((g) => g.id === "gs-m-pick");
     const g0 = await grouping();
-    check("a sign-up poll makes a grouping named after the card", g0?.name === "Pick a project" && g0.groups.map((g) => g.name).join() === "Bridges,Rockets", g0);
+    check("a sign-up poll makes a grouping named after the card", g0?.name === "Pick a project" && g0.groups.map((g) => g.name).join() === "Bridges Group,Rockets Group", g0);
     const vote = (who, choice) => who.c.op(nc, { op: "answer", studentId: who.id, moduleId: "m-pick", qid: "q", choice });
     check("voting joins that group", (await vote(leo, 0)).ok && (await grouping()).groups[0].studentIds.includes(leo.id));
     const full = await vote(avaS, 0);
@@ -964,7 +970,7 @@ async function main() {
     // Taking out the first option: its members don't land in the next one.
     await A.op(nc, { op: "saveLesson", lesson: { ...courseOf(await A.state(nc)).weeks[0].lessons[0], modules: [{ ...poll, signup: { max: 1, names: true, locked: true }, questions: [{ ...poll.questions[0], options: ["Rockets"] }] }] } });
     const one = await grouping();
-    check("removing an option keeps the others' members", one.groups.length === 1 && one.groups[0].name === "Rockets" && one.groups[0].studentIds.join() === avaS.id, one);
+    check("removing an option keeps the others' members", one.groups.length === 1 && one.groups[0].name === "Rockets Group" && one.groups[0].studentIds.join() === avaS.id, one);
     void zed;
 
     // @mentions: kept in the text; the teacher hears about one.

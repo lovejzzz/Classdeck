@@ -10,6 +10,7 @@ import { standardWeek } from "@/lib/templates";
 import { makeCourse } from "@/lib/newcourse";
 import { treeView } from "@/lib/branching";
 import { visibleModules } from "@/lib/profile";
+import { lessonDates } from "@/lib/dates";
 
 /**
  * The signed-in account's courses: the ones it teaches (its own and those shared with it), and the ones it's a student
@@ -20,6 +21,24 @@ export async function GET(request: Request) {
   const t = teacherOf(session);
   const all = listCourses();
   const d = db();
+  // ?calendar=1: every dated thing in the teacher's courses (lesson days, cards' due dates), for the due-date calendar.
+  const url = new URL(request.url);
+  if (url.searchParams.get("calendar")) {
+    if (!t) return unauthorized("teacher", "Sign in to see your calendar");
+    const asked = url.searchParams.get("course") ?? "";
+    const calendars = Object.values(d.courses).flatMap((c) => {
+      if ((c.id === DEMO && c.id !== asked) || !roleOf(session, c)) return [];
+      const dates = lessonDates(c);
+      const items: { date: string; kind: "lesson" | "due"; title: string; lesson: string; lessonId: string; moduleId?: string; planned?: boolean }[] = [];
+      for (const w of c.weeks) for (const l of w.lessons) {
+        const ld = dates.get(l.id);
+        if (ld) items.push({ date: ld.date, kind: "lesson", title: l.title, lesson: l.title, lessonId: l.id, planned: !ld.own || undefined });
+        for (const m of l.modules) if (m.due) items.push({ date: m.due, kind: "due", title: m.title, lesson: l.title, lessonId: l.id, moduleId: m.id });
+      }
+      return [{ id: c.id, title: c.title, items }];
+    });
+    return Response.json({ calendars });
+  }
   type Studying = { id: string; title: string; studentId: string; teacher: string | null; done?: number; total?: number; waiting?: boolean };
   const studying = t ? Object.values(d.courses).flatMap((c): Studying[] => {
     if (c.id === DEMO || c.sample) return [];

@@ -671,7 +671,7 @@
        "id": "m-q1tpl-who-gets",
        "type": "read",
        "title": "Who gets a card",
-       "body": "Open a card's panel and look under **Access**. It says who gets the card:\n\n- **Everyone gets this card**: the usual.\n- **Students get it from** an answer or a score range: set on the map, by drawing the line.\n- **Only some students or groups…**: pick students by name, or whole groups. A group's card goes to whoever is in the group, also when the group changes (for example, after a sign-up poll).\n\nUnder it is the card's due date: **No due date** unless you pick one.\n\n> In Week 3, one card in this course is only for the students who pick “Just exploring” in a sign-up poll.",
+       "body": "Open a card's panel and look under **Access**. It says who gets the card:\n\n- **Everyone gets this card**: the usual.\n- **Students get it from** an answer or a score range: set on the map, by drawing the line.\n- **Only some students or groups…**: pick students by name, or whole groups. A group's card goes to whoever is in the group, also when the group changes (for example, after a sign-up poll).\n\nUnder it is the card's due date: **No due date** unless you set one. Type a date, or press the calendar beside it: the whole course's calendar opens, with every lesson day and due date (switch to another course, or all of yours), and a tap on a day makes it the due date.\n\n> In Week 3, one card in this course is only for the students who pick “Just exploring” in a sign-up poll.",
        "audience": {
         "kind": "all"
        },
@@ -729,7 +729,7 @@
        "id": "m-q1tpl-dates",
        "type": "read",
        "title": "Dates and today's lesson",
-       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nTo date them all at once, open a lesson's ⋯ menu → Schedule lessons from here…: pick the first class, the days class meets and any days off, and every lesson from there gets its date.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too, under Access in its panel. **No due date** is where every card starts; pick Today, +3 days, +1 week, or any date. Students see it on the card, and a tag on their board says when something is due soon or overdue.",
+       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nTo date them all at once, open a lesson's ⋯ menu → Schedule lessons from here…: pick the first class, the days class meets and any days off, and every lesson from there gets its date.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too, under Access in its panel. **No due date** is where every card starts; type a date, or press the calendar beside it to see every lesson day and due date in the course and tap a day. Students see it on the card, and a tag on their board says when something is due soon or overdue.",
        "audience": {
         "kind": "all"
        },
@@ -742,7 +742,7 @@
        "id": "m-q1tpl-reuse",
        "type": "read",
        "title": "Use a card again",
-       "body": "Made a card you'll want again, like a weekly reflection or a check-in poll? In its panel, press Save to my cards (at the bottom). On a card group, that saves the group with its cards. To save a whole lesson, use its ⋯ menu → Save lesson to my cards.\n\nThen, in any of your courses, add a card as usual (+ Card on a lesson, or an answer's dot) and choose Saved cards. Pick one to put down a copy, and change it as you like. The × beside one takes it off the list.",
+       "body": "Made a card you'll want again, like a weekly reflection or a check-in poll? In its panel, press Collect (at the top, beside Duplicate). On a card group, that keeps the group with its cards. To save a whole lesson, use its ⋯ menu → Save lesson to my cards.\n\nThen, in any of your courses, add a card as usual (+ Card on a lesson, or an answer's dot) and choose Saved cards. Pick one to put down a copy, and change it as you like. The × beside one takes it off the list.",
        "audience": {
         "kind": "all"
        },

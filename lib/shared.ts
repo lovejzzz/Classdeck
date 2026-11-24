@@ -76,6 +76,27 @@ export function nextDemoName(taken: string[]) {
   for (let i = 27; ; i++) if (!have.has(`demo student ${i}`)) return `Demo Student ${i}`;
 }
 
+/** Names for groups made without one: Red Group, Blue Group, … */
+export const GROUP_COLORS = ["Red", "Blue", "Green", "Yellow", "Purple", "Orange", "Pink", "Teal", "Gold", "Silver", "Navy", "Coral", "Lime", "Plum", "Sky", "Amber"];
+/** A group's name without the word "group" in it: what a teacher types and edits ("Red" for "Red Group"). */
+export function groupBase(name: string): string {
+  return name.replace(/\bgroups?\b/gi, " ").replace(/\s+/g, " ").replace(/^[\s·:–-]+|[\s·:–-]+$/g, "").trim();
+}
+/**
+ * Every group is called "… Group" (Red Group, Kelp forest Group): the word is added here, never typed. A name that's
+ * only a number or empty ("Group 2") becomes a colour (the second: Blue Group). The same name in gives the same out.
+ */
+export function groupName(raw: string, i = 0): string {
+  let base = groupBase(String(raw ?? "")).slice(0, 40);
+  if (!base || /^\d+$/.test(base)) base = GROUP_COLORS[((Number(base) || i + 1) - 1) % GROUP_COLORS.length];
+  return `${base} Group`;
+}
+/** Every group in a course named that way (old courses had names like "Group 1" or "Review group 2"). */
+export function nameGroups(course: Pick<Course, "groups" | "groupings">) {
+  (course.groups ?? []).forEach((g, i) => { g.name = groupName(g.name, i); });
+  for (const gs of course.groupings ?? []) gs.groups.forEach((g, i) => { g.name = groupName(g.name, i); });
+}
+
 /**
  * A sign-up poll's grouping, kept in step with the card: its name is the card's title and there's a group for each
  * option (named after it). Who's in each group is kept as it is (votes, and the teacher's changes).
@@ -88,9 +109,9 @@ export function syncSignup(course: Course, m: Module) {
   const was = list.find((g) => g.id === id);
   const groups = q.options.map((o, i) => {
     const gid = signupGroupId(m.id, i);
-    const name = (o.trim() || `Option ${i + 1}`).slice(0, 40);
+    const name = groupName((o.trim() || `Option ${i + 1}`).slice(0, 40), i);
     // Members follow their option by its name (an option removed or moved), else by its place (an option renamed).
-    const before = was?.groups.find((g) => g.name === name) ?? was?.groups.find((g) => g.id === gid && !q.options.some((x) => x.trim() === g.name));
+    const before = was?.groups.find((g) => groupName(g.name) === name) ?? was?.groups.find((g) => g.id === gid && !q.options.some((x, k) => groupName(x.trim(), k) === groupName(g.name)));
     return { id: gid, name, studentIds: before?.studentIds ?? [] };
   });
   if (was) { was.name = m.title.slice(0, 60) || "Groups"; was.groups = groups; } else list.push({ id, name: m.title.slice(0, 60) || "Groups", groups });

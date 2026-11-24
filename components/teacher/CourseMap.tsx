@@ -287,7 +287,7 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new"; saved?: bo
  * lesson or into a later one). Zoomed out, cards shrink to their titles; zoomed in, they show what to do. Drag from a
  * port onto a card to deal it, or into empty space for a new card. Click a card to edit it in the panel.
  */
-export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, footer, weekNames = {}, onDeleteMany }: {
+export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, onDeselect, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, footer, weekNames = {}, onDeleteMany }: {
   /** Delete several picked cards at once (it asks first, and offers Undo). */
   onDeleteMany?: (ms: Module[]) => void;
   /** Lesson id → its week's full title, for the contents panel. */
@@ -313,6 +313,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   busy?: boolean;
   /** The card being edited. */
   selected?: string | null;
+  /** A click on the map's empty space: let go of the card that's open in the panel. */
+  onDeselect?: () => void;
   /** A card or lesson to bring into view (changes when it should move there). */
   focus?: { id: string; at: number } | null;
   onChange: (l: Lesson) => void;
@@ -833,7 +835,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
             ))}
           </div>
         ) : (
-          <p className="px-2 pb-1.5 pt-0.5 text-[12px] leading-snug text-ink-3">No saved cards yet. Open a card and press Save to my cards at the bottom of its panel; it shows up here in all your courses.</p>
+          <p className="px-2 pb-1.5 pt-0.5 text-[12px] leading-snug text-ink-3">No saved cards yet. Open a card and press Collect at the top of its panel; it shows up here in all your courses.</p>
         )}
       </div>
     );
@@ -1200,15 +1202,15 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       {/* Fixed to the window's left edge (not the map's), under the page header: hidden until the pointer reaches the
           edge, then it slides out over the page. The pointer that opened it is already inside it, so it doesn't open
           and close over and over. */}
-      <div className="group fixed bottom-3 left-0 top-[4.25rem] z-30 overflow-hidden" onMouseEnter={openToc} onMouseLeave={closeToc} onFocus={openToc} onBlur={closeToc}
-        style={{ width: toc ? 252 : 22, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
+      <div className="group fixed bottom-0 left-0 top-[3.75rem] z-30 overflow-hidden" onMouseEnter={openToc} onMouseLeave={closeToc} onFocus={openToc} onBlur={closeToc}
+        style={{ width: toc ? 300 : 22, transition: "width 0.42s cubic-bezier(0.22, 1, 0.36, 1)" }}>
         {/* The marker: a short bar with a › in it, saying there's something to pull out from this edge. */}
         <span aria-hidden="true" className={`absolute left-[4px] top-1/2 flex -translate-y-1/2 flex-col items-center gap-1 text-ink/45 transition-[opacity,color] duration-300 group-hover:text-ink/75 ${toc ? "opacity-0" : "opacity-100"}`}>
           <span className="h-9 w-[5px] rounded-full bg-current" />
           <Icon name="chevron" size={16} strokeWidth={3} className="-rotate-90" />
           <span className="h-9 w-[5px] rounded-full bg-current" />
         </span>
-      <nav aria-label="Course contents" className="h-full w-[244px] overflow-y-auto overflow-x-hidden rounded-r-2xl border border-l-0 border-line bg-white/95 py-2 pl-2 shadow-[16px_0_40px_-24px_rgba(20,20,18,0.35)] backdrop-blur"
+      <nav aria-label="Course contents" className="absolute bottom-3 left-2.5 top-2 w-[252px] overflow-y-auto overflow-x-hidden rounded-2xl bg-white/[0.97] py-2 pl-1 shadow-[0_0_0_1px_rgba(20,20,18,0.06),0_2px_4px_rgba(20,20,18,0.04),0_12px_28px_-6px_rgba(20,20,18,0.14),0_28px_56px_-20px_rgba(20,20,18,0.18)] backdrop-blur"
         style={{ opacity: toc ? 1 : 0, transform: toc ? "none" : "translateX(-28px)", transition: "opacity 0.3s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)", pointerEvents: toc ? "auto" : "none" }}>
         {contents.map((c, ci) => (
           <div key={ci} className="px-2 pb-2">
@@ -1334,7 +1336,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               window.removeEventListener("pointerup", done);
               setBox(null);
               // A click on empty space (no box) lets go of what was picked.
-              if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) { if (!keep) setPicks(new Set()); return; }
+              // A click on empty space (no box) lets go of what was picked, and of the card open in the panel.
+              if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) { if (!keep) { setPicks(new Set()); onDeselect?.(); } return; }
               const b = toCanvas(ev.clientX, ev.clientY);
               const [l, r, t, bt] = [Math.min(a.x, b.x), Math.max(a.x, b.x), Math.min(a.y, b.y), Math.max(a.y, b.y)];
               const hit = [...nodes.values()].filter((n) => n.x < r && n.x + W > l && n.y < bt && n.y + n.h > t).map((n) => n.m.id);
@@ -1349,7 +1352,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           const s = { x: e.clientX, y: e.clientY, l: el.scrollLeft, t: el.scrollTop };
           el.style.cursor = "grabbing";
           const move = (ev: PointerEvent) => { el.scrollLeft = s.l - (ev.clientX - s.x); el.scrollTop = s.t - (ev.clientY - s.y); };
-          const up = () => { el.style.cursor = ""; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+          // A tap that didn't move the map (a finger, or a read-only map) lets go of the card open in the panel too.
+          const up = (ev: PointerEvent) => { el.style.cursor = ""; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); if (Math.hypot(ev.clientX - s.x, ev.clientY - s.y) < 5) onDeselect?.(); };
           window.addEventListener("pointermove", move);
           window.addEventListener("pointerup", up);
         }}

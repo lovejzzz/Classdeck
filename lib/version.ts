@@ -3,6 +3,19 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.88",
+    date: "2026-11-24",
+    changes: [
+      "The map’s contents float as a card with rounded corners and a soft shadow, a little in from the window’s edge.",
+      "A course’s pages use the window’s width (up to 1600px) and start near its left edge, so the map has more room.",
+      "Clicking the map’s empty space closes the card panel.",
+      "The card panel: its first section is called Content. Collect (was Save to my cards, at the bottom) is at the top beside Duplicate, and the card’s place is short (4/9). While the panel is open, the map’s own undo, redo and history are hidden: the panel’s are the same ones.",
+      "Every group is called “… Group” (Red Group, Kelp forest Group): type only the name, and Group is added. Groups named “Group 2” or with no name become colours (Blue Group); names with “group” in them lose it (Review group 1 is Review 1 Group). New groups start as Red, Blue, Green…",
+      "Access for some groups: the students it reaches today fold out from “3 students”, and the line about groups changing is gone.",
+      "Due: No due date or a date. The calendar button beside the date opens the whole course’s calendar, with every lesson day and due date; switch to another of your courses or all of them. Tap a day to make it the card’s due date.",
+    ],
+  },
+  {
     version: "0.1.87",
     date: "2026-11-24",
     changes: [
