@@ -13,7 +13,7 @@ import { Lift } from "@/components/cards/Lift";
 import { TiltCard } from "@/components/cards/TiltCard";
 import { Avatar, Icon, StatusIcon } from "@/components/Icon";
 import { HScroll } from "@/components/HScroll";
-import { NotificationCenter } from "@/components/NotificationCenter";
+import { InboxCenter } from "@/components/InboxCenter";
 import { Shortcuts } from "@/components/ShortcutHelp";
 import { useRouter } from "next/navigation";
 import { scrollToWeek, WeekNav } from "@/components/WeekNav";
@@ -68,7 +68,6 @@ const FIXED_PROFILE: Profile = { preset: "custom", density: "comfortable", auton
 
 /** The bell's sections for a student, each of which can be turned off. */
 const STUDENT_SECTIONS = [
-  { id: "teacher", label: "Your teacher", hint: "Messages and reminders from your teacher" },
   { id: "feedback", label: "Feedback", hint: "Your teacher looked at your work" },
   { id: "discussion", label: "Discussions", hint: "Replies to you, and @mentions of you" },
   { id: "cards", label: "New cards", hint: "Cards added or dealt to you, and today’s lesson" },
@@ -482,13 +481,14 @@ export default function LearnPage() {
           </div>
           <div className="flex items-center gap-3">
             <Link href={`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`} className="btn btn-ghost press h-8"><Icon name="board" size={13} /> My board</Link>
-            <NotificationCenter
-              title="Notifications"
-              align="left"
-              notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) }))}
+            <InboxCenter
+              courseId={courseId}
+              courseTitle={course.title}
+              notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) })).filter((n) => n.cat !== "teacher")}
               sections={STUDENT_SECTIONS}
-              muteKey="notify-off:student"
-              modes={[{ id: "stack", label: "Stack" }]}
+              muteKey="notify-off:student:v2"
+              defaultOn={["feedback"]}
+              noMessages={isPreview}
               emptyText="You’re all caught up"
               onClear={inbox.clear}
               onPick={(n) => {
@@ -589,12 +589,14 @@ export default function LearnPage() {
                   ]}
                   extra={[{ keys: "←", label: "Move between cards" }, { keys: "mod+enter", label: "Mark the open card done" }, { keys: "escape", label: "Close a card" }]}
                 />
-                <NotificationCenter
-                  title="Notifications"
-                  notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) }))}
+                <InboxCenter
+                  courseId={courseId}
+                  courseTitle={course.title}
+                  notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) })).filter((n) => n.cat !== "teacher")}
                   sections={STUDENT_SECTIONS}
-                  muteKey="notify-off:student"
-                  modes={[{ id: "stack", label: "Stack" }]}
+                  muteKey="notify-off:student:v2"
+              defaultOn={["feedback"]}
+              noMessages={isPreview}
                   emptyText="You’re all caught up"
                   onClear={inbox.clear}
                   onPick={(n) => {
@@ -603,7 +605,7 @@ export default function LearnPage() {
                     reveal(n.id.slice(2).split("#")[0], (el, l, id) => open(l.id, id, el));
                   }}
                 />
-                {!isPreview && <AccountMenu />}
+                {!isPreview && <AccountMenu inboxElsewhere />}
               </div>
             </div>
           </section>

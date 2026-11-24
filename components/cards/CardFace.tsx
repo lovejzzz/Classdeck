@@ -1,6 +1,6 @@
 import { fileExt, heroOf, hostOf } from "@/lib/cards";
 import { videoEmbed } from "@/lib/media";
-import { suitOfCard } from "@/lib/ui";
+import { cardColor, suitOfCard } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
 import { Icon, StatusIcon } from "../Icon";
 import { KindArt } from "./KindArt";
@@ -93,9 +93,15 @@ export function CardFace({
   const meta = suitOfCard(m);
   const kind = faceMeta(m);
   const question = meta.id === "question";
+  const foil = cardColor(m);
   // One shell per family: Content cards a clean double frame; Question cards a dashed inner frame and a coloured foot.
   return (
-    <div className="@container relative flex h-full w-full flex-col overflow-hidden rounded-[14px] border bg-white select-none" style={{ borderColor: `${meta.tint}40` }}>
+    <div className="@container relative flex h-full w-full flex-col overflow-hidden rounded-[14px] border bg-white select-none"
+      // Gold, silver, platinum and the holographic foils: the card's edge is the metal (a gradient border).
+      style={foil?.frame ? { border: "2px solid transparent", background: `linear-gradient(#fff, #fff) padding-box, ${foil.frame} border-box` } : { borderColor: `${meta.tint}40` }}>
+      {/* A holographic card shimmers faintly all over; a metal one has a soft sheen. */}
+      {foil?.foil === "holo" && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[1] rounded-[12px] mix-blend-multiply" style={{ background: foil.cover, opacity: 0.3 }} />}
+      {foil?.foil === "metal" && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[1] rounded-[12px]" style={{ background: "linear-gradient(155deg, transparent 38%, rgba(255,255,255,0.55) 48%, transparent 58%)" }} />}
       <div className={`pointer-events-none absolute inset-[5px] rounded-[10px] border ${question ? "border-dashed" : ""}`} style={{ borderColor: `${meta.tint}${question ? "55" : "30"}` }} />
       {question && <div className="pointer-events-none absolute inset-x-[5px] bottom-[5px] h-[22%] rounded-b-[10px]" style={{ background: `linear-gradient(to top, ${meta.tint}1f, transparent)` }} />}
       {/* corner: the suit, and one status (done, or a due date that's close or past) */}

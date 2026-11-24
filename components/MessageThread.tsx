@@ -35,6 +35,11 @@ const time = (at: number) => new Date(at).toLocaleTimeString("en-US", { hour: "n
  * messages while open, and marks the other side's messages read. `onBack` (from the inbox) shows a back arrow.
  */
 export function Conversation({ c, onClose, onBack, onChanged }: { c: ConversationRef; onClose: () => void; onBack?: () => void; onChanged?: () => void }) {
+  return <Drawer label={`Messages: ${c.name}`} onClose={onClose}><ConversationBody c={c} onClose={onClose} onBack={onBack} onChanged={onChanged} /></Drawer>;
+}
+
+/** A conversation's header, messages and reply box, to sit in a drawer of its own or inside the Inbox. */
+export function ConversationBody({ c, onClose, onBack, onChanged }: { c: ConversationRef; onClose?: () => void; onBack?: () => void; onChanged?: () => void }) {
   const [messages, setMessages] = useState<ThreadMessage[] | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -65,7 +70,7 @@ export function Conversation({ c, onClose, onBack, onChanged }: { c: Conversatio
   }
   const toTeacher = c.with === "teacher", asTeacher = c.me === "teacher";
   return (
-    <Drawer label={`Messages: ${c.name}`} onClose={onClose}>
+    <>
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
         {onBack && <button onClick={onBack} aria-label="Back to your inbox" className="btn btn-quiet press -ml-1 h-9 w-9 justify-center px-0"><Icon name="back" size={16} /></button>}
         <Avatar name={c.name} size={30} />
@@ -73,7 +78,7 @@ export function Conversation({ c, onClose, onBack, onChanged }: { c: Conversatio
           <span className="block truncate text-[14.5px] font-semibold">{c.name}</span>
           {c.subtitle && <span className="block truncate text-[12px] text-ink-3">{c.subtitle}</span>}
         </span>
-        <button onClick={onClose} aria-label="Close messages" className="btn btn-quiet press h-9 w-9 justify-center px-0"><Icon name="x" size={16} /></button>
+        {onClose && <button onClick={onClose} aria-label="Close messages" className="btn btn-quiet press h-9 w-9 justify-center px-0"><Icon name="x" size={16} /></button>}
       </header>
       <div ref={list} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages && !messages.length && (
@@ -99,12 +104,12 @@ export function Conversation({ c, onClose, onBack, onChanged }: { c: Conversatio
           className="field min-h-[2.75rem] flex-1 resize-none py-2" />
         <button disabled={busy || !text.trim()} className="btn btn-dark press h-10 px-4 disabled:opacity-50">Send</button>
       </form>
-    </Drawer>
+    </>
   );
 }
 
-type Thread = { key: string; course: string; courseTitle: string; me: string; with: string; name: string; role: "teacher" | "student"; last?: ThreadMessage; unread: number };
-type Contact = { course: string; courseTitle: string; me: string; with: string; name: string; role: "teacher" | "student" };
+export type Thread = { key: string; course: string; courseTitle: string; me: string; with: string; name: string; role: "teacher" | "student"; last?: ThreadMessage; unread: number };
+export type Contact = { course: string; courseTitle: string; me: string; with: string; name: string; role: "teacher" | "student" };
 export type InboxData = { threads: Thread[]; contacts: Contact[]; unread: number };
 
 /**

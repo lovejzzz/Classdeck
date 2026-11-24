@@ -24,23 +24,45 @@ export const suitOfKind = (k: CardKind): (typeof SUITS)[number] => SUITS.find((s
 
 export const TYPE_ORDER: ModuleType[] = SUITS.flatMap((s) => s.types);
 
-/** Colours a teacher can give a card (its ⋮ menu): the edge, the label and the art's wash. Unset: its family's colour. */
+/**
+ * Colours a teacher can give a card (its ⋮ menu): six soft washes like the families' own, three metals (gold, silver,
+ * platinum) and three holographic foils. `tint` is the edge, label and icon; `cover` the art's wash; `frame`, for the
+ * metals and foils, the card's edge as a gradient.
+ */
 const wash = (a: string, b: string, base: string) => `radial-gradient(55% 90% at 22% 25%, ${a} 0%, transparent 70%), radial-gradient(50% 80% at 80% 85%, ${b} 0%, transparent 70%), ${base}`;
-export const CARD_COLORS: { id: string; name: string; tint: string; cover: string }[] = [
+export type CardColor = { id: string; name: string; tint: string; cover: string; frame?: string; foil?: "metal" | "holo" };
+export const CARD_COLORS: CardColor[] = [
   { id: "blue", name: "Blue", tint: "#3d68a6", cover: COVER.content },
   { id: "rust", name: "Rust", tint: "#a0561f", cover: COVER.question },
-  { id: "green", name: "Green", tint: "#2f7d4f", cover: wash("#b9e2c8", "#dcefe2", "#e5efe8") },
+  { id: "green", name: "Sage", tint: "#3f7a52", cover: wash("#bfe0c8", "#dcefe2", "#e6efe8") },
   { id: "teal", name: "Teal", tint: "#287670", cover: wash("#b0dfda", "#d5ece9", "#e3efed") },
-  { id: "violet", name: "Violet", tint: "#6a4fa8", cover: wash("#d3c6f0", "#e6def5", "#ebe7f3") },
-  { id: "rose", name: "Rose", tint: "#b04565", cover: wash("#f3c2d0", "#f5dde4", "#f2e6ea") },
-  { id: "gold", name: "Gold", tint: "#a37a12", cover: wash("#f3dd9c", "#f4ead0", "#f2ede0") },
-  { id: "ink", name: "Ink", tint: "#3f3f3b", cover: wash("#d6d6d2", "#e7e7e3", "#ececea") },
+  { id: "violet", name: "Lavender", tint: "#6a4fa8", cover: wash("#d6c9f2", "#e8e1f6", "#ece8f4") },
+  { id: "rose", name: "Rose", tint: "#ad4767", cover: wash("#f3c4d2", "#f6dfe6", "#f3e7eb") },
+  { id: "gold", name: "Gold", tint: "#8c6a10", foil: "metal",
+    cover: "linear-gradient(135deg, #fbecb4 0%, #dcb54c 28%, #fff6d2 48%, #c89a2c 70%, #f1d88c 100%)",
+    frame: "linear-gradient(135deg, #f6e3a0, #c7962a 35%, #fff3c4 55%, #b48422 80%, #ecd17c)" },
+  { id: "silver", name: "Silver", tint: "#626871", foil: "metal",
+    cover: "linear-gradient(135deg, #f3f4f6 0%, #c3c7cd 28%, #ffffff 48%, #a9aeb6 70%, #e6e8eb 100%)",
+    frame: "linear-gradient(135deg, #eceef1, #a7acb4 35%, #ffffff 55%, #9aa0a9 80%, #e2e4e8)" },
+  { id: "platinum", name: "Platinum", tint: "#4f6378", foil: "metal",
+    cover: "linear-gradient(135deg, #f4f7fa 0%, #d3dce6 22%, #fdfeff 42%, #c3cedb 62%, #eef2f7 80%, #d9e1ea 100%)",
+    frame: "linear-gradient(135deg, #e9eef4, #b9c6d4 30%, #ffffff 50%, #aebccb 75%, #e4eaf1)" },
+  { id: "aurora", name: "Aurora", tint: "#5a54b0", foil: "holo",
+    cover: "linear-gradient(120deg, #ffd3ec 0%, #d7e3ff 25%, #c9fbef 50%, #fff4c2 72%, #f1d2ff 100%)",
+    frame: "linear-gradient(120deg, #ff9ad5, #8fb3ff 25%, #7ef2d4 50%, #ffe27a 75%, #d59bff)" },
+  { id: "nebula", name: "Nebula", tint: "#7a3f9c", foil: "holo",
+    cover: "linear-gradient(140deg, #e9d2ff 0%, #ffd0e6 30%, #cfe0ff 55%, #d7c6ff 78%, #ffc9dc 100%)",
+    frame: "linear-gradient(140deg, #b46bff, #ff7fb8 30%, #6f9bff 55%, #9d72ff 78%, #ff8fb6)" },
+  { id: "prism", name: "Prism", tint: "#2f6f87", foil: "holo",
+    cover: "linear-gradient(110deg, #d4f6ff 0%, #e2ffd6 22%, #fff2c9 44%, #ffd6d6 66%, #e3d6ff 88%, #d4f6ff 100%)",
+    frame: "linear-gradient(110deg, #5fd6ff, #9bf27a 22%, #ffd75a 44%, #ff8a8a 66%, #a98bff 88%, #5fd6ff)" },
 ];
+export const cardColor = (m: { look?: Module["look"] }): CardColor | undefined => (m.look?.color ? CARD_COLORS.find((x) => x.id === m.look!.color) : undefined);
 /** A card's family: from its kind (which every card has once loaded; older cards get theirs from their type). Its
  *  colour is the family's, or the one the teacher gave it. */
 export const suitOfCard = (m: Pick<Module, "type" | "kind" | "attachments" | "poll" | "questions"> & { look?: Module["look"] }): (typeof SUITS)[number] => {
   const suit = suitOfKind(kindOf(m));
-  const c = m.look?.color ? CARD_COLORS.find((x) => x.id === m.look!.color) : undefined;
+  const c = cardColor(m);
   return c ? { ...suit, tint: c.tint, cover: c.cover } : suit;
 };
 

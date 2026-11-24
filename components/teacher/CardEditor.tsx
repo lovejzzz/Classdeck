@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CARD_SIZE, formatSize, heroOf, hostOf } from "@/lib/cards";
-import { CardLookMenu } from "./CardLookMenu";
+import { LookPanel, LookTrigger } from "./CardLookMenu";
 import { audienceStudents, groupByRef, groupsOf, studentsOf, uid } from "@/lib/profile";
 import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { DueCalendar } from "./DueCalendar";
@@ -35,9 +35,10 @@ function TiltPreview({ m, onLook }: { m: Module; onLook?: (look: Module["look"])
   const { w, h } = CARD_SIZE.deck;
   // A card whose video or recording plays here holds still, so its controls are easy to hit.
   const still = playableArt(heroOf(m));
+  const [menu, setMenu] = useState(false);
   return (
     <div
-      className="group/look relative mx-auto [perspective:900px]"
+      className="group/look relative z-10 mx-auto [perspective:900px]"
       style={{ width: w, height: h }}
       onPointerMove={(e) => {
         if (still) return;
@@ -50,10 +51,12 @@ function TiltPreview({ m, onLook }: { m: Module; onLook?: (look: Module["look"])
         if (ref.current) ref.current.style.transform = "";
       }}
     >
-      <div ref={ref} className="h-full w-full rounded-[14px] shadow-[0_18px_36px_-16px_rgba(20,20,18,0.35)] transition-transform duration-300 ease-[var(--ease-spring)]">
+      <div ref={ref} className="relative h-full w-full rounded-[14px] shadow-[0_18px_36px_-16px_rgba(20,20,18,0.35)] transition-transform duration-300 ease-[var(--ease-spring)]">
         <CardFace m={m} index={0} playable />
+        {/* The ⋮ is on the card, so it tilts with it. */}
+        {onLook && <LookTrigger open={menu} onToggle={() => setMenu((v) => !v)} />}
       </div>
-      {onLook && <CardLookMenu m={m} onLook={onLook} />}
+      {onLook && menu && <LookPanel m={m} onLook={onLook} onClose={() => setMenu(false)} />}
     </div>
   );
 }

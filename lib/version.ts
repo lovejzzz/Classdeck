@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.90",
+    date: "2026-11-24",
+    changes: [
+      "Inbox: one button at the top of a course (in place of the bell) counts new messages and new class activity together. It opens a drawer: on the left, All, Messages (every conversation, from all your courses), each kind of notification, your courses, and Notify me about; on the right, the list, or a conversation to read and answer right there. New message is at the top. The Inbox in the photo’s menu is still there on pages without one.",
+      "Notifications start with only Handed in on for teachers (Feedback for students); turn on Mentions, Discussions or Progress in Notify me about. Messages are always counted. @mentions and markdown read as plain words in the list.",
+      "A card’s ⋮ is a quiet button on the card itself (it tilts with it), and its menu opens beside the card, not over it: Picture, then twelve colours, three to a row: six soft washes, gold, silver and platinum, and three holographic foils (Aurora, Nebula, Prism). Metal and foil cards have an edge of their own.",
+    ],
+  },
+  {
     version: "0.1.89",
     date: "2026-11-24",
     changes: [

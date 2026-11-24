@@ -1297,7 +1297,7 @@
        "id": "m-q1tpl-inbox",
        "type": "read",
        "title": "Messages",
-       "body": "Every conversation is in your **Inbox**: click your photo at the top right. A red number on the photo says how many messages are new.\n\n- Press **New message** and pick a student, from any of your courses. Or use **Message** beside a student in Students.\n- Students write to you the same way, from the Inbox under their photo.\n- Students can also message each other. To turn that off for a class, untick **Students can message each other** in Settings. Messages between students are private to them.\n\n> A message is private to the two people in it. For something the whole class should see, post it on a Discussion card.",
+       "body": "Every conversation is in your **Inbox**: the Inbox button at the top right of a course. Its number counts new messages and new class activity together; Messages on its left lists every conversation, from all your courses.\n\n- Press **New message** and pick a student, from any of your courses. Or use **Message** beside a student in Students.\n- Students write to you the same way, from the Inbox at the top of their board.\n- Students can also message each other. To turn that off for a class, untick **Students can message each other** in Settings. Messages between students are private to them.\n\n> A message is private to the two people in it. For something the whole class should see, post it on a Discussion card.",
        "audience": {
         "kind": "all"
        },
@@ -1362,7 +1362,7 @@
        "id": "m-q1tpl-watch",
        "type": "read",
        "title": "Who needs you",
-       "body": "The Students tab has your class list on the left. Pick **Whole class** to see a lesson: who needs attention (Overdue, Ready for your feedback, Low quiz scores, Haven't started, Stalled; press Remind to send a short note), every student's cards, and its discussions. Pick a **student** for their whole course: work waiting for you, week by week, scores and your feedback. Tags beside each name say who needs you.\n\nOn the Map, **Where students are** shows who is on which card, and how many took each answer.\n\nThe bell at the top (Class activity) lists what students did, as it happens.\n\n> This course's eight demo students are part-way through, so these lists aren't empty. Have a look.",
+       "body": "The Students tab has your class list on the left. Pick **Whole class** to see a lesson: who needs attention (Overdue, Ready for your feedback, Low quiz scores, Haven't started, Stalled; press Remind to send a short note), every student's cards, and its discussions. Pick a **student** for their whole course: work waiting for you, week by week, scores and your feedback. Tags beside each name say who needs you.\n\nOn the Map, **Where students are** shows who is on which card, and how many took each answer.\n\nThe Inbox at the top lists what students did, as it happens: handed in, discussions, progress, and @mentions of you.\n\n> This course's eight demo students are part-way through, so these lists aren't empty. Have a look.",
        "audience": {
         "kind": "all"
        },

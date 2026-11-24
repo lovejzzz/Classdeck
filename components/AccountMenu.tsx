@@ -9,7 +9,7 @@ import { Icon } from "./Icon";
 type Me = { kind: "teacher" | "student" | null; name?: string; email?: string; picture?: string | null; courseId?: string; studentId?: string; courseTitle?: string };
 
 /** The signed-in person's photo (or initial) with a small menu: who they are, and Sign out. Shows nothing when signed out. */
-export function AccountMenu({ className = "" }: { className?: string }) {
+export function AccountMenu({ className = "", inboxElsewhere = false }: { className?: string; /** The page has its own Inbox button: no count on the photo, no Inbox in the menu. */ inboxElsewhere?: boolean }) {
   const [me, setMe] = useState<Me | null>(null);
   const [open, setOpen] = useState(false);
   const onBoard = usePathname()?.startsWith("/learn/") ?? false;
@@ -30,7 +30,7 @@ export function AccountMenu({ className = "" }: { className?: string }) {
     const t = setInterval(() => { if (document.visibilityState === "visible") loadInbox(); }, 30_000);
     return () => clearInterval(t);
   }, [me?.kind, loadInbox]);
-  const unread = inbox?.unread ?? 0;
+  const unread = inboxElsewhere ? 0 : inbox?.unread ?? 0;
   useEffect(() => {
     if (!open) return;
     const off = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
@@ -68,10 +68,10 @@ export function AccountMenu({ className = "" }: { className?: string }) {
             </div>
           </div>
           <div className="my-1 border-t border-line" />
-          <button role="menuitem" onClick={() => { setOpen(false); setInboxOpen(true); loadInbox(); }} className="press flex w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-lane">
+          {!inboxElsewhere && <button role="menuitem" onClick={() => { setOpen(false); setInboxOpen(true); loadInbox(); }} className="press flex w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-lane">
             <span className="flex-1">Inbox</span>
             {unread > 0 && <span className="mono rounded-full bg-[#4b56a8] px-1.5 text-[11px] text-white">{unread}</span>}
-          </button>
+          </button>}
           {me.kind === "teacher" && <Link role="menuitem" href="/" onClick={() => setOpen(false)} className="press block rounded-lg px-2.5 py-2 text-[13px] hover:bg-lane">Your courses</Link>}
           {me.kind === "teacher" && <Link role="menuitem" href="/settings" onClick={() => setOpen(false)} className="press block rounded-lg px-2.5 py-2 text-[13px] hover:bg-lane">Settings</Link>}
           {me.kind === "student" && <Link role="menuitem" href={`/learn/${me.courseId}/${me.studentId}`} onClick={() => setOpen(false)} className="press block rounded-lg px-2.5 py-2 text-[13px] hover:bg-lane">My cards</Link>}

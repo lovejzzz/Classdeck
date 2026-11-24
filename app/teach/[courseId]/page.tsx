@@ -10,7 +10,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
-import { NotificationCenter, type Note } from "@/components/NotificationCenter";
+import { InboxCenter } from "@/components/InboxCenter";
+import type { Note } from "@/components/NotificationCenter";
 import { Shortcuts } from "@/components/ShortcutHelp";
 import { Deck } from "@/components/teacher/Deck";
 import { Settings } from "@/components/teacher/Settings";
@@ -41,7 +42,7 @@ const KIND: Record<ClassEvent["kind"], { icon: string; tint: string }> = {
 
 /** The bell's sections for a teacher, each of which can be turned off. */
 const TEACHER_SECTIONS = [
-  { id: "messages", label: "Messages", hint: "Students writing to you, and @mentions of you" },
+  { id: "mentions", label: "Mentions", hint: "@mentions of you in discussions" },
   { id: "handins", label: "Handed in", hint: "Work waiting for your feedback" },
   { id: "discussion", label: "Discussions", hint: "Posts and replies on discussion cards" },
   { id: "progress", label: "Progress", hint: "Cards finished, answers (and wrong ones), quizzes" },
@@ -137,7 +138,7 @@ export default function TeachPage() {
       groupLabel: studentName(e.studentId),
       source: one ? moduleOf(e.moduleId)?.m.title ?? "" : lessonsHit.length === 1 ? lessonsHit[0]! : `${lessonsHit.length} lessons`,
       // Its section: work handed in, a discussion (a mention of you is a message), or progress (answers, quizzes, done).
-      cat: r.length === 1 && handIn(e) ? "handins" : e.kind === "post" && e.text.startsWith("Mentioned you") ? "messages" : e.kind === "post" || e.kind === "studio" || e.kind === "feedback" ? "discussion" : "progress",
+      cat: r.length === 1 && handIn(e) ? "handins" : e.kind === "post" && e.text.startsWith("Mentioned you") ? "mentions" : e.kind === "post" || e.kind === "studio" || e.kind === "feedback" ? "discussion" : "progress",
       icon: KIND[wrong.length ? "wrong" : e.kind].icon,
       tint: KIND[wrong.length ? "wrong" : e.kind].tint,
       title: studentName(e.studentId),
@@ -189,16 +190,16 @@ export default function TeachPage() {
             ]}
             extra={tab === "map" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s class session" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
-          <NotificationCenter
-            title="Class activity"
-            notes={notes}
+          {/* The Inbox: messages (from every course) and this course's notifications. Messages show as conversations, so
+              the notes about new messages aren't listed twice. */}
+          <InboxCenter
+            courseId={courseId}
+            courseTitle={state.course.title}
+            notes={notes.filter((n) => !n.id.startsWith("msg:"))}
             sections={TEACHER_SECTIONS}
-            muteKey="notify-off:teacher"
+            muteKey="notify-off:teacher:v2"
+            defaultOn={["handins"]}
             emptyText="You’re all caught up"
-            modes={[
-              { id: "stack", label: "Stack" },
-              { id: "student", label: "By student", groupBy: (n) => ({ key: n.group, label: n.groupLabel, avatar: true }) },
-            ]}
             onClear={() => {
               const now = Date.now();
               try {
@@ -217,7 +218,7 @@ export default function TeachPage() {
               setSel({ sid: ev.studentId, mid: ev.moduleId });
             }}
           />
-          <AccountMenu />
+          <AccountMenu inboxElsewhere />
           {courseId === "demo" && <button
             onClick={async () => {
               if (!confirm("Restore the sample data? All edits and student work will be cleared.")) return;
