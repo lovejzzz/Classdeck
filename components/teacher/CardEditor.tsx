@@ -375,7 +375,7 @@ export function CardEditor({
                     <Seg value={m.writers ?? "each"} options={FILLERS.map(([v, l]) => [v, l] as [string, string])} onPick={(v) => set({ writers: v as "each" | "group" | "class" })} />
                   </div>
                   <p className="mt-1.5 text-[12px] leading-snug text-ink-3">
-                    {(m.writers ?? "each") === "each" ? "Your text above is where each student starts. They fill in their own copy and hand it in; it waits for your feedback in Grades and Students, where you can comment on any passage."
+                    {(m.writers ?? "each") === "each" ? "Your text above is where each student starts. They fill in their own copy and hand it in; it waits for your feedback in Students, where you can comment on any passage."
                       : m.writers === "group" ? "Each group shares one copy and fills it in together, live, each with their cursor and name. Anyone in the group hands it in for the whole group."
                       : "The whole class shares one copy and fills it in together, live: good for a class table of results. Each student presses Hand in for themselves."}
                     {" "}History keeps a version every few minutes, with who wrote in it.

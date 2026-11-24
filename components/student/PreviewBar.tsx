@@ -53,7 +53,7 @@ export function PreviewBar({ courseId, studentId, students, onReset, board = fal
             )}
           </select>
         </label>
-        <span className="hidden text-[12px] text-[#7a5a00]/80 md:inline">{demo ? "Progress is kept for next time. Never graded; no one is notified." : isDemoStudent(studentId) ? "A demo student: what you do is kept, like a real student’s, and shows in Grades." : "Try anything. Nothing here is saved or graded, and no one is notified."}</span>
+        <span className="hidden text-[12px] text-[#7a5a00]/80 md:inline">{demo ? "Progress is kept for next time. Never graded; no one is notified." : isDemoStudent(studentId) ? "A demo student: what you do is kept, like a real student’s, and shows in Students." : "Try anything. Nothing here is saved or graded, and no one is notified."}</span>
         <span className="flex-1" />
         <button
           onClick={async () => {

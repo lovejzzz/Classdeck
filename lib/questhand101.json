@@ -34,7 +34,7 @@
        "id": "m-q1tpl-tour",
        "type": "read",
        "title": "Watch: a 30-second tour",
-       "body": "The places you'll use most: the Map, Students and Grades (Settings is the fourth tab).",
+       "body": "The places you'll use most: the Map and Students (Settings is the third tab).",
        "audience": {
         "kind": "all"
        },
@@ -140,7 +140,7 @@
          "id": "q-q1tpl-2-2",
          "text": "Where do you see every card of the course at once, with the lines between them?",
          "options": [
-          "Grades",
+          "Settings",
           "Student View",
           "The Map"
          ],
@@ -846,7 +846,7 @@
        "id": "m-q1tpl-keys",
        "type": "read",
        "title": "Keyboard shortcuts",
-       "body": "Press ? on the course page for the full list. The ones you'll use most:\n\n- 1 to 4: Map, Students, Grades, Settings.\n- n: a new card in today's lesson.\n- /: find a card.\n- In a card's panel, [ and ] go to the previous and next card.\n- On the map, the arrow keys move between cards, and Enter opens one.",
+       "body": "Press ? on the course page for the full list. The ones you'll use most:\n\n- 1 to 3: Map, Students, Settings.\n- n: a new card in today's lesson.\n- /: find a card.\n- In a card's panel, [ and ] go to the previous and next card.\n- On the map, the arrow keys move between cards, and Enter opens one.",
        "audience": {
         "kind": "all"
        },
@@ -904,7 +904,7 @@
        "id": "m-q1tpl-who-writes",
        "type": "read",
        "title": "Worksheets",
-       "body": "Students only ever read a Content card. When they should write, make a Question card and pick **Worksheet** under How students answer. Your text is the worksheet: headings, prompts, a table with empty cells.\n\n**Who fills it in** has three choices:\n\n- **Each student**: each fills in their own copy (tables too) and presses **Hand in**.\n- **Each group** and **Whole class**: one shared copy, filled in together. More on the card after next.\n\nTheir copy then waits for your feedback in Grades and Students. Select any words in it and press **Comment**: the student sees your comment on those words and can reply.\n\n> The next card is one. Try it.",
+       "body": "Students only ever read a Content card. When they should write, make a Question card and pick **Worksheet** under How students answer. Your text is the worksheet: headings, prompts, a table with empty cells.\n\n**Who fills it in** has three choices:\n\n- **Each student**: each fills in their own copy (tables too) and presses **Hand in**.\n- **Each group** and **Whole class**: one shared copy, filled in together. More on the card after next.\n\nTheir copy then waits for your feedback in Students. Select any words in it and press **Comment**: the student sees your comment on those words and can reply.\n\n> The next card is one. Try it.",
        "audience": {
         "kind": "all"
        },
@@ -1148,7 +1148,7 @@
        "id": "m-q1tpl-why-elective",
        "type": "read",
        "title": "Why an elective?",
-       "body": "An elective is a lesson students choose to take (or not). Make one from a lesson's ⋯ menu: Make it an elective. Students see it in its week on their board, with its cards face down, and press Choose.\n\nIn Students → Electives, set how many electives each student takes.",
+       "body": "An elective is a lesson students choose to take (or not). Make one from a lesson's ⋯ menu: Make it an elective. Students see it in its week on their board, with its cards face down, and press Choose.\n\nIn Settings → Electives, set how many electives each student takes.",
        "audience": {
         "kind": "all"
        },
@@ -1271,7 +1271,7 @@
        "id": "m-q1tpl-class-list",
        "type": "read",
        "title": "Your class list",
-       "body": "In Students, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nStudents → Groups lists the groups you've made on cards, to change or remove.\n\nTwo students in one class can't share a name, since classmates find each other by name (to @mention someone, in groups and in messages). If someone joins with a name a classmate already has, they're asked to add something, like a last initial.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
+       "body": "In Students → Class list, groups and demo students, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nStudents → Class list, groups and demo students lists the groups you've made on cards, to change or remove.\n\nTwo students in one class can't share a name, since classmates find each other by name (to @mention someone, in groups and in messages). If someone joins with a name a classmate already has, they're asked to add something, like a last initial.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
        "audience": {
         "kind": "all"
        },
@@ -1284,7 +1284,7 @@
        "id": "m-q1tpl-demo-student",
        "type": "read",
        "title": "Demo students",
-       "body": "Demo students are made-up students on your class list, for you to try the course as. **Students → Demo students**: type a name (or leave it, for Demo Student A, B, C…) and press **Add a demo student**. Add as many as you need. This course has eight.\n\nOpen **Student View** and pick one: you act as them, and what you do is kept, like a real student's. It shows in Grades and Students, in groups and discussions, ready for your feedback. **Start over** clears their work. They never get email, and once real students join, class numbers leave them out.\n\nStudent View can also show **New student** (a blank test where nothing is saved) or any student in your class (a test on their board; nothing is saved).",
+       "body": "Demo students are made-up students on your class list, for you to try the course as. **Students → Class list, groups and demo students**: type a name (or leave it, for Demo Student A, B, C…) and press **Add a demo student**. Add as many as you need. This course has eight.\n\nOpen **Student View** and pick one: you act as them, and what you do is kept, like a real student's. It shows in Students, in groups and discussions, ready for your feedback. **Start over** clears their work. They never get email, and once real students join, class numbers leave them out.\n\nStudent View can also show **New student** (a blank test where nothing is saved) or any student in your class (a test on their board; nothing is saved).",
        "audience": {
         "kind": "all"
        },
@@ -1297,7 +1297,7 @@
        "id": "m-q1tpl-inbox",
        "type": "read",
        "title": "Messages",
-       "body": "Every conversation is in your **Inbox**: click your photo at the top right. A red number on the photo says how many messages are new.\n\n- Press **New message** and pick a student, from any of your courses. Or use **Message** beside a student in Students.\n- Students write to you the same way, from the Inbox under their photo.\n- Students can also message each other. To turn that off for a class, untick **Students can message each other** in Students. Messages between students are private to them.\n\n> A message is private to the two people in it. For something the whole class should see, post it on a Discussion card.",
+       "body": "Every conversation is in your **Inbox**: click your photo at the top right. A red number on the photo says how many messages are new.\n\n- Press **New message** and pick a student, from any of your courses. Or use **Message** beside a student in Students.\n- Students write to you the same way, from the Inbox under their photo.\n- Students can also message each other. To turn that off for a class, untick **Students can message each other** in Settings. Messages between students are private to them.\n\n> A message is private to the two people in it. For something the whole class should see, post it on a Discussion card.",
        "audience": {
         "kind": "all"
        },
@@ -1362,7 +1362,7 @@
        "id": "m-q1tpl-watch",
        "type": "read",
        "title": "Who needs you",
-       "body": "The Students tab lists who needs attention: Overdue, Ready for your feedback, Low quiz scores, Haven't started, Stalled. Press Remind to send a short note.\n\nOn the Map, **Where students are** shows who is on which card, and how many took each answer.\n\nThe bell at the top (Class activity) lists what students did, as it happens.\n\n> This course's eight demo students are part-way through, so these lists aren't empty. Have a look.",
+       "body": "The Students tab has your class list on the left. Pick **Whole class** to see a lesson: who needs attention (Overdue, Ready for your feedback, Low quiz scores, Haven't started, Stalled; press Remind to send a short note), every student's cards, and its discussions. Pick a **student** for their whole course: work waiting for you, week by week, scores and your feedback. Tags beside each name say who needs you.\n\nOn the Map, **Where students are** shows who is on which card, and how many took each answer.\n\nThe bell at the top (Class activity) lists what students did, as it happens.\n\n> This course's eight demo students are part-way through, so these lists aren't empty. Have a look.",
        "audience": {
         "kind": "all"
        },
@@ -1375,7 +1375,7 @@
        "id": "m-q1tpl-review",
        "type": "read",
        "title": "Watch: give feedback",
-       "body": "Work students hand in waits for you in Grades and Students.",
+       "body": "Work students hand in waits for you in Students: pick a student to see everything of theirs waiting for you.",
        "audience": {
         "kind": "all"
        },
@@ -1536,7 +1536,7 @@
          "id": "q-q1tpl-2-17",
          "text": "Where do you try the course as a student, with nothing graded?",
          "options": [
-          "Grades",
+          "The Map",
           "Settings",
           "Student View"
          ],
@@ -1546,7 +1546,7 @@
          "id": "q-q1tpl-2-18",
          "text": "A student handed in work. Where is it waiting?",
          "options": [
-          "Grades and Students, ready for your feedback",
+          "In Students, ready for your feedback",
           "In your email only",
           "Nowhere until they finish the course"
          ],
@@ -1568,7 +1568,7 @@
        "id": "m-q1tpl-go-over",
        "type": "read",
        "title": "Let's go over it",
-       "body": "No problem: these are the five things to remember.\n\n1. Answers deal cards; only students who pick an answer get its card.\n2. One answer can deal several cards.\n3. Student View is a safe test: nothing is graded.\n4. Handed-in work waits in Grades and Students.\n5. Feedback: one thing done well, one to try next.\n\nThen take the final check again.",
+       "body": "No problem: these are the five things to remember.\n\n1. Answers deal cards; only students who pick an answer get its card.\n2. One answer can deal several cards.\n3. Student View is a safe test: nothing is graded.\n4. Handed-in work waits in Students.\n5. Feedback: one thing done well, one to try next.\n\nThen take the final check again.",
        "audience": {
         "kind": "all"
        },

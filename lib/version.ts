@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.84",
+    date: "2026-11-23",
+    changes: [
+      "Students and Grades are one tab. On the left, the class list: Whole class, then each student with tags for what needs you (work to review, new messages, overdue, not started), a search, and Class list and groups.",
+      "Whole class is a lesson at a glance (pick the lesson at the top): who needs attention, everyone’s cards and the votes. Each discussion is folded to one line with its posts and replies until you open it.",
+      "A student is their whole course: work waiting for your feedback (open it to review), your feedback so far, week by week (every card as a square; click one to see their work), scores, and their skills next to yours. Try as them and Message are at the top.",
+      "Export in Whole class adds the whole course’s grades (CSV). Messages and Electives settings moved to Settings. Shortcuts: 1 Map, 2 Students, 3 Settings.",
+      "Questhand 101 says where things are now.",
+    ],
+  },
+  {
     version: "0.1.83",
     date: "2026-11-23",
     changes: [

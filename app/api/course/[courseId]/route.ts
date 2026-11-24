@@ -153,7 +153,7 @@ export async function GET(request: Request, { params }: Ctx) {
     if (!course) return Response.json({ error: "No such course" }, { status: 404 });
     if (!session || !canTeach(session, course)) return unauthorized("teacher");
     if (!testStudentFor(as) && !course.students.some((s) => s.id === as)) return Response.json({ error: "That student isn’t in this class" }, { status: 404 });
-    // A demo student on the class list is the teacher's own: what they do is real (kept, in Grades), not a sandbox.
+    // A demo student on the class list is the teacher's own: what they do is real (kept, and in Students), not a sandbox.
     if (isDemoStudent(as)) return view(request, courseId);
     return runPreview(previewKey(session, courseId, as), courseId, () => view(request, courseId), testStudentFor(as), as === DEMO_STUDENT.id);
   }

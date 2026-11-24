@@ -104,7 +104,25 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
       {/* Demo students: made-up students on the class list, for the teacher to try the course as. As many as they like. */}
       {!readOnly && <DemoStudents course={course} onChanged={onChanged} />}
 
-      {/* Messages: students write to the teacher (always), and to each other (the teacher's choice, on by default). */}
+      {/* Groups: made on cards, kept here to look over, change or remove. */}
+      <GroupingsList course={course} onChanged={onChanged} readOnly={readOnly} />
+
+        </>
+      ) : (
+        <>
+      <section className="card p-6">
+        <h3 className="text-[15px] font-medium">Course</h3>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-[13px]"><span className="text-ink-2">Course name</span>
+            <Clearable className="mt-1"><input defaultValue={course.title} placeholder="Course name" onBlur={(e) => e.target.value.trim() && e.target.value !== course.title && info({ title: e.target.value })} className="field" /></Clearable>
+          </label>
+          <label className="block text-[13px]"><span className="text-ink-2">Subtitle</span>
+            <Clearable className="mt-1"><input defaultValue={course.subtitle ?? ""} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field" /></Clearable>
+          </label>
+        </div>
+      </section>
+
+      {/* Messages (in Settings):  students write to the teacher (always), and to each other (the teacher's choice, on by default). */}
       <section className="card flex flex-wrap items-center gap-3 p-6">
         <span className="min-w-[14rem] flex-1">
           <span className="block text-[15px] font-medium">Messages</span>
@@ -117,9 +135,6 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
           Students can message each other
         </label>
       </section>
-
-      {/* Groups: made on cards, kept here to look over, change or remove. */}
-      <GroupingsList course={course} onChanged={onChanged} readOnly={readOnly} />
 
       {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
         <section className="card flex flex-wrap items-center gap-3 p-6">
@@ -136,20 +151,6 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
           </label>
         </section>
       )}
-        </>
-      ) : (
-        <>
-      <section className="card p-6">
-        <h3 className="text-[15px] font-medium">Course</h3>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="block text-[13px]"><span className="text-ink-2">Course name</span>
-            <Clearable className="mt-1"><input defaultValue={course.title} placeholder="Course name" onBlur={(e) => e.target.value.trim() && e.target.value !== course.title && info({ title: e.target.value })} className="field" /></Clearable>
-          </label>
-          <label className="block text-[13px]"><span className="text-ink-2">Subtitle</span>
-            <Clearable className="mt-1"><input defaultValue={course.subtitle ?? ""} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field" /></Clearable>
-          </label>
-        </div>
-      </section>
 
       <section className="card p-6">
         <div className="flex items-center gap-2">
@@ -289,7 +290,7 @@ function DemoStudents({ course, onChanged }: { course: Course; onChanged: () => 
       <div className="flex flex-wrap items-start gap-3">
         <span className="min-w-[14rem] flex-1">
           <span className="block text-[15px] font-medium">Demo students</span>
-          <span className="block text-[13px] text-ink-3">Made-up students on your class list, to try the course as in Student View. Add as many as you need and name them as you like. What you do as them is kept, like a real student’s: it shows in Grades and Students, in groups and discussions. They never get email, and once real students join, class numbers leave them out.</span>
+          <span className="block text-[13px] text-ink-3">Made-up students on your class list, to try the course as in Student View. Add as many as you need and name them as you like. What you do as them is kept, like a real student’s: it shows in Students, in groups and discussions. They never get email, and once real students join, class numbers leave them out.</span>
         </span>
         {demos.length > 0 && (
           <button onClick={async () => {

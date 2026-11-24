@@ -36,12 +36,12 @@ export function StudentViewButton({ courseId, students }: { courseId: string; st
       {open && (
         <div role="menu" className="pop absolute right-0 top-9 z-40 w-72 rounded-2xl border border-line bg-white p-2 shadow-[0_20px_50px_-18px_rgba(20,20,18,0.3)]">
           <div className="px-2 pb-1.5 pt-1 text-[12px] text-ink-3">See and try the course as a student. What you do as a demo student is kept; as anyone else it’s only a test, and nothing is saved.</div>
-          {/* Demo students: the two on the class list (their work is real, kept and in Grades), or a way to add them. */}
+          {/* Demo students: the two on the class list (their work is real, kept and in Students), or a way to add them. */}
           <div className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">Demo students</div>
           {demos.length ? demos.map((s) => (
             <Link role="menuitem" key={s.id} href={href(s.id)} className="press flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-[13px] hover:bg-lane">
               <Avatar name={s.name} size={24} />
-              <span className="min-w-0 flex-1"><span className="block truncate font-medium">{s.name}</span><span className="block text-[11.5px] text-ink-3">Act as them; their work is kept and shows in Grades</span></span>
+              <span className="min-w-0 flex-1"><span className="block truncate font-medium">{s.name}</span><span className="block text-[11.5px] text-ink-3">Act as them; their work is kept and shows in Students</span></span>
             </Link>
           )) : (
             <>

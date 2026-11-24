@@ -28,8 +28,12 @@ import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
 import { groupScore, treeView } from "@/lib/branching";
 
 export function Classroom({
-  courseId, state, lesson, connectors, sel, setSel, onMessage, readOnly = false,
+  courseId, state, lesson, connectors, sel, setSel, onMessage, readOnly = false, drawerOnly = false, extraExports = [],
 }: {
+  /** Show only the panel with a student's work on a card (the Students tab's student view opens work there). */
+  drawerOnly?: boolean;
+  /** More choices for the Export menu (the whole course's grades). */
+  extraExports?: [string, () => void][];
   /** A co-teacher who can only view: they see the class's work but don't give feedback, remind or fill in forms. */
   readOnly?: boolean;
   /** Open a conversation with a student (for cards with nothing to give feedback on). */
@@ -227,154 +231,8 @@ export function Classroom({
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        {/* What this page is, when the lesson has no goal of its own to show (as Grades says what it shows). */}
-        <p className="flex-1 text-[13px] text-ink-3">{lesson.goal || "Where each student is in this lesson, and who needs you. Click a card under a student to see their work."}</p>
-        <ExportMenu items={[
-          ["This lesson (CSV)", exportCsv],
-          ["All weeks (CSV)", exportAll],
-          ["All peer feedback (CSV)", exportFeedback],
-        ]} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          ["Cards done", `${totals.cards ? Math.round((totals.done / totals.cards) * 100) : 0}%`, `${totals.done} of ${totals.cards}`],
-          ["Started", `${real.length - notStarted.filter((st) => real.includes(st)).length}/${real.length}`, "students"],
-          ...(studioIds.size ? [["Posted to Studio", `${posted}/${course.students.length}`, "students"], ["Feedback given", `${feedbackTotal}`, `goal ${course.students.reduce((n, st) => n + feedbackGoal(st.id), 0)}`]] : []),
-        ].map(([k, v, sub], i) => (
-          <div key={k} className="rise card px-4 py-3" style={{ "--i": i } as React.CSSProperties}>
-            <div className="text-[12px] text-ink-3">{k}</div>
-            <div className="mt-1 flex items-baseline gap-2"><span className="font-mono text-[22px]">{v}</span><span className="text-[12px] text-ink-3">{sub}</span></div>
-          </div>
-        ))}
-      </div>
-
-      <section aria-label="Needs attention">
-        <h3 className="mb-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">Needs attention</h3>
-        {attention.every((a) => a.who.length === 0) ? (
-          <div className="pop card flex items-center gap-2 px-4 py-3 text-[13.5px]">{course.students.length ? <><StatusIcon status="done" size={15} /> Everyone is on track for this lesson.</> : <span className="text-ink-2">Nothing to show until students join.</span>}</div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {attention.filter((a) => a.who.length).map((a, i) => (
-              <div key={a.key} className="rise card p-4" style={{ "--i": i } as React.CSSProperties}>
-                <div className="flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-lane" style={{ color: a.tint }}><Icon name={a.icon} size={14} /></span>
-                  <span className="flex-1 text-[13.5px] font-medium">{a.title}</span>
-                  <span className="font-mono text-[18px]">{a.who.length}</span>
-                </div>
-                <p className="mt-1.5 text-[12.5px] text-ink-3">{a.hint}</p>
-                {!readOnly && (a.key === "late" || a.key === "start" || a.key === "stall") && (
-                  <RemindButton courseId={courseId} ids={a.who.map((st) => st.id)} names={a.who.length === 1 ? a.who[0].name : `${a.who.length} students`}
-                    text={a.key === "late" ? "You have a card past its due date. Can you finish it today?" : a.key === "start" ? `Time to start “${lesson.title}”. Open your first card when you can.` : "Pick up where you left off when you have a moment."} />
-                )}
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {a.who.map((st) => (
-                    <button key={st.id}
-                      onClick={() => {
-                        const mid = a.cell(st.id);
-                        if (mid) setSel({ sid: st.id, mid });
-                      }}
-                      className="press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
-                      {(() => { const g = a.key === "review" ? groupWork(st.id) : undefined; return g ? <><Icon name="users" size={13} className="ml-1 text-ink-3" />{g.name}</> : <><Avatar name={st.name} size={20} />{st.name}</>; })()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-      <div className="card overflow-x-auto">
-        <table className="w-full border-separate border-spacing-0 text-[13px]">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-10 border-b border-line bg-white px-4 py-3 text-left text-[12px] font-normal text-ink-3">Student</th>
-              {cards.map((m) => {
-                const who = course.students.filter((s) => visible[s.id].has(m.id));
-                const done = who.filter((s) => progress[s.id]?.[m.id]?.status === "done").length;
-                return (
-                  <th key={m.id} className="min-w-[6.5rem] border-b border-line px-2 py-3 text-left font-normal">
-                    <div className="flex items-center gap-1.5" style={{ color: suitOfCard(m).tint }}>
-                      <Icon name={faceMeta(m).icon} size={13} />
-                    </div>
-                    <div className="mt-1.5 max-w-28 truncate text-[12.5px] font-medium text-ink" title={m.title}>{m.title}</div>
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <div className="h-1 w-12 overflow-hidden rounded-full bg-lane">
-                        <div className="h-full rounded-full bg-ok transition-[width] duration-700" style={{ width: `${who.length ? (done / who.length) * 100 : 0}%` }} />
-                      </div>
-                      <span className="mono text-[11px]">{done}/{who.length}</span>
-                    </div>
-                  </th>
-                );
-              })}
-              {studioIds.size > 0 && (
-                <th className="min-w-[6rem] border-b border-line px-2 py-3 text-left font-normal">
-                  <div style={{ color: "#367195" }}><Icon name="message" size={13} /></div>
-                  <div className="mt-1.5 text-[12.5px] font-medium text-ink">Feedback given</div>
-                  <div className="mono mt-1 text-[11px]">goal up to 2</div>
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {course.students.map((s) => (
-              <tr key={s.id} className="group">
-                <td className="sticky left-0 z-10 whitespace-nowrap border-b border-line/70 bg-white px-4 py-1.5 group-last:border-b-0">
-                  <Link href={`/learn/${courseId}/${s.id}?preview=1`} target="_blank" className="inline-flex items-center gap-2 font-medium hover:underline" title="See this student’s view">
-                    <Avatar name={s.name} size={20} />
-                    {s.name}
-                  </Link>
-                  {s.demo && <span className="chip ml-2 h-5 bg-[#fff2c7] text-[10.5px] font-medium text-[#7a5a00]">Demo</span>}
-                  {groupName(s.id) && <span className="ml-2 text-[11px] text-ink-3">{groupName(s.id)}</span>}
-                </td>
-                {cards.map((m) => {
-                  if (!visible[s.id].has(m.id)) return <td key={m.id} className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0"><span className="block h-8 rounded-lg hatch" /></td>;
-                  const p = progress[s.id]?.[m.id];
-                  const status = p?.status ?? "todo";
-                  const tools = toolUse[s.id]?.[m.id];
-                  const active = sel?.sid === s.id && sel.mid === m.id;
-                  const shown = m.type === "quiz" ? p?.best ?? p?.score : p?.score;
-                  // A poll has no right answer: no score.
-                  const scored = m.questions && !isPoll(m) && shown !== undefined && (status === "done" || p?.best !== undefined);
-                  const late = isLate(m, p, now);
-                  const rv = p?.review;
-                  return (
-                    <td key={m.id} className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0">
-                      <button
-                        onClick={() => setSel(active ? null : { sid: s.id, mid: m.id })}
-                        aria-label={`${s.name}, ${m.title}, ${STATUS_LABEL[status]}`}
-                        className={`press flex h-8 w-full items-center gap-1.5 rounded-lg px-2 transition-colors duration-500 ${active ? "bg-ink text-white" : late ? "bg-bad/[0.06] hover:bg-bad/[0.1]" : status === "done" ? "bg-ok/[0.07] hover:bg-ok/[0.12]" : status === "doing" ? "bg-warn/[0.07] hover:bg-warn/[0.12]" : "hover:bg-lane"}`}
-                      >
-                        <StatusIcon status={status} size={13} />
-                        {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{shown}/{quizSet(m, s.id, p.attempt ?? 1).length}</span>}
-                        <span className="flex-1" />
-                        {late && <span className={`font-mono text-[10.5px] font-medium ${active ? "text-white" : "text-bad"}`}>late</span>}
-                        {m.form && (m.form.by === "student" ? p?.form : p?.updates?.some((u) => u.id === `form:${m.id}`)) && <span title={m.form.by === "student" ? "They sent the form" : "You filled in the form"} className={active ? "text-white/80" : "text-[#3d6f91]"}><Icon name="text" size={11} /></span>}
-                        {rv && reviewable(m) && <span title={rv.verdict === "revise" ? "You asked for a revision" : "You reviewed this"} className={active ? "text-white/80" : rv.verdict === "revise" ? "text-warn" : "text-ok"}><Icon name={rv.verdict === "revise" ? "reset" : "message"} size={11} /></span>}
-                        {tools ? <span className={`flex items-center gap-0.5 font-mono text-[11px] ${active ? "text-white/70" : "text-ink-3"}`}><Icon name="tool" size={10} />{tools}</span> : null}
-                      </button>
-                    </td>
-                  );
-                })}
-                {studioIds.size > 0 && (
-                  <td className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0">
-                    <span className={`flex h-8 items-center gap-1.5 rounded-lg px-2 font-mono text-[12px] ${feedbackGiven(s.id) >= feedbackGoal(s.id) ? "bg-ok/[0.07] text-ok" : "text-ink-2"}`} title="Given · marked helpful by the receiver">
-                      {feedbackGiven(s.id)}/{feedbackGoal(s.id)}
-                      {helpfulGiven(s.id) > 0 && <span className="text-[11px] text-ink-3">· {helpfulGiven(s.id)} helpful</span>}
-                    </span>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div>
-        {sel && selModule && selStudent && (
+  // A student's work on one card, in a panel at the right (opened from the grid, the lists, or a student's view).
+  const drawer = sel && selModule && selStudent ? (
           createPortal(
           <aside key={`${sel.sid}-${sel.mid}`} id="class-detail" aria-label="Student work"
             className="fixed bottom-0 right-0 top-0 z-40 flex w-full max-w-[28rem] flex-col border-l border-line bg-white shadow-[-24px_0_60px_-30px_rgba(20,20,18,0.35)]"
@@ -512,8 +370,158 @@ export function Classroom({
           </aside>,
           document.body,
           )
-        )}
+  ) : null;
+  // Only the panel: the Students tab shows a student of its own and opens their work here.
+  if (drawerOnly) return <>{drawer}</>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        {/* What this page is, when the lesson has no goal of its own to show . */}
+        <p className="flex-1 text-[13px] text-ink-3">{lesson.goal || "Where each student is in this lesson, and who needs you. Click a card under a student to see their work."}</p>
+        <ExportMenu items={[
+          ["This lesson (CSV)", exportCsv],
+          ["All weeks (CSV)", exportAll],
+          ["All peer feedback (CSV)", exportFeedback],
+          ...extraExports,
+        ]} />
       </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          ["Cards done", `${totals.cards ? Math.round((totals.done / totals.cards) * 100) : 0}%`, `${totals.done} of ${totals.cards}`],
+          ["Started", `${real.length - notStarted.filter((st) => real.includes(st)).length}/${real.length}`, "students"],
+          ...(studioIds.size ? [["Posted to Studio", `${posted}/${course.students.length}`, "students"], ["Feedback given", `${feedbackTotal}`, `goal ${course.students.reduce((n, st) => n + feedbackGoal(st.id), 0)}`]] : []),
+        ].map(([k, v, sub], i) => (
+          <div key={k} className="rise card px-4 py-3" style={{ "--i": i } as React.CSSProperties}>
+            <div className="text-[12px] text-ink-3">{k}</div>
+            <div className="mt-1 flex items-baseline gap-2"><span className="font-mono text-[22px]">{v}</span><span className="text-[12px] text-ink-3">{sub}</span></div>
+          </div>
+        ))}
+      </div>
+
+      <section aria-label="Needs attention">
+        <h3 className="mb-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">Needs attention</h3>
+        {attention.every((a) => a.who.length === 0) ? (
+          <div className="pop card flex items-center gap-2 px-4 py-3 text-[13.5px]">{course.students.length ? <><StatusIcon status="done" size={15} /> Everyone is on track for this lesson.</> : <span className="text-ink-2">Nothing to show until students join.</span>}</div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {attention.filter((a) => a.who.length).map((a, i) => (
+              <div key={a.key} className="rise card p-4" style={{ "--i": i } as React.CSSProperties}>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-lane" style={{ color: a.tint }}><Icon name={a.icon} size={14} /></span>
+                  <span className="flex-1 text-[13.5px] font-medium">{a.title}</span>
+                  <span className="font-mono text-[18px]">{a.who.length}</span>
+                </div>
+                <p className="mt-1.5 text-[12.5px] text-ink-3">{a.hint}</p>
+                {!readOnly && (a.key === "late" || a.key === "start" || a.key === "stall") && (
+                  <RemindButton courseId={courseId} ids={a.who.map((st) => st.id)} names={a.who.length === 1 ? a.who[0].name : `${a.who.length} students`}
+                    text={a.key === "late" ? "You have a card past its due date. Can you finish it today?" : a.key === "start" ? `Time to start “${lesson.title}”. Open your first card when you can.` : "Pick up where you left off when you have a moment."} />
+                )}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {a.who.map((st) => (
+                    <button key={st.id}
+                      onClick={() => {
+                        const mid = a.cell(st.id);
+                        if (mid) setSel({ sid: st.id, mid });
+                      }}
+                      className="press inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-white pl-1 pr-2.5 text-[12.5px] hover:border-line-strong">
+                      {(() => { const g = a.key === "review" ? groupWork(st.id) : undefined; return g ? <><Icon name="users" size={13} className="ml-1 text-ink-3" />{g.name}</> : <><Avatar name={st.name} size={20} />{st.name}</>; })()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+      <div className="card overflow-x-auto">
+        <table className="w-full border-separate border-spacing-0 text-[13px]">
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-10 border-b border-line bg-white px-4 py-3 text-left text-[12px] font-normal text-ink-3">Student</th>
+              {cards.map((m) => {
+                const who = course.students.filter((s) => visible[s.id].has(m.id));
+                const done = who.filter((s) => progress[s.id]?.[m.id]?.status === "done").length;
+                return (
+                  <th key={m.id} className="min-w-[6.5rem] border-b border-line px-2 py-3 text-left font-normal">
+                    <div className="flex items-center gap-1.5" style={{ color: suitOfCard(m).tint }}>
+                      <Icon name={faceMeta(m).icon} size={13} />
+                    </div>
+                    <div className="mt-1.5 max-w-28 truncate text-[12.5px] font-medium text-ink" title={m.title}>{m.title}</div>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <div className="h-1 w-12 overflow-hidden rounded-full bg-lane">
+                        <div className="h-full rounded-full bg-ok transition-[width] duration-700" style={{ width: `${who.length ? (done / who.length) * 100 : 0}%` }} />
+                      </div>
+                      <span className="mono text-[11px]">{done}/{who.length}</span>
+                    </div>
+                  </th>
+                );
+              })}
+              {studioIds.size > 0 && (
+                <th className="min-w-[6rem] border-b border-line px-2 py-3 text-left font-normal">
+                  <div style={{ color: "#367195" }}><Icon name="message" size={13} /></div>
+                  <div className="mt-1.5 text-[12.5px] font-medium text-ink">Feedback given</div>
+                  <div className="mono mt-1 text-[11px]">goal up to 2</div>
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {course.students.map((s) => (
+              <tr key={s.id} className="group">
+                <td className="sticky left-0 z-10 whitespace-nowrap border-b border-line/70 bg-white px-4 py-1.5 group-last:border-b-0">
+                  <Link href={`/learn/${courseId}/${s.id}?preview=1`} target="_blank" className="inline-flex items-center gap-2 font-medium hover:underline" title="See this student’s view">
+                    <Avatar name={s.name} size={20} />
+                    {s.name}
+                  </Link>
+                  {s.demo && <span className="chip ml-2 h-5 bg-[#fff2c7] text-[10.5px] font-medium text-[#7a5a00]">Demo</span>}
+                  {groupName(s.id) && <span className="ml-2 text-[11px] text-ink-3">{groupName(s.id)}</span>}
+                </td>
+                {cards.map((m) => {
+                  if (!visible[s.id].has(m.id)) return <td key={m.id} className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0"><span className="block h-8 rounded-lg hatch" /></td>;
+                  const p = progress[s.id]?.[m.id];
+                  const status = p?.status ?? "todo";
+                  const tools = toolUse[s.id]?.[m.id];
+                  const active = sel?.sid === s.id && sel.mid === m.id;
+                  const shown = m.type === "quiz" ? p?.best ?? p?.score : p?.score;
+                  // A poll has no right answer: no score.
+                  const scored = m.questions && !isPoll(m) && shown !== undefined && (status === "done" || p?.best !== undefined);
+                  const late = isLate(m, p, now);
+                  const rv = p?.review;
+                  return (
+                    <td key={m.id} className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0">
+                      <button
+                        onClick={() => setSel(active ? null : { sid: s.id, mid: m.id })}
+                        aria-label={`${s.name}, ${m.title}, ${STATUS_LABEL[status]}`}
+                        className={`press flex h-8 w-full items-center gap-1.5 rounded-lg px-2 transition-colors duration-500 ${active ? "bg-ink text-white" : late ? "bg-bad/[0.06] hover:bg-bad/[0.1]" : status === "done" ? "bg-ok/[0.07] hover:bg-ok/[0.12]" : status === "doing" ? "bg-warn/[0.07] hover:bg-warn/[0.12]" : "hover:bg-lane"}`}
+                      >
+                        <StatusIcon status={status} size={13} />
+                        {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{shown}/{quizSet(m, s.id, p.attempt ?? 1).length}</span>}
+                        <span className="flex-1" />
+                        {late && <span className={`font-mono text-[10.5px] font-medium ${active ? "text-white" : "text-bad"}`}>late</span>}
+                        {m.form && (m.form.by === "student" ? p?.form : p?.updates?.some((u) => u.id === `form:${m.id}`)) && <span title={m.form.by === "student" ? "They sent the form" : "You filled in the form"} className={active ? "text-white/80" : "text-[#3d6f91]"}><Icon name="text" size={11} /></span>}
+                        {rv && reviewable(m) && <span title={rv.verdict === "revise" ? "You asked for a revision" : "You reviewed this"} className={active ? "text-white/80" : rv.verdict === "revise" ? "text-warn" : "text-ok"}><Icon name={rv.verdict === "revise" ? "reset" : "message"} size={11} /></span>}
+                        {tools ? <span className={`flex items-center gap-0.5 font-mono text-[11px] ${active ? "text-white/70" : "text-ink-3"}`}><Icon name="tool" size={10} />{tools}</span> : null}
+                      </button>
+                    </td>
+                  );
+                })}
+                {studioIds.size > 0 && (
+                  <td className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0">
+                    <span className={`flex h-8 items-center gap-1.5 rounded-lg px-2 font-mono text-[12px] ${feedbackGiven(s.id) >= feedbackGoal(s.id) ? "bg-ok/[0.07] text-ok" : "text-ink-2"}`} title="Given · marked helpful by the receiver">
+                      {feedbackGiven(s.id)}/{feedbackGoal(s.id)}
+                      {helpfulGiven(s.id) > 0 && <span className="text-[11px] text-ink-3">· {helpfulGiven(s.id)} helpful</span>}
+                    </span>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {drawer}
 
       {lesson.modules.filter((m) => m.questions?.length).map((m) => (
         <section key={m.id} className="card p-5">
@@ -581,6 +589,10 @@ function WallPanel({ courseId, module: m, state, aiReady, readOnly = false }: { 
   const posts = state.posts.filter((p) => p.moduleId === m.id);
   const name = (id: string) => (id === "teacher" ? "Teacher" : course.students.find((s) => s.id === id)?.name ?? "");
   const pending = posts.filter((p) => p.approved === false).length;
+  // Folded until opened: a discussion's whole feed would push everything else down the page.
+  const [open, setOpen] = useState(false);
+  const replies = posts.reduce((n, p) => n + (p.comments?.length ?? 0), 0);
+  const writers = [...new Set(posts.map((p) => p.studentId))].filter((id) => id !== "teacher");
 
   async function summarize() {
     setBusy(true);
@@ -598,6 +610,20 @@ function WallPanel({ courseId, module: m, state, aiReady, readOnly = false }: { 
     );
     download(`${m.title} - wall.csv`, toCsv(rows), "text/csv");
   }
+
+  if (!open) return (
+    <section className="card flex flex-wrap items-center gap-3 p-4">
+      <span style={{ color: TYPE_META.wall.tint }}><Icon name="wall" size={15} /></span>
+      <button onClick={() => setOpen(true)} className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-[14px] font-medium">{m.title}</span>
+        <span className="block text-[12.5px] text-ink-3">
+          {posts.length ? `${posts.length} post${posts.length === 1 ? "" : "s"} · ${replies} repl${replies === 1 ? "y" : "ies"} · ${writers.length} of ${course.students.length} students posted` : "No posts yet"}
+          {pending > 0 && <span className="text-warn"> · {pending} waiting for approval</span>}
+        </span>
+      </button>
+      <button onClick={() => setOpen(true)} className="btn btn-ghost press h-8"><Icon name="chevron" size={12} /> Open the discussion</button>
+    </section>
+  );
 
   return (
     <section className="card p-5">
@@ -622,6 +648,7 @@ function WallPanel({ courseId, module: m, state, aiReady, readOnly = false }: { 
               <button onClick={() => setPresenting(true)} disabled={!posts.length} className="btn btn-dark press h-8"><Icon name="play" size={12} /> Present</button>
               {aiReady && <button onClick={summarize} disabled={busy || posts.length === 0} className="btn btn-ghost press h-8"><Icon name="sparkles" size={13} /> {busy ? "Reading…" : "Summary"}</button>}
               <button onClick={exportCsv} disabled={!posts.length} className="btn btn-ghost press h-8"><Icon name="download" size={13} /> CSV</button>
+              <button onClick={() => setOpen(false)} aria-label="Fold the discussion" title="Fold" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="chevron" size={13} className="rotate-180" /></button>
             </div>
             
             {error && <p className="rise mt-3 rounded-lg border border-bad/20 bg-bad/5 px-3 py-2 text-[13px] text-bad">{error}</p>}

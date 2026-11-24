@@ -5,14 +5,13 @@ import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { MarksContext } from "@/components/Marks";
 import { SignInNeeded } from "@/components/SignInNeeded";
 import { TeacherLive } from "@/components/LiveClass";
-import { Gradebook } from "@/components/teacher/Gradebook";
+import { StudentsPage } from "@/components/teacher/StudentsPage";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { NotificationCenter, type Note } from "@/components/NotificationCenter";
 import { Shortcuts } from "@/components/ShortcutHelp";
-import { Classroom } from "@/components/teacher/Classroom";
 import { Deck } from "@/components/teacher/Deck";
 import { Settings } from "@/components/teacher/Settings";
 import { InviteStudents } from "@/components/teacher/ShareDialog";
@@ -27,7 +26,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Conversation } from "@/components/MessageThread";
 
 // Map (the course as a card tree) is the default; List is the same cards in rows of weeks.
-const TABS = [["map", "Map"], ["students", "Students"], ["grades", "Grades"], ["settings", "Settings"]] as const;
+const TABS = [["map", "Map"], ["students", "Students"], ["settings", "Settings"]] as const;
 type Tab = (typeof TABS)[number][0];
 
 const KIND: Record<ClassEvent["kind"], { icon: string; tint: string }> = {
@@ -65,13 +64,16 @@ export default function TeachPage() {
   // The tab lives in the address, so Back returns to the previous tab and a reload stays put.
   const [tabParam, setTabParam] = useUrlState("tab");
   // "class" was its own tab before it joined Students; "plan" (the List) is part of the Map now.
-  const tab: Tab = tabParam === "class" ? "students" : TABS.some(([id]) => id === tabParam) ? (tabParam as Tab) : "map";
+  // Grades is part of Students now (a student's own view), as the class view was before.
+  const tab: Tab = tabParam === "class" || tabParam === "grades" ? "students" : TABS.some(([id]) => id === tabParam) ? (tabParam as Tab) : "map";
   // Every tab change is its own Back step, including going back to the map.
   const setTab = (t: Tab) => setTabParam(t === "map" ? null : t, { push: true, drop: ["run", "qr", ...(t === "map" ? [] : ["card"])] });
   const [picked, setPicked] = useState<string | null>(null);
   // The "No students yet" box, closed by the teacher (remembered per course on this device).
   const [hideStart, setHideStart] = useState(() => { try { return typeof window !== "undefined" && localStorage.getItem(`hide-start:${courseId}`) === "1"; } catch { return false; } });
   const [sel, setSel] = useState<{ sid: string; mid: string } | null>(null);
+  // Students tab: who is picked in its list ("class" for the whole class, "manage" for the class list and groups).
+  const [who, setWho] = useState("class");
   const seenKey = `seen-at:teacher:${courseId}`;
   const [seenAt, setSeenAt] = useState(() => (typeof window === "undefined" ? 0 : readSeen(seenKey)));
   const [inviting, setInviting] = useState(false);
@@ -183,8 +185,7 @@ export default function TeachPage() {
             list={[
               { keys: "1", label: "Map", run: () => setTab("map") },
               { keys: "2", label: "Students", run: () => setTab("students") },
-              { keys: "3", label: "Grades", run: () => setTab("grades") },
-              ...(viewer ? [] : [{ keys: "4", label: "Settings", run: () => setTab("settings") }]),
+              ...(viewer ? [] : [{ keys: "3", label: "Settings", run: () => setTab("settings") }]),
             ]}
             extra={tab === "map" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s class session" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
@@ -212,6 +213,7 @@ export default function TeachPage() {
               if (!ev || !found) return;
               setPicked(found.l.id);
               setTab("students");
+              setWho(ev.studentId);
               setSel({ sid: ev.studentId, mid: ev.moduleId });
             }}
           />
@@ -257,26 +259,6 @@ export default function TeachPage() {
             ))}
           </div>
 
-          {tab === "students" && lesson && course.students.length > 0 && (
-            <div className="relative">
-              <select
-                value={lesson.id}
-                onChange={(e) => {
-                  setPicked(e.target.value);
-                  setSel(null);
-                }}
-                aria-label="Choose a lesson"
-                className="field h-8 appearance-none py-0 pr-8"
-              >
-                {course.weeks.map((w) => (
-                  <optgroup key={w.id} label={w.title}>
-                    {w.lessons.map((l) => <option key={l.id} value={l.id}>{l.title}{l.id === course.currentLessonId ? " (today)" : ""}</option>)}
-                  </optgroup>
-                ))}
-              </select>
-              <Icon name="chevron" size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
-            </div>
-          )}
           <span className="flex-1" />
           {/* The Deck puts its undo, redo and save status here, in the row with the tabs. */}
           <div id="deck-status" className="flex items-center" />
@@ -316,9 +298,10 @@ export default function TeachPage() {
             </button>
           )}
           {tab === "map" && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} view="map" />}
-          {tab === "students" && lesson && (course.students.length > 0 || courseId === "demo") && <Classroom courseId={courseId} state={state} lesson={lesson} connectors={connectors} sel={sel} setSel={setSel} onMessage={viewer ? undefined : setTalkingTo} readOnly={viewer} />}
-          {tab === "students" && <div className={course.students.length ? "mt-8" : ""}><Settings part="students" course={course} readOnly={viewer} onInvite={() => setInviting(true)} onChanged={refresh} nudges={state.nudges} onMessage={setTalkingTo} /></div>}
-          {tab === "grades" && (course.students.length > 0 || courseId === "demo") && <Gradebook state={state} onReview={(sid, lid, mid) => { setPicked(lid); setTab("students"); setSel({ sid, mid }); }} />}
+          {tab === "students" && lesson && (
+            <StudentsPage courseId={courseId} state={state} connectors={connectors} lesson={lesson} setLesson={setPicked} who={who} setWho={setWho} sel={sel} setSel={setSel}
+              readOnly={viewer} onMessage={viewer ? undefined : setTalkingTo} onInvite={() => setInviting(true)} onChanged={refresh} />
+          )}
           {tab === "settings" && !viewer && <><Settings course={course} me={state.me} onChanged={refresh} /><SiteFooter /></>}
         </main>
       </div>
