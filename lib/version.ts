@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.82",
+    date: "2026-11-23",
+    changes: [
+      "A card group’s hand sits on a gentler arc: the cards lie on one curve, turning only a few degrees in all, a little more as the group holds more cards.",
+    ],
+  },
+  {
     version: "0.1.81",
     date: "2026-11-23",
     changes: [

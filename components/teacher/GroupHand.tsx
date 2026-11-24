@@ -36,7 +36,15 @@ export function GroupHand({ cards, selected, onSelect, onAdd }: {
   const n = cards.length + 1; // the add card is the last in the hand
   const mid = (n - 1) / 2;
   const step = n > 1 ? Math.min(88, (width - W - 24) / (n - 1)) : 0;
-  const tilt = n > 1 ? Math.min(9, 34 / (n - 1)) : 0;
+  // A gentle arc: the whole hand turns through only a few degrees, a little more as it holds more cards (at most 16°),
+  // and the cards sit on a circle that turn implies, so each card's tilt and its drop match.
+  const arc = n > 1 ? Math.min(4 + n * 1.6, 16) : 0;
+  const tilt = n > 1 ? arc / (n - 1) : 0;
+  const radius = tilt ? step / ((tilt * Math.PI) / 180) : 0;
+  const onArc = (d: number) => {
+    const t = (d * tilt * Math.PI) / 180;
+    return radius ? { x: radius * Math.sin(t), y: radius * (1 - Math.cos(t)) } : { x: d * step, y: 0 };
+  };
   const sel = cards.findIndex((c) => c.id === selected);
 
   return (
@@ -57,9 +65,10 @@ export function GroupHand({ cards, selected, onSelect, onAdd }: {
         const picked = !add && i === sel;
         const lifted = hover === i && !picked;
         const push = hover !== null && hover !== i ? Math.sign(i - hover) * 14 / (1 + Math.abs(i - hover) * 0.6) : 0;
-        const x = open ? d * step + push : d * 2;
-        const y = open ? (picked ? -26 : lifted ? -14 : Math.abs(d) * Math.abs(d) * 2.6) : 6;
-        const r = open ? (picked ? 0 : lifted ? d * tilt * 0.45 : d * tilt) : d * 1.5;
+        const at = onArc(d);
+        const x = open ? at.x + push : d * 2;
+        const y = open ? (picked ? -26 : lifted ? at.y - 14 : at.y) : 6;
+        const r = open ? (picked ? 0 : lifted ? d * tilt * 0.3 : d * tilt) : d * 1;
         const s = picked ? 1.07 : lifted ? 1.04 : 1;
         const z = picked ? 50 : lifted ? 40 : 10 + i;
         const style = {
