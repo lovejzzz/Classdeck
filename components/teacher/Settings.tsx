@@ -13,7 +13,7 @@ import { DeleteCourse } from "./DeleteCourse";
 import type { Course, CourseState, Nudge } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { GroupingsList } from "./Groupings";
-import { DEMO_STUDENTS } from "@/lib/shared";
+import { nextDemoName } from "@/lib/shared";
 
 /** The Settings tab (part "settings") and the Students tab (part "students") share this component and its helpers. */
 export function Settings({ course, onChanged, part = "settings", readOnly = false, onInvite, me, nudges = [], onMessage }: {
@@ -62,6 +62,10 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
                   <span className="block truncate text-[12.5px] text-ink-3">{st.demo ? "For you to try the course as. What you do as them is kept." : st.userId ? `${st.email ?? "Has an account"} · joined` : `${st.email ? `${st.email} · ` : ""}not joined yet`}</span>
                 </span>
                 {st.demo && <a href={`/learn/${course.id}/${st.id}?preview=1`} className="btn btn-ghost press h-8 px-2.5 text-[12px]"><Icon name="eye" size={12} /> Try as them</a>}
+                {st.demo && !readOnly && (
+                  <button onClick={async () => (await ask({ title: `Remove ${st.name}?`, body: "A demo student’s work goes with them.", confirm: "Remove", danger: true })) && removeStudent(st.id, st.name)}
+                    className="btn btn-quiet press h-8 px-2 text-[12px] hover:!text-bad" aria-label={`Remove ${st.name}`}><Icon name="x" size={12} /> Remove</button>
+                )}
                 {onMessage && (() => {
                   const unread = nudges.filter((n) => n.studentId === st.id && n.from === "student" && !n.read).length;
                   return (
@@ -95,48 +99,10 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
         ) : (
           <p className="mt-2 text-[13px] text-ink-3">No students yet.</p>
         )}
-        {!readOnly && (
-          <details className="mt-3 text-[13px]">
-            <summary className="cursor-pointer text-ink-3 hover:text-ink-2">Add students without email</summary>
-            <form className="mt-2 flex flex-wrap items-start gap-2" onSubmit={async (e) => {
-              e.preventDefault();
-              const ta = e.currentTarget.elements.namedItem("names") as HTMLTextAreaElement;
-              if (!ta.value.trim()) return;
-              const r = await op<{ added?: number }>(course.id, { op: "addStudents", names: ta.value });
-              ta.value = "";
-              onChanged();
-              toast(`Added ${r.added ?? 0} student${r.added === 1 ? "" : "s"}`, { icon: "users" });
-            }}>
-              <textarea name="names" rows={2} placeholder={"One name per line\nMia Chen\nLeo Park"} aria-label="Student names" className="field min-w-0 flex-1 resize-y" />
-              <button type="submit" className="btn btn-ghost press">Add</button>
-            </form>
-          </details>
-        )}
       </section>
 
-      {/* Demo students: two made-up students on the class list, for the teacher to try the course as. Off by default. */}
-      {!readOnly && (
-        <section className="card flex flex-wrap items-center gap-3 p-6">
-          <span className="min-w-[14rem] flex-1">
-            <span className="block text-[15px] font-medium">Demo students</span>
-            <span className="block text-[13px] text-ink-3">Add {DEMO_STUDENTS.map((d) => d.name).join(" and ")} to the class list, to try the course as them in Student View. What you do as them is kept, like a real student’s: it shows in Grades and Students, in groups and discussions, for you to review.</span>
-          </span>
-          {(() => {
-            const on = course.students.some((x) => x.demo);
-            return (
-              <button onClick={async () => {
-                if (on && !(await ask({ title: "Remove the demo students?", body: "Their work goes with them.", confirm: "Remove", danger: true }))) return;
-                const r = await op(course.id, { op: "setDemoStudents", on: !on });
-                if (r.ok === false) return toast(String(r.error ?? "That didn’t work"), { icon: "x", tone: "bad" });
-                onChanged();
-                toast(on ? "Removed the demo students" : "Added two demo students", { icon: "users" });
-              }} className={`btn press h-9 ${on ? "btn-quiet" : "btn-ghost"}`}>
-                <Icon name={on ? "x" : "plus"} size={13} /> {on ? "Remove demo students" : "Add demo students"}
-              </button>
-            );
-          })()}
-        </section>
-      )}
+      {/* Demo students: made-up students on the class list, for the teacher to try the course as. As many as they like. */}
+      {!readOnly && <DemoStudents course={course} onChanged={onChanged} />}
 
       {/* Messages: students write to the teacher (always), and to each other (the teacher's choice, on by default). */}
       <section className="card flex flex-wrap items-center gap-3 p-6">
@@ -300,5 +266,45 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
         </>
       )}
     </div>
+  );
+}
+
+/** Demo students: add one with a name of your choice (or the next Demo Student letter), or remove them all. */
+function DemoStudents({ course, onChanged }: { course: Course; onChanged: () => void }) {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const demos = course.students.filter((x) => x.demo);
+  const placeholder = nextDemoName([...course.students, ...(course.waiting ?? [])].map((x) => x.name));
+  async function add() {
+    setBusy(true);
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "addDemoStudent", name: name.trim() });
+    setBusy(false);
+    if (r.ok === false) return toast(String(r.error ?? "That didn’t work"), { icon: "x", tone: "bad" });
+    toast(`Added ${name.trim() || placeholder}`, { icon: "users" });
+    setName("");
+    onChanged();
+  }
+  return (
+    <section className="card p-6">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="min-w-[14rem] flex-1">
+          <span className="block text-[15px] font-medium">Demo students</span>
+          <span className="block text-[13px] text-ink-3">Made-up students on your class list, to try the course as in Student View. Add as many as you need and name them as you like. What you do as them is kept, like a real student’s: it shows in Grades and Students, in groups and discussions. They never get email, and once real students join, class numbers leave them out.</span>
+        </span>
+        {demos.length > 0 && (
+          <button onClick={async () => {
+            if (!(await ask({ title: `Remove all ${demos.length} demo student${demos.length === 1 ? "" : "s"}?`, body: "Their work goes with them.", confirm: "Remove", danger: true }))) return;
+            await op(course.id, { op: "setDemoStudents", on: false });
+            onChanged();
+            toast("Removed the demo students", { icon: "x", tone: "plain" });
+          }} className="btn btn-quiet press h-9 hover:!text-bad"><Icon name="x" size={13} /> Remove all</button>
+        )}
+      </div>
+      <form className="mt-3 flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (!busy) void add(); }}>
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder={placeholder} aria-label="Demo student’s name" className="field h-9 min-w-0 max-w-xs flex-1 py-0" />
+        <button type="submit" disabled={busy} className="btn btn-ghost press h-9"><Icon name="plus" size={13} /> Add a demo student</button>
+        {demos.length > 0 && <span className="text-[12.5px] text-ink-3">{demos.length} on the class list</span>}
+      </form>
+    </section>
   );
 }

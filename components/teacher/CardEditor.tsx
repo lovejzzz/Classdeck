@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CARD_SIZE, formatSize, heroAttachment, hostOf } from "@/lib/cards";
-import { studentsOf, uid } from "@/lib/profile";
+import { audienceStudents, groupByRef, groupsOf, studentsOf, uid } from "@/lib/profile";
 import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { isoDay } from "@/lib/grading";
 import { useShortcuts } from "@/lib/shortcuts";
@@ -26,10 +26,7 @@ import { uploadFile } from "@/lib/client";
 import { playableArt } from "../cards/PlayArt";
 import { Avatar, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
-import { signupGroupingId } from "@/lib/shared";
-
-/** The time, for grouping quick edits into one undo step (only ever read in event handlers). */
-const clock = () => Date.now();
+import { groupingsOf, signupGroupingId } from "@/lib/shared";
 
 /** A card preview that tilts toward the pointer, so teachers see exactly what students will hold. */
 function TiltPreview({ m }: { m: Module }) {
@@ -91,13 +88,15 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 }
 
 export function CardEditor({
-  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, onOpen, allCards, neighbors, onGo, back, course, onCourseChanged,
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, onOpen, allCards, neighbors, undoBar, onGo, back, course, onCourseChanged,
 }: {
   /** The course, for the groups a card can use (Each group); and refreshing it after groups change. */
   course?: Course;
   onCourseChanged?: () => unknown;
   /** Shown at the top of the panel: where this card sits in the course's card tree. */
   neighbors?: React.ReactNode;
+  /** The course's undo, redo and history, shown in the editor's top bar (they cover the card's changes too). */
+  undoBar?: React.ReactNode;
   /** Open another card (in any lesson): the card an answer deals. */
   onGo?: (id: string) => void;
   /** Came here from an answer on another card: a way back to it. */
@@ -142,52 +141,8 @@ export function CardEditor({
   /** Put a version of this card in place, in the latest copy of its lesson. */
   const put = (next: Module) => onChange({ ...lessonRef.current, modules: lessonRef.current.modules.map((x) => (x.id === next.id ? next : x)) });
 
-  // Undo and redo for this card only. Quick edits (typing) count as one step.
-  const hist = useRef<{ past: Module[]; future: Module[]; at: number }>({ past: [], future: [], at: 0 });
-  const [steps, setSteps] = useState({ undo: 0, redo: 0 });
-  const sync = () => setSteps({ undo: hist.current.past.length, redo: hist.current.future.length });
-  function record(prev: Module) {
-    const h = hist.current;
-    const t = clock();
-    if (t - h.at > 1000) h.past = [...h.past, prev].slice(-100);
-    h.at = t;
-    h.future = [];
-    sync();
-  }
-  function undo() {
-    const h = hist.current;
-    const prev = h.past.pop();
-    if (!prev) return;
-    h.future.push(m);
-    h.at = 0;
-    put(prev);
-    sync();
-  }
-  function redo() {
-    const h = hist.current;
-    const next = h.future.pop();
-    if (!next) return;
-    h.past.push(m);
-    h.at = 0;
-    put(next);
-    sync();
-  }
-  useEffect(() => {
-    if (!open) return;
-    const k = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
-      const t = e.target;
-      if (t instanceof Element && t.closest("input, textarea, select, [contenteditable=true]")) return;
-      e.preventDefault();
-      if (e.shiftKey) redo(); else undo();
-    };
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  });
-  const set = (patch: Partial<Module>) => {
-    record(m);
-    put({ ...m, ...patch });
-  };
+  // Changes go through the course's own undo and history (in the bar above the map), like every other edit.
+  const set = (patch: Partial<Module>) => put({ ...m, ...patch });
   const attachments = m.attachments ?? [];
   // An attachment opened to check it: a video or picture grown big, or a recording playing under its row.
   const [viewing, setViewing] = useState<{ a: Attachment; from: DOMRect; open: boolean } | null>(null);
@@ -210,6 +165,17 @@ export function CardEditor({
   const addAttachment = (a: Omit<Attachment, "id">) => set({ attachments: [...attachments, { ...a, id: uid("a-") }] });
   const a = m.audience;
   const chosen = studentsOf(a);
+  const chosenGroups = groupsOf(a).filter((ref) => !course || groupByRef(course, ref));
+  /** Some students: pick or unpick a student (by id) or a group (by "groupingId~groupId"). */
+  const pickSome = (ids: string[], groups: string[]) => set({ audience: { kind: "student", studentId: ids[0] ?? "", studentIds: ids, groups: groups.length ? groups : undefined } });
+  // The groups a card can go to: every grouping's groups that have someone in them.
+  const pickableGroups = course ? groupingsOf(course).flatMap((gs) => gs.groups.filter((g) => g.studentIds.length).map((g) => ({ ref: `${gs.id}~${g.id}`, name: g.name, of: gs.name, n: g.studentIds.length }))) : [];
+  const someLabel = (() => {
+    const names = [...chosenGroups.map((ref) => groupByRef(course!, ref)!.group.name), ...chosen.map((id) => students.find((s) => s.id === id)?.name ?? "a student")];
+    if (names.length <= 2) return names.join(" and ");
+    return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+  })();
+  const reach = course ? audienceStudents(course, a).filter((id) => students.some((s) => s.id === id)).length : chosen.length;
   const kind = kindOf(m);
   const older = olderSettings(m);
   // The answers (or score ranges) that deal this card, or the card group it's in: who gets it is set on the map.
@@ -253,8 +219,7 @@ export function CardEditor({
           <span className="font-medium">Card {position ? position.index + 1 : ""}</span>
           {position && <span className="text-ink-3"> of {position.total} · {position.lesson}</span>}
         </span>
-        <button onClick={undo} disabled={!steps.undo} aria-label="Undo" title="Undo (⌘Z)" className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><UndoArrow /></button>
-        <button onClick={redo} disabled={!steps.redo} aria-label="Redo" title="Redo (⇧⌘Z)" className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><UndoArrow flip /></button>
+        {undoBar && <span className="flex items-center">{undoBar}</span>}
         <button onClick={onDuplicate} className="btn btn-quiet press h-8 px-2"><Icon name="layers" size={13} /> Duplicate</button>
         <button onClick={onDelete} className="btn btn-quiet press h-8 px-2 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
         <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
@@ -505,7 +470,7 @@ export function CardEditor({
                 {a.kind === "branch" ? (
                   <>Only students on the “{a.variant}” path get this card (set up before paths were removed). <button onClick={() => set({ audience: { kind: "all" } })} className="underline underline-offset-2 hover:text-ink">Give it to everyone</button></>
                 ) : a.kind === "student" ? (
-                  chosen.length ? <>Only {chosen.length === 1 ? <span className="font-medium text-ink">{students.find((s) => s.id === chosen[0])?.name ?? "1 student"}</span> : <span className="font-medium text-ink">{chosen.length} students</span>} {chosen.length === 1 ? "gets" : "get"} this card.</>
+                  chosen.length || chosenGroups.length ? <>Only <span className="font-medium text-ink">{someLabel}</span> {chosen.length + chosenGroups.length === 1 ? "gets" : "get"} this card{chosenGroups.length ? <span className="text-ink-3"> ({reach} student{reach === 1 ? "" : "s"} now)</span> : null}.</>
                     : <span className="text-[#a0561f]">No one gets this card yet: pick who does.</span>
                 ) : dealtBy.length ? (
                   <>Students get it from {dealtBy.slice(0, 2).map((w, k) => (
@@ -515,17 +480,34 @@ export function CardEditor({
                   <>Everyone gets this card.</>
                 )}
                 {a.kind === "all" && !dealtBy.length && !sharedOnly(m, everyCard) && (
-                  <button onClick={() => set({ audience: { kind: "student", studentId: "", studentIds: [] } })} className="mt-1 block underline underline-offset-2 hover:text-ink">Only some students…</button>
+                  <button onClick={() => set({ audience: { kind: "student", studentId: "", studentIds: [] } })} className="mt-1 block underline underline-offset-2 hover:text-ink">Only some students or groups…</button>
                 )}
               </span>
             </div>
             {a.kind === "student" && (
               <div className="mt-2 pl-[34px]">
+                {pickableGroups.length > 0 && (
+                  <>
+                    <p className="mb-1 text-[11.5px] text-ink-3">Groups: whoever is in the group gets it, also if the group changes.</p>
+                    <div className="mb-2.5 flex flex-wrap gap-1.5" role="group" aria-label="Groups that get this card">
+                      {pickableGroups.map((g) => {
+                        const on = chosenGroups.includes(g.ref);
+                        return (
+                          <button key={g.ref} onClick={() => pickSome(chosen, on ? chosenGroups.filter((x) => x !== g.ref) : [...chosenGroups, g.ref])} aria-pressed={on} title={`${g.of}: ${g.n} student${g.n === 1 ? "" : "s"}`}
+                            className={`press inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12.5px] ${on ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>
+                            <Icon name="users" size={12} />{g.name}{on && <Icon name="check" size={11} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mb-1 text-[11.5px] text-ink-3">Students</p>
+                  </>
+                )}
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label="Students who get this card">
                   {students.map((s) => {
                     const on = chosen.includes(s.id);
                     return (
-                      <button key={s.id} onClick={() => { const ids = on ? chosen.filter((x) => x !== s.id) : [...chosen, s.id]; set({ audience: { kind: "student", studentId: ids[0] ?? "", studentIds: ids } }); }} aria-pressed={on}
+                      <button key={s.id} onClick={() => pickSome(on ? chosen.filter((x) => x !== s.id) : [...chosen, s.id], chosenGroups)} aria-pressed={on}
                         className={`press inline-flex h-7 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-[12.5px] ${on ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>
                         <Avatar name={s.name} size={20} />{s.name}{on && <Icon name="check" size={11} />}
                       </button>
@@ -539,11 +521,14 @@ export function CardEditor({
             <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3 text-[12.5px]">
               <span className="mr-1 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name="clock" size={12} /></span>
               <span className="mr-0.5 text-ink-2">Due</span>
-              <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="field h-8 w-[136px] px-2 py-0" />
+              {/* No due date is the default: picked until a date is set. */}
+              <button onClick={() => set({ due: undefined })} aria-pressed={!m.due}
+                className={`press inline-flex h-7 items-center whitespace-nowrap rounded-full border px-2.5 text-[12px] ${!m.due ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>No due date</button>
               {([["Today", 0], ["+3 days", 3], ["+1 week", 7]] as const).map(([label, n]) => (
-                <button key={label} onClick={() => set({ due: isoDay(n) })} className="btn btn-quiet press h-7 whitespace-nowrap px-1.5 text-[12px]">{label}</button>
+                <button key={label} onClick={() => set({ due: isoDay(n) })} aria-pressed={m.due === isoDay(n)}
+                  className={`press inline-flex h-7 items-center whitespace-nowrap rounded-full border px-2.5 text-[12px] ${m.due === isoDay(n) ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>{label}</button>
               ))}
-              {m.due && <button onClick={() => set({ due: undefined })} aria-label="Clear due date" className="btn btn-quiet press h-7 w-7 justify-center px-0"><Icon name="x" size={12} /></button>}
+              <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className={`field h-8 w-[136px] px-2 py-0 ${m.due ? "border-ink" : ""}`} />
             </div>
           </Panel>
 
@@ -565,14 +550,6 @@ export function CardEditor({
       {viewing && <MediaLift a={viewing.a} title={viewing.a.name || m.title} from={viewing.from} open={viewing.open} onClose={() => setViewing((v) => v && { ...v, open: false })} onGone={() => setViewing(null)} />}
     </aside>,
     document.body,
-  );
-}
-
-function UndoArrow({ flip = false }: { flip?: boolean }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={flip ? { transform: "scaleX(-1)" } : undefined}>
-      <path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
-    </svg>
   );
 }
 

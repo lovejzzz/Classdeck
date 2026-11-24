@@ -1,6 +1,7 @@
 import { unfinished } from "./kinds";
-import type { Audience, Lesson, Module, PresetId, Profile } from "./types";
+import type { Audience, Course, Lesson, Module, PresetId, Profile } from "./types";
 import { followUps, type TreeView } from "./branching";
+import { groupingsOf } from "./shared";
 
 export const PRESETS: Record<PresetId, Omit<Profile, "preset">> = {
   primary: { density: "spacious", autonomy: "sequential", horizon: "lesson", entry: "code" },
@@ -25,8 +26,23 @@ export function fromPreset(id: PresetId): Profile {
  */
 /** The students a card is only for (its audience is some students). */
 export const studentsOf = (a: Audience): string[] => (a.kind !== "student" ? [] : (a.studentIds ?? [a.studentId]).filter(Boolean));
+/** The groups a card is only for, as "groupingId~groupId". */
+export const groupsOf = (a: Audience): string[] => (a.kind !== "student" ? [] : a.groups ?? []);
+/** A group a card can go to: "groupingId~groupId" to the group, if it still exists. */
+export function groupByRef(course: Pick<Course, "groups" | "groupings">, ref: string) {
+  const [gs, g] = ref.split("~");
+  const grouping = groupingsOf(course).find((x) => x.id === gs);
+  const group = grouping?.groups.find((x) => x.id === g);
+  return group && grouping ? { grouping, group } : undefined;
+}
+/** Every student a some-students card reaches: those picked, and whoever is in a picked group now. */
+export function audienceStudents(course: Pick<Course, "groups" | "groupings">, a: Audience): string[] {
+  const out = new Set(studentsOf(a));
+  for (const ref of groupsOf(a)) for (const id of groupByRef(course, ref)?.group.studentIds ?? []) out.add(id);
+  return [...out];
+}
 
-export function visibleModules(lesson: Lesson, studentId: string, chosen: Record<string, string> = {}, tree?: TreeView): Module[] {
+export function visibleModules(lesson: Lesson, studentId: string, chosen: Record<string, string> = {}, tree?: TreeView, course?: Pick<Course, "groups" | "groupings">): Module[] {
   // An elective's cards are only on the board of students who chose it.
   if (lesson.elective && !chosen[`elective:${lesson.id}`]) return [];
   // Card trees: a follow-up card is only on the board of a student whose answer dealt it. Callers pass the course's
@@ -50,7 +66,8 @@ export function visibleModules(lesson: Lesson, studentId: string, chosen: Record
     if (hidden.has(m.id) && !dealt.has(m.id)) continue;
     if (a.kind === "all") out.push(m);
     else if (a.kind === "student") {
-      if (studentsOf(a).includes(studentId)) out.push(m);
+      // Picked by name, or in a picked group (the course's groups are needed to know who's in one).
+      if (studentsOf(a).includes(studentId) || (course && groupsOf(a).some((ref) => groupByRef(course, ref)?.group.studentIds.includes(studentId)))) out.push(m);
     } else {
       const recommended = lesson.branches[a.slot]?.[studentId] ?? firstVariant[a.slot];
       if (lesson.choiceSlots?.includes(a.slot)) {

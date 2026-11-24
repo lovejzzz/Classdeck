@@ -3,6 +3,21 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.79",
+    date: "2026-11-23",
+    changes: [
+      "One undo for the whole site: a card’s panel no longer has its own undo and redo. The course’s Undo, Redo and History sit at the top of the card’s panel too, and cover every change in it.",
+      "A card can go to whole groups: Only some students or groups… lists every group (from the course’s groupings and sign-up polls). Whoever is in a picked group gets the card, also when the group changes.",
+      "Due dates: No due date is a choice of its own, picked on every new card, beside Today, +3 days, +1 week and a date.",
+      "Demo students: add as many as you need and name them yourself (Students → Demo students, or Add a demo student in Student View). Remove one at a time or all at once; a demo student’s work goes with them.",
+      "Students: “Add students without email” is gone. Every student signs in with an email address, so they’re added by email (or join with the class code).",
+      "Delete a lesson or a whole week from its ⋯ menu (you’re asked first; students’ work stays saved).",
+      "Peer review on a discussion: a student in a small group replies to as many classmates as there are (a card asking for 2 in a group of 2 asks for 1). Students → Waiting for feedback and Owe feedback count discussions that ask for replies, as they did Collab Studio.",
+      "Map: a sign-up poll shows its groups on its card (it said Add its question). A post box in a group’s discussion says “your group”. Avatars of names ending in a single letter (Demo Student A) show that letter.",
+      "Questhand 101 is three weeks: who gets a card, one undo, deleting lessons, a group worksheet made from a sign-up poll, a card only for one group, and peer review with structured feedback in groups.",
+    ],
+  },
+  {
     version: "0.1.78",
     date: "2026-11-23",
     changes: [

@@ -126,7 +126,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   const [counts, setCounts] = useState({ undo: 0, redo: 0 });
   // The steps as state (for the history list), mirrored from the stack whenever it changes.
   const [steps, setSteps] = useState<{ label: string; when: number }[]>([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState<"bar" | "editor" | null>(null);
   const syncCounts = () => { setCounts({ undo: undoStack.current.length, redo: redoStack.current.length }); setSteps(undoStack.current.map(({ label, when }) => ({ label, when }))); };
   /** Remember a lesson as it was, for Undo. Quick edits to the same lesson count as one step. */
   function remember(next: Lesson) {
@@ -220,8 +220,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
-      // The card editor has its own undo for the card it shows.
-      if (openRef.current) return;
+      // One undo for everything, the card editor's changes included.
       // Text fields keep their own undo.
       const t = e.target;
       if (t instanceof Element && t.closest("input, textarea, select, [contenteditable=true]")) return;
@@ -429,6 +428,29 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     toast(`Duplicated ${what}`, { icon: "layers" });
   }
 
+  /** Delete a lesson or a whole week, after asking. It can't be undone; students' work on the cards stays saved. */
+  async function remove(what: "lesson" | "week", id: string, title: string, cards: number) {
+    const lessons = what === "week" ? course.weeks.find((x) => x.id === id)?.lessons.length ?? 0 : 1;
+    const n = (k: number, word: string) => `${k} ${word}${k === 1 ? "" : "s"}`;
+    const items = what === "week" ? [n(lessons, "lesson"), cards ? n(cards, "card") : ""].filter(Boolean) : cards ? [n(cards, "card")] : [];
+    const one = items.length === 1 && /^1 /.test(items[0]);
+    const ok = await ask({
+      title: `Delete “${title}”?`,
+      body: `${items.length ? `Its ${items.join(" and ")} ${one ? "goes" : "go"} with it. ` : ""}This can’t be undone. Students’ work on its cards stays saved.`,
+      confirm: "Delete", danger: true,
+    });
+    if (!ok) return;
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, what === "week" ? { op: "deleteWeek", weekId: id } : { op: "deleteLesson", lessonId: id });
+    if (r.ok === false) return toast(r.error ?? "That didn’t work", { icon: "x", tone: "bad" });
+    // Undo can't bring a deleted lesson back: steps that would change one are dropped.
+    const gone = new Set(what === "week" ? course.weeks.find((x) => x.id === id)?.lessons.map((l) => l.id) : [id]);
+    undoStack.current = undoStack.current.filter((u) => !u.lessons.some((l) => gone.has(l.id)));
+    redoStack.current = redoStack.current.filter((r) => !r.some((l) => gone.has(l.id)));
+    syncCounts();
+    await onRefresh();
+    toast(`Deleted “${title}”`, { icon: "trash", tone: "plain" });
+  }
+
   async function addLesson(weekId: string) {
     // The server names it by its place in the course and renumbers the "Lesson N"s after it.
     await op(course.id, { op: "addLesson", weekId });
@@ -465,11 +487,13 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
         toast(l.elective ? `“${l.title}” is required again` : `Students choose whether to take “${l.title}”`, { icon: "layers" });
       }],
       ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
+      ...(course.weeks.reduce((n, x) => n + x.lessons.length, 0) > 1 ? [["Delete lesson…", () => void remove("lesson", l.id, l.title, l.modules.filter((m) => m.type !== "group").length)] as [string, () => void]] : []),
       ...(l.modules.length ? [["Save lesson to my cards", () => saveToLibrary(null, l)] as [string, () => void]] : []),
       ["—", () => {}],
       [`Add a lesson to ${w.title.split(" · ")[0]}`, () => addLesson(w.id)],
       [`Rename ${w.title.split(" · ")[0]}`, () => setRenamingWeek(w.id)],
       [`Duplicate ${w.title.split(" · ")[0]}`, () => duplicate("duplicateWeek", w.id, `“${w.title}”`)],
+      ...(course.weeks.length > 1 ? [[`Delete ${w.title.split(" · ")[0]}…`, () => void remove("week", w.id, w.title, w.lessons.reduce((n, x) => n + x.modules.filter((m) => m.type !== "group").length, 0))] as [string, () => void]] : []),
     ];
     return (
       <span className="flex flex-none items-center gap-1.5" onPointerDown={(e) => e.stopPropagation()}>
@@ -503,24 +527,27 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   const cur = editing && lessonOf(editing.lessonId);
   const curModule = cur?.modules.find((m) => m.id === editing?.moduleId);
 
-  return (
-    <div>
-      {statusSlot && createPortal(
-        <span className="flex items-center gap-1 text-[12.5px] text-ink-3">
-          {!readOnly && (
-            <>
+  // Undo, redo and the history of changes: one set for the whole course, shown above the map and in the card editor.
+  const undoBar = (where: "bar" | "editor") => (
+    <>
               <button onClick={undo} disabled={!counts.undo} aria-label="Undo" title="Undo (⌘Z)" className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><UndoIcon /></button>
               <button onClick={redo} disabled={!counts.redo} aria-label="Redo" title="Redo (⇧⌘Z)" className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><UndoIcon flip /></button>
               {/* History: every change since the page opened; pick one to go back to before it. */}
               <span className="relative">
-                <button onClick={() => setHistoryOpen((o) => !o)} disabled={!steps.length} aria-expanded={historyOpen} aria-label="History of changes" title="History of changes"
+                <button onClick={() => setHistoryOpen((o) => (o === where ? null : where))} disabled={!steps.length} aria-expanded={historyOpen === where} aria-label="History of changes" title="History of changes"
                   className="btn btn-quiet press h-8 w-8 justify-center px-0 disabled:opacity-30"><Icon name="clock" size={15} /></button>
-                {historyOpen && steps.length > 0 && (
-                  <History steps={steps} onPick={(i) => { undoTo(i); setHistoryOpen(false); }} onClose={() => setHistoryOpen(false)} />
+                {historyOpen === where && steps.length > 0 && (
+                  <History steps={steps} onPick={(i) => { undoTo(i); setHistoryOpen(null); }} onClose={() => setHistoryOpen(null)} />
                 )}
               </span>
-            </>
-          )}
+    </>
+  );
+
+  return (
+    <div>
+      {statusSlot && createPortal(
+        <span className="flex items-center gap-1 text-[12.5px] text-ink-3">
+          {!readOnly && undoBar("bar")}
           <span className="ml-1 flex items-center gap-1.5" aria-live="polite">
             <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${saveError ? "bg-bad" : saving ? "bg-warn" : "bg-ok"}`} />
             {saveError && !saving ? (
@@ -615,6 +642,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           open={editorOpen}
           onChange={change}
           onClose={() => closeEditor()}
+          undoBar={readOnly ? undefined : undoBar("editor")}
           position={{ index: cur.modules.findIndex((x) => x.id === curModule.id), total: cur.modules.length, lesson: cur.title }}
           onPrev={at > 0 ? () => step(-1) : undefined}
           onNext={at >= 0 && at < order.length - 1 ? () => step(1) : undefined}

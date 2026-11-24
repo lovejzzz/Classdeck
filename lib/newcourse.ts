@@ -4,6 +4,7 @@ import { db } from "./store";
 import { randomCode } from "./uploads";
 import { DEFAULT_LEVELS } from "./skillsets";
 import { kindWeeks } from "./kinds";
+import { syncSignup } from "./shared";
 import type { Course, Lesson, Module, SessionPlan, Week } from "./types";
 import starter from "./questhand101.json";
 
@@ -63,5 +64,8 @@ export function giveStarterCourse(ownerId: string): Course {
     title: w.title,
     lessons: w.lessons.map((l): Lesson => ({ id: "", title: l.title, modules: l.modules, branches: {}, elective: l.elective, session: l.session })),
   }, w.title));
-  return makeCourse(ownerId, s.title, weeks, { subtitle: s.subtitle, electiveMin: s.electiveMin });
+  const course = makeCourse(ownerId, s.title, weeks, { subtitle: s.subtitle, electiveMin: s.electiveMin });
+  // A sign-up poll's groups exist from the start, so cards that use them (or go to one of them) find them.
+  for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) syncSignup(course, m);
+  return course;
 }

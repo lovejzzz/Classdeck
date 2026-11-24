@@ -142,8 +142,9 @@ export function Avatar({ name, size = 20 }: { name: string; size?: number }) {
       style={{ width: size, height: size, fontSize: size * 0.48 }}
       aria-hidden="true"
     >
-      {/* The first letter (skipping a leading @ or symbol), always a capital. */}
-      {(name.match(/\p{L}|\p{N}/u)?.[0] ?? "?").toUpperCase()}
+      {/* The first letter (skipping a leading @ or symbol), always a capital. A name ending in a single letter or number
+          (Demo Student A, Team 2) shows that instead, so names that start the same stay apart. */}
+      {(name.trim().match(/\s([\p{L}\p{N}])$/u)?.[1] ?? name.match(/\p{L}|\p{N}/u)?.[0] ?? "?").toUpperCase()}
     </span>
   );
 }

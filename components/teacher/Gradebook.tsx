@@ -30,7 +30,7 @@ export function Gradebook({ state, onReview }: { state: CourseState; onReview?: 
     const cards: { m: Module; week: string; lessonId: string }[] = [];
     for (const { w, l } of all) {
       const seen = new Set<string>();
-      for (const m of visibleModules(l, st.id, state.choices[st.id], tree)) {
+      for (const m of visibleModules(l, st.id, state.choices[st.id], tree, course)) {
         if (m.choice) {
           if (seen.has(m.choice.slot)) continue;
           seen.add(m.choice.slot);

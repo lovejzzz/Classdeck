@@ -851,6 +851,13 @@ async function main() {
     await A.op(gc, { op: "saveGrouping", grouping: { id: r.id, name: "Lab partners", groups: [{ id: red.id, name: "Red", studentIds: [st.Wes, st.Yan] }] } });
     check("changing the groups changes who's in a copy", (await yan.c.get(`/api/collab/${gc}?doc=${encodeURIComponent(`m-g1:g:${r.id}~${red.id}`)}&history=1`)).status === 200);
     check("a student can't change groups", (await wes.c.op(gc, { op: "saveGrouping", grouping: { name: "x", groups: [{ name: "a", studentIds: [] }] } })).ok !== true);
+    // A card only for a group: whoever is in it gets the card, as the group changes.
+    const lg = courseOf(await A.state(gc)).weeks[0].lessons[0];
+    await A.op(gc, { op: "saveLesson", lesson: { ...lg, modules: [...lg.modules, { id: "m-red", type: "read", kind: "content", title: "For Red", body: "hi", audience: { kind: "student", studentId: "", studentIds: [], groups: [`${r.id}~${red.id}`] }, tools: [], attachments: [] }] } });
+    const sees = async (who) => modulesOf(courseOf(await who.c.state(`${gc}?as=${who.id}`))).some((m) => m.id === "m-red");
+    check("a card for a group: its students get it", (await sees(wes)) && (await sees(yan)));
+    await A.op(gc, { op: "saveGrouping", grouping: { id: r.id, name: "Lab partners", groups: [{ id: red.id, name: "Red", studentIds: [st.Wes] }] } });
+    check("…and someone who leaves the group doesn't", (await sees(wes)) && !(await sees(yan)));
     await A.op(gc, { op: "deleteGrouping", id: r.id });
     const after = courseOf(await A.state(gc));
     check("removing groups: the cards go back to the course's groups", !(after.groupings ?? []).length && modulesOf(after).every((m) => !m.grouping));
@@ -987,7 +994,35 @@ async function main() {
     check("acting as a demo student in Student View", done.ok, done);
     check("…is kept for real (it's in the teacher's view)", (await A.state(dc)).progress?.[od.id]?.[card.id]?.status === "done");
     check("starting over clears a demo student's work", (await A.post(`/api/course/${dc}`, { op: "endPreview", as: od.id })).ok && !(await A.state(dc)).progress?.[od.id]?.[card.id]);
+    const named = await A.op(dc, { op: "addDemoStudent", name: "Rowan Test" });
+    check("a teacher adds a demo student with their own name", named.ok && (await roster()).some((x) => x.id === named.studentId && x.demo && x.name === "Rowan Test"), named);
+    const auto = await A.op(dc, { op: "addDemoStudent" });
+    check("…or without a name: the next letter", auto.ok && (await roster()).find((x) => x.id === auto.studentId)?.name === "Demo Student C");
+    check("names stay unique", (await A.op(dc, { op: "addDemoStudent", name: "rowan test" })).ok === false);
+    const act = await A.post(`/api/course/${dc}`, { op: "setProgress", preview: true, studentId: named.studentId, moduleId: card.id, status: "done" });
+    check("acting as a teacher-made demo student is kept too", act.ok && (await A.state(dc)).progress?.[named.studentId]?.[card.id]?.status === "done");
+    await A.op(dc, { op: "removeStudent", studentId: named.studentId });
+    check("removing one demo student takes their work", !(await roster()).some((x) => x.id === named.studentId) && !(await A.state(dc)).progress?.[named.studentId]);
     check("remove the demo students", (await A.op(dc, { op: "setDemoStudents", on: false })).ok && !(await roster()).some((x) => x.demo));
+  }
+
+  // ---- Deleting a lesson or a week
+  {
+    const xc = (await A.post("/api/courses", { title: `Delete ${run}`, start: "blank" })).id;
+    const only = courseOf(await A.state(xc)).weeks[0].lessons[0];
+    check("the last lesson can't be deleted", (await A.op(xc, { op: "deleteLesson", lessonId: only.id })).ok === false);
+    await A.op(xc, { op: "addWeek", title: "Week 2" });
+    let c = courseOf(await A.state(xc));
+    const w2 = c.weeks[1];
+    await A.op(xc, { op: "addLesson", weekId: w2.id });
+    c = courseOf(await A.state(xc));
+    const [l2a, l2b] = c.weeks[1].lessons;
+    check("delete a lesson", (await A.op(xc, { op: "deleteLesson", lessonId: l2a.id })).ok && courseOf(await A.state(xc)).weeks[1].lessons.map((l) => l.id).join() === l2b.id);
+    check("deleting a week's last lesson removes the week", (await A.op(xc, { op: "deleteLesson", lessonId: l2b.id })).ok && courseOf(await A.state(xc)).weeks.length === 1);
+    await A.op(xc, { op: "addWeek", title: "Week 2" });
+    const w = courseOf(await A.state(xc)).weeks[1];
+    check("delete a week", (await A.op(xc, { op: "deleteWeek", weekId: w.id })).ok && courseOf(await A.state(xc)).weeks.length === 1);
+    check("the last week can't be deleted", (await A.op(xc, { op: "deleteWeek", weekId: courseOf(await A.state(xc)).weeks[0].id })).ok === false);
   }
 
   // ---- New teachers start with Questhand 101
@@ -995,6 +1030,12 @@ async function main() {
     const N = await teacher("new");
     const mine = (await N.get("/api/courses")).courses ?? [];
     check("a new teacher has Questhand 101", mine.some((c) => c.title === "Questhand 101"), mine.map((c) => c.title));
+    const q101 = courseOf(await N.state(mine.find((c) => c.title === "Questhand 101").id));
+    const qm = modulesOf(q101);
+    const pick = qm.find((m) => m.signup);
+    check("Questhand 101: its sign-up poll's groups are there from the start", (q101.groupings ?? []).some((g) => g.id === `gs-${pick.id}` && g.groups.length === 3));
+    check("…the group worksheet uses them", qm.some((m) => m.writers === "group" && m.grouping === `gs-${pick.id}`));
+    check("…and the card for one group points at the copy's group", qm.some((m) => m.audience.kind === "student" && m.audience.groups?.[0] === `gs-${pick.id}~${pick.id}-o2`));
     const S1 = await student("Fresh student");
     check("a new student account doesn't", ((await S1.get("/api/courses")).courses ?? []).length === 0);
   }

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { invokeTool, op } from "@/lib/client";
-import { answerText, dueAt, fmtSec, isLate, quizSet } from "@/lib/grading";
+import { answerText, dueAt, fmtSec, isLate, quizSet, wallProgress } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { awaitingFeedback, faceMeta, isPoll, kindOf, reviewableCard, sharedDoc, writesOwn } from "@/lib/kinds";
-import { docKey, groupFor, groupingOf } from "@/lib/shared";
+import { docKey, groupFor, groupingOf, repliesNeeded } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { DocReview } from "./DocReview";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
@@ -38,7 +38,7 @@ export function Classroom({
   sel: { sid: string; mid: string } | null; setSel: (s: { sid: string; mid: string } | null) => void;
 }) {
   const { course, progress, toolUse } = state;
-  const visible = Object.fromEntries(course.students.map((s) => [s.id, new Set(visibleModules(lesson, s.id, state.choices[s.id], treeView(course.weeks, progress[s.id])).map((m) => m.id))]));
+  const visible = Object.fromEntries(course.students.map((s) => [s.id, new Set(visibleModules(lesson, s.id, state.choices[s.id], treeView(course.weeks, progress[s.id]), course).map((m) => m.id))]));
   const studioIds = new Set(lesson.modules.filter((m) => m.type === "studio").map((m) => m.id));
   // The cards students do: a card group is a frame around its cards, not a card of its own.
   const cards = lesson.modules.filter((m) => m.type !== "group");
@@ -68,7 +68,7 @@ export function Classroom({
   const [now] = useState(() => Date.now());
   // A student's cards for this lesson; while they haven't picked a path, the versions count once.
   const statusIn = (sid: string) => {
-    const mine = visibleModules(lesson, sid, state.choices[sid], treeView(course.weeks, progress[sid]));
+    const mine = visibleModules(lesson, sid, state.choices[sid], treeView(course.weeks, progress[sid]), course);
     const seen = new Set<string>();
     return mine
       .filter((m) => !m.choice || (!seen.has(m.choice.slot) && (seen.add(m.choice.slot), true)))
@@ -88,9 +88,16 @@ export function Classroom({
   const unpicked = (lesson.choiceSlots ?? []).length
     ? course.students.filter((st) => !notStarted.includes(st) && (lesson.choiceSlots ?? []).some((slot) => !state.choices[st.id]?.[slot]))
     : [];
-  const waiting = lessonPosts.filter((p) => !state.studio.feedback.some((f) => f.postId === p.id)).map((p) => course.students.find((st) => st.id === p.studentId)!).filter(Boolean);
-  const owing = course.students.filter((st) => lessonPosts.some((p) => p.studentId === st.id) && feedbackGiven(st.id) < feedbackGoal(st.id));
   const studioId = lesson.modules.find((m) => m.type === "studio")?.id;
+  // Peer review on a discussion (it asks each student to reply to classmates): the same two lists as Collab Studio's.
+  const peerWalls = lesson.modules.filter((m) => m.type === "wall" && (m.wall?.replies ?? 0) > 0);
+  const wallPosts = (state.posts ?? []).filter((p) => peerWalls.some((m) => m.id === p.moduleId) && p.studentId !== "teacher");
+  const fromClassmate = (p: (typeof wallPosts)[number]) => (p.comments ?? []).some((c) => c.from !== p.studentId && c.from !== "teacher");
+  const wallWaiting = (sid: string) => wallPosts.find((p) => p.studentId === sid && !fromClassmate(p))?.moduleId;
+  const wallOwing = (sid: string) => peerWalls.find((m) => wallPosts.some((p) => p.moduleId === m.id && p.studentId === sid) && !wallProgress(wallPosts, m.id, sid, repliesNeeded(course, m, sid)).done)?.id;
+  const studioWaiting = new Set(lessonPosts.filter((p) => !state.studio.feedback.some((f) => f.postId === p.id)).map((p) => p.studentId));
+  const waiting = course.students.filter((st) => studioWaiting.has(st.id) || !!wallWaiting(st.id));
+  const owing = course.students.filter((st) => (lessonPosts.some((p) => p.studentId === st.id) && feedbackGiven(st.id) < feedbackGoal(st.id)) || !!wallOwing(st.id));
   const lateCard = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && isLate(m, progress[sid]?.[m.id], now))?.id;
   const overdue = course.students.filter((st) => !!lateCard(st.id));
   // Finished written work the teacher hasn't responded to yet.
@@ -126,8 +133,8 @@ export function Classroom({
     { key: "low", icon: "quiz", tint: "var(--color-warn)", title: "Low quiz scores", hint: "Under half right on a quiz or card group here.", who: low, cell: (sid) => { const id = lowCell(sid); const g = lesson.modules.find((m) => m.id === id); return g?.type === "group" ? g.members?.find((x) => visible[sid].has(x)) : id; } },
     { key: "start", icon: "clock", tint: "var(--color-ink-2)", title: "Haven’t started", hint: "No card opened in this lesson yet.", who: notStarted, cell: firstVisible },
     { key: "stall", icon: "timer", tint: "var(--color-warn)", title: "Stalled", hint: "Started, but nothing new for 2+ days.", who: stalled, cell: (sid) => lesson.modules.find((m) => progress[sid]?.[m.id]?.status === "doing")?.id },
-    { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted to Collab Studio, no replies yet.", who: waiting, cell: () => studioId },
-    { key: "owe", icon: "studio", tint: "#367195", title: "Owe feedback", hint: "Posted, but gave feedback to fewer than 2 peers (fewer in a small group).", who: owing, cell: () => studioId },
+    { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted for peer review, no classmate has replied yet.", who: waiting, cell: (sid) => (studioWaiting.has(sid) ? studioId : wallWaiting(sid)) },
+    { key: "owe", icon: "studio", tint: "#367195", title: "Owe feedback", hint: "Posted, but replied to fewer classmates than the card asks (fewer in a small group).", who: owing, cell: (sid) => wallOwing(sid) ?? studioId },
     ...(unpicked.length ? [{ key: "path", icon: "split", tint: "#4b56a8", title: "Haven’t picked a path", hint: "Working, but no Guided/Stretch choice yet.", who: unpicked, cell: firstVisible }] : []),
   ];
   const totals = real.reduce(

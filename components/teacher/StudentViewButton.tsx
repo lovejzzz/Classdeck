@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { op } from "@/lib/client";
-import { DEMO_STUDENTS } from "@/lib/shared";
 import { toast } from "@/lib/toast";
 import { Avatar, Icon } from "../Icon";
 import { DEMO_STUDENT_ID, TEST_STUDENT_ID } from "../student/PreviewBar";
@@ -47,12 +46,12 @@ export function StudentViewButton({ courseId, students }: { courseId: string; st
           )) : (
             <>
               <button role="menuitem" onClick={async () => {
-                const r = await op(courseId, { op: "setDemoStudents", on: true });
-                if (r.ok === false) return toast(String(r.error ?? "Couldn’t add them"), { icon: "x", tone: "bad" });
-                router.push(href(DEMO_STUDENTS[0].id));
+                const r = await op<{ ok?: boolean; error?: string; studentId?: string }>(courseId, { op: "addDemoStudent" });
+                if (r.ok === false || !r.studentId) return toast(String(r.error ?? "Couldn’t add one"), { icon: "x", tone: "bad" });
+                router.push(href(r.studentId));
               }} className="press flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-[13px] hover:bg-lane">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#fff2c7] text-[#7a5a00]"><Icon name="users" size={12} /></span>
-                <span className="min-w-0 flex-1"><span className="block font-medium">Add two demo students</span><span className="block text-[11.5px] text-ink-3">{DEMO_STUDENTS.map((d) => d.name).join(" and ")}, on your class list to act as. Their work is kept</span></span>
+                <span className="min-w-0 flex-1"><span className="block font-medium">Add a demo student</span><span className="block text-[11.5px] text-ink-3">On your class list to act as; their work is kept. Add more and name them under Students</span></span>
               </button>
               <Link role="menuitem" href={href(DEMO_STUDENT_ID)} className="press flex items-center gap-2.5 rounded-xl px-2 py-2 text-[13px] hover:bg-lane">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#eef0fb] text-[#4b56a8]"><Icon name="eye" size={12} /></span>

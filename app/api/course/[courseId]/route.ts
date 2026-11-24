@@ -1,7 +1,7 @@
 import { publicOrigin } from "@/lib/origin";
 import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
-import { findLesson, uid, visibleModules, wallOf } from "@/lib/profile";
+import { findLesson, groupByRef, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, endPreview, inPreview, logEvent, reset, runPreview, save } from "@/lib/store";
 import { mentionsIn, plainText } from "@/lib/markdown";
 import { randomCode, safeUrl } from "@/lib/uploads";
@@ -13,27 +13,8 @@ import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
-import { DEFAULT_GROUPING, DEMO_STUDENTS, demoStudent, groupFor, isDemoStudent, signupGroupId, signupGroupingId } from "@/lib/shared";
+import { DEFAULT_GROUPING, DEMO_PREFIX, DEMO_STUDENTS, demoStudent, groupFor, isDemoStudent, nextDemoName, repliesNeeded, signupGroupId, signupGroupingId, syncSignup } from "@/lib/shared";
 
-/**
- * A sign-up poll's grouping, kept in step with the card: its name is the card's title and there's a group for each
- * option (named after it). Who's in each group is kept as it is (votes, and the teacher's changes).
- */
-function syncSignup(course: Course, m: Module) {
-  const q = m.questions?.[0];
-  if (!m.signup || !m.poll || !q) return;
-  const id = signupGroupingId(m.id);
-  const list = (course.groupings ??= []);
-  const was = list.find((g) => g.id === id);
-  const groups = q.options.map((o, i) => {
-    const gid = signupGroupId(m.id, i);
-    const name = (o.trim() || `Option ${i + 1}`).slice(0, 40);
-    // Members follow their option by its name (an option removed or moved), else by its place (an option renamed).
-    const before = was?.groups.find((g) => g.name === name) ?? was?.groups.find((g) => g.id === gid && !q.options.some((x) => x.trim() === g.name));
-    return { id: gid, name, studentIds: before?.studentIds ?? [] };
-  });
-  if (was) { was.name = m.title.slice(0, 60) || "Groups"; was.groups = groups; } else list.push({ id, name: m.title.slice(0, 60) || "Groups", groups });
-}
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
@@ -50,7 +31,7 @@ const STUDENT_OPS = new Set([
 ]);
 
 const AUTO_LESSON = /^Lesson \d+$/;
-const STRUCTURAL = new Set(["addLesson", "addWeek", "duplicateLesson", "duplicateWeek", "insertWeek", "insertLesson"]);
+const STRUCTURAL = new Set(["addLesson", "addWeek", "duplicateLesson", "duplicateWeek", "insertWeek", "insertLesson", "deleteLesson", "deleteWeek"]);
 
 /** Lessons still named "Lesson N" take their place in the course as their number; named lessons keep their names. */
 function renumberLessons(course: Course) {
@@ -93,7 +74,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
   const all = db().choices[course.id] ?? {};
   const taken = (lessonId: string) => Object.entries(all).filter(([sid, c]) => sid !== studentId && c[`elective:${lessonId}`]).length;
   const tree = treeOf(course, studentId);
-  const visible = new Set(course.weeks.flatMap((w) => w.lessons.flatMap((l) => (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree)).map((m) => m.id))));
+  const visible = new Set(course.weeks.flatMap((w) => w.lessons.flatMap((l) => (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree, course)).map((m) => m.id))));
   // A card group is on the board when its cards are (it has paths out by score, like a card).
   for (const w of course.weeks) for (const l of w.lessons) for (const g of l.modules) if (g.type === "group" && g.members?.some((id) => visible.has(id))) visible.add(g.id);
   const prog = db().progress[course.id]?.[studentId] ?? {};
@@ -124,11 +105,13 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
           done: prog[g.id]?.status === "done" || undefined, score: typeof prog[g.id]?.dealt?.[SCORE] === "number" ? (prog[g.id]!.dealt![SCORE] as number) : undefined,
           paths: paths.get(g.id),
         })),
-        modules: (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree)).map((m) => ({
+        modules: (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree, course)).map((m) => ({
           ...m,
           bands: undefined,
           dealtFor: tree.dealt.has(m.id) || undefined,
           tally: m.poll ? tallyOf(course, m) : undefined,
+          // A discussion that asks for replies: how many this student needs (fewer in a small group).
+          repliesNeeded: m.type === "wall" && m.wall?.replies ? repliesNeeded(course, m, studentId) : undefined,
           signupView: m.signup && m.poll ? (() => {
             const gs = course.groupings?.find((g) => g.id === signupGroupingId(m.id));
             const groups = (m.questions?.[0]?.options ?? []).map((_, i) => gs?.groups.find((g) => g.id === signupGroupId(m.id, i))?.studentIds ?? []);
@@ -183,7 +166,7 @@ function view(request: Request, courseId: string): Response {
   const course = d.courses[courseId];
   if (!course) return Response.json({ error: "No such course" }, { status: 404 });
   // Demo students added in 0.1.71 had made-up names: they're Demo Student A and B now.
-  for (const st of course.students) { const ds = st.demo ? demoStudent(st.id) : undefined; if (ds && st.name !== ds.name) st.name = ds.name; }
+  for (const st of course.students) { const ds = st.demo ? demoStudent(st.id) : undefined; if (ds && st.id === ds.was && st.name !== ds.name) st.name = ds.name; }
   const query = new URL(request.url).searchParams;
   const as = query.get("as");
   // Read-only guest view: course content only, no students, no work.
@@ -629,21 +612,36 @@ async function change(request: Request, courseId: string, body: Record<string, a
       break;
     }
     case "removeStudent": {
-      dropStudent(String(body.studentId ?? ""));
+      const sid = String(body.studentId ?? "");
+      // A demo student's work goes with them (a real student's stays saved).
+      const demo = course.students.some((x) => x.id === sid && x.demo);
+      dropStudent(sid);
+      if (demo) clearWork(sid);
       break;
     }
     case "setDemoStudents": {
-      // The two demo students: on the class list (to try the course as, their work kept), or gone with their work.
+      // On: Demo Student A and B, if the class has no demo students yet. Off: every demo student, with their work.
       if (body.on) {
+        if (course.students.some((x) => x.demo)) break;
         for (const ds of DEMO_STUDENTS) {
-          if (course.students.some((x) => x.id === ds.id || x.id === ds.was)) continue;
           if ([...course.students, ...(course.waiting ?? [])].some((x) => x.name.toLowerCase() === ds.name.toLowerCase())) return fail(`A student in this class is already called ${ds.name}`);
           // Not put in the class's own groups: a test student shouldn't change a real group's work or goals.
           course.students.push({ id: ds.id, name: ds.name, demo: true });
         }
       } else {
-        for (const ds of DEMO_STUDENTS) for (const id of [ds.id, ds.was]) { dropStudent(id); clearWork(id); }
+        for (const st of course.students.filter((x) => x.demo)) { dropStudent(st.id); clearWork(st.id); }
       }
+      break;
+    }
+    case "addDemoStudent": {
+      // One more demo student, named by the teacher (or Demo Student C, D, …).
+      const names = [...course.students, ...(course.waiting ?? [])].map((x) => x.name);
+      const name = String(body.name ?? "").trim().replace(/\s+/g, " ").slice(0, 60) || nextDemoName(names);
+      if (names.some((x) => x.toLowerCase() === name.toLowerCase())) return fail(`A student in this class is already called ${name}`);
+      if (course.students.filter((x) => x.demo).length >= 30) return fail("A class can have up to 30 demo students");
+      const id = uid(DEMO_PREFIX);
+      course.students.push({ id, name, demo: true });
+      extra = { studentId: id };
       break;
     }
     case "renameWeek": {
@@ -881,7 +879,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const form = found?.mod.form;
       if (!found || form?.by !== "student") return fail("This card has no form for you to fill in");
       const chosen = d.choices[courseId]?.[body.studentId] ?? {};
-      const theirs = !(found.lesson.elective && !chosen[`elective:${found.lesson.id}`]) && visibleModules(found.lesson, body.studentId, chosen, treeOf(course, body.studentId)).some((x) => x.id === found.mod.id);
+      const theirs = !(found.lesson.elective && !chosen[`elective:${found.lesson.id}`]) && visibleModules(found.lesson, body.studentId, chosen, treeOf(course, body.studentId), course).some((x) => x.id === found.mod.id);
       if (!theirs) return fail("This card isn’t on your board");
       const a = (body.answers ?? {}) as Record<string, unknown>;
       const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
@@ -1454,7 +1452,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
         logEvent(courseId, { kind: "post", studentId: body.studentId, moduleId: body.moduleId, text: w.approval ? `Waiting for approval: ${said}` : said ? `${toYou}${said}` : "Posted an attachment" });
         const p = mine(body.studentId, body.moduleId);
         // With peer replies required, posting starts the card; replying to enough classmates finishes it.
-        p.status = wallProgress(d.posts[courseId], body.moduleId, body.studentId, w.replies ?? 0).done ? "done" : "doing";
+        p.status = wallProgress(d.posts[courseId], body.moduleId, body.studentId, repliesNeeded(course, found.mod, body.studentId)).done ? "done" : "doing";
         p.updatedAt = Date.now();
       }
       extra = { post: { ...post, mine: true } };
@@ -1497,7 +1495,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
         // Without that reply, a peer-review card may not be finished any more.
         if (c.from !== "teacher" && (w.replies ?? 0) > 0 && course.students.some((st) => st.id === c.from)) {
           const p = mine(c.from, post.moduleId);
-          if (p.status === "done" && !wallProgress(d.posts[courseId], post.moduleId, c.from, w.replies).done) { p.status = "doing"; p.updatedAt = Date.now(); }
+          if (p.status === "done" && !wallProgress(d.posts[courseId], post.moduleId, c.from, repliesNeeded(course, findModule(course, post.moduleId)!.mod, c.from)).done) { p.status = "doing"; p.updatedAt = Date.now(); }
         }
         break;
       }
@@ -1523,7 +1521,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (who !== "teacher" && mentionsIn(text).includes("teacher")) logEvent(courseId, { kind: "post", studentId: who, moduleId: post.moduleId, text: `Mentioned you: ${plainText(text).replace(/\s+/g, " ").trim().slice(0, 80)}` });
       // A reply can be what finishes a peer-review card.
       if (who !== "teacher" && (w.replies ?? 0) > 0 && course.students.some((st) => st.id === who)) {
-        const prog = wallProgress(d.posts[courseId], post.moduleId, who, w.replies);
+        const prog = wallProgress(d.posts[courseId], post.moduleId, who, repliesNeeded(course, findModule(course, post.moduleId)!.mod, who));
         const p = mine(who, post.moduleId);
         if (prog.done && p.status !== "done") { p.status = "done"; p.updatedAt = Date.now(); }
       }
@@ -1569,6 +1567,25 @@ async function change(request: Request, courseId: string, body: Record<string, a
         const codes = new Set(Object.values(d.courses).map((c) => c.joinCode));
         do course.joinCode = randomCode(6); while (codes.has(course.joinCode));
       }
+      break;
+    }
+    case "deleteLesson": {
+      // —— teacher —— A lesson and its cards, gone (students' work on them stays saved). A week left empty goes too.
+      const w = course.weeks.find((x) => x.lessons.some((l) => l.id === body.lessonId));
+      if (!w) return fail("No such lesson");
+      if (course.weeks.reduce((n, x) => n + x.lessons.length, 0) <= 1) return fail("A course needs at least one lesson");
+      w.lessons = w.lessons.filter((l) => l.id !== body.lessonId);
+      if (!w.lessons.length) course.weeks = course.weeks.filter((x) => x !== w);
+      if (course.currentLessonId === body.lessonId) course.currentLessonId = course.weeks[0].lessons[0].id;
+      break;
+    }
+    case "deleteWeek": {
+      // —— teacher —— A week with all its lessons.
+      if (!course.weeks.some((x) => x.id === body.weekId)) return fail("No such week");
+      if (course.weeks.length <= 1) return fail("A course needs at least one week");
+      const gone = new Set(course.weeks.find((x) => x.id === body.weekId)!.lessons.map((l) => l.id));
+      course.weeks = course.weeks.filter((x) => x.id !== body.weekId);
+      if (gone.has(course.currentLessonId)) course.currentLessonId = course.weeks[0].lessons[0].id;
       break;
     }
     case "duplicateWeek": {
@@ -1668,6 +1685,13 @@ async function change(request: Request, courseId: string, body: Record<string, a
     default:
       return fail("Unknown operation");
   }
+    // Groups changed: a card for some groups forgets the ones that are gone.
+    if (["saveGrouping", "deleteGrouping", "setGroups", "autoGroup", "deleteGroup"].includes(body.op)) {
+      for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) {
+        const a = m.audience;
+        if (a.kind === "student" && a.groups?.length) { const keep = a.groups.filter((ref) => groupByRef(course, ref)); a.groups = keep.length ? keep : undefined; }
+      }
+    }
     // After anything that adds or moves lessons, placeholder names follow position: Lesson 1, 2, 3 across the course.
     if (STRUCTURAL.has(body.op)) {
       renumberLessons(course);
@@ -1715,5 +1739,5 @@ function onBoard(course: Course, studentId: string, moduleId: string): boolean {
   if (!found) return false;
   const chosen = db().choices[course.id]?.[studentId] ?? {};
   if (found.lesson.elective && !chosen[`elective:${found.lesson.id}`]) return false;
-  return visibleModules(found.lesson, studentId, chosen, treeOf(course, studentId)).some((m) => m.id === moduleId);
+  return visibleModules(found.lesson, studentId, chosen, treeOf(course, studentId), course).some((m) => m.id === moduleId);
 }

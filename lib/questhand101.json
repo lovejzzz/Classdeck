@@ -1,8 +1,10 @@
 {
  "title": "Questhand 101",
+ "subtitle": "Start here: a short course on Questhand, made in Questhand",
+ "electiveMin": 1,
  "weeks": [
   {
-   "title": "Week 1 · Getting started",
+   "title": "Week 1 · Cards and lessons",
    "lessons": [
     {
      "title": "Welcome to Questhand",
@@ -99,7 +101,7 @@
        "id": "m-q1tpl-your-students",
        "type": "read",
        "title": "What your students see",
-       "body": "Students get a board with today's lesson on top and the next card to play. Cards they've finished go on the Done pile; the rest wait in their hand.\n\nUnder the lesson's progress, small tags show only what needs them: cards to revise, overdue, due soon, to catch up, or an elective to choose. Starred cards are on My board. A card to read has Done, and Later to keep it for another time. My progress shows their scores and your feedback.\n\nThey never see a card that isn't meant for them. You'll try this yourself in Week 4 with Student View.",
+       "body": "Students get a board with today's lesson on top and the next card to play. Cards they've finished go on the Done pile; the rest wait in their hand.\n\nUnder the lesson's progress, small tags show only what needs them: cards to revise, overdue, due soon, to catch up, or an elective to choose. Starred cards are on My board. A card to read has Done, and Later to keep it for another time. My progress shows their scores and your feedback.\n\nThey never see a card that isn't meant for them. You'll try this yourself in Week 3 with Student View.",
        "audience": {
         "kind": "all"
        },
@@ -347,356 +349,6 @@
      ]
     },
     {
-     "title": "Your first course",
-     "modules": [
-      {
-       "id": "m-q1tpl-new-course",
-       "type": "read",
-       "title": "Make a course",
-       "body": "On your courses page, press New course. Give it a name (a subtitle is optional), then choose:\n\n- Start blank: one empty week to fill yourself.\n- Standard weeks: each week starts with a goal, an example, a quick check that deals a review or a stretch card, a task and a discussion. Change anything.\n\nPress Create course, and you're on its Map.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-weeks",
-       "type": "read",
-       "title": "Weeks and lessons",
-       "body": "Each lesson is a row on the Map, and lessons sit in weeks.\n\n- The **+ Card** button on a lesson's row adds a card; **+ Lesson** at the end of the map adds a lesson.\n- New week: from a template (give it a theme) or a Blank week.\n- Click a lesson's name to rename it.\n- A lesson's ⋯ menu: Duplicate lesson, Add a lesson to the week, Rename or Duplicate the week.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-reuse",
-       "type": "read",
-       "title": "Use a card again",
-       "body": "Made a card you'll want again, like a weekly reflection or a check-in poll? In its panel, press Save to my cards (at the bottom). On a card group, that saves the group with its cards. To save a whole lesson, use its ⋯ menu → Save lesson to my cards.\n\nThen, in any of your courses, add a card as usual (+ Card on a lesson, or an answer's dot) and choose Saved cards. Pick one to put down a copy, and change it as you like. The × beside one takes it off the list.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-dates",
-       "type": "read",
-       "title": "Dates and today's lesson",
-       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nTo date them all at once, open a lesson's ⋯ menu → Schedule lessons from here…: pick the first class, the days class meets and any days off, and every lesson from there gets its date.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too (under Access: Today, +3 days, +1 week). Students see it on the card, and a tag on their board says when something is due soon or overdue.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-import",
-       "type": "read",
-       "title": "Already have a plan written?",
-       "body": "Settings → Back up and share → Import from a document… Upload your course plan, look over the weeks and cards Questhand proposes, untick what you don't want, and press Add.\n\nThe same place exports a course: Export course (.json) to keep a copy, or Export for Canvas / Moodle (.imscc).",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-check-today",
-       "type": "practice",
-       "title": "Quick check",
-       "body": "",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "choice",
-       "suit": "question",
-       "questions": [
-        {
-         "id": "q-q1tpl-2-6",
-         "text": "Your lessons have no dates. The class is moving on to lesson 3. What do you do?",
-         "options": [
-          "Nothing: students move on by themselves",
-          "Lesson 3's ⋯ menu → Make it today's lesson",
-          "Delete lessons 1 and 2"
-         ],
-         "answer": 1,
-         "explain": "Today's lesson is the one on top of every student's board. Without dates, you choose it from the ⋯ menu."
-        }
-       ]
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "title": "Week 2 · Card trees and the map",
-   "lessons": [
-    {
-     "title": "Card trees",
-     "modules": [
-      {
-       "id": "m-q1tpl-map",
-       "type": "read",
-       "title": "Why branch?",
-       "body": "A class doesn't all need the same next step. Some need another example; some are ready for a challenge.\n\nOn the Map, each line runs from an answer to the card it deals. Students who pick that answer get the card; the others never see it.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [
-        {
-         "id": "a-q1tpl-map",
-         "kind": "image",
-         "url": "/samples/questhand101/map.jpg",
-         "name": "A course map with branches"
-        }
-       ],
-       "kind": "content",
-       "suit": "content",
-       "minutes": 2
-      },
-      {
-       "id": "m-q1tpl-tree",
-       "type": "read",
-       "title": "Watch: draw a branch",
-       "body": "Drag an answer's dot to make the card it deals. One answer can deal more than one card.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [
-        {
-         "id": "a-q1tpl-tree",
-         "kind": "video",
-         "url": "/samples/questhand101/tree.mp4",
-         "name": "Drawing a card tree"
-        }
-       ],
-       "kind": "content",
-       "suit": "content",
-       "minutes": 1
-      },
-      {
-       "id": "m-q1tpl-stuck",
-       "type": "practice",
-       "title": "Try a branch",
-       "body": "This card is a branch itself: each answer deals a different card.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "choice",
-       "suit": "question",
-       "questions": [
-        {
-         "id": "q-q1tpl-2-7",
-         "text": "A student answers “I'm not sure yet”. What should they get next?",
-         "options": [
-          "The same card again",
-          "Another example, explained step by step",
-          "Nothing: move on"
-         ],
-         "answer": 1,
-         "next": [
-          "m-q1tpl-same",
-          "m-q1tpl-example",
-          "m-q1tpl-moveon"
-         ],
-         "explain": "A short extra example, only for the students who need it, is what a branch is for."
-        }
-       ]
-      },
-      {
-       "id": "m-q1tpl-example",
-       "type": "read",
-       "title": "Yes: a short extra example",
-       "body": "That's the idea. Make the extra example a small card, and drag the “not sure” answer to it. Only those students get it.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-same",
-       "type": "read",
-       "title": "Why not the same card again?",
-       "body": "Showing the same card rarely helps. Give a different way in instead: another example, a video, a picture.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-moveon",
-       "type": "read",
-       "title": "Why not just move on?",
-       "body": "A student who isn't sure yet will likely be stuck on the next card too. A short detour card helps them catch up.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-by-score",
-       "type": "read",
-       "title": "Branch by score",
-       "body": "A card group (or a quiz) can deal cards by score. Its score ranges show under it on the Map, such as below 60%, 60 to 99%, and 100%. Drag a range's dot to the card it deals, just like an answer.\n\nScores go by the student's best try, so a better retake deals the card for its new range.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-later",
-       "type": "read",
-       "title": "Deal a card in a later lesson",
-       "body": "An answer can deal a card in another lesson: when you make the card, pick the lesson under New card in. Or click an answer's dot and choose Deal a card already made.\n\nThe student gets the card when they reach that lesson, with a note saying which answer opened it.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-sketch",
-       "type": "submit",
-       "title": "Sketch your own tree",
-       "body": "Draw (or describe) a small tree for one of your lessons: one question, its answers, and the card each answer deals. Use Draw if you like.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "answer",
-       "suit": "question",
-       "minutes": 8
-      }
-     ]
-    },
-    {
-     "title": "Working on the map",
-     "modules": [
-      {
-       "id": "m-q1tpl-tools",
-       "type": "read",
-       "title": "Watch: getting around the map",
-       "body": "The contents panel, picking cards with a box, moving cards, folding branches, and the trash.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [
-        {
-         "id": "a-q1tpl-tools",
-         "kind": "video",
-         "url": "/samples/questhand101/maptools.mp4",
-         "name": "Getting around the map"
-        }
-       ],
-       "kind": "content",
-       "suit": "content",
-       "minutes": 1
-      },
-      {
-       "id": "m-q1tpl-moves",
-       "type": "read",
-       "title": "Move, pick and tidy",
-       "body": "- Contents: point at the map's left edge (the bar with ›) to see every week and lesson. Click one to go there.\n- Search: press / (or Search under the map) and type any word on a card; pick a result to go to it.\n- Move a card: drag it along its row, or into another lesson.\n- Pick several: drag a box on empty space (Shift adds more). Then make them a card group, or delete them.\n- Pan: hold Space and drag.\n- Zoom: − and + under the map, or pinch. The % button fits the map's width; press it again to see the whole course.\n- Fold all / Unfold all hides or shows the cards answers deal.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-undo",
-       "type": "read",
-       "title": "Nothing is lost",
-       "body": "Everything saves as you go (you'll see Saved at the top right).\n\n- Undo with ⌘Z (Ctrl+Z), Redo with ⇧⌘Z.\n- Delete a card: hold it until the cards jiggle and tap ⊖, or drag it onto the Trash. Cards only its answers deal go with it.\n- The Trash keeps deleted cards: open it to Restore one, or Delete for good.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-keys",
-       "type": "read",
-       "title": "Keyboard shortcuts",
-       "body": "Press ? on the course page for the full list. The ones you'll use most:\n\n- 1 to 4: Map, Students, Grades, Settings.\n- n: a new card in today's lesson.\n- /: find a card.\n- In a card's panel, [ and ] go to the previous and next card.\n- On the map, the arrow keys move between cards, and Enter opens one.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-order-steps",
-       "type": "practice",
-       "title": "Put them in order",
-       "body": "",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "choice",
-       "suit": "question",
-       "questions": [
-        {
-         "id": "q-q1tpl-2-8",
-         "kind": "order",
-         "text": "Put the steps of making a card group in order.",
-         "options": [
-          "Press Group cards",
-          "Tap the cards, or drag a box around them",
-          "Press Make a card group",
-          "Drag a score range to the card it deals"
-         ],
-         "explain": "Group cards, pick the cards, make the group, then branch from its score ranges if you like."
-        }
-       ]
-      }
-     ]
-    },
-    {
      "title": "Every kind of question",
      "modules": [
       {
@@ -872,10 +524,368 @@
    ]
   },
   {
-   "title": "Week 3 · Media, discussions and electives",
+   "title": "Week 2 · Card trees and your course",
    "lessons": [
     {
-     "title": "Media and discussions",
+     "title": "Card trees",
+     "modules": [
+      {
+       "id": "m-q1tpl-map",
+       "type": "read",
+       "title": "Why branch?",
+       "body": "A class doesn't all need the same next step. Some need another example; some are ready for a challenge.\n\nOn the Map, each line runs from an answer to the card it deals. Students who pick that answer get the card; the others never see it.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [
+        {
+         "id": "a-q1tpl-map",
+         "kind": "image",
+         "url": "/samples/questhand101/map.jpg",
+         "name": "A course map with branches"
+        }
+       ],
+       "kind": "content",
+       "suit": "content",
+       "minutes": 2
+      },
+      {
+       "id": "m-q1tpl-tree",
+       "type": "read",
+       "title": "Watch: draw a branch",
+       "body": "Drag an answer's dot to make the card it deals. One answer can deal more than one card.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [
+        {
+         "id": "a-q1tpl-tree",
+         "kind": "video",
+         "url": "/samples/questhand101/tree.mp4",
+         "name": "Drawing a card tree"
+        }
+       ],
+       "kind": "content",
+       "suit": "content",
+       "minutes": 1
+      },
+      {
+       "id": "m-q1tpl-stuck",
+       "type": "practice",
+       "title": "Try a branch",
+       "body": "This card is a branch itself: each answer deals a different card.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
+       "questions": [
+        {
+         "id": "q-q1tpl-2-7",
+         "text": "A student answers “I'm not sure yet”. What should they get next?",
+         "options": [
+          "The same card again",
+          "Another example, explained step by step",
+          "Nothing: move on"
+         ],
+         "answer": 1,
+         "next": [
+          "m-q1tpl-same",
+          "m-q1tpl-example",
+          "m-q1tpl-moveon"
+         ],
+         "explain": "A short extra example, only for the students who need it, is what a branch is for."
+        }
+       ]
+      },
+      {
+       "id": "m-q1tpl-example",
+       "type": "read",
+       "title": "Yes: a short extra example",
+       "body": "That's the idea. Make the extra example a small card, and drag the “not sure” answer to it. Only those students get it.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-same",
+       "type": "read",
+       "title": "Why not the same card again?",
+       "body": "Showing the same card rarely helps. Give a different way in instead: another example, a video, a picture.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-moveon",
+       "type": "read",
+       "title": "Why not just move on?",
+       "body": "A student who isn't sure yet will likely be stuck on the next card too. A short detour card helps them catch up.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-by-score",
+       "type": "read",
+       "title": "Branch by score",
+       "body": "A card group (or a quiz) can deal cards by score. Its score ranges show under it on the Map, such as below 60%, 60 to 99%, and 100%. Drag a range's dot to the card it deals, just like an answer.\n\nScores go by the student's best try, so a better retake deals the card for its new range.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-later",
+       "type": "read",
+       "title": "Deal a card in a later lesson",
+       "body": "An answer can deal a card in another lesson: when you make the card, pick the lesson under New card in. Or click an answer's dot and choose Deal a card already made.\n\nThe student gets the card when they reach that lesson, with a note saying which answer opened it.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-who-gets",
+       "type": "read",
+       "title": "Who gets a card",
+       "body": "Open a card's panel and look under **Access**. It says who gets the card:\n\n- **Everyone gets this card**: the usual.\n- **Students get it from** an answer or a score range: set on the map, by drawing the line.\n- **Only some students or groups…**: pick students by name, or whole groups. A group's card goes to whoever is in the group, also when the group changes (for example, after a sign-up poll).\n\nUnder it is the card's due date: **No due date** unless you pick one.\n\n> In Week 3, one card in this course is only for the students who pick “Just exploring” in a sign-up poll.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-sketch",
+       "type": "submit",
+       "title": "Sketch your own tree",
+       "body": "Draw (or describe) a small tree for one of your lessons: one question, its answers, and the card each answer deals. Use Draw if you like.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "answer",
+       "suit": "question",
+       "minutes": 8
+      }
+     ]
+    },
+    {
+     "title": "Building your course",
+     "modules": [
+      {
+       "id": "m-q1tpl-new-course",
+       "type": "read",
+       "title": "Make a course",
+       "body": "On your courses page, press New course. Give it a name (a subtitle is optional), then choose:\n\n- Start blank: one empty week to fill yourself.\n- Standard weeks: each week starts with a goal, an example, a quick check that deals a review or a stretch card, a task and a discussion. Change anything.\n\nPress Create course, and you're on its Map.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-weeks",
+       "type": "read",
+       "title": "Weeks and lessons",
+       "body": "Each lesson is a row on the Map, and lessons sit in weeks.\n\n- The **+ Card** button on a lesson's row adds a card; **+ Lesson** at the end of the map adds a lesson.\n- New week: from a template (give it a theme) or a Blank week.\n- Click a lesson's name to rename it.\n- A lesson's ⋯ menu: Duplicate lesson, Delete lesson, Add a lesson to the week, and Rename, Duplicate or Delete the week.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-dates",
+       "type": "read",
+       "title": "Dates and today's lesson",
+       "body": "Each lesson has a date chip: press Set date. The lesson for today says Today, and it's the one on top of every student's board.\n\nTo date them all at once, open a lesson's ⋯ menu → Schedule lessons from here…: pick the first class, the days class meets and any days off, and every lesson from there gets its date.\n\nNo dates? Use Make it today's lesson in the lesson's ⋯ menu when the class moves on.\n\nA card can have its own due date too, under Access in its panel. **No due date** is where every card starts; pick Today, +3 days, +1 week, or any date. Students see it on the card, and a tag on their board says when something is due soon or overdue.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-reuse",
+       "type": "read",
+       "title": "Use a card again",
+       "body": "Made a card you'll want again, like a weekly reflection or a check-in poll? In its panel, press Save to my cards (at the bottom). On a card group, that saves the group with its cards. To save a whole lesson, use its ⋯ menu → Save lesson to my cards.\n\nThen, in any of your courses, add a card as usual (+ Card on a lesson, or an answer's dot) and choose Saved cards. Pick one to put down a copy, and change it as you like. The × beside one takes it off the list.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-import",
+       "type": "read",
+       "title": "Already have a plan written?",
+       "body": "Settings → Back up and share → Import from a document… Upload your course plan, look over the weeks and cards Questhand proposes, untick what you don't want, and press Add.\n\nThe same place exports a course: Export course (.json) to keep a copy, or Export for Canvas / Moodle (.imscc).",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-check-today",
+       "type": "practice",
+       "title": "Quick check",
+       "body": "",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
+       "questions": [
+        {
+         "id": "q-q1tpl-2-6",
+         "text": "Your lessons have no dates. The class is moving on to lesson 3. What do you do?",
+         "options": [
+          "Nothing: students move on by themselves",
+          "Lesson 3's ⋯ menu → Make it today's lesson",
+          "Delete lessons 1 and 2"
+         ],
+         "answer": 1,
+         "explain": "Today's lesson is the one on top of every student's board. Without dates, you choose it from the ⋯ menu."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "title": "Working on the map",
+     "modules": [
+      {
+       "id": "m-q1tpl-tools",
+       "type": "read",
+       "title": "Watch: getting around the map",
+       "body": "The contents panel, picking cards with a box, moving cards, folding branches, and the trash.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [
+        {
+         "id": "a-q1tpl-tools",
+         "kind": "video",
+         "url": "/samples/questhand101/maptools.mp4",
+         "name": "Getting around the map"
+        }
+       ],
+       "kind": "content",
+       "suit": "content",
+       "minutes": 1
+      },
+      {
+       "id": "m-q1tpl-moves",
+       "type": "read",
+       "title": "Move, pick and tidy",
+       "body": "- Contents: point at the map's left edge (the bar with ›) to see every week and lesson. Click one to go there.\n- Search: press / (or Search under the map) and type any word on a card; pick a result to go to it.\n- Move a card: drag it along its row, or into another lesson.\n- Pick several: drag a box on empty space (Shift adds more). Then make them a card group, or delete them.\n- Pan: hold Space and drag.\n- Zoom: − and + under the map, or pinch. The % button fits the map's width; press it again to see the whole course.\n- Fold all / Unfold all hides or shows the cards answers deal.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-undo",
+       "type": "read",
+       "title": "One undo for everything",
+       "body": "Everything saves as you go (you'll see Saved at the top right).\n\n- **Undo** (⌘Z or Ctrl+Z) and **Redo** (⇧⌘Z) sit at the top of the page, and the same buttons are at the top of a card's panel: one undo for every change, on the map or in a card.\n- **History** (the clock beside them) lists your changes since you opened the course. Pick one to go back to before it.\n- Delete a card: hold it until the cards jiggle and tap ⊖, or drag it onto the Trash. Cards only its answers deal go with it. The Trash keeps deleted cards to Restore.\n- Delete a lesson or a week from its ⋯ menu. That one can't be undone, so you're asked first. Students' work stays saved.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-keys",
+       "type": "read",
+       "title": "Keyboard shortcuts",
+       "body": "Press ? on the course page for the full list. The ones you'll use most:\n\n- 1 to 4: Map, Students, Grades, Settings.\n- n: a new card in today's lesson.\n- /: find a card.\n- In a card's panel, [ and ] go to the previous and next card.\n- On the map, the arrow keys move between cards, and Enter opens one.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-order-steps",
+       "type": "practice",
+       "title": "Put them in order",
+       "body": "",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
+       "questions": [
+        {
+         "id": "q-q1tpl-2-8",
+         "kind": "order",
+         "text": "Put the steps of making a card group in order.",
+         "options": [
+          "Press Group cards",
+          "Tap the cards, or drag a box around them",
+          "Press Make a card group",
+          "Drag a score range to the card it deals"
+         ],
+         "explain": "Group cards, pick the cards, make the group, then branch from its score ranges if you like."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "title": "Writing and media",
      "modules": [
       {
        "id": "m-q1tpl-format",
@@ -919,74 +929,6 @@
        "minutes": 8
       },
       {
-       "id": "m-q1tpl-together",
-       "type": "read",
-       "title": "Writing together",
-       "body": "With a worksheet for **Each group**, every group shares one copy. Make the groups right on the card: **Make groups**, name them, split the class at random or tap students into each group. Other cards can use the same groups from the list, and you make new ones whenever the groups change. With **Whole class**, everyone shares one.\n\n- They write in it at the same time, live: each person's cursor shows with their name, and who's there shows above the text.\n- **History** keeps a version every few minutes, with who wrote in it. Look at any version, or go back to it.\n- In a group, anyone can **Hand in** for the whole group. In Students you can watch a group's copy as it's written, and write in it too.\n\n## Tables that add up\n\nIn a table, **Σ Total** adds a row that adds up each column. Write =AVERAGE, =COUNT, =MIN or =MAX in a cell instead of =SUM for those. **Bar**, **Line** and **Pie** put a chart of the table under it. Both update as students fill the table in.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-signup",
-       "type": "read",
-       "title": "Let students pick their group",
-       "body": "Sometimes students should choose: which project, which topic, which lab slot. Make a poll (Choices, Has a right answer: No) and tick **Make groups from the answers**.\n\n- Each option is a group. A student joins one by picking it, and can switch until you tick **Lock the groups**.\n- **At most** caps each group; a full group can't be picked.\n- **Students see who's in each group**, or untick it to show only how many.\n- The groups are kept under the card's name. Pick them in any worksheet or discussion for Each group, and press **Move students** on the poll to change them yourself.\n\n> The next card is one. Pick a group.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-pick-team",
-       "type": "practice",
-       "title": "Pick your study group",
-       "body": "Choose the group you want to be in for the rest of the course. You can switch until the groups are locked.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "choice",
-       "suit": "question",
-       "poll": true,
-       "questions": [
-        {
-         "id": "q-q1tpl-2-13",
-         "text": "Which group do you want to join?",
-         "options": [
-          "Short units",
-          "Full terms",
-          "Just exploring"
-         ]
-        }
-       ],
-       "signup": {
-        "names": true
-       }
-      },
-      {
-       "id": "m-q1tpl-class-table",
-       "type": "read",
-       "title": "Our class in numbers",
-       "body": "## How long did this course take?\n\nClick in the Example row and press **+ Row**, then write your name and about how many minutes you've spent on Questhand 101 so far. Everyone in the class writes in this one table; the total, the average and the chart keep up.\n\n| Name | Minutes |\n| --- | --- |\n| Example | 30 |\n| Total | =SUM |\n| Average | =AVERAGE |\n\n[chart: bar]",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "worksheet",
-       "suit": "question",
-       "writers": "class"
-      },
-      {
        "id": "m-q1tpl-media",
        "type": "read",
        "title": "Media on a card",
@@ -1026,12 +968,124 @@
        "kind": "answer",
        "suit": "question",
        "minutes": 6
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Week 3 · Your class, together",
+   "lessons": [
+    {
+     "title": "Groups and discussions",
+     "modules": [
+      {
+       "id": "m-q1tpl-together",
+       "type": "read",
+       "title": "Writing together",
+       "body": "With a worksheet for **Each group**, every group shares one copy. Make the groups right on the card: **Make groups**, name them, split the class at random or tap students into each group. Other cards can use the same groups from the list, and you make new ones whenever the groups change. With **Whole class**, everyone shares one.\n\n- They write in it at the same time, live: each person's cursor shows with their name, and who's there shows above the text.\n- **History** keeps a version every few minutes, with who wrote in it. Look at any version, or go back to it.\n- In a group, anyone can **Hand in** for the whole group. In Students you can watch a group's copy as it's written, and write in it too.\n\n## Tables that add up\n\nIn a table, **Σ Total** adds a row that adds up each column. Write =AVERAGE, =COUNT, =MIN or =MAX in a cell instead of =SUM for those. **Bar**, **Line** and **Pie** put a chart of the table under it. Both update as students fill the table in.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-signup",
+       "type": "read",
+       "title": "Let students pick their group",
+       "body": "Sometimes students should choose: which project, which topic, which lab slot. Make a poll (Choices, Has a right answer: No) and tick **Make groups from the answers**.\n\n- Each option is a group. A student joins one by picking it, and can switch until you tick **Lock the groups**.\n- **At most** caps each group; a full group can't be picked.\n- **Students see who's in each group**, or untick it to show only how many.\n- The groups are kept under the card's name. Pick them in any worksheet or discussion for Each group, and press **Move students** on the poll to change them yourself.\n\n> The next card is one. Pick a group: the worksheet after it is filled in with that group.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-pick-team",
+       "type": "practice",
+       "title": "Pick your study group",
+       "body": "Choose the group you want to be in for the rest of the course. You can switch until the groups are locked. The next worksheet is shared with your group.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
+       "poll": true,
+       "questions": [
+        {
+         "id": "q-q1tpl-2-13",
+         "text": "Which group do you want to join?",
+         "options": [
+          "Short units",
+          "Full terms",
+          "Just exploring"
+         ]
+        }
+       ],
+       "signup": {
+        "names": true
+       }
+      },
+      {
+       "id": "m-q1tpl-plan-together",
+       "type": "read",
+       "title": "Our group's first lesson",
+       "body": "## Our group's first lesson\n\nFill this in together: everyone in your group writes in the same copy, live.\n\n**Topic:** \n\n| Card | Kind | What students do |\n| --- | --- | --- |\n| 1 | Content | |\n| 2 | Question | |\n| 3 | | |\n\n**Who on the team builds which card:** ",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "worksheet",
+       "suit": "question",
+       "writers": "group",
+       "minutes": 10,
+       "grouping": "gs-m-q1tpl-pick-team"
+      },
+      {
+       "id": "m-q1tpl-explore",
+       "type": "read",
+       "title": "Just exploring? Start here",
+       "body": "You picked **Just exploring**, so this card is yours: only that group gets it.\n\nTake one lesson you already teach and turn just its first ten minutes into three cards: something to read or watch, one question, and one card that an answer deals. That's enough to see how your class takes it.",
+       "audience": {
+        "kind": "student",
+        "studentId": "",
+        "studentIds": [],
+        "groups": [
+         "gs-m-q1tpl-pick-team~m-q1tpl-pick-team-o2"
+        ]
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-class-table",
+       "type": "read",
+       "title": "Our class in numbers",
+       "body": "## How long did this course take?\n\nClick in the Example row and press **+ Row**, then write your name and about how many minutes you've spent on Questhand 101 so far. Everyone in the class writes in this one table; the total, the average and the chart keep up.\n\n| Name | Minutes |\n| --- | --- |\n| Example | 30 |\n| Total | =SUM |\n| Average | =AVERAGE |\n\n[chart: bar]",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "worksheet",
+       "suit": "question",
+       "writers": "class"
       },
       {
        "id": "m-q1tpl-walls",
        "type": "read",
        "title": "Setting up a discussion",
-       "body": "A Discussion card is a conversation, like a forum: a feed of posts, each with its replies, and replies to replies.\n\n- Posts and replies are written like a card: formatting, lists, tables and math, and Record, Upload, Draw or Link.\n- Students can select words in the card's text and **Quote** them in a post.\n\nIn its panel:\n\n- **Who discusses**: The whole class, or Each group (each group gets its own feed; pick or make the groups there).\n- **Reactions**: Likes, Votes or None. Sort the feed by Newest or Top.\n- **Topics**: give two or more (e.g. Questions, Ideas), and students tag each post with one; everyone can filter by topic.\n- **Each student replies to**: No one, or 1 to 3 classmates. The card is done once they've posted and replied.\n- **Structured feedback**: a reply to a classmate's post has three parts (what I noticed, the effect it had on me, one thing to try next), and the post's author can mark it helpful. Good for peer review of work students post.\n- Hide names from classmates, and I approve posts before others see them.\n\nType **@** in a post or reply to mention a classmate or the teacher: pick a name from the list, and they're told. Students are also told when someone replies to them.",
+       "body": "A Discussion card is a conversation, like a forum: a feed of posts, each with its replies, and replies to replies.\n\n- Posts and replies are written like a card: formatting, lists, tables and math, and Record, Upload, Draw or Link.\n- Students can select words in the card's text and **Quote** them in a post.\n\nIn its panel:\n\n- **Who discusses**: The whole class, or Each group (each group gets its own feed; pick or make the groups there).\n- **Reactions**: Likes, Votes or None. Sort the feed by Newest or Top.\n- **Topics**: give two or more (e.g. Questions, Ideas), and students tag each post with one; everyone can filter by topic.\n- **Each student replies to**: No one, or 1 to 3 classmates. The card is done once they've posted and replied.\n- **Structured feedback**: a reply to a classmate's post has three parts (what I noticed, the effect it had on me, one thing to try next), and the post's author can mark it helpful. Good for peer review of work students post: the card after next is one.\n- Hide names from classmates, and I approve posts before others see them.\n\nType **@** in a post or reply to mention a classmate or the teacher: pick a name from the list, and they're told. Students are also told when someone replies to them.",
        "audience": {
         "kind": "all"
        },
@@ -1060,11 +1114,35 @@
         "approval": false,
         "replies": 1
        }
+      },
+      {
+       "id": "m-q1tpl-peer",
+       "type": "wall",
+       "title": "Peer review: your lesson plan",
+       "body": "Post your lesson plan (a few lines, a picture of it, or the worksheet you filled in last week). Then give feedback on two plans from your group.\n\nEach reply has three parts: **what I noticed**, **the effect it had on me**, and **one thing to try next**. When you get feedback you can use, mark it **Helpful**.\n\nThis card is done once you've posted and replied to two classmates.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "discussion",
+       "suit": "question",
+       "wall": {
+        "posting": "students",
+        "comments": true,
+        "reactions": "likes",
+        "anonymous": false,
+        "approval": false,
+        "replies": 2,
+        "byGroup": true,
+        "structured": true
+       }
       }
      ]
     },
     {
      "title": "Elective: one lesson, three readings",
+     "elective": true,
      "modules": [
       {
        "id": "m-q1tpl-why-elective",
@@ -1137,14 +1215,8 @@
        "kind": "content",
        "suit": "content"
       }
-     ],
-     "elective": true
-    }
-   ]
-  },
-  {
-   "title": "Week 4 · Your class",
-   "lessons": [
+     ]
+    },
     {
      "title": "Bringing students in",
      "modules": [
@@ -1173,20 +1245,7 @@
        "id": "m-q1tpl-ways-in",
        "type": "read",
        "title": "Three ways in",
-       "body": "Every student signs in with their own Questhand account (Google, or email and password). Then:\n\n1. An invitation. Students → Invite students → Add students by email. Tick Email each one a personal invitation, and each gets their own link.\n2. The class code (or the class link, or the QR code). Students sign in, then enter the code under As Student → Join a class.\n3. Add students without email: type names in the Class list, then send each their Invitation link yourself.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
-       "id": "m-q1tpl-inbox",
-       "type": "read",
-       "title": "Messages",
-       "body": "Every conversation is in your **Inbox**: click your photo at the top right. A red number on the photo says how many messages are new.\n\n- Press **New message** and pick a student, from any of your courses. Or use **Message** beside a student in Students.\n- Students write to you the same way, from the Inbox under their photo.\n- Students can also message each other. To turn that off for a class, untick **Students can message each other** in Students. Messages between students are private to them.\n\n> A message is private to the two people in it. For something the whole class should see, post it on a Discussion card.",
+       "body": "Every student signs in with their own Questhand account (Google, or email and password), so each one needs an email address. Then:\n\n1. An invitation. Students → Invite students → Add students by email. Tick Email each one a personal invitation, and each gets their own link.\n2. The class code (or the class link, or the QR code). Students sign in, then enter the code under As Student → Join a class.\n3. Their own link, sent your way. Beside anyone on your list who hasn't joined yet, Invitation link copies a link only for them, to send in a message or a chat.",
        "audience": {
         "kind": "all"
        },
@@ -1213,6 +1272,32 @@
        "type": "read",
        "title": "Your class list",
        "body": "In Students, each student has Message, Invitation link (copy their own link again), Reset sign-in (if a link went to the wrong person) and Remove.\n\nStudents → Groups lists the groups you've made on cards, to change or remove.\n\nTwo students in one class can't share a name, since classmates find each other by name (to @mention someone, in groups and in messages). If someone joins with a name a classmate already has, they're asked to add something, like a last initial.\n\nTeaching with someone? Settings → Teachers → Share with teachers: they Can edit or Can view.",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-demo-student",
+       "type": "read",
+       "title": "Demo students",
+       "body": "Demo students are made-up students on your class list, for you to try the course as. **Students → Demo students**: type a name (or leave it, for Demo Student A, B, C…) and press **Add a demo student**. Add as many as you need. This course has eight.\n\nOpen **Student View** and pick one: you act as them, and what you do is kept, like a real student's. It shows in Grades and Students, in groups and discussions, ready for your feedback. **Start over** clears their work. They never get email, and once real students join, class numbers leave them out.\n\nStudent View can also show **New student** (a blank test where nothing is saved) or any student in your class (a test on their board; nothing is saved).",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "content",
+       "suit": "content"
+      },
+      {
+       "id": "m-q1tpl-inbox",
+       "type": "read",
+       "title": "Messages",
+       "body": "Every conversation is in your **Inbox**: click your photo at the top right. A red number on the photo says how many messages are new.\n\n- Press **New message** and pick a student, from any of your courses. Or use **Message** beside a student in Students.\n- Students write to you the same way, from the Inbox under their photo.\n- Students can also message each other. To turn that off for a class, untick **Students can message each other** in Students. Messages between students are private to them.\n\n> A message is private to the two people in it. For something the whole class should see, post it on a Discussion card.",
        "audience": {
         "kind": "all"
        },
@@ -1274,23 +1359,10 @@
        "minutes": 1
       },
       {
-       "id": "m-q1tpl-demo-student",
-       "type": "read",
-       "title": "Your Demo student",
-       "body": "Student View always has a Demo student, even before anyone joins. Its progress is kept between tests, so you can come back to where you left off; Start over clears it.\n\nPick New student to see the course from the very start, or pick a student from your class to see exactly their board.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
        "id": "m-q1tpl-watch",
        "type": "read",
        "title": "Who needs you",
-       "body": "The Students tab lists who needs attention: Overdue, Ready for your feedback, Low quiz scores, Haven't started, Stalled. Press Remind to send a short note.\n\nOn the Map, Where students are shows who is on which card, and how many took each answer.\n\nThe bell at the top (Class activity) lists what students did, as it happens.",
+       "body": "The Students tab lists who needs attention: Overdue, Ready for your feedback, Low quiz scores, Haven't started, Stalled. Press Remind to send a short note.\n\nOn the Map, **Where students are** shows who is on which card, and how many took each answer.\n\nThe bell at the top (Class activity) lists what students did, as it happens.\n\n> This course's eight demo students are part-way through, so these lists aren't empty. Have a look.",
        "audience": {
         "kind": "all"
        },
@@ -1345,7 +1417,7 @@
        "id": "m-q1tpl-feedback",
        "type": "read",
        "title": "Feedback with more than words",
-       "body": "In the review panel, write what they did well and one thing to try next. You can also record how you'd play or say it, or attach a file, and + Rate skills.\n\nThen Looks good, or Ask to revise: the student sees “Your teacher asked for a revision” on their board and hands in again.",
+       "body": "In the review panel, write what they did well and one thing to try next. You can also record how you'd play or say it, or attach a file, and + Rate skills.\n\nThen **Looks good**, or **Ask to revise**: the student sees a Revise tag on their board and hands in again.\n\nGroup work: a worksheet a group filled in together gets one review, for everyone in the group. For work each student did on their own, tick **Send the same feedback to everyone in** their group to give the whole group one note.",
        "audience": {
         "kind": "all"
        },
@@ -1536,7 +1608,5 @@
     }
    ]
   }
- ],
- "subtitle": "Start here: a short course on Questhand, made in Questhand",
- "electiveMin": 1
+ ]
 }

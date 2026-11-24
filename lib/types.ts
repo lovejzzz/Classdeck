@@ -210,8 +210,9 @@ export interface ScoreBand { min: number; next: string | null }
 export type Audience =
   | { kind: "all" }
   | { kind: "branch"; slot: string; variant: string }
-  // Only some students: `studentIds` (any number); `studentId` is the first of them (cards from before kept one).
-  | { kind: "student"; studentId: string; studentIds?: string[] };
+  // Only some students: `studentIds` (any number); `studentId` is the first of them (cards from before kept one). And/or
+  // whole groups, `groups`, as "groupingId~groupId": whoever is in the group gets the card, as the group changes.
+  | { kind: "student"; studentId: string; studentIds?: string[]; groups?: string[] };
 
 export interface Module {
   id: string;
@@ -252,6 +253,8 @@ export interface Module {
   members?: string[];
   /** Set only for students, on a Poll: how many classmates picked each choice (shown once they've voted). */
   tally?: number[];
+  /** On a student's board, a discussion that asks for replies: how many classmates they reply to (fewer in a small group). */
+  repliesNeeded?: number;
   /** Suggested time in minutes, shown on the card like a cost. */
   minutes?: number;
   /** Where students hand in work from this card. */

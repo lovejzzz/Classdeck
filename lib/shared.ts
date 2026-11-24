@@ -57,13 +57,53 @@ export const signupGroupingId = (moduleId: string) => `gs-${moduleId}`;
 export const signupGroupId = (moduleId: string, option: number) => `${moduleId}-o${option}`;
 
 /**
- * The two demo students a teacher can add to the class list, to try the course as. Their ids are the same in every
- * course.
+ * Demo students: made-up students on the class list, for the teacher to try the course as (their work is kept, like a
+ * real student's). A teacher adds as many as they like and names them; "Add demo students" adds the first two, Demo
+ * Student A and B. Their ids all start with "s-demo-".
  */
+export const DEMO_PREFIX = "s-demo-";
 export const DEMO_STUDENTS = [
   { id: "s-demo-a", name: "Demo Student A", was: "s-demo-odessa" },
   { id: "s-demo-b", name: "Demo Student B", was: "s-demo-caspian" },
 ] as const;
-/** A demo student's entry, by their id (or the id they had in 0.1.71, when they had made-up names). */
+/** One of the first two demo students, by their id (or the id they had in 0.1.71, when they had made-up names). */
 export const demoStudent = (id: string) => DEMO_STUDENTS.find((d) => d.id === id || d.was === id);
-export const isDemoStudent = (id: string) => !!demoStudent(id);
+export const isDemoStudent = (id: string) => id.startsWith(DEMO_PREFIX);
+/** A name for the next demo student: Demo Student A, B, … (the first letter no one has). */
+export function nextDemoName(taken: string[]) {
+  const have = new Set(taken.map((x) => x.toLowerCase()));
+  for (let i = 0; i < 26; i++) { const n = `Demo Student ${String.fromCharCode(65 + i)}`; if (!have.has(n.toLowerCase())) return n; }
+  for (let i = 27; ; i++) if (!have.has(`demo student ${i}`)) return `Demo Student ${i}`;
+}
+
+/**
+ * A sign-up poll's grouping, kept in step with the card: its name is the card's title and there's a group for each
+ * option (named after it). Who's in each group is kept as it is (votes, and the teacher's changes).
+ */
+export function syncSignup(course: Course, m: Module) {
+  const q = m.questions?.[0];
+  if (!m.signup || !m.poll || !q) return;
+  const id = signupGroupingId(m.id);
+  const list = (course.groupings ??= []);
+  const was = list.find((g) => g.id === id);
+  const groups = q.options.map((o, i) => {
+    const gid = signupGroupId(m.id, i);
+    const name = (o.trim() || `Option ${i + 1}`).slice(0, 40);
+    // Members follow their option by its name (an option removed or moved), else by its place (an option renamed).
+    const before = was?.groups.find((g) => g.name === name) ?? was?.groups.find((g) => g.id === gid && !q.options.some((x) => x.trim() === g.name));
+    return { id: gid, name, studentIds: before?.studentIds ?? [] };
+  });
+  if (was) { was.name = m.title.slice(0, 60) || "Groups"; was.groups = groups; } else list.push({ id, name: m.title.slice(0, 60) || "Groups", groups });
+}
+
+/**
+ * How many classmates a student must reply to on a discussion that asks for replies: what the card asks, but never more
+ * than there are others to reply to (in their group, when it's discussed in groups), so a small group can still finish.
+ */
+export function repliesNeeded(course: Pick<Course, "groups" | "groupings" | "students">, m: Module, studentId: string): number {
+  const asked = m.wall?.replies ?? 0;
+  if (!asked) return 0;
+  const pool = m.wall?.byGroup ? groupFor(course, m, studentId)?.studentIds ?? [] : course.students.map((s) => s.id);
+  const others = pool.filter((id) => id !== studentId && course.students.some((s) => s.id === id)).length;
+  return Math.min(asked, others);
+}

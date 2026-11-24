@@ -17,6 +17,14 @@ export function cloneLesson(src: Lesson, title?: string, ids?: Map<string, strin
   const map = ids ?? new Map<string, string>();
   for (const m of l.modules) if (!map.has(m.id)) map.set(m.id, uid("m-"));
   const to = (x: string | null) => (x ? (map.get(x) ?? x) : null);
+  // A sign-up poll's groups are named after its card ("gs-<card>", groups "<card>-o<n>"): a card using the groups of a
+  // poll that's copied too uses the copy's groups.
+  const poll = (gs: string) => (gs.startsWith("gs-") && map.has(gs.slice(3)) ? `gs-${map.get(gs.slice(3))}` : gs);
+  const groupRef = (ref: string) => {
+    const [gs, g] = ref.split("~");
+    const card = gs.slice(3);
+    return poll(gs) === gs ? ref : `${poll(gs)}~${g.startsWith(`${card}-o`) ? `${map.get(card)}${g.slice(card.length)}` : g}`;
+  };
   l.modules = l.modules.map((m): Module => ({
     ...m,
     id: map.get(m.id)!,
@@ -26,7 +34,8 @@ export function cloneLesson(src: Lesson, title?: string, ids?: Map<string, strin
     // A copy starts without a due date; the old date would make every copied card overdue at once.
     due: undefined,
     attachments: m.attachments?.map((a) => ({ ...a, id: uid("a-") })),
-    audience: m.audience.kind === "branch" ? { ...m.audience, slot: slot(m.audience.slot) } : m.audience,
+    audience: m.audience.kind === "branch" ? { ...m.audience, slot: slot(m.audience.slot) } : m.audience.kind === "student" && m.audience.groups ? { ...m.audience, groups: m.audience.groups.map(groupRef) } : m.audience,
+    grouping: m.grouping && poll(m.grouping),
   }));
   l.branches = Object.fromEntries(Object.entries(l.branches ?? {}).map(([k, v]) => [slot(k), v]));
   l.choiceSlots = l.choiceSlots?.map(slot);

@@ -397,7 +397,8 @@ function Feed({ courseId, me, teacher = false, readOnly = false, module: m, post
     return true;
   }
 
-  const needed = w.replies ?? 0;
+  // The server says how many this student needs (fewer in a small group); the card's number otherwise.
+  const needed = m.repliesNeeded ?? w.replies ?? 0;
   const prog = !teacher && needed > 0 ? wallProgress(posts, m.id, me, needed) : null;
 
   return (
@@ -412,7 +413,7 @@ function Feed({ courseId, me, teacher = false, readOnly = false, module: m, post
         </div>
       )}
       {canPost ? (
-        <Composer placeholder={teacher ? "Post to the discussion as the teacher…" : "Share something with the class…"} topics={topics} onSend={post} />
+        <Composer placeholder={teacher ? "Post to the discussion as the teacher…" : w.byGroup ? "Share something with your group…" : "Share something with the class…"} topics={topics} onSend={post} />
       ) : (
         <p className="rounded-xl border border-line bg-[#fafaf9] px-4 py-3 text-[13px] text-ink-3">{readOnly ? "You can view this discussion; posting, replying and approving are for the course’s editors." : `Only your teacher starts posts here. You can still react${w.comments ? " and reply" : ""}.`}</p>
       )}

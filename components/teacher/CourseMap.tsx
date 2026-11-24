@@ -9,7 +9,7 @@ import { KindCard } from "../cards/KindCard";
 import { MathText, plainMath } from "../MathText";
 import { plainText } from "@/lib/markdown";
 import { isAsked } from "@/lib/grading";
-import { studentsOf } from "@/lib/profile";
+import { groupsOf, studentsOf } from "@/lib/profile";
 import { fileExt, hostOf } from "@/lib/cards";
 import type { Attachment, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
 import { videoEmbed } from "@/lib/media";
@@ -49,9 +49,10 @@ const levelOf = (z: number): Level => (z < 0.55 ? "far" : z >= 1.2 ? "near" : "m
 // (A sign-up poll's answers make groups and can change; they don't deal cards.)
 const branchQs = (m: Module) => (m.signup ? [] : (m.questions ?? []).filter((q) => canBranch(q)));
 /** Questions asked that can't branch (put in order, short answer): shown on the card, without ports. */
-const otherQs = (m: Module) => (m.questions ?? []).filter((q) => !canBranch(q) && isAsked(q));
+// A sign-up poll's answers make groups rather than deal cards: its question shows here, without dots.
+const otherQs = (m: Module) => (m.questions ?? []).filter((q) => (!!m.signup || !canBranch(q)) && isAsked(q));
 /** Rows an unbranching question takes under its title: one per option to order, or the accepted answers. */
-const otherRows = (q: { kind?: string; options: string[] }) => (q.kind === "order" ? Math.max(1, q.options.filter((o) => o.trim()).length) : 1);
+const otherRows = (q: { kind?: string; options: string[] }, m?: Module) => (q.kind === "order" || m?.signup ? Math.max(1, q.options.filter((o) => o.trim()).length) : 1);
 const isRight = (q: { kind?: string; answer?: number; answerSet?: number[] }, i: number) => (q.kind === "multi" ? !!q.answerSet?.includes(i) : q.answer === i);
 /** Cards that branch by score: a quiz, and a card group. */
 /** A card with a score that can deal cards: a quiz, or a card group with question cards in it (`cards`: its lesson's). */
@@ -80,7 +81,7 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
     y += SEC;
     q.options.forEach((_, i) => { ports.set(`${q.id}:${i}`, y + ROW / 2); y += ROW; });
   }
-  if (m.type !== "group") for (const q of otherQs(m)) y += SEC + otherRows(q) * ROW;
+  if (m.type !== "group") for (const q of otherQs(m)) y += SEC + otherRows(q, m) * ROW;
   if (isQuiz(m, m.type === "group" ? members : undefined)) {
     y += SEC;
     const bands = bandsOf(m);
@@ -1495,7 +1496,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
                           <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[6px]" style={{ background: `${suit.tint}16` }}><Icon name={faceMeta(m).icon} size={11} /></span><span className="flex-none whitespace-nowrap">{faceMeta(m).name}</span>
                           <span className="truncate normal-case tracking-normal text-ink-3">
-                            · {unfinished(m) ? <span className="text-[#a0561f]">{blankContent(m) ? "hidden until it has something in it" : "hidden until it has a question"}</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : m.audience.kind === "student" ? (studentsOf(m.audience).length === 1 ? "1 student" : `${studentsOf(m.audience).length} students`) : "everyone"}
+                            · {unfinished(m) ? <span className="text-[#a0561f]">{blankContent(m) ? "hidden until it has something in it" : "hidden until it has a question"}</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : m.audience.kind === "student" ? someOf(m) : "everyone"}
                           </span>
                         </span>
                         {typing?.id === m.id && typing.field === "title"
@@ -1561,7 +1562,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       {otherQs(m).map((q) => (
                         <div key={q.id}>
                           <div className="truncate px-3.5 text-[11.5px] leading-[28px] text-ink-3" style={{ height: SEC }}><MathText text={q.text.trim() || m.title || "Question"} /></div>
-                          {q.kind === "order" ? q.options.filter((o) => o.trim()).map((o, oi) => (
+                          {m.signup ? q.options.filter((o) => o.trim()).map((o, oi) => (
+                            // A sign-up poll: each option is a group students join.
+                            <div key={oi} className="flex items-center gap-2 px-3.5" style={{ height: ROW }} title="A group students join by picking it">
+                              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md bg-lane text-[10.5px] font-semibold text-ink-2">{letter(oi)}</span>
+                              <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2"><MathText text={o.trim()} /></span>
+                              <Icon name="users" size={12} className="flex-none text-ink-3/70" />
+                            </div>
+                          )) : q.kind === "order" ? q.options.filter((o) => o.trim()).map((o, oi) => (
                             <div key={oi} className="flex items-center gap-2 px-3.5" style={{ height: ROW }} title="The right order">
                               <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md bg-ok/15 text-[10.5px] font-semibold text-ok">{oi + 1}</span>
                               <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2"><MathText text={o.trim()} /></span>
@@ -1980,4 +1988,11 @@ function MapSearch({ cards, lessons, open, onOpen, onPick }: {
       )}
     </div>
   );
+}
+
+/** Who a some-students card goes to, in a few words: "2 groups and 1 student". */
+function someOf(m: Module) {
+  const g = groupsOf(m.audience).length, n = studentsOf(m.audience).length;
+  const parts = [g ? `${g} group${g === 1 ? "" : "s"}` : "", n || !g ? `${n} student${n === 1 ? "" : "s"}` : ""].filter(Boolean);
+  return parts.join(" and ");
 }

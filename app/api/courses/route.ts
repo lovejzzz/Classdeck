@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     if (st) {
       const mine = d.progress[c.id]?.[st.id] ?? {};
       const tree = treeView(c.weeks, mine);
-      const cards = c.weeks.flatMap((w) => w.lessons.flatMap((l) => visibleModules(l, st.id, d.choices[c.id]?.[st.id], tree)));
+      const cards = c.weeks.flatMap((w) => w.lessons.flatMap((l) => visibleModules(l, st.id, d.choices[c.id]?.[st.id], tree, c)));
       return [{ id: c.id, title: c.title, studentId: st.id, teacher: owner?.name ?? null, done: cards.filter((m) => mine[m.id]?.status === "done").length, total: cards.length }];
     }
     const w = c.waiting?.find((x) => x.userId === t.id);
