@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.89",
+    date: "2026-11-24",
+    changes: [
+      "The card in the card panel has a ⋮ in its corner (on hover): change its picture (upload one, or use one of the card’s own pictures) and its colour (eight colours, or its family’s). The map and students’ boards show the card that way.",
+      "Collect keeps the card’s picture and colour in My cards. A collected card, or one put down from My cards, remembers it: change it, and when you close it (or open another card) you’re asked whether to save the changes to My cards too. Collect on it again updates My cards instead of making a second copy.",
+    ],
+  },
+  {
     version: "0.1.88",
     date: "2026-11-24",
     changes: [

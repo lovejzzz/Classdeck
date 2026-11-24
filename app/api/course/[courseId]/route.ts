@@ -13,6 +13,7 @@ import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
+import { CARD_COLORS } from "@/lib/ui";
 import { DEFAULT_GROUPING, DEMO_PREFIX, DEMO_STUDENTS, demoStudent, groupFor, isDemoStudent, nameGroups, nextDemoName, repliesNeeded, signupGroupId, signupGroupingId, syncSignup } from "@/lib/shared";
 
 import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
@@ -810,6 +811,12 @@ async function change(request: Request, courseId: string, body: Record<string, a
         for (const m of next.modules) {
           if (m.playlist) m.playlist = m.playlist.filter((x) => typeof x.url === "string" && /^https:\/\//.test(x.url)).slice(0, 60);
           m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
+          // The card's own look: a colour from the list, and a picture at a safe address.
+          if (m.look) {
+            const color = CARD_COLORS.some((c) => c.id === m.look!.color) ? m.look.color : undefined;
+            const image = typeof m.look.image === "string" && safeUrl(m.look.image) ? m.look.image.slice(0, 2000) : undefined;
+            m.look = color || image ? { color, image } : undefined;
+          }
           m.form = cleanForm(m.form);
           if (m.suit !== undefined && !["learn", "do", "share"].includes(m.suit)) m.suit = undefined;
         }

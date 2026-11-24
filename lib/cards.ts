@@ -22,6 +22,10 @@ export function hash(s: string) {
 export function heroAttachment(list?: Attachment[]) {
   return list?.[0];
 }
+/** What a card's art window shows: the picture the teacher picked for it (its ⋮ menu), else its first attachment. */
+export function heroOf(m: { attachments?: Attachment[]; look?: { image?: string } }): Attachment | undefined {
+  return m.look?.image ? { id: "look", kind: "image", url: m.look.image, name: "" } : heroAttachment(m.attachments);
+}
 
 export function fileExt(a: Attachment) {
   const src = a.name || a.url;

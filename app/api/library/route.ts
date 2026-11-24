@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 function clean(m: Partial<Module>, inSet?: Set<string>): Module | null {
   if (!m || typeof m !== "object" || !TYPE_ORDER.includes(m.type as Module["type"])) return null;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { audience, due, choice, picked, personal, dealtFor, ...rest } = m as Module;
+  const { audience, due, choice, picked, personal, dealtFor, collected, ...rest } = m as Module;
   const keep = (id: string | null) => (id && inSet?.has(id) ? id : null);
   // A card tree's wiring is kept only between cards saved together.
   if (Array.isArray(rest.questions)) rest.questions = rest.questions.map((q) => (inSet && q.next ? { ...q, next: q.next.map((x) => mapSlot(x, keep)) } : (({ next: _n, ...o }) => o)(q))); // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -62,6 +62,29 @@ export async function POST(request: Request) {
     card = { id: uid("my-"), name, module: card0, at: Date.now() };
   }
   cards.push(card);
+  save();
+  return Response.json({ ok: true, card });
+}
+
+/** Update a saved card with a newer version of it (the teacher changed a card they had collected and said to keep it). */
+export async function PUT(request: Request) {
+  const t = teacherOf(getSession(request));
+  if (!t) return unauthorized("teacher", "Sign in first");
+  let body: { id?: unknown; module?: Partial<Module> };
+  try {
+    body = JSON.parse(await request.text(), (k, v) => (UNSAFE_KEY.test(k) ? undefined : v));
+  } catch {
+    return Response.json({ ok: false, error: "That didn’t look like a card" }, { status: 400 });
+  }
+  const card = (t.cards ?? []).find((c) => c.id === String(body.id ?? ""));
+  if (!card || card.set) return Response.json({ ok: false, error: "That card isn’t in My cards any more" }, { status: 404 });
+  const m = clean(body.module ?? {});
+  if (!m) return Response.json({ ok: false, error: "That didn’t look like a card" }, { status: 400 });
+  const { id: _id, ...next } = m; // eslint-disable-line @typescript-eslint/no-unused-vars
+  if (JSON.stringify(next).length > MAX_BYTES) return Response.json({ ok: false, error: "This card is too big to save" }, { status: 400 });
+  card.module = next;
+  card.name = String(next.title ?? "").trim().slice(0, 60) || card.name;
+  card.at = Date.now();
   save();
   return Response.json({ ok: true, card });
 }

@@ -219,6 +219,10 @@ export interface Module {
   type: ModuleType;
   title: string;
   body: string;
+  /** How the card looks, set from the ⋮ on its picture: a colour of its own (a CARD_COLORS id) and a picture for its art. */
+  look?: { color?: string; image?: string };
+  /** The card in the teacher's My cards it was collected as, or put down from: changing it asks to update that one too. */
+  collected?: string;
   audience: Audience;
   tools: ToolRef[];
   attachments?: Attachment[];

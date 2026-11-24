@@ -24,8 +24,25 @@ export const suitOfKind = (k: CardKind): (typeof SUITS)[number] => SUITS.find((s
 
 export const TYPE_ORDER: ModuleType[] = SUITS.flatMap((s) => s.types);
 
-/** A card's family: from its kind (which every card has once loaded; older cards get theirs from their type). */
-export const suitOfCard = (m: Pick<Module, "type" | "kind" | "attachments" | "poll" | "questions">): (typeof SUITS)[number] => suitOfKind(kindOf(m));
+/** Colours a teacher can give a card (its ⋮ menu): the edge, the label and the art's wash. Unset: its family's colour. */
+const wash = (a: string, b: string, base: string) => `radial-gradient(55% 90% at 22% 25%, ${a} 0%, transparent 70%), radial-gradient(50% 80% at 80% 85%, ${b} 0%, transparent 70%), ${base}`;
+export const CARD_COLORS: { id: string; name: string; tint: string; cover: string }[] = [
+  { id: "blue", name: "Blue", tint: "#3d68a6", cover: COVER.content },
+  { id: "rust", name: "Rust", tint: "#a0561f", cover: COVER.question },
+  { id: "green", name: "Green", tint: "#2f7d4f", cover: wash("#b9e2c8", "#dcefe2", "#e5efe8") },
+  { id: "teal", name: "Teal", tint: "#287670", cover: wash("#b0dfda", "#d5ece9", "#e3efed") },
+  { id: "violet", name: "Violet", tint: "#6a4fa8", cover: wash("#d3c6f0", "#e6def5", "#ebe7f3") },
+  { id: "rose", name: "Rose", tint: "#b04565", cover: wash("#f3c2d0", "#f5dde4", "#f2e6ea") },
+  { id: "gold", name: "Gold", tint: "#a37a12", cover: wash("#f3dd9c", "#f4ead0", "#f2ede0") },
+  { id: "ink", name: "Ink", tint: "#3f3f3b", cover: wash("#d6d6d2", "#e7e7e3", "#ececea") },
+];
+/** A card's family: from its kind (which every card has once loaded; older cards get theirs from their type). Its
+ *  colour is the family's, or the one the teacher gave it. */
+export const suitOfCard = (m: Pick<Module, "type" | "kind" | "attachments" | "poll" | "questions"> & { look?: Module["look"] }): (typeof SUITS)[number] => {
+  const suit = suitOfKind(kindOf(m));
+  const c = m.look?.color ? CARD_COLORS.find((x) => x.id === m.look!.color) : undefined;
+  return c ? { ...suit, tint: c.tint, cover: c.cover } : suit;
+};
 
 type Meta = { label: string; name: string; hint: string; tint: string; cover: string; outputLabel?: string; doneLabel: string };
 const variant = (t: ModuleType, v: Omit<Meta, "tint" | "cover">): Meta => {

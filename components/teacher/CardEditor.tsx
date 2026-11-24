@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CARD_SIZE, formatSize, heroAttachment, hostOf } from "@/lib/cards";
+import { CARD_SIZE, formatSize, heroOf, hostOf } from "@/lib/cards";
+import { CardLookMenu } from "./CardLookMenu";
 import { audienceStudents, groupByRef, groupsOf, studentsOf, uid } from "@/lib/profile";
 import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
 import { DueCalendar } from "./DueCalendar";
@@ -29,14 +30,14 @@ import { GroupHand } from "./GroupHand";
 import { groupingsOf, signupGroupingId } from "@/lib/shared";
 
 /** A card preview that tilts toward the pointer, so teachers see exactly what students will hold. */
-function TiltPreview({ m }: { m: Module }) {
+function TiltPreview({ m, onLook }: { m: Module; onLook?: (look: Module["look"]) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const { w, h } = CARD_SIZE.deck;
   // A card whose video or recording plays here holds still, so its controls are easy to hit.
-  const still = playableArt(heroAttachment(m.attachments));
+  const still = playableArt(heroOf(m));
   return (
     <div
-      className="mx-auto [perspective:900px]"
+      className="group/look relative mx-auto [perspective:900px]"
       style={{ width: w, height: h }}
       onPointerMove={(e) => {
         if (still) return;
@@ -52,6 +53,7 @@ function TiltPreview({ m }: { m: Module }) {
       <div ref={ref} className="h-full w-full rounded-[14px] shadow-[0_18px_36px_-16px_rgba(20,20,18,0.35)] transition-transform duration-300 ease-[var(--ease-spring)]">
         <CardFace m={m} index={0} playable />
       </div>
+      {onLook && <CardLookMenu m={m} onLook={onLook} />}
     </div>
   );
 }
@@ -244,7 +246,7 @@ export function CardEditor({
         {neighbors && <div key={m.id} className="rise px-4 pt-4">{neighbors}</div>}
         {/* The card on the table. */}
         <div className="relative px-5 pb-4 pt-6">
-          <TiltPreview m={m} />
+          <TiltPreview m={m} onLook={(look) => set({ look })} />
           {kind !== "group" && (
             <button onClick={() => toKind(other.start)} title={`Make it a ${other.name} card`} aria-label={`Make it a ${other.name} card`}
               className="press absolute right-5 top-1/2 flex w-[4.5rem] -translate-y-1/2 flex-col items-center gap-1.5 text-[11.5px] leading-tight text-ink-2 hover:text-ink">

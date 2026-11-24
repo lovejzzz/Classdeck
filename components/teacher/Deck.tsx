@@ -26,6 +26,9 @@ import { loadLibrary } from "./NewCardFan";
 const clock = () => Date.now();
 
 /** The teacher's whole course, on the course map: its cards, branches, lessons and weeks, and the card editor. */
+/** What a saved card keeps (not where it is, who it's for, its due date or its tie to My cards), to tell if it changed. */
+const lookOfContent = (m: Module) => JSON.stringify({ ...m, id: "", audience: undefined, due: undefined, collected: undefined });
+
 export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, live, readOnly = false, view = "map", onView }: {
   course: Course; connectors?: ConnectorInfo[]; readOnly?: boolean; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode;
   /** Only the course map now (the list of weeks became part of it). */
@@ -417,11 +420,51 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       : m && m.type === "group" && l
         ? { name: m.title, kind: "group", modules: [m, ...l.modules.filter((x) => m.members?.includes(x.id))] }
         : { module: m, name: m?.title };
+    // A card already in My cards: Collect again keeps its newest version there (no second copy).
+    if (m && !lesson && m.type !== "group" && m.collected && (await updateCollected(m, true))) return;
     const r = await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) return toast(r.error ?? "Couldn’t save it", { icon: "x", tone: "bad" });
     await loadLibrary(true);
+    // One card: it remembers it's in My cards, so changing it later asks whether to update that copy too.
+    if (m && !lesson && m.type !== "group" && l && r.card?.id) {
+      const now = lessonOf(l.id);
+      change({ ...now, modules: now.modules.map((x) => (x.id === m.id ? { ...x, collected: r.card.id } : x)) }, false);
+      if (openedAs.current?.id === m.id) openedAs.current = { id: m.id, was: lookOfContent({ ...m, collected: r.card.id }) };
+    }
     toast(`Saved${lesson ? ` “${lesson.title}” and its ${lesson.modules.length} cards` : ""}. To use it in any of your courses, press + Card on a lesson, then Saved cards.`, { icon: "star" });
   }
+
+  /** Put a collected card's newest version in My cards. False when it isn't there any more (then it's collected anew). */
+  async function updateCollected(m: Module, quiet = false): Promise<boolean> {
+    const r = await fetch("/api/library", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: m.collected, module: m }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+    if (!r.ok) {
+      if (!quiet) toast(r.error ?? "Couldn’t save it to My cards", { icon: "x", tone: "bad" });
+      return false;
+    }
+    await loadLibrary(true);
+    if (openedAs.current?.id === m.id) openedAs.current = { id: m.id, was: lookOfContent(m) };
+    toast(`Saved the changes to “${m.title || "the card"}” in My cards`, { icon: "star" });
+    return true;
+  }
+
+  // The card open in the panel as it was when it opened. Once it's let go (closed, or another card opened), a card that
+  // came from My cards (or was collected) and has changed asks whether My cards should have the changes too.
+  const openedAs = useRef<{ id: string; was: string } | null>(null);
+  useEffect(() => {
+    const id = editorOpen ? editing?.moduleId : undefined;
+    const prev = openedAs.current;
+    const find = (x: string) => allLessons().flatMap((l) => l.modules).find((m) => m.id === x);
+    if (prev && prev.id !== id) {
+      const m = find(prev.id);
+      if (m?.collected && lookOfContent(m) !== prev.was && !readOnly) {
+        ask({ title: `Save your changes to My cards?`, body: `“${m.title || "This card"}” is in My cards. Save these changes there too, so the next copy you put down has them? Copies already in your courses stay as they are.`, confirm: "Save to My cards", cancel: "Not now" })
+          .then((yes) => { if (yes) updateCollected(m); });
+      }
+    }
+    if (id && prev?.id !== id) { const m = find(id); openedAs.current = m ? { id, was: lookOfContent(m) } : null; }
+    else if (!id) openedAs.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorOpen, editing?.moduleId]);
 
   async function duplicate(op_: "duplicateWeek" | "duplicateLesson", id: string, what: string) {
     await op(course.id, op_ === "duplicateWeek" ? { op: op_, weekId: id } : { op: op_, lessonId: id });

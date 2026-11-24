@@ -11,7 +11,7 @@ import { MathText, plainMath } from "../MathText";
 import { plainText } from "@/lib/markdown";
 import { isAsked } from "@/lib/grading";
 import { groupsOf, studentsOf } from "@/lib/profile";
-import { fileExt, hostOf } from "@/lib/cards";
+import { fileExt, heroOf, hostOf } from "@/lib/cards";
 import type { Attachment, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
 import { videoEmbed } from "@/lib/media";
 import { MediaLift } from "../cards/MediaLift";
@@ -749,7 +749,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const blank = (k: CardKind, title: string): Module => makeCard(k, title);
 
   /** A fresh copy of one of the teacher's saved cards, ready to put down. */
-  const copyOf = (sc: SavedCard): Module => ({ ...structuredClone(sc.module), id: makeCard(kindOf(sc.module as Module), "").id, audience: { kind: "all" } } as Module);
+  // A copy remembers the saved card it came from, so changing it can offer to update that one too.
+  const copyOf = (sc: SavedCard): Module => ({ ...structuredClone(sc.module), id: makeCard(kindOf(sc.module as Module), "").id, audience: { kind: "all" }, collected: sc.id } as Module);
   /** Fresh copies of a saved set (a lesson, or a card group and its cards), wired to each other as they were saved. */
   const copiesOf = (sc: SavedCard): Module[] => {
     if (!sc.set) return [copyOf(sc)];
@@ -1791,7 +1792,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 /** The rest of a card below its head and answers: its picture (or drawing) and the start of what to do, like a playing card's face. */
 /** A card's media on the map: its picture, video, recording or file (a video or a picture opens big), or its drawing. */
 function MapArt({ m, tint, cover, onMedia }: { m: Module; tint: string; cover: string; onMedia?: (a: Attachment, el: HTMLElement, e: React.MouseEvent) => void }) {
-  const first = m.attachments?.[0];
+  const first = heroOf(m);
   const yt = first?.kind === "link" ? videoEmbed(first.url)?.src.match(/youtube[^/]*\/embed\/([\w-]+)/)?.[1] : undefined;
   const open = (e: React.MouseEvent<HTMLElement>) => first && onMedia?.(first, e.currentTarget, e);
   if (first?.kind === "image") return (

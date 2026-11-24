@@ -1,4 +1,4 @@
-import { fileExt, heroAttachment, hostOf } from "@/lib/cards";
+import { fileExt, heroOf, hostOf } from "@/lib/cards";
 import { videoEmbed } from "@/lib/media";
 import { suitOfCard } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
@@ -11,7 +11,7 @@ import { faceMeta, faceOf } from "@/lib/kinds";
 /** The artwork window: shows the card's main media, or a soft gradient with the type glyph. */
 function Art({ m, big, playable }: { m: Module; big: boolean; playable?: boolean }) {
   const meta = suitOfCard(m);
-  const a = heroAttachment(m.attachments);
+  const a = heroOf(m);
   if (playable && a && playableArt(a)) return <PlayArt key={a.id} a={a} cover={meta.cover} />;
   const glyph = big ? 34 : 28;
   if (a?.kind === "image") {
