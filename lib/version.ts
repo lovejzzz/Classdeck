@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.87",
+    date: "2026-11-24",
+    changes: [
+      "A student’s page has three places at the top: Today, All cards and My board. The course title stands alone (no subtitle or student name), and the keyboard tips bar is gone (? still lists every shortcut).",
+      "Today is the one card to play now, big, with why it’s next (up next, a revision, overdue…), its lesson, and Play. When a revision is asked, the teacher’s words are under the title. Beside it, Also needs you: the other cards to revise, overdue or due soon, and electives to choose. Below, today’s lesson.",
+      "All cards is every week, as before (T and A switch between them). A card dealt into a lesson that isn’t on Today shows in All cards.",
+      "My board shows the course as a route: each lesson a stop, filled when done, today’s bigger, a number for cards to revise. Three weeks at a time (last week, this week, next), sideways for the rest; one week at a time on a phone. Tap a lesson to see only your work from it.",
+    ],
+  },
+  {
     version: "0.1.86",
     date: "2026-11-24",
     changes: [

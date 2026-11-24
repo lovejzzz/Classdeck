@@ -101,7 +101,7 @@
        "id": "m-q1tpl-your-students",
        "type": "read",
        "title": "What your students see",
-       "body": "Students get a board with today's lesson on top and the next card to play. Cards they've finished go on the Done pile; the rest wait in their hand.\n\nUnder the lesson's progress, small tags show only what needs them: cards to revise, overdue, due soon, to catch up, or an elective to choose. Starred cards are on My board. A card to read has Done, and Later to keep it for another time. My progress shows their scores and your feedback.\n\nThey never see a card that isn't meant for them. You'll try this yourself in Week 3 with Student View.",
+       "body": "Students open to Today: the one card to play now, big, and today's lesson under it. Beside the card, small tags show only what else needs them: cards to revise, overdue, due soon, to catch up, or an elective to choose. All cards shows every week. A card to read has Done, and Later to keep it for another time.\n\nMy board has their course as a route, lesson by lesson (tap a lesson to see their work from it), their starred cards, and your feedback.\n\nThey never see a card that isn't meant for them. You'll try this yourself in Week 3 with Student View.",
        "audience": {
         "kind": "all"
        },

@@ -22,8 +22,12 @@ const LOOK: Record<Kind, { icon: string; cls: string }> = {
  * its cards (or, for electives, goes to them in their week). A reminder from the teacher that arrives while the tab is
  * in the background pops up as a system notification (if the student turned reminders on).
  */
-export function NeedsYou({ state, studentId, onOpen, onElectives }: {
+export function NeedsYou({ state, studentId, onOpen, onElectives, heading, skip }: {
   state: CourseState; studentId: string;
+  /** A card already shown on its own (the next card to play), left out here. */
+  skip?: string;
+  /** A small heading above the chips, when there are any. */
+  heading?: string;
   onOpen: (lessonId: string, moduleId: string) => void;
   /** Go to the first elective not chosen yet, in its week. */
   onElectives: () => void;
@@ -32,7 +36,7 @@ export function NeedsYou({ state, studentId, onOpen, onElectives }: {
   const [open, setOpen] = useState<Kind | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const mine = state.progress[studentId] ?? {};
-  const todos = todoList(state.course, mine, now);
+  const todos = todoList(state.course, mine, now).filter((t) => t.m.id !== skip);
   const order = state.course.weeks.flatMap((w) => w.lessons);
   const cur = Math.max(0, order.findIndex((l) => l.id === state.course.currentLessonId));
   const late = (t: Todo) => t.due?.tone === "late";
@@ -72,7 +76,8 @@ export function NeedsYou({ state, studentId, onOpen, onElectives }: {
   if (!groups.length) return null;
   const shown = groups.find((g) => g.kind === open);
   return (
-    <div ref={box} className="relative mt-3 flex flex-wrap items-center gap-1.5" aria-label="Needs you">
+    <div ref={box} className={`relative flex flex-wrap items-center gap-1.5 ${heading ? "mt-8" : "mt-3"}`} aria-label={heading ?? "Needs you"}>
+      {heading && <div className="mb-0.5 w-full text-[12.5px] font-medium text-ink-3">{heading}</div>}
       {groups.map((g) => (
         <button key={g.kind} onClick={() => (g.kind === "electives" ? onElectives() : g.items.length === 1 ? onOpen(g.items[0].lesson.id, g.items[0].m.id) : setOpen(open === g.kind ? null : g.kind))}
           aria-expanded={g.items.length > 1 ? open === g.kind : undefined}
@@ -82,7 +87,7 @@ export function NeedsYou({ state, studentId, onOpen, onElectives }: {
         </button>
       ))}
       {shown && (
-        <div role="menu" className="pop absolute left-0 top-9 z-30 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-1.5 shadow-[0_20px_50px_-18px_rgba(20,20,18,0.3)]">
+        <div role="menu" className={`pop absolute left-0 ${heading ? "top-[3.4rem]" : "top-9"} z-30 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-1.5 shadow-[0_20px_50px_-18px_rgba(20,20,18,0.3)]`}>
           <ul className="max-h-72 overflow-y-auto">
             {shown.items.map((t) => (
               <li key={t.m.id}>

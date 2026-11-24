@@ -9,6 +9,7 @@ import { FeedbackInbox } from "@/components/student/Progress";
 import { Avatar, Icon, StatusIcon } from "@/components/Icon";
 import { setPreview, useCourse, useQuery } from "@/lib/client";
 import { PreviewBar } from "@/components/student/PreviewBar";
+import { CourseRoute } from "@/components/student/CourseRoute";
 import { ago } from "@/lib/time";
 import { suitOfCard } from "@/lib/ui";
 import { faceMeta, writesOwn } from "@/lib/kinds";
@@ -30,6 +31,8 @@ export default function BoardPage() {
     return (["work", "feedback", "starred", "next"] as const).find((t) => t === h) ?? "work";
   });
   const [now] = useState(() => Date.now());
+  // A lesson picked on the route: My work shows only that lesson's.
+  const [picked, setPicked] = useState<string | null>(null);
   const query = useQuery();
   if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}/board`} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
@@ -49,6 +52,9 @@ export default function BoardPage() {
     return !!p && (p.status === "done" || !!p.output || !!p.work?.length || posts.some((x) => x.moduleId === m.id));
   };
   const done = all.filter((x) => mine[x.m.id]?.status === "done").length;
+  // Cards that count: an unchosen elective's aren't the student's, and an unpicked set of paths counts once.
+  const total = course.weeks.flatMap((w) => w.lessons).filter((l) => !l.elective || l.chosen).reduce((n, l) => n + l.modules.filter((m, i) => !m.choice || l.modules.findIndex((x) => x.choice?.slot === m.choice!.slot) === i).length, 0);
+  const pickedLesson = picked ? course.weeks.flatMap((w) => w.lessons).find((l) => l.id === picked) : undefined;
   const starred = all.filter((x) => mine[x.m.id]?.starred);
   // What's due and to revise is on the cards page; here, the suggestions about how to get better.
   const suggestions = recommend(state, studentId, now).filter((r) => ["focus", "mismatch", "feedback", "reflect"].includes(r.kind) || (r.kind === "path" && r.id !== "electives"));
@@ -80,15 +86,18 @@ export default function BoardPage() {
           </div>
         </header>
 
-        <div className="rise mt-6 grid grid-cols-3 gap-3" style={{ "--i": 1 } as React.CSSProperties}>
-          {/* A course without recordings or peer feedback shows quiz scores and the teacher's feedback instead. */}
-          {(takes || given ? [["Cards done", `${done}`], ["Recordings", `${takes}`], ["Feedback given", `${given}`]] : [["Cards done", `${done}`], ["Quiz average", quizAvg === undefined ? "–" : `${quizAvg}%`], ["Teacher feedback", `${reviewed}`]]).map(([k, v]) => (
-            <div key={k} className="card px-4 py-3">
-              <div className="text-[12px] text-ink-3">{k}</div>
-              <div className="mt-1 font-mono text-[22px]">{v}</div>
-            </div>
-          ))}
-        </div>
+        {/* Where they are in the course, lesson by lesson, with the few numbers that matter. */}
+        <section className="rise card mt-6 px-4 pt-4" style={{ "--i": 1 } as React.CSSProperties} aria-label="Your progress">
+          <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1 text-[12.5px] text-ink-3">
+            <span className="font-medium text-ink">Your course</span>
+            <span><span className="font-mono text-ink">{done}</span> of {total} cards done</span>
+            {quizAvg !== undefined && <span>Quiz average <span className="font-mono text-ink">{quizAvg}%</span></span>}
+            {reviewed > 0 && <span><span className="font-mono text-ink">{reviewed}</span> teacher feedback</span>}
+            {takes > 0 && <span><span className="font-mono text-ink">{takes}</span> recordings</span>}
+            {given > 0 && <span><span className="font-mono text-ink">{given}</span> feedback given</span>}
+          </div>
+          <CourseRoute course={course} mine={mine} picked={picked} onPick={(id) => { setPicked(id); if (id) { setTab("work"); history.replaceState(null, "", "#work"); } }} />
+        </section>
 
         <div className="no-print mt-6 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Board sections">
           {([["work", "My work"], ["feedback", "Feedback"], ["starred", "Starred"], ["next", "Suggestions"]] as const).map(([k, label]) => (
@@ -149,8 +158,17 @@ export default function BoardPage() {
         )}
 
         {shown === "work" && <section className="mt-6 space-y-6">
+          {pickedLesson && (
+            <div className="flex flex-wrap items-center gap-2 text-[13px]">
+              <span className="text-ink-2">Your work in</span>
+              <span className="chip h-7 gap-1.5 bg-white px-2.5 font-medium ring-1 ring-line">{pickedLesson.title}
+                <button onClick={() => setPicked(null)} aria-label="Show work from every lesson" className="press -mr-1 grid h-5 w-5 place-items-center rounded-full text-ink-3 hover:bg-lane hover:text-ink"><Icon name="x" size={11} /></button>
+              </span>
+              {!pickedLesson.modules.some(hasContent) && <span className="text-ink-3">Nothing here yet.</span>}
+            </div>
+          )}
           {course.weeks.map((w) => {
-            const items = w.lessons.flatMap((l) => l.modules).filter(hasContent);
+            const items = w.lessons.filter((l) => !picked || l.id === picked).flatMap((l) => l.modules).filter(hasContent);
             if (!items.length) return null;
             return (
               <div key={w.id} className="rise">

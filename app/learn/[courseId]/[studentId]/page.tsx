@@ -97,6 +97,12 @@ export default function LearnPage() {
   const pileRef = useRef<HTMLButtonElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const [openWeeks, setOpenWeeks] = useState<Set<string>>(new Set());
+  // Today (the next card and today's lesson) or All cards (every week); #all in the address keeps All cards on a reload.
+  const [home, setHome] = useState<"today" | "all">(() => (typeof window !== "undefined" && window.location.hash === "#all" ? "all" : "today"));
+  useEffect(() => {
+    const want = home === "all" ? "#all" : "";
+    if (window.location.hash !== want) history.replaceState(history.state, "", window.location.pathname + window.location.search + want);
+  }, [home]);
   const [burst, setBurst] = useState<{ x: number; y: number; colors: string[]; key: number } | null>(null);
   const [now] = useState(() => Date.now());
 
@@ -131,6 +137,7 @@ export default function LearnPage() {
       const id = (e as CustomEvent<string>).detail;
       const wk = state?.course.weeks.find((w) => w.lessons.some((l) => l.modules.some((m) => m.id === id)));
       if (wk) setOpenWeeks((s) => new Set(s).add(wk.id));
+      if (!els.current.get(id)) setHome("all");
       setLift((l) => (l ? { ...l, open: false } : l));
       setTimeout(() => {
         const el = els.current.get(id);
@@ -150,7 +157,13 @@ export default function LearnPage() {
   const toDeal = useRef<string[]>([]);
   const liftOpen = useRef(false);
   useEffect(() => { liftOpen.current = !!lift; }, [lift]);
-  function deal(ids: string[]) {
+  function deal(ids: string[], again = false) {
+    // A card dealt into a lesson that isn't on screen (Today shows only today's lesson): to All cards, where it is.
+    if (!again && ids.some((id) => !els.current.get(id))) {
+      setHome("all");
+      setTimeout(() => deal(ids, true), 200);
+      return;
+    }
     const targets = ids.map((id) => ({ id, el: els.current.get(id) })).filter((x): x is { id: string; el: HTMLElement } => !!x.el);
     if (!targets.length) return;
     targets[0].el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
@@ -287,6 +300,7 @@ export default function LearnPage() {
     const wk = state.course.weeks.find((w) => w.lessons.some((l) => l.elective && !l.chosen));
     const l = wk?.lessons.find((x) => x.elective && !x.chosen);
     if (!wk || !l) return;
+    setHome("all");
     setOpenWeeks((o) => new Set(o).add(wk.id));
     setTimeout(() => document.getElementById(`elective-${l.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
   };
@@ -340,6 +354,23 @@ export default function LearnPage() {
     return { id: sm.id, text, peers: names };
   })();
 
+  const nothingYet = lessons.every((l) => l.modules.length === 0);
+  // Why this is the card to play now.
+  const nextReason = !upNext ? "" : revising(upNext.m.id) ? "Your teacher asked for a revision" : dueInfo(upNext.m.due, now)?.tone === "late" ? "Overdue" : statusOf(upNext.m.id) === "doing" ? "Pick up where you left off" : upNext.lesson.id === current.id ? "Up next" : lessons.indexOf(upNext.lesson) < lessons.indexOf(current) ? "Catch up" : currentWeek.lessons.includes(upNext.lesson) ? "Next lesson" : "Get ahead";
+  function goHome(k: "today" | "all") {
+    setHome(k);
+    window.scrollTo({ top: 0 });
+  }
+  /** Open a card from where it is on screen, or, when it isn't (it's in another lesson), from the given element or the middle of the screen. */
+  function reveal(id: string, go: (el: HTMLElement, l: Lesson, id: string) => void, from?: HTMLElement | null) {
+    const l = lessons.find((x) => x.modules.some((m) => m.id === id));
+    if (!l) return;
+    const el = els.current.get(id) ?? from;
+    if (el) return go(el, l, id);
+    setFresh((f) => (f.has(id) ? new Set([...f].filter((x) => x !== id)) : f));
+    setLift({ id, lessonId: l.id, from: new DOMRect(innerWidth / 2 - 90, innerHeight / 2 - 126, 180, 252), open: true, completed: false });
+  }
+
   // [ and ] step through the week rows.
   function jumpWeek(d: number) {
     const sections = weeksShown.map((w) => document.getElementById(`week-${w.id}`)).filter(Boolean) as HTMLElement[];
@@ -366,6 +397,72 @@ export default function LearnPage() {
     return { title: d.title, index: i + 1, total: ids.length, next: nm ? { title: nm.title, go: () => setLift((l) => (l ? { ...l, id: nm.id } : l)) } : undefined, score: d.done ? d.score : undefined, opened };
   })();
   const openWeek = openLesson && course.weeks.find((w) => w.lessons.includes(openLesson));
+
+  /** One lesson as a row of cards, scrolling sideways on its own when it has many. */
+  const lessonRow = (l: Lesson) => {
+    if (l.elective && !l.chosen) return (
+      <HScroll key={l.id}>
+        <div className="pb-1 pt-2 sm:pb-4 sm:pt-3" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
+          <ElectiveRow state={state} studentId={studentId} lesson={l} size={size} onChanged={synced} />
+        </div>
+      </HScroll>
+    );
+    const isToday = l.id === current.id;
+    const rowWidth = Math.max(l.modules.length, 1) * (size.w + 14) - 14;
+    return (
+      <HScroll key={l.id}>
+      <div className="w-max pb-1 pt-2 sm:pb-4 sm:pt-3" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
+      <div className="scroll-ml-6">
+        <div className="flex flex-wrap items-center gap-2 text-[13px]" style={{ maxWidth: Math.max(rowWidth, 280) }}>
+          <span className="font-medium">{l.title}</span>
+          {isToday && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
+          {l.elective && <span className="chip h-5 bg-[#eef0fb] text-[11px] text-[#4b56a8]"><Icon name="split" size={10} />Elective</span>}
+          <span className="mono">{doneCount(l)}/{countable(l).length}</span>
+          {l.session && <span className="chip h-5 text-[11px]"><Icon name="studio" size={11} />Class session · {l.session.minutes} min</span>}
+          {l.elective && l.modules.every((m) => statusOf(m.id) === "todo") && <button onClick={() => chooseElective(courseId, studentId, l, false, synced)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">Drop</button>}
+        </div>
+        {l.goal && !isToday && <p className="mt-1 text-[12.5px] text-ink-3" style={{ maxWidth: Math.min(Math.max(rowWidth, 280), 576) }}>{l.goal}</p>}
+        {l.modules.length ? (
+          // Cards in a card group sit together in a frame with the group's name (and score, once done).
+          <div className="flex items-start gap-4">
+            {segmentsOf(l).map((seg) => {
+              const table = (
+                <CardTable
+                  cards={seg.cards.map((m) => toCard(l, m, l.modules.indexOf(m)))}
+                  layout="row"
+                  size={size}
+                  gap={14}
+                  idle={false}
+                  draggable={false}
+                  hiddenId={lift?.id}
+                  register={(id, el) => (el ? els.current.set(id, el) : els.current.delete(id))}
+                  onActivate={(id, el) => open(l.id, id, el)}
+                  onLockedTap={onLockedTap}
+                  ariaLabel={seg.deck ? `${l.title}: ${seg.deck.title}` : l.title}
+                />
+              );
+              if (!seg.deck) return <div key={seg.key}>{table}</div>;
+              return (
+                <div key={seg.key} className="rounded-[22px] border border-[#4b56a8]/25 bg-[#eef0fb]/60 px-3 pb-0.5 pt-2.5">
+                  <div className="flex items-center gap-2 px-1 text-[12px]">
+                    <Icon name="layers" size={12} className="text-[#4b56a8]" />
+                    <span className="font-medium text-ink">{seg.deck.title}</span>
+                    <span className="text-ink-3">{seg.cards.length} cards</span>
+                    {seg.deck.done && seg.deck.score !== undefined && <span className="chip h-5 bg-white text-[11px] text-[#4b56a8]">Score {seg.deck.score}%</span>}
+                  </div>
+                  {table}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="hatch mt-5 flex items-center justify-center text-[12.5px] text-ink-3" style={{ width: size.w, height: size.h }}>No cards yet</div>
+        )}
+      </div>
+      </div>
+      </HScroll>
+    );
+  };
 
   return (
     <MarksContext.Provider value={{ courseId, me: studentId, marks: state.marks ?? [], names: Object.fromEntries(course.students.map((s) => [s.id, s.name])), refresh: synced }}>
@@ -465,119 +562,134 @@ export default function LearnPage() {
         </div>
       ) : (
         <>
-          {/* —— Today: where you are and the next card to play —— */}
-          <section className="mx-auto max-w-6xl px-4 pt-7">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="eyebrow flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap"><Avatar name={student.name} size={18} /><span className="truncate">{course.title}{course.subtitle ? ` · ${course.subtitle}` : ""} · {student.name}</span></div>
-              <Link href={`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`} className="btn btn-ghost press h-8"><Icon name="board" size={13} /> My board</Link>
-              <Shortcuts
-                list={[
-                  { keys: "n", label: "Open the next card", run: () => upNext && heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current), enabled: !!upNext && !lift },
-                  { keys: "b", label: "My board", run: () => router.push(`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`), enabled: !lift },
-                  { keys: "[", label: "Previous week", run: () => jumpWeek(-1), enabled: weeksShown.length > 1 && !lift },
-                  { keys: "]", label: "Next week", run: () => jumpWeek(1), enabled: weeksShown.length > 1 && !lift },
-                ]}
-                extra={[{ keys: "←", label: "Move between cards" }, { keys: "mod+enter", label: "Mark the open card done" }, { keys: "escape", label: "Close a card" }]}
-              />
-              <NotificationCenter
-                title="Notifications"
-                notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) }))}
-                sections={STUDENT_SECTIONS}
-                muteKey="notify-off:student"
-                modes={[{ id: "stack", label: "Stack" }]}
-                emptyText="You’re all caught up"
-                onClear={inbox.clear}
-                onPick={(n) => {
-                  if (!n.id.startsWith("m:")) return;
-                  // "m:<card>" or, for a reply in a discussion, "m:<card>#<reply>".
-                  const id = n.id.slice(2).split("#")[0];
-                  setTimeout(() => {
-                    const el = els.current.get(id);
-                    const l = lessons.find((x) => x.modules.some((m) => m.id === id));
-                    if (el && l) open(l.id, id, el);
-                  }, 80);
-                }}
-              />
-              {!isPreview && <AccountMenu />}
-            </div>
-
-            <div className="rise mt-6 grid items-center gap-8 md:grid-cols-[1fr_auto]">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 text-[12.5px] font-medium text-ok">
-                  <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ok opacity-40" /><span className="relative inline-flex h-2 w-2 rounded-full bg-ok" /></span>
-                  Today · {currentWeek.title.split(" · ")[0]}
+          {/* —— The top: the course, the three places (Today, All cards, My board), and the bell —— */}
+          <section className="mx-auto max-w-6xl px-4 pt-5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
+              <div className="min-w-0 flex-1 truncate text-[14px] font-medium">{course.title}</div>
+              <nav aria-label="Your course" className="order-last flex w-full justify-center sm:order-none sm:w-auto">
+                <div className="flex gap-1 rounded-xl bg-black/[0.045] p-[3px]">
+                  {(["today", "all"] as const).map((k) => (
+                    <button key={k} onClick={() => goHome(k)} aria-current={home === k ? "page" : undefined}
+                      className={`press h-8 rounded-[9px] px-3.5 text-[13px] ${home === k ? "bg-white font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>
+                      {k === "today" ? "Today" : "All cards"}
+                    </button>
+                  ))}
+                  <Link href={`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`} className="press flex h-8 items-center rounded-[9px] px-3.5 text-[13px] text-ink-2 hover:text-ink">My board</Link>
                 </div>
-                <h1 className={`mt-2 font-semibold tracking-tight ${big ? "text-[36px]" : "text-[30px]"}`}>{current.title}</h1>
-                {current.goal && <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-2">{current.goal}</p>}
-                <div className="mt-5 flex max-w-md gap-1" aria-label={`${doneCount(current)} of ${countable(current).length} cards done`}>
-                  {countable(current).map((m) => {
-                    const st = statusOf(m.id);
-                    return <span key={m.id} title={m.title} className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${st === "done" ? "bg-ok" : st === "doing" ? "bg-warn" : "bg-line"}`} />;
-                  })}
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px] text-ink-3">
-                  <span><span className="font-mono text-ink">{doneCount(current)}</span> of {countable(current).length} cards done</span>
-                  {current.session && <span className="flex items-center gap-1"><Icon name="studio" size={12} />Class session · {current.session.minutes} min</span>}
-                </div>
-                {/* What needs the student, only when something does: to revise, overdue, due soon, to catch up, electives. */}
-                <NeedsYou state={state} studentId={studentId} onElectives={toElectives}
-                  onOpen={(lessonId, mid) => { const el = els.current.get(mid) ?? heroRef.current; if (el) open(lessonId, mid, el); }} />
-                {studioNudge && (
-                  <button
-                    onClick={() => {
-                      const el = els.current.get(studioNudge.id);
-                      if (el) open(current.id, studioNudge.id, el);
-                    }}
-                    className="pop press mt-4 flex max-w-md items-center gap-3 rounded-xl border border-[#ae502f]/25 bg-[#fbf3ee] px-3.5 py-2.5 text-left hover:border-[#ae502f]/50"
-                  >
-                    <span className="flex -space-x-1.5">{studioNudge.peers.slice(0, 3).map((n) => <span key={n} className="rounded-full ring-2 ring-[#fbf3ee]"><Avatar name={n} size={22} /></span>)}</span>
-                    <span className="min-w-0 flex-1 text-[13px]">{studioNudge.text}</span>
-                    <Icon name="arrow" size={14} className="text-[#ae502f]" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-5">
-                {upNext ? (
-                  <>
-                    <div className="order-2 min-w-0 text-left sm:order-1 sm:text-right">
-                      <div className="text-[12px] font-medium uppercase tracking-[0.1em] text-ink-3">{revising(upNext.m.id) ? "Your teacher asked for a revision" : dueInfo(upNext.m.due, now)?.tone === "late" ? "Overdue" : statusOf(upNext.m.id) === "doing" ? "Pick up where you left off" : upNext.lesson.id === current.id ? "Up next" : lessons.indexOf(upNext.lesson) < lessons.indexOf(current) ? "Catch up" : currentWeek.lessons.includes(upNext.lesson) ? "Next lesson" : "Get ahead"}</div>
-                      <div className="mt-1 max-w-[12rem] text-[15px] font-medium leading-snug">{upNext.m.title}</div>
-                      <button onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)} className="btn btn-dark press mt-3 h-9 px-4">
-                        {statusOf(upNext.m.id) === "doing" ? "Continue" : "Play this card"} <Icon name="arrow" size={13} />
-                      </button>
-                    </div>
-                    <div className="order-1 flex-none sm:order-2">
-                    <TiltCard
-                      ref={heroRef}
-                      w={narrow ? CARD_SIZE.mobile.w : CARD_SIZE.comfortable.w}
-                      h={narrow ? CARD_SIZE.mobile.h : CARD_SIZE.comfortable.h}
-                      label={`Up next: ${upNext.m.title}`}
-                      hidden={lift?.id === upNext.m.id}
-                      onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)}
-                    >
-                      <CardFace m={upNext.m} status={statusOf(upNext.m.id)} index={upNext.lesson.modules.indexOf(upNext.m)} total={upNext.lesson.modules.length} personal={upNext.m.personal} due={dueInfo(upNext.m.due, now)} badge={revising(upNext.m.id) ? "Revise" : undefined} />
-                    </TiltCard>
-                    </div>
-                  </>
-                ) : lessons.every((l) => l.modules.length === 0) ? (
-                  <div className="pop flex h-[252px] w-[180px] flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-line-strong p-4 text-center">
-                    <Icon name="layers" size={20} className="text-ink-3" />
-                    <span className="text-[14px] font-medium">No cards yet</span>
-                    <span className="text-[12px] text-ink-3">Your teacher hasn’t added any cards. Check back soon.</span>
-                  </div>
-                ) : (
-                  <div className="pop flex h-[252px] w-[180px] flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-ok/50 bg-ok/[0.04] p-4 text-center">
-                    <StatusIcon status="done" size={22} />
-                    <span className="text-[14px] font-medium">Every card is done</span>
-                    <span className="text-[12px] text-ink-3">{course.groups?.length ? "See you in class." : "Nice work."}</span>
-                  </div>
-                )}
+              </nav>
+              <div className="flex flex-1 items-center justify-end gap-2">
+                <Shortcuts
+                  list={[
+                    { keys: "n", label: "Open the next card", run: () => upNext && heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current), enabled: !!upNext && !lift && home === "today" },
+                    { keys: "t", label: "Today", run: () => goHome("today"), enabled: !lift },
+                    { keys: "a", label: "All cards", run: () => goHome("all"), enabled: !lift },
+                    { keys: "b", label: "My board", run: () => router.push(`/learn/${courseId}/${studentId}/board${isPreview ? "?preview=1" : ""}`), enabled: !lift },
+                    { keys: "[", label: "Previous week", run: () => jumpWeek(-1), enabled: home === "all" && weeksShown.length > 1 && !lift },
+                    { keys: "]", label: "Next week", run: () => jumpWeek(1), enabled: home === "all" && weeksShown.length > 1 && !lift },
+                  ]}
+                  extra={[{ keys: "←", label: "Move between cards" }, { keys: "mod+enter", label: "Mark the open card done" }, { keys: "escape", label: "Close a card" }]}
+                />
+                <NotificationCenter
+                  title="Notifications"
+                  notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) }))}
+                  sections={STUDENT_SECTIONS}
+                  muteKey="notify-off:student"
+                  modes={[{ id: "stack", label: "Stack" }]}
+                  emptyText="You’re all caught up"
+                  onClear={inbox.clear}
+                  onPick={(n) => {
+                    if (!n.id.startsWith("m:")) return;
+                    // "m:<card>" or, for a reply in a discussion, "m:<card>#<reply>".
+                    reveal(n.id.slice(2).split("#")[0], (el, l, id) => open(l.id, id, el));
+                  }}
+                />
+                {!isPreview && <AccountMenu />}
               </div>
             </div>
           </section>
 
-          <TipBar />
+          {home === "today" && (
+            <>
+              {/* —— Today: the one card to play now, and what else needs you —— */}
+              <section className="rise mx-auto max-w-6xl px-4">
+                <div className="mt-8 flex flex-col items-center gap-8 sm:mt-10 sm:flex-row sm:items-center sm:gap-14">
+                  <div className="flex-none">
+                    {upNext ? (
+                      <TiltCard
+                        ref={heroRef}
+                        w={narrow ? CARD_SIZE.comfortable.w : CARD_SIZE.spacious.w}
+                        h={narrow ? CARD_SIZE.comfortable.h : CARD_SIZE.spacious.h}
+                        label={`Up next: ${upNext.m.title}`}
+                        hidden={lift?.id === upNext.m.id && lift.el === heroRef.current}
+                        onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)}
+                      >
+                        <CardFace m={upNext.m} big={!narrow} status={statusOf(upNext.m.id)} index={upNext.lesson.modules.indexOf(upNext.m)} total={upNext.lesson.modules.length} personal={upNext.m.personal} due={dueInfo(upNext.m.due, now)} badge={revising(upNext.m.id) ? "Revise" : undefined} />
+                      </TiltCard>
+                    ) : (
+                      <div className={`pop flex h-[252px] w-[180px] flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed p-4 text-center ${nothingYet ? "border-line-strong" : "border-ok/50 bg-ok/[0.04]"}`}>
+                        {nothingYet ? <Icon name="layers" size={22} className="text-ink-3" /> : <StatusIcon status="done" size={24} />}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 text-center sm:text-left">
+                    {upNext ? (
+                      <>
+                        <div className="text-[12px] font-medium uppercase tracking-[0.1em] text-ink-3">
+                          <span className={revising(upNext.m.id) || dueInfo(upNext.m.due, now)?.tone === "late" ? "text-warn" : ""}>{nextReason}</span> · {upNext.lesson.title}
+                        </div>
+                        <h1 className={`mt-2 font-semibold leading-[1.15] tracking-tight ${big ? "text-[40px]" : "text-[30px] sm:text-[36px]"}`}>{upNext.m.title}</h1>
+                        {revising(upNext.m.id) && mine[upNext.m.id]?.review?.text ? (
+                          <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-2">Your teacher: “{mine[upNext.m.id]!.review!.text}”</p>
+                        ) : upNext.lesson.goal ? <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-2">{upNext.lesson.goal}</p> : null}
+                        <div className="mt-5 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+                          <button onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)} className="btn btn-dark press h-10 px-5 text-[14px]">
+                            {revising(upNext.m.id) ? "Revise it" : statusOf(upNext.m.id) === "doing" ? "Continue" : "Play this card"} <Icon name="arrow" size={13} />
+                          </button>
+                          <span className="mono">card {upNext.lesson.modules.indexOf(upNext.m) + 1} of {upNext.lesson.modules.length}</span>
+                        </div>
+                      </>
+                    ) : nothingYet ? (
+                      <>
+                        <h1 className="text-[30px] font-semibold tracking-tight">No cards yet</h1>
+                        <p className="mt-2 text-[15px] text-ink-2">Your teacher hasn’t added any cards. Check back soon.</p>
+                      </>
+                    ) : (
+                      <>
+                        <h1 className="text-[30px] font-semibold tracking-tight">You’re all caught up</h1>
+                        <p className="mt-2 text-[15px] text-ink-2">Every card is done. {course.groups?.length ? "See you in class." : "Nice work."} Your work is on My board.</p>
+                      </>
+                    )}
+                    {/* What else needs the student, only when something does: to revise, overdue, due soon, to catch up, electives. */}
+                    <div className="flex justify-center sm:justify-start">
+                      <NeedsYou heading={upNext ? "Also needs you" : "Needs you"} skip={upNext?.m.id} state={state} studentId={studentId} onElectives={toElectives}
+                        onOpen={(lessonId, mid) => reveal(mid, (el) => open(lessonId, mid, el), heroRef.current)} />
+                    </div>
+                    {studioNudge && (
+                      <button
+                        onClick={() => reveal(studioNudge.id, (el) => open(current.id, studioNudge.id, el))}
+                        className="pop press mt-4 flex max-w-md items-center gap-3 rounded-xl border border-[#ae502f]/25 bg-[#fbf3ee] px-3.5 py-2.5 text-left hover:border-[#ae502f]/50"
+                      >
+                        <span className="flex -space-x-1.5">{studioNudge.peers.slice(0, 3).map((n) => <span key={n} className="rounded-full ring-2 ring-[#fbf3ee]"><Avatar name={n} size={22} /></span>)}</span>
+                        <span className="min-w-0 flex-1 text-[13px]">{studioNudge.text}</span>
+                        <Icon name="arrow" size={14} className="text-[#ae502f]" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-10 border-t border-line" />
+              </section>
+              {/* Today's lesson, its cards in a row. */}
+              <div className="pb-16 pt-2">
+                {lessonRow(current)}
+                <div className="mx-auto max-w-6xl px-4">
+                  <button onClick={() => goHome("all")} className="btn btn-quiet press h-8 px-2 text-[12.5px]">All cards, every week <Icon name="arrow" size={12} /></button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {home === "all" && (
+          <>
 
           {/* —— Week navigator —— */}
           {weeksShown.length > 1 && (
@@ -638,76 +750,15 @@ export default function LearnPage() {
                   ) : (
                     // One row per lesson: a week's lessons stack, each scrolling sideways on its own when it has many cards.
                     <div className="mt-1 space-y-1 sm:space-y-2">
-                        {week.lessons.map((l) => {
-                          if (l.elective && !l.chosen) return (
-                            <HScroll key={l.id}>
-                              <div className="pb-1 pt-2 sm:pb-4 sm:pt-3" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
-                                <ElectiveRow state={state} studentId={studentId} lesson={l} size={size} onChanged={synced} />
-                              </div>
-                            </HScroll>
-                          );
-                          const isToday = l.id === current.id;
-                          const rowWidth = Math.max(l.modules.length, 1) * (size.w + 14) - 14;
-                          return (
-                            <HScroll key={l.id}>
-                            <div className="w-max pb-1 pt-2 sm:pb-4 sm:pt-3" style={{ paddingInline: "max(1rem, calc((100vw - 72rem) / 2 + 1rem))" }}>
-                            <div className="scroll-ml-6">
-                              <div className="flex flex-wrap items-center gap-2 text-[13px]" style={{ maxWidth: Math.max(rowWidth, 280) }}>
-                                <span className="font-medium">{l.title}</span>
-                                {isToday && <span className="chip h-5 bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
-                                {l.elective && <span className="chip h-5 bg-[#eef0fb] text-[11px] text-[#4b56a8]"><Icon name="split" size={10} />Elective</span>}
-                                <span className="mono">{doneCount(l)}/{countable(l).length}</span>
-                                {l.session && <span className="chip h-5 text-[11px]"><Icon name="studio" size={11} />Class session · {l.session.minutes} min</span>}
-                                {l.elective && l.modules.every((m) => statusOf(m.id) === "todo") && <button onClick={() => chooseElective(courseId, studentId, l, false, synced)} className="btn btn-quiet press h-6 px-2 text-[11.5px]">Drop</button>}
-                              </div>
-                              {l.goal && !isToday && <p className="mt-1 text-[12.5px] text-ink-3" style={{ maxWidth: Math.min(Math.max(rowWidth, 280), 576) }}>{l.goal}</p>}
-                              {l.modules.length ? (
-                                // Cards in a card group sit together in a frame with the group's name (and score, once done).
-                                <div className="flex items-start gap-4">
-                                  {segmentsOf(l).map((seg) => {
-                                    const table = (
-                                      <CardTable
-                                        cards={seg.cards.map((m) => toCard(l, m, l.modules.indexOf(m)))}
-                                        layout="row"
-                                        size={size}
-                                        gap={14}
-                                        idle={false}
-                                        draggable={false}
-                                        hiddenId={lift?.id}
-                                        register={(id, el) => (el ? els.current.set(id, el) : els.current.delete(id))}
-                                        onActivate={(id, el) => open(l.id, id, el)}
-                                        onLockedTap={onLockedTap}
-                                        ariaLabel={seg.deck ? `${l.title}: ${seg.deck.title}` : l.title}
-                                      />
-                                    );
-                                    if (!seg.deck) return <div key={seg.key}>{table}</div>;
-                                    return (
-                                      <div key={seg.key} className="rounded-[22px] border border-[#4b56a8]/25 bg-[#eef0fb]/60 px-3 pb-0.5 pt-2.5">
-                                        <div className="flex items-center gap-2 px-1 text-[12px]">
-                                          <Icon name="layers" size={12} className="text-[#4b56a8]" />
-                                          <span className="font-medium text-ink">{seg.deck.title}</span>
-                                          <span className="text-ink-3">{seg.cards.length} cards</span>
-                                          {seg.deck.done && seg.deck.score !== undefined && <span className="chip h-5 bg-white text-[11px] text-[#4b56a8]">Score {seg.deck.score}%</span>}
-                                        </div>
-                                        {table}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="hatch mt-5 flex items-center justify-center text-[12.5px] text-ink-3" style={{ width: size.w, height: size.h }}>No cards yet</div>
-                              )}
-                            </div>
-                            </div>
-                            </HScroll>
-                          );
-                        })}
+                        {week.lessons.map(lessonRow)}
                     </div>
                   )}
                 </section>
               );
             })}
           </div>
+          </>
+          )}
         </>
       )}
 
@@ -774,32 +825,3 @@ function Centered({ children }: { children: React.ReactNode }) {
 }
 
 /** A one-time, dismissible tip about the less obvious ways to move around. */
-function TipBar() {
-  const key = "tip:cards:v1";
-  const [show, setShow] = useState(() => {
-    try {
-      // Keyboard tips are no use on a phone or tablet without a keyboard and mouse.
-      return typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches && !localStorage.getItem(key);
-    } catch {
-      return false;
-    }
-  });
-  if (!show) return null;
-  const close = () => {
-    try {
-      localStorage.setItem(key, "1");
-    } catch {}
-    setShow(false);
-  };
-  const k = (t: string) => <kbd className="mx-0.5 rounded border border-line bg-white px-1.5 py-[1px] font-mono text-[11px] text-ink">{t}</kbd>;
-  return (
-    <div className="mx-auto max-w-6xl px-4">
-      <div className="pop mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-white px-4 py-2.5 text-[12.5px] text-ink-2">
-        <Icon name="sparkles" size={14} className="text-ink-3" />
-        <span>Tips: {k("←")}{k("→")} move between cards · {k("N")} opens your next card · {k("[")}{k("]")} jump between weeks · {k("?")} shows every shortcut</span>
-        <span className="flex-1" />
-        <button onClick={close} className="btn btn-quiet press h-7 px-2 text-[12px]">Got it</button>
-      </div>
-    </div>
-  );
-}
