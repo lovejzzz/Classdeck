@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.83",
+    date: "2026-11-23",
+    changes: [
+      "The map lines up with the rest of the page: it starts where the tabs start and ends where the page does, instead of running to the window’s edges.",
+    ],
+  },
+  {
     version: "0.1.82",
     date: "2026-11-23",
     changes: [

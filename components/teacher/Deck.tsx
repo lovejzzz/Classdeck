@@ -563,7 +563,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       )}
 
       {view === "map" ? (
-        <div className="ml-[calc(50%-50vw)] w-screen px-4">
+        // The map starts where the tabs do (the page's column), not at the window's edge.
+        <div>
           <CourseMap
             lessons={allLessons()}
             weekOf={Object.fromEntries(course.weeks.flatMap((w) => w.lessons.map((l) => [l.id, w.title.split(" · ")[0]])))}
