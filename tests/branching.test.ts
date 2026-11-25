@@ -201,6 +201,27 @@ const course = () => [
   check("…and the card only its inner group dealt", gone.has("after"));
 }
 
+// A card group's score cards follow its score as it is now (a fixed answer key, a question added and answered).
+{
+  const q1 = card("g1", { type: "practice", questions: [ask("a", [null, null])] });
+  const q2 = card("g2", { type: "practice", questions: [ask("b", [null, null])] });
+  const g = card("G", { type: "group", members: ["g1", "g2"], bands: [{ min: 0, next: "lo" }, { min: 60, next: null }, { min: 100, next: "hi" }] });
+  const mods = [g, q1, q2, card("lo"), card("hi")];
+  const p = (first: Record<string, boolean>, stored: number): Record<string, Progress> => ({
+    G: { status: "done", dealt: { [SCORE]: stored }, updatedAt: 0 } as Progress,
+    g1: { status: "done", first: { a: first.a }, dealt: { a: 0 }, updatedAt: 0 } as Progress,
+    g2: { status: "done", first: { b: first.b }, dealt: { b: 0 }, updatedAt: 0 } as Progress,
+  });
+  const got = (pr: Record<string, Progress>, ms = mods) => [...dealtTo(ms, pr)].sort().join();
+  check("score cards: the score as it is now decides (both right now, stored 50%)", got(p({ a: true, b: true }, 50)) === "hi");
+  check("score cards: a key fixed against them takes the card away", got(p({ a: false, b: false }, 100)) === "lo");
+  const q3 = card("g3", { type: "practice", questions: [ask("c", [null, null])] });
+  const more = [{ ...g, members: ["g1", "g2", "g3"] }, q1, q2, q3, card("lo"), card("hi")];
+  check("score cards: a question added and not yet answered keeps the score they finished with", got(p({ a: true, b: true }, 100), more) === "hi");
+  const answered = { ...p({ a: true, b: true }, 100), g3: { status: "done", first: { c: false }, dealt: { c: 1 }, updatedAt: 0 } as Progress };
+  check("score cards: once it's answered, the new score decides (2 of 3)", got(answered, more) === "");
+}
+
 const failed = rows.filter(([, ok]) => !ok);
 for (const [n] of failed) console.log("  ✗", n);
 console.log(`${rows.length - failed.length} passed, ${failed.length} failed`);

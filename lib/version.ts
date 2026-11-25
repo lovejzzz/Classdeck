@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.8",
+    date: "2026-11-25",
+    changes: [
+      "Cards a card group deals by score now follow the score as it is now. When the teacher fixes a right answer or changes the score bands, students get the cards for their new score, and cards for the old one they haven’t opened go away (ones they’ve opened stay). A question added to a group counts once it’s answered; until then the score they finished with stands.",
+    ],
+  },
+  {
     version: "0.2.7",
     date: "2026-11-25",
     changes: [

@@ -9,7 +9,7 @@ import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { foldWeeks } from "@/lib/cardmodel";
 import { kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
-import { canBranch, cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
+import { canBranch, cardsOf, cleanCourseWiring, deals, wiresOf, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
@@ -1024,7 +1024,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
         if (firstTime) p.first![q.id] = right;
         // Kept even if nothing is wired to it yet: cards the teacher adds to this answer later reach this student too.
         if ((deals(q) || canBranch(q)) && (p.dealt ??= {})[q.id] === undefined) p.dealt[q.id] = given;
-        const byAnswer = treeOf(course, body.studentId).dealt;
         // A card group scores once every Multiple choice card in it has a first answer; so does a group it's in.
         for (const gid of groupsAbove(found.mod.id, parentOf(found.lesson.modules))) {
           const group = found.lesson.modules.find((g) => g.id === gid);
@@ -1038,8 +1037,13 @@ async function change(request: Request, courseId: string, body: Record<string, a
             gp.updatedAt = Date.now();
           }
         }
-        dealtNow = [...byAnswer].filter((id) => !before.has(id));
-        groupDealt = [...treeOf(course, body.studentId).dealt].filter((id) => !byAnswer.has(id));
+        // New cards, said as the group's when a group's score dealt them (the score is worked out as things are, so it
+        // can deal as soon as the last answer is in), else as this answer's.
+        const all = cardsOf(course.weeks).map((c) => c.m);
+        const byScore = new Set(wiresOf(all).filter((w) => w.q === SCORE).flatMap((w) => { const t = all.find((m) => m.id === w.to); return [w.to, ...(t?.type === "group" ? leavesOf(t, all).map((c) => c.id) : [])]; }));
+        const fresh = [...treeOf(course, body.studentId).dealt].filter((id) => !before.has(id));
+        groupDealt = fresh.filter((id) => byScore.has(id));
+        dealtNow = fresh.filter((id) => !byScore.has(id));
       }
       (p.results ??= {})[q.id] = right;
       if (p.status === "todo") p.status = "doing";

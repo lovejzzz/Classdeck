@@ -91,6 +91,19 @@ export const followUps = (scope: HasModules | Module[]) => new Set(wiresOf(scope
 export const decidingAnswer = (p: Progress | undefined, qid: string, from?: Module) =>
   p?.dealt?.[qid] ?? (qid !== SCORE && from?.type !== "quiz" ? p?.answers?.[qid] : undefined);
 
+/**
+ * What decides a wire for this student. A card group's score is worked out from their answers as things are now, so
+ * when the teacher fixes the right answer or adds a question (once it's answered), the cards the score deals follow.
+ * Until a group is complete again, the score it was finished with stands. Quizzes keep the scores they were handed in with.
+ */
+export function decides(prog: Record<string, Progress>, w: Wire, from: Module | undefined, cards: Module[]): AnswerValue | undefined {
+  if (w.q === SCORE && from?.type === "group") {
+    const now = groupScore(from, cards, prog);
+    if (now.done && now.pct !== undefined) return now.pct;
+  }
+  return decidingAnswer(prog[w.from], w.q, from);
+}
+
 /** Whether this answer (or score) takes the student down this wire. */
 export const picked = (v: AnswerValue | undefined, w: Wire) =>
   w.score ? scoresIn(v).some((x) => x >= w.score!.min && x < w.score!.max) : Array.isArray(v) ? (v as number[]).includes(w.option) : v === w.option;
@@ -158,7 +171,7 @@ export function dealtTo(scope: HasModules | Module[], prog: Record<string, Progr
     grew = false;
     for (const w of wires) {
       if (dealt.has(w.to) || !on.has(w.from)) continue;
-      if (picked(decidingAnswer(prog[w.from], w.q, byId.get(w.from)), w)) {
+      if (picked(decides(prog, w, byId.get(w.from), modules), w)) {
         dealt.add(w.to);
         on.add(w.to);
         const t = byId.get(w.to);
@@ -379,7 +392,7 @@ export function pathsFor(weeks: { lessons: Lesson[] }[], prog: Record<string, Pr
     if (!dst) continue;
     const cond = w.score ? `Score ${bandLabel(w.score)}` : `“${src.m.questions?.find((q) => q.id === w.q)?.options[w.option]?.trim() || String.fromCharCode(65 + w.option)}”`;
     const list = out.get(w.from) ?? out.set(w.from, []).get(w.from)!;
-    const mine = picked(decidingAnswer(prog[w.from], w.q, src.m), w) && view.dealt.has(w.to) && visible.has(w.to);
+    const mine = picked(decides(prog, w, src.m, cards.map((c) => c.m)), w) && view.dealt.has(w.to) && visible.has(w.to);
     if (mine) { if (!list.some((x) => x.to === w.to)) list.push({ to: w.to, why: w.score ? cond : `You chose ${cond}` }); continue; }
     if (list.some((x) => x.to === w.to)) continue;
     list.push(src.lesson.openPaths ? { title: dst.m.title, type: dst.m.type, why: w.score ? cond : `If you choose ${cond}` } : {});
