@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.3",
+    date: "2026-11-25",
+    changes: [
+      "The map’s tabs say what they do in fewer words: “Show 2 follow-ups” and “Hide follow-ups” on a card’s right edge, “Expand group” and “Collapse group” on a card group’s bottom edge. Their tips are drawn over everything, so the map’s edge and the cards beside no longer cut them off.",
+    ],
+  },
+  {
     version: "0.2.2",
     date: "2026-11-25",
     changes: [

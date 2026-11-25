@@ -285,9 +285,8 @@ body[data-panel="open"] .panel-shift-row { padding-right: var(--panel-row, 0px);
   font-size: 11.5px; font-weight: 500; line-height: 1.3; color: #fff; animation: fade 0.15s 0.25s both;
 }
 
-/* Tips that open beside or below their button, where above would cover what it's about. */
-.tip-right[data-tip]:hover::after, .tip-right[data-tip]:focus-visible::after { bottom: auto; top: 50%; left: calc(100% + 8px); translate: 0 -50%; }
-.tip-below[data-tip]:hover::after, .tip-below[data-tip]:focus-visible::after { bottom: auto; top: calc(100% + 8px); }
+/* A map tab's name, drawn over everything (in <body>), a moment after the pointer arrives. */
+.map-tip { animation: fade 0.15s 0.25s both; }
 /* A card's paper tabs: a bit of the card's own paper folded out past its edge. On the right edge (near the top) it shows
    or folds the cards the card deals; on the bottom edge of a card group, its own cards. White: something is folded
    away; pale blue: it's showing. */

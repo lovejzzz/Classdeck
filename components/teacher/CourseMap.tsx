@@ -587,6 +587,17 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
   const [toc, setToc] = useState(false);
   // The contents panel goes into <body>, once the page is in the browser.
   const [portalReady, setPortalReady] = useState(false);
+  // A tab's name, shown beside it in <body> (the map's scroll box and the cards around would cut a tip drawn in place).
+  const [tip, setTip] = useState<{ text: string; x: number; y: number; side: "right" | "below" } | null>(null);
+  const tipOn = (text: string, side: "right" | "below") => {
+    const show = (el: HTMLElement) => { const r = el.getBoundingClientRect(); setTip(side === "right" ? { text, side, x: r.right + 8, y: r.top + r.height / 2 } : { text, side, x: r.left + r.width / 2, y: r.bottom + 8 }); };
+    return {
+      onPointerEnter: (e: React.PointerEvent<HTMLElement>) => show(e.currentTarget),
+      onPointerLeave: () => setTip(null),
+      onFocus: (e: React.FocusEvent<HTMLElement>) => show(e.currentTarget),
+      onBlur: () => setTip(null),
+    };
+  };
   // eslint-disable-next-line react-hooks/set-state-in-effect -- document.body exists only in the browser
   useEffect(() => setPortalReady(true), []);
   const tocTimer = useRef<number>(0);
@@ -1369,6 +1380,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     <div className="flex items-start gap-3">
       {/* Contents: every week and its lessons. Click one to go there on the map. */}
       {/* Rendered into <body>: an animated ancestor would otherwise become what "fixed" is measured from. */}
+      {portalReady && tip && createPortal(
+        <span role="tooltip" className="map-tip pointer-events-none fixed z-[80] whitespace-nowrap rounded-[7px] bg-ink px-2 py-1 text-[11.5px] font-medium leading-[1.3] text-white"
+          style={{ left: tip.x, top: tip.y, translate: tip.side === "right" ? "0 -50%" : "-50% 0" }}>{tip.text}</span>, document.body)}
       {portalReady && createPortal(<>
       {/* Fixed to the window's left edge (not the map's), under the page header: hidden until the pointer reaches the
           edge, then it slides out over the page. The pointer that opened it is already inside it, so it doesn't open
@@ -1805,11 +1819,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                     // bring them back. White with an arrow: some are folded away; pale blue: they're showing.
                     const shut = folded.has(m.id);
                     const n = shut ? foldedUnder(m.id) : 0;
-                    const say = shut ? `Show the ${n} card${n === 1 ? "" : "s"} this card deals` : "Fold away the cards this card deals";
+                    const say = shut ? `Show ${n} follow-up${n === 1 ? "" : "s"}` : "Hide follow-ups";
                     return (
-                      <button onClick={(e) => { e.stopPropagation(); fold(m.id, !shut); }} onPointerDown={(e) => e.stopPropagation()}
-                        aria-pressed={shut} aria-label={say} data-tip={say}
-                        className={`paper-tab tab-r tip-right border-line ${shut ? "" : "is-open"}`}>
+                      <button onClick={(e) => { e.stopPropagation(); setTip(null); fold(m.id, !shut); }} onPointerDown={(e) => e.stopPropagation()}
+                        aria-pressed={shut} aria-label={say} {...tipOn(say, "right")}
+                        className={`paper-tab tab-r border-line ${shut ? "" : "is-open"}`}>
                         <Icon name="chevron" size={level === "far" ? 16 : 11} className={shut ? "-rotate-90" : "rotate-90"} />
                       </button>
                     );
@@ -1817,11 +1831,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                   {nd.more && (() => {
                     // A paper tab in the middle of the bottom edge: show all the group's cards, or cut it back to a card's height.
                     const shut = nd.clip !== undefined;
-                    const say = shut ? `Show all ${leavesOf(m, lessonCards).length} cards` : "Show fewer";
+                    const say = shut ? "Expand group" : "Collapse group";
                     return (
-                      <button onClick={(e) => { e.stopPropagation(); setOpened((o) => { const k = new Set(o); if (k.has(m.id)) k.delete(m.id); else k.add(m.id); return k; }); }}
-                        onPointerDown={(e) => e.stopPropagation()} aria-expanded={!shut} aria-label={say} data-tip={say}
-                        className={`paper-tab tab-b tip-below border-line ${shut ? "" : "is-open"}`}>
+                      <button onClick={(e) => { e.stopPropagation(); setTip(null); setOpened((o) => { const k = new Set(o); if (k.has(m.id)) k.delete(m.id); else k.add(m.id); return k; }); }}
+                        onPointerDown={(e) => e.stopPropagation()} aria-expanded={!shut} aria-label={say} {...tipOn(say, "below")}
+                        className={`paper-tab tab-b border-line ${shut ? "" : "is-open"}`}>
                         <Icon name="chevron" size={11} className={shut ? "" : "rotate-180"} />
                       </button>
                     );
