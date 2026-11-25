@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.85",
+    date: "2026-11-25",
+    changes: [
+      "Students are now told about new cards (added by the teacher or dealt by their answers), a change of today’s lesson, and replies and @mentions in discussions, not only feedback. Each can still be turned off under “Notify me about…”.",
+      "Cards that appeared since a student’s last visit are marked New on their board until they open them.",
+    ],
+  },
+  {
     version: "0.2.84",
     date: "2026-11-25",
     changes: [

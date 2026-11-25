@@ -252,7 +252,7 @@ export default function LearnPage() {
     return {
       id: m.id,
       label: `${m.title}, ${status === "done" ? "done" : locked ? "locked" : status === "doing" ? "in progress" : "not started"}`,
-      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal || m.dealtFor} big={big && !narrow} due={dueInfo(m.due, now)} badge={revising(m.id) ? "Revise" : fresh.has(m.id) && status !== "done" ? "New" : m.dealtFor && status !== "done" ? "For you" : undefined} />,
+      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal || m.dealtFor} big={big && !narrow} due={dueInfo(m.due, now)} badge={revising(m.id) ? "Revise" : (fresh.has(m.id) && status !== "done") || (inbox.newCards.has(m.id) && status === "todo") ? "New" : m.dealtFor && status !== "done" ? "For you" : undefined} />,
       back: <CardBack locked={locked} />,
       faceDown: locked,
       locked,
@@ -491,7 +491,6 @@ export default function LearnPage() {
               notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) })).filter((n) => n.cat !== "teacher")}
               sections={STUDENT_SECTIONS}
               muteKey="notify-off:student:v2"
-              defaultOn={["feedback"]}
               noMessages={isPreview}
               emptyText="You’re all caught up"
               onClear={inbox.clear}
@@ -599,7 +598,6 @@ export default function LearnPage() {
                   notes={inbox.notes.map((n) => ({ ...n, cat: studentSection(n.id) })).filter((n) => n.cat !== "teacher")}
                   sections={STUDENT_SECTIONS}
                   muteKey="notify-off:student:v2"
-                  defaultOn={["feedback"]}
                   noMessages={isPreview}
                   emptyText="You’re all caught up"
                   onClear={inbox.clear}

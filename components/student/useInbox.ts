@@ -111,5 +111,7 @@ export function useInbox(course: Course | undefined, studentId: string, progress
     } catch {}
     setSaved(next);
   }
-  return { notes: unread, clear };
+  // Cards that appeared since the last visit (added by the teacher, or dealt): marked New on the board until opened.
+  const newCards = new Set(unread.filter((n) => n.id.startsWith("m:") && !n.id.includes("#")).map((n) => n.id.slice(2)));
+  return { notes: unread, clear, newCards };
 }
