@@ -154,12 +154,29 @@ export async function POST(request: Request) {
         for (const [k, s] of Object.entries(d.sessions)) if (s.userId === u.id) delete d.sessions[k];
       }
       u.google = who.sub;
-      u.picture = who.picture;
+      if (!u.pictureOwn) u.picture = who.picture;
       save();
       return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: u.id }) } });
     }
     case "logout":
       return Response.json({ ok: true }, { headers: { "Set-Cookie": endSession(request) } });
+    case "setPicture": {
+      // A photo of their own: a picture this account uploaded (or none, to go back to Google's, or the initial).
+      const t = teacherOf(getSession(request));
+      if (!t) return fail("Sign in first", 401);
+      const u = db().users[t.id];
+      if (body.url === null) {
+        u.picture = undefined;
+        u.pictureOwn = undefined;
+      } else {
+        const m = /^\/api\/upload\/([a-z0-9]+\.(?:jpg|jpeg|png|webp|gif))$/.exec(String(body.url ?? ""));
+        if (!m || db().uploads[m[1]]?.by !== `u:${t.id}`) return fail("That picture couldn’t be used");
+        u.picture = body.url;
+        u.pictureOwn = true;
+      }
+      save();
+      return Response.json({ ok: true, picture: u.picture ?? null });
+    }
     default:
       return fail("Unknown action");
   }

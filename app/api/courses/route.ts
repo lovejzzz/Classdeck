@@ -21,7 +21,9 @@ import { syncSignup } from "@/lib/shared";
 export async function GET(request: Request) {
   const session = getSession(request);
   const t = teacherOf(session);
-  const all = listCourses();
+  // Only the courses this account can see (and, for the site owner, older courses with no owner yet) are looked at.
+  const admin = !!t && isAdmin(session);
+  const all = t ? listCourses((c) => !!roleOf(session, c) || (admin && !c.ownerId && !c.sample)) : [];
   const d = db();
   // ?calendar=1: every dated thing in the teacher's courses (lesson days, cards' due dates), for the due-date calendar.
   const url = new URL(request.url);

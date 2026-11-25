@@ -1701,7 +1701,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                   )}
                   {inbound.length > 0 && <span className={`absolute left-1/2 z-10 -translate-x-1/2 rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(255,255,255,0.6)] ${level === "far" ? "-top-[8px] h-3.5 w-3.5" : "-top-[7px] h-3 w-3"}`} style={{ background: colorOf(inbound[0]) }} />}
                   {here.length > 0 && (
-                    <span className="absolute -bottom-3 left-3 z-10 flex -space-x-1.5" title={`${here.map((s) => s.name).join(", ")} ${here.length === 1 ? "is" : "are"} working on this${stuck ? ` (${stuck} for over 2 days)` : ""}`}>
+                    // Where students are: who is on this card (orange: on it for over 2 days), said at once on hover.
+                    <span className="absolute -bottom-3 left-3 z-10 flex -space-x-1.5" aria-label={`${here.map((s) => s.name).join(", ")} ${here.length === 1 ? "is" : "are"} on this card`}
+                      onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
+                      {...tipOn(`${here.length <= 3 ? here.map((s) => s.name).join(", ") : `${here.slice(0, 2).map((s) => s.name).join(", ")} and ${here.length - 2} more`} ${here.length === 1 ? "is" : "are"} on this card${stuck ? ` · ${stuck === here.length ? (here.length === 1 ? "for" : "all for") : `${stuck} for`} over 2 days` : ""}`, "below")}>
                       {here.slice(0, 4).map((s) => (
                         <span key={s.id} className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-white text-[9.5px] font-semibold text-white ${s.stuck ? "bg-[#d08a4a]" : "bg-[#4b56a8]"}`}>{initials(s.name)}</span>
                       ))}

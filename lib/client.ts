@@ -53,8 +53,34 @@ export async function op<T = Record<string, unknown>>(courseId: string, body: Re
 }
 
 /** 读取课程，并每隔几秒刷新一次（原型用轮询代替实时推送）。 */
+/**
+ * A teacher's course, read ahead of time: pointing at it on Your courses starts loading it, so opening it shows the
+ * course at once instead of a moment of grey placeholders. Kept for a minute (the page then loads it fresh anyway).
+ */
+const ahead = new Map<string, { at: number; done?: string | null }>();
+export function prefetchCourse(courseId: string) {
+  const had = ahead.get(courseId);
+  if (had && Date.now() - had.at < 60_000) return;
+  const entry: { at: number; done?: string | null } = { at: Date.now() };
+  ahead.set(courseId, entry);
+  fetch(`/api/course/${courseId}`, { cache: "no-store" }).then((r) => (r.ok ? r.text() : null)).catch(() => null).then((t) => { entry.done = t; });
+}
+/** What was read ahead for this course, if it has arrived and is fresh. */
+function takeAhead(courseId: string): string | null {
+  const had = ahead.get(courseId);
+  if (!had || Date.now() - had.at > 60_000) return null;
+  return had.done ?? null;
+}
+
 export function useCourse(courseId: string, as?: string, everyMs = 4000) {
-  const [state, setState] = useState<CourseState | null>(null);
+  const [state, setState] = useState<CourseState | null>(() => {
+    // Read ahead (a teacher's own view only): shown straight away, then refreshed as usual.
+    if (as || typeof window === "undefined") return null;
+    const raw = takeAhead(courseId);
+    if (!raw) return null;
+    try { const data = JSON.parse(raw); if (data?.course?.weeks) { data.course.currentLessonId = todayLessonId(data.course); return data; } } catch { /* fall through */ }
+    return null;
+  });
   const [error, setError] = useState<string | null>(null);
   const [needAuth, setNeedAuth] = useState<"teacher" | "student" | null>(null);
   // Why a signed-in visitor still can't open it (for example, a share that needs a Google sign-in).

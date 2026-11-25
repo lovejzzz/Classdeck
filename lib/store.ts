@@ -21,8 +21,10 @@ export interface User {
   salt: string;
   /** Google account id, once they've signed in with Google. */
   google?: string;
-  /** Their Google profile photo, refreshed at each Google sign-in. */
+  /** Their profile photo: Google's, refreshed at each Google sign-in, or one they uploaded (then kept). */
   picture?: string;
+  /** The photo is one they chose: a Google sign-in leaves it alone. */
+  pictureOwn?: boolean;
   /** Invitation emails sent today (a daily cap). */
   mail?: { day: string; n: number };
   /** Cards they saved to reuse in any of their courses (the "custom" choices in New card). */
@@ -91,7 +93,7 @@ const LEGACY = path.join(DIR, "db.json");
 const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo", "dms", "collab"] as const;
 const GLOBAL = ["users", "sessions", "customConnectors", "uploads"] as const;
 
-const g = globalThis as unknown as { __lmsdb?: DB; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string>; __preview?: DB; __previews?: Map<string, { at: number; data: Record<string, unknown> }> };
+const g = globalThis as unknown as { __lmsdb?: DB; __lmsfilled?: boolean; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string>; __preview?: DB; __previews?: Map<string, { at: number; data: Record<string, unknown> }> };
 
 function fresh(custom: Manifest[] = []): DB {
   // A deep copy, so edits to the demo course never change the seed data a later reset restores.
@@ -150,6 +152,11 @@ function load(): DB | null {
 /** Online, the open demo course goes back to its starting state every night (after 4 a.m. New York time). */
 function nightlyDemoReset() {
   if (process.env.NODE_ENV !== "production") return;
+  // db() is called many times a request: the clock is looked at once a minute at most.
+  const gt = g as { __demoChecked?: number };
+  const now = Date.now();
+  if (gt.__demoChecked && now - gt.__demoChecked < 60_000) return;
+  gt.__demoChecked = now;
   const ny = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
   const day = ny.toDateString();
   const gg = g as { __demoDay?: string; __demoResetting?: boolean };
@@ -183,7 +190,10 @@ export function db(): DB {
     }
     g.__lmsdb = d;
   }
-  return fill(g.__lmsdb);
+  // Older data is brought up to date once, when it's loaded (or replaced), not on every look: walking every card of
+  // every course each time made each request slower the more courses the site had.
+  if (!g.__lmsfilled) { fill(g.__lmsdb); g.__lmsfilled = true; }
+  return g.__lmsdb;
 }
 
 /** Older saved data may predate newer fields; fill them in so reads never crash. */
@@ -269,6 +279,8 @@ export function reset() {
   for (const k of ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "uptake", "nudges", "plans", "pins", "demo", "dms", "collab"] as const) {
     (d[k] as Record<string, unknown>).demo = (f[k] as Record<string, unknown>).demo;
   }
+  // The fresh demo course is brought up to date on the next look.
+  g.__lmsfilled = false;
   save();
 }
 
@@ -284,9 +296,10 @@ function glance(c: Course, prog: ProgressMap) {
   return { today: today?.title ?? null, toReview, waiting: c.waiting?.length ?? 0 };
 }
 
-export function listCourses() {
+/** The courses, newest first, with a glance at each; `keep` picks which first (the glance is the costly part). */
+export function listCourses(keep?: (c: Course) => boolean) {
   const d = db();
-  return Object.values(d.courses).map((c) => ({
+  return Object.values(d.courses).filter((c) => !keep || keep(c)).map((c) => ({
     id: c.id,
     ownerId: c.ownerId,
     sample: c.sample,

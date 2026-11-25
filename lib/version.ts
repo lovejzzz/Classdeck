@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.4",
+    date: "2026-11-25",
+    changes: [
+      "Your courses no longer jumps down as it loads: the photo’s place at the top is kept while it arrives.",
+      "Opening a course from Your courses shows it straight away, without a moment of grey placeholder cards: pointing at a course starts loading it, and a slow load waits half a second before showing placeholders.",
+      "The small round marks on map cards (where students are: a student’s initial, orange after 2 days on one card) now say whose they are as soon as you point at one. Clicking one doesn’t open the card.",
+      "Privacy and Terms are one page, Privacy & Terms (the old links still work).",
+      "Press your photo in the account menu to choose a new one. It’s kept (a Google sign-in no longer replaces it).",
+      "Faster everywhere: the server brought every course’s saved data up to date on every look, many times a request, so pages got slower as the site grew. It now does that once, when it starts.",
+    ],
+  },
+  {
     version: "0.2.3",
     date: "2026-11-25",
     changes: [

@@ -94,8 +94,9 @@ export default function TeachPage() {
   if (needAuth && !state) return <SignInNeeded who="teacher" courseId={courseId} next={`/teach/${courseId}`} detail={authDetail} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
   if (!state) {
+    // Nothing for the first moment (most courses arrive by then); only a slow load shows the placeholders.
     return (
-      <div className="mx-auto w-full max-w-[100rem] pl-4 pr-4 sm:pl-10 sm:pr-6 py-6">
+      <div className="slow-reveal mx-auto w-full max-w-[100rem] pl-4 pr-4 sm:pl-10 sm:pr-6 py-6">
         <div className="skeleton h-8 w-72" />
         <div className="mt-8 flex gap-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="skeleton h-[238px] w-[170px]" />)}</div>
       </div>

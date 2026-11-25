@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { AccountMenu } from "@/components/AccountMenu";
 import { GenArt } from "@/components/cards/GenArt";
 import { SignInPanel } from "@/components/SignInPanel";
-import { useQuery } from "@/lib/client";
+import { prefetchCourse, useQuery } from "@/lib/client";
 import { Icon } from "@/components/Icon";
 import { Clearable } from "@/components/Clearable";
 import { LogoMark, Wordmark } from "@/components/Logo";
@@ -193,7 +193,8 @@ function JoinTile({ code: start, onJoined }: { code: string; onJoined: (r: { cou
 /** A course, as a card the same shape as every other card on the site. */
 function CourseCard({ c }: { c: CourseTile }) {
   return (
-    <Link href={`/teach/${c.id}`} style={{ width: SIZE.w, height: SIZE.h }}
+    // Pointing at it starts loading the course, so it opens drawn rather than as grey placeholders.
+    <Link href={`/teach/${c.id}`} style={{ width: SIZE.w, height: SIZE.h }} onPointerEnter={() => prefetchCourse(c.id)} onFocus={() => prefetchCourse(c.id)} onTouchStart={() => prefetchCourse(c.id)}
       className="group relative flex flex-col overflow-hidden rounded-[14px] border border-line bg-white transition-transform duration-300 ease-[var(--ease-spring)] hover:-translate-y-1 hover:shadow-[0_16px_30px_-18px_rgba(20,20,18,0.45)]">
       <span className="pointer-events-none absolute inset-[5px] rounded-[10px] border border-line/70" />
       <span className="relative mx-2.5 mt-2.5 h-[42%] flex-none overflow-hidden rounded-[8px] border border-line/80">

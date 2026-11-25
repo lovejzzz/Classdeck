@@ -5,6 +5,20 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Inbox, type InboxData } from "./MessageThread";
 import { Icon } from "./Icon";
+import { uploadFile } from "@/lib/client";
+import { toast } from "@/lib/toast";
+
+/** A photo made small and square (centred), as a JPEG, before it's uploaded: a profile photo needs no more. */
+async function squarePhoto(file: File, size = 320): Promise<File> {
+  const img = await createImageBitmap(file);
+  const side = Math.min(img.width, img.height);
+  const c = document.createElement("canvas");
+  c.width = c.height = Math.min(size, side);
+  c.getContext("2d")!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, c.width, c.height);
+  const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.88));
+  if (!blob) throw new Error("no image");
+  return new File([blob], "photo.jpg", { type: "image/jpeg" });
+}
 
 type Me = { kind: "teacher" | "student" | null; name?: string; email?: string; picture?: string | null; courseId?: string; studentId?: string; courseTitle?: string };
 
@@ -16,6 +30,8 @@ export function AccountMenu({ className = "", inboxElsewhere = false }: { classN
   // (Only drawn in the open menu, after the page has loaded, so reading it here is safe.)
   const [canAsk, setCanAsk] = useState(() => typeof Notification !== "undefined" && Notification.permission === "default");
   const [broken, setBroken] = useState(false);
+  // A new photo being made small and uploaded.
+  const [photoBusy, setPhotoBusy] = useState(false);
   // Messages: the unread count on the photo, and the inbox once it's opened.
   const [inbox, setInbox] = useState<InboxData | null>(null);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -39,7 +55,28 @@ export function AccountMenu({ className = "", inboxElsewhere = false }: { classN
     window.addEventListener("keydown", esc);
     return () => { window.removeEventListener("pointerdown", off); window.removeEventListener("keydown", esc); };
   }, [open]);
-  if (!me?.kind || !me.name) return null;
+  // Until we know who's signed in, the photo's place is kept, so nothing on the page moves when it arrives.
+  if (!me) return <div aria-hidden="true" className={`h-9 w-9 flex-none ${className}`} />;
+  // Signed out: nothing to show, but the row keeps its height.
+  if (!me.kind || !me.name) return <div aria-hidden="true" className={`h-9 w-0 ${className}`} />;
+  async function changePhoto(f: File | undefined) {
+    if (!f) return;
+    if (!f.type.startsWith("image/")) return toast("Pick a picture (JPEG, PNG, WebP or GIF)", { icon: "x", tone: "bad" });
+    setPhotoBusy(true);
+    try {
+      const up = await uploadFile(await squarePhoto(f));
+      if (!up.ok) throw new Error(up.error);
+      const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "setPicture", url: up.url }) }).then((x) => x.json());
+      if (!r.ok) throw new Error(r.error ?? "");
+      setBroken(false);
+      setMe((m) => (m ? { ...m, picture: r.picture } : m));
+      toast("Photo changed", { icon: "check" });
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn’t change your photo", { icon: "x", tone: "bad" });
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
   async function signOut() {
     await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) });
     window.location.href = "/";
@@ -61,7 +98,14 @@ export function AccountMenu({ className = "", inboxElsewhere = false }: { classN
       {open && (
         <div role="menu" className="pop absolute right-0 top-11 z-40 w-60 rounded-xl border border-line bg-white p-1.5 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]">
           <div className="flex items-center gap-2.5 px-2.5 py-2">
-            {face(36)}
+            {me.kind === "teacher" ? (
+              // Press the photo to choose another.
+              <label className={`group/photo relative flex-none cursor-pointer rounded-full ${photoBusy ? "opacity-60" : ""}`} title="Change photo">
+                {face(36)}
+                <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover/photo:opacity-100" aria-hidden="true"><Icon name="pencil" size={13} /></span>
+                <input type="file" accept="image/*" aria-label="Change photo" className="sr-only" disabled={photoBusy} onChange={(e) => { void changePhoto(e.target.files?.[0]); e.target.value = ""; }} />
+              </label>
+            ) : face(36)}
             <div className="min-w-0">
               <div className="truncate text-[13.5px] font-medium">{me.name}</div>
               <div className="truncate text-[12px] text-ink-3">{me.kind === "teacher" ? me.email : `Student · ${me.courseTitle ?? ""}`}</div>

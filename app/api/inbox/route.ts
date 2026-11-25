@@ -18,8 +18,7 @@ const peersOk = (c: Course) => c.peerMessages !== false;
 const teacherName = (c: Course) => (c.ownerId ? db().users[c.ownerId]?.name : undefined) ?? "Your teacher";
 
 /** Who the account is in a course: "teacher", its student id, or null. */
-function seatOf(request: Request, c: Course): string[] {
-  const session = getSession(request);
+function seatOf(session: ReturnType<typeof getSession>, c: Course): string[] {
   const out: string[] = [];
   if (c.id !== "demo" && canTeach(session, c)) out.push("teacher");
   const u = teacherOf(session);
@@ -57,7 +56,7 @@ export async function GET(request: Request) {
   if (q.get("course")) {
     const c = d.courses[q.get("course")!];
     const me = q.get("me") ?? "", other = q.get("with") ?? "";
-    if (!c || !seatOf(request, c).includes(me)) return fail("Not your conversation", 403);
+    if (!c || !seatOf(session, c).includes(me)) return fail("Not your conversation", 403);
     const why = allowed(c, me, other);
     if (why) return fail(why, 403);
     return Response.json({ messages: messages(c, me, other).sort((a, b) => a.at - b.at) });
@@ -66,7 +65,7 @@ export async function GET(request: Request) {
   const contacts: { course: string; courseTitle: string; me: string; with: string; name: string; role: "teacher" | "student" }[] = [];
   for (const c of Object.values(d.courses)) {
     if (c.sample) continue;
-    for (const me of seatOf(request, c)) {
+    for (const me of seatOf(session, c)) {
       const others = me === "teacher"
         ? c.students.map((s) => s.id)
         : ["teacher", ...(peersOk(c) ? c.students.filter((s) => s.id !== me).map((s) => s.id) : [])];
@@ -92,7 +91,7 @@ export async function POST(request: Request) {
   const d = db();
   const c = d.courses[String(body.course ?? "")];
   const me = String(body.me ?? ""), other = String(body.with ?? "");
-  if (!c || !seatOf(request, c).includes(me)) return fail("Not your conversation", 403);
+  if (!c || !seatOf(session, c).includes(me)) return fail("Not your conversation", 403);
   const why = allowed(c, me, other);
   if (why) return fail(why, 403);
   if (body.action === "send") {
