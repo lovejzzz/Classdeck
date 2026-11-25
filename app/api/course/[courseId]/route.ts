@@ -107,6 +107,15 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
           id: g.id, title: g.title, members: leavesOf(g, l.modules).map((c) => c.id).filter((id) => visible.has(id)),
           done: prog[g.id]?.status === "done" || undefined, score: typeof prog[g.id]?.dealt?.[SCORE] === "number" ? (prog[g.id]!.dealt![SCORE] as number) : undefined,
           paths: paths.get(g.id),
+          // Its groups inside, each with its own score once it's done (the cards that score opened, too).
+          parts: (() => {
+            const inner = (g.members ?? []).map((id) => l.modules.find((m) => m.id === id)).filter((m): m is Module => !!m && m.type === "group" && visible.has(m.id));
+            return inner.length ? inner.map((ig) => ({
+              id: ig.id, title: ig.title, members: leavesOf(ig, l.modules).map((c) => c.id).filter((id) => visible.has(id)),
+              done: prog[ig.id]?.status === "done" || undefined, score: typeof prog[ig.id]?.dealt?.[SCORE] === "number" ? (prog[ig.id]!.dealt![SCORE] as number) : undefined,
+              paths: paths.get(ig.id),
+            })) : undefined;
+          })(),
         })),
         modules: (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree, course)).map((m) => ({
           ...m,

@@ -352,7 +352,7 @@ export interface Lesson {
   /** Card trees: students see every path out of this lesson's cards (titles and the answers that deal them), not card backs. */
   openPaths?: boolean;
   /** Sent to students only: the card groups in this lesson, with their cards (shown framed together) and paths out. */
-  decks?: { id: string; title: string; members: string[]; done?: boolean; score?: number; paths?: { to?: string; title?: string; type?: ModuleType; why?: string }[] }[];
+  decks?: (DeckView & { parts?: DeckView[] })[];
   /** Sent to students only: whether they've chosen this elective, and how many classmates have. */
   chosen?: boolean;
   takenBy?: number;
@@ -648,3 +648,6 @@ export interface ExternalUpdate {
   answers?: { q: string; a: string }[];
   at: number;
 }
+
+/** A card group as a student sees it: its cards in order, and its score once it's done. */
+export type DeckView = { id: string; title: string; members: string[]; done?: boolean; score?: number; paths?: { to?: string; title?: string; type?: ModuleType; why?: string }[] };

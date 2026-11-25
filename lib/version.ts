@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.95",
+    date: "2026-11-24",
+    changes: [
+      "Students now see the scores of the groups inside a group. The last card of an inner group shows that group’s own score (and any card it opened), and the last card of the whole group shows the outer score with each inner score beside it. Each card of an inner group names it too, as “The ocean › Ocean life”.",
+    ],
+  },
+  {
     version: "0.1.94",
     date: "2026-11-24",
     changes: [

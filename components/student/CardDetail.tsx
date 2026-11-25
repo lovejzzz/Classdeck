@@ -52,7 +52,7 @@ export interface DetailProps {
   studio: CourseState["studio"];
   plan?: Plan;
   /** The card is one of a card group's: where it sits, and the group's next card to go to (none on the last). */
-  group?: { title: string; index: number; total: number; next?: { title: string; go: () => void }; score?: number; opened?: string[] };
+  group?: { title: string; index: number; total: number; next?: { title: string; go: () => void }; score?: number; opened?: string[]; part?: { title: string; score?: number; opened: string[] }; parts?: { title: string; score: number }[] };
 }
 
 /** What's on the card once it's lifted out of the hand. */
@@ -462,11 +462,19 @@ export function CardDetail(p: DetailProps) {
         {p.group && (
           // A card group's cards are answered one after another: say where this one is, and go on to the next.
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-line pt-4">
-            <span className="flex flex-1 items-center gap-1.5 text-[12.5px] text-ink-3"><Icon name="layers" size={13} />{p.group.title} · {p.group.index} of {p.group.total}</span>
+            <span className="flex flex-1 items-center gap-1.5 text-[12.5px] text-ink-3"><Icon name="layers" size={13} />{p.group.title}{p.group.part && <> › {p.group.part.title}</>} · {p.group.index} of {p.group.total}</span>
+            {p.group.part?.score !== undefined && (p.group.next || p.group.score === undefined) && (
+              // The last card of a group inside the group: that group's own score.
+              <span className="basis-full text-[13px] text-ink-2 sm:order-first">
+                <span className="font-medium text-ink">{p.group.part.title} score {p.group.part.score}%.</span>{" "}
+                {p.group.part.opened.length ? <>It opened {p.group.part.opened.map((t, i) => <span key={t}>{i ? ", " : ""}“{t}”</span>)} on your board.</> : null}
+              </span>
+            )}
             {!p.group.next && p.group.score !== undefined && (
               <span className="basis-full text-[13px] text-ink-2 sm:order-first">
                 <span className="font-medium text-ink">Group score {p.group.score}%.</span>{" "}
-                {p.group.opened?.length ? <>It opened {p.group.opened.map((t, i) => <span key={t}>{i ? ", " : ""}“{t}”</span>)} on your board.</> : "Nothing extra to do: on to the next card."}
+                {p.group.parts?.length ? <span className="text-ink-3">({p.group.parts.map((x) => `${x.title} ${x.score}%`).join(" · ")}) </span> : null}
+                {(() => { const all = [...new Set([...(p.group.part?.opened ?? []), ...(p.group.opened ?? [])])]; return all.length ? <>It opened {all.map((t, i) => <span key={t}>{i ? ", " : ""}“{t}”</span>)} on your board.</> : "Nothing extra to do: on to the next card."; })()}
               </span>
             )}
             {p.group.next ? (

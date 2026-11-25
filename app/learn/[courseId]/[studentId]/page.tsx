@@ -393,7 +393,14 @@ export default function LearnPage() {
     const nm = openLesson.modules.find((m) => m.id === ids[i + 1]);
     // Once the group's done: its score and the cards that score opened, said on its last card.
     const opened = (d.paths ?? []).filter((x) => x.to).map((x) => lessons.flatMap((l) => l.modules).find((m) => m.id === x.to)?.title).filter((t): t is string => !!t);
-    return { title: d.title, index: i + 1, total: ids.length, next: nm ? { title: nm.title, go: () => setLift((l) => (l ? { ...l, id: nm.id } : l)) } : undefined, score: d.done ? d.score : undefined, opened };
+    // A group inside it: its name on each of its cards, and its own score on its last card once it's done.
+    const titleOf = (id?: string) => lessons.flatMap((l) => l.modules).find((m) => m.id === id)?.title;
+    const openedBy = (ps?: { to?: string }[]) => (ps ?? []).filter((x) => x.to).map((x) => titleOf(x.to)).filter((t): t is string => !!t);
+    const pt = d.parts?.find((x) => x.members.includes(openModule.id));
+    const ptIds = pt ? pt.members.filter((id) => ids.includes(id)) : [];
+    const part = pt ? { title: pt.title, score: pt.done && ptIds[ptIds.length - 1] === openModule.id ? pt.score : undefined, opened: openedBy(pt.paths) } : undefined;
+    const parts = nm ? undefined : d.parts?.filter((x) => x.done && x.score !== undefined).map((x) => ({ title: x.title, score: x.score as number }));
+    return { title: d.title, index: i + 1, total: ids.length, next: nm ? { title: nm.title, go: () => setLift((l) => (l ? { ...l, id: nm.id } : l)) } : undefined, score: d.done ? d.score : undefined, opened, part, parts };
   })();
   const openWeek = openLesson && course.weeks.find((w) => w.lessons.includes(openLesson));
 
