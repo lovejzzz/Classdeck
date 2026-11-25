@@ -48,7 +48,7 @@ function Ring({ total, left, size = 260 }: { total: number; left: number; size?:
 }
 
 /** A facilitator's run sheet for a Collab Studio session: the agenda, a timer, and a round-robin speaker queue. */
-export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [], live }: { course: Course; lesson: Lesson; weekTitle: string; onClose: () => void; posts?: StudioPost[]; live?: React.ReactNode }) {
+export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [] }: { course: Course; lesson: Lesson; weekTitle: string; onClose: () => void; posts?: StudioPost[] }) {
   const plan = lesson.session!;
   const groups = course.groups ?? [];
   // Where the teacher is in the session (group, part, speaker, time, notes) is kept on this computer,
@@ -101,7 +101,7 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [], 
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (document.querySelector('[aria-label^="Presenting"], aside[aria-label="Live class"]')) return;
+      if (document.querySelector('[aria-label^="Presenting"]')) return;
       if (e.key === "Escape") onClose();
       if (e.key === " " && (e.target as HTMLElement).tagName !== "TEXTAREA") {
         e.preventDefault();
@@ -181,8 +181,6 @@ export function SessionRunner({ course, lesson, weekTitle, onClose, posts = [], 
           <div className="mono">{weekTitle} · {plan.minutes} min</div>
         </div>
         <span className="flex-1" />
-        {/* Hands, quick polls and the random picker, without leaving the session. */}
-        {live}
         <button onClick={() => setPresenting(true)} className="btn btn-ghost press h-8"><Icon name="play" size={12} /> Present posts</button>
         {groups.length > 1 && (
           <div className="inline-flex rounded-lg bg-lane p-0.5">

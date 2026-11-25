@@ -364,17 +364,9 @@ async function main() {
   check("…none for Chloe", !(await sees("Chloe")).has("m-water"));
   check("a lesson that isn't an elective can't be chosen", (await op(S.Ana, { op: "chooseElective", studentId: S.Ana.id, lessonId: l3.id, on: true })).ok === false);
   check("star a card", (await op(S.Ana, { op: "star", studentId: S.Ana.id, moduleId: "m-water", starred: true })).ok !== false);
-  // Class time: hands and a live poll.
-  check("a raised hand", (await op(S.Dev, { op: "hand", studentId: S.Dev.id, kind: "stuck", note: "Lost on evaporation" })).ok !== false);
-  const live = (await teacherView()).live;
-  check("the teacher sees the hand", !!live?.hands?.[S.Dev.id], live);
-  check("start a live poll", (await op(T, { op: "startPoll", question: "Which cycle is faster?", options: ["Water", "Carbon"] })).ok);
-  const pollId = (await board("Ana")).live?.poll?.id;
-  check("students see the live poll", !!pollId);
-  for (const k of ["Ana", "Ben", "Chloe"]) await op(S[k], { op: "vote", studentId: S[k].id, pollId, choice: 0 });
-  check("close it", (await op(T, { op: "closePoll" })).ok);
-  check("no votes after closing", (await op(S.Dev, { op: "vote", studentId: S.Dev.id, pollId, choice: 1 })).ok === false);
-  check("clear the hands", (await op(T, { op: "clearHand", all: true })).ok);
+  // Questhand is for courses taken at each student's own pace: there's no live class (hands, live polls) any more.
+  check("no live class: a raised hand isn't taken", (await op(S.Dev, { op: "hand", studentId: S.Dev.id, kind: "stuck" })).ok === false);
+  check("no live class: no live poll", (await op(T, { op: "startPoll", question: "?", options: ["A", "B"] })).ok === false && !("live" in (await board("Ana"))));
   // The teacher rearranges: duplicates a lesson, the co-teacher becomes an editor.
   check("duplicate a lesson", (await op(T, { op: "duplicateLesson", lessonId: l1b.id })).ok);
   await op(T, { op: "setPeople", people: [{ email: `t-sem-mrokafor-${run}@example.test`, role: "editor" }] });

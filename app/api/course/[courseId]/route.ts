@@ -17,7 +17,7 @@ import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
 import { cleanAttachment, cleanCard } from "@/lib/cleancard";
 import { DEFAULT_GROUPING, DEMO_PREFIX, DEMO_STUDENTS, demoStudent, groupFor, isDemoStudent, nameGroups, nextDemoName, repliesNeeded, signupGroupId, signupGroupingId, syncSignup } from "@/lib/shared";
 
-import type { AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
+import type { AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
 // "order" questions go out alphabetised, so the correct order never reaches the browser.
@@ -28,7 +28,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 /** Operations a student performs on their own behalf (body.studentId). */
 const STUDENT_OPS = new Set([
   "savePlan", "drill", "feel", "saveFlow", "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
-  "retakeQuiz", "rehearse", "fillForm", "studioPost", "feedback", "feedbackHelpful", "vote", "hand", "editPost",
+  "retakeQuiz", "rehearse", "fillForm", "studioPost", "feedback", "feedbackHelpful", "editPost",
   "messageTeacher", "readMyMessages", "docReply", "handInShared",
 ]);
 
@@ -194,7 +194,7 @@ function view(request: Request, courseId: string): Response {
         // Cards made for one student stay private; shared and path cards are shown without who they're for.
         weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience?.kind !== "student" && !unfinished(m)).map((m) => ({ ...m, bands: undefined, audience: m.audience?.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
       },
-      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} }, uptake: {}, nudges: [], plans: {},
+      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], uptake: {}, nudges: [], plans: {},
     };
     return Response.json(view);
   }
@@ -280,7 +280,6 @@ function view(request: Request, courseId: string): Response {
     choices: as ? { [as]: choices[as] ?? {} } : choices,
     studio: studioView,
     marks: as ? (d.marks[courseId] ?? []).filter((mk) => visibleWork(course, as).has(mk.attachmentId)) : (d.marks[courseId] ?? []),
-    live: liveView(d.live[courseId] ?? { hands: {} }, as),
     uptake: as ? { [as]: d.uptake[courseId]?.[as] ?? {} } : (d.uptake[courseId] ?? {}),
     nudges: (d.nudges[courseId] ?? []).filter((n) => !as || n.studentId === as),
     plans: as ? (d.plans[courseId]?.[as] ? { [as]: d.plans[courseId][as] } : {}) : (d.plans[courseId] ?? {}),
@@ -292,19 +291,6 @@ function view(request: Request, courseId: string): Response {
   // Visitors to the open demo get a light session so they can upload recordings there.
   const headers: Record<string, string> = !session && course.id === DEMO ? { "Set-Cookie": startSession({ kind: "demo" }, 7) } : {};
   return Response.json(state, { headers });
-}
-
-/** Students see poll counts (not who voted what) once they've voted or the poll is closed, and only their own hand. */
-function liveView(live: Live, as: string | null): CourseState["live"] {
-  if (!as) return live;
-  const poll = live.poll;
-  const myVote = poll?.votes[as];
-  const counts = poll && (myVote !== undefined || !poll.open) ? poll.options.map((_, i) => Object.values(poll.votes).filter((v) => v === i).length) : undefined;
-  return {
-    poll: poll ? { ...poll, votes: {} } : undefined,
-    hands: live.hands[as] ? { [as]: live.hands[as] } : {},
-    myVote, counts,
-  };
 }
 
 /** Recordings a student may see and comment on: their own work, and posts in their studio group. */
@@ -402,7 +388,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
     course!.students = course!.students.filter((x) => x.id !== gone);
     course!.groups = course!.groups?.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x !== gone) }));
     for (const gs of course!.groupings ?? []) for (const g of gs.groups) g.studentIds = g.studentIds.filter((x) => x !== gone);
-    if (d.live[courseId]?.hands) delete d.live[courseId].hands[gone];
   }
   /** Whose progress shares one piece of work with this student's: everyone who wrote a group's worksheet, or just them. */
   function sharers(mod: Module, sid: string): string[] {
@@ -1281,48 +1266,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (st) { revokeInvites(st); st.userId = undefined; }
       // And whoever is signed in as them now is signed out, so the wrong person doesn't stay in.
       for (const [k, v] of Object.entries(d.sessions)) if (v.kind === "student" && v.courseId === courseId && v.studentId === body.studentId) delete d.sessions[k];
-      break;
-    }
-    // —— live class ——
-    case "startPoll": {
-      const options = (Array.isArray(body.options) ? body.options : []).map((x: unknown) => String(x).trim().slice(0, 80)).filter(Boolean).slice(0, 6);
-      const question = String(body.question ?? "").trim().slice(0, 200);
-      if (!question || options.length < 2) return fail("Write a question and at least two options");
-      (d.live[courseId] ??= { hands: {} }).poll = { id: uid("poll-"), question, options, votes: {}, open: true, at: Date.now() };
-      break;
-    }
-    case "closePoll": {
-      const poll = d.live[courseId]?.poll;
-      if (poll) {
-        if (body.clear) d.live[courseId].poll = undefined;
-        else poll.open = false;
-      }
-      break;
-    }
-    case "vote": {
-      const poll = d.live[courseId]?.poll;
-      if (!poll || poll.id !== body.pollId) return fail("That poll has ended");
-      if (!poll.open) return fail("Voting is closed");
-      const c = Number(body.choice);
-      if (!(c >= 0 && c < poll.options.length)) return fail("Pick an option");
-      poll.votes[body.studentId] = c;
-      break;
-    }
-    case "hand": {
-      const live = (d.live[courseId] ??= { hands: {} });
-      if (body.down) delete live.hands[body.studentId];
-      else {
-        live.hands[body.studentId] = { kind: body.kind === "stuck" ? "stuck" : "question", note: body.note ? String(body.note).slice(0, 200) : undefined, at: Date.now() };
-        logEvent(courseId, { kind: "post", studentId: body.studentId, moduleId: "", text: body.kind === "stuck" ? `Is stuck${body.note ? `: ${String(body.note).slice(0, 80)}` : ""}` : `Raised a hand${body.note ? `: ${String(body.note).slice(0, 80)}` : ""}` });
-      }
-      break;
-    }
-    case "clearHand": {
-      const live = d.live[courseId];
-      if (live) {
-        if (body.all) live.hands = {};
-        else delete live.hands[body.studentId];
-      }
       break;
     }
     case "addMark": {

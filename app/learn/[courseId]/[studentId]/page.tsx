@@ -22,7 +22,6 @@ import { Pile } from "@/components/student/Pile";
 import { useInbox } from "@/components/student/useInbox";
 import { MarksContext } from "@/components/Marks";
 import { SignInNeeded } from "@/components/SignInNeeded";
-import { StudentLive } from "@/components/LiveClass";
 import { NeedsYou } from "@/components/student/NeedsYou";
 import { ElectiveRow, chooseElective } from "@/components/student/Electives";
 import { dueInfo } from "@/lib/grading";
@@ -474,7 +473,6 @@ export default function LearnPage() {
     <MarksContext.Provider value={{ courseId, me: studentId, marks: state.marks ?? [], names: Object.fromEntries(course.students.map((s) => [s.id, s.name])), refresh: synced }}>
     <main className="flex-1 overflow-x-hidden">
       {!isPreview && <ConnectionBanner needAuth={needAuth} error={error} signInHref={`/learn/${courseId}`} />}
-      {!isPreview && <StudentLive courseId={courseId} studentId={studentId} state={state} onChanged={synced} />}
       {isPreview && <PreviewBar courseId={courseId} studentId={studentId} students={course.students} onReset={() => { setLocal({}); refresh(); }} />}
 
       {handMode && (

@@ -4,7 +4,6 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { MarksContext } from "@/components/Marks";
 import { SignInNeeded } from "@/components/SignInNeeded";
-import { TeacherLive } from "@/components/LiveClass";
 import { StudentsPage } from "@/components/teacher/StudentsPage";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -116,7 +115,7 @@ export default function TeachPage() {
 
   // A student working through quick cards makes a finished note (and a wrong-answer note) per card. Answers and
   // finished cards close together in one lesson are one note per student: "Answered 4 cards · 1 wrong", the misses spelled out.
-  // Quizzes, posts, raised hands and the rest stay notes of their own.
+  // Quizzes, posts and the rest stay notes of their own.
   const RUN = 15 * 60_000;
   const fresh = state.events.filter((e) => e.at > seenAt).sort((a, b) => a.at - b.at);
   const runs: ClassEvent[][] = [];
@@ -309,7 +308,7 @@ export default function TeachPage() {
               <Icon name="arrow" size={13} />
             </button>
           )}
-          {tab === "map" && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} live={<TeacherLive courseId={courseId} state={state} onChanged={refresh} />} view="map" />}
+          {tab === "map" && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} view="map" />}
           {tab === "students" && lesson && (
             <StudentsPage courseId={courseId} state={state} connectors={connectors} lesson={lesson} setLesson={setPicked} who={who} setWho={setWho} sel={sel} setSel={setSel}
               readOnly={viewer} onMessage={viewer ? undefined : setTalkingTo} onInvite={() => setInviting(true)} onChanged={refresh} />

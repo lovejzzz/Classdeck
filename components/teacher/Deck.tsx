@@ -31,8 +31,8 @@ const clock = () => Date.now();
 /** What a saved card keeps (not where it is, who it's for, its due date or its tie to My cards), to tell if it changed. */
 const lookOfContent = (m: Module) => JSON.stringify({ ...m, id: "", audience: undefined, due: undefined, collected: undefined });
 
-export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, live, readOnly = false, view = "map", onView }: {
-  course: Course; connectors?: ConnectorInfo[]; readOnly?: boolean; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>; live?: React.ReactNode;
+export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, readOnly = false, view = "map", onView }: {
+  course: Course; connectors?: ConnectorInfo[]; readOnly?: boolean; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>;
   /** Only the course map now (the list of weeks became part of it). */
   view?: "map";
   onView?: (v: "map") => void;
@@ -741,7 +741,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       ) : null; })()}
 
       {running && (
-        <SessionRunner course={course} lesson={lessonOf(running.lessonId)} weekTitle={running.weekTitle} posts={studioPosts} onClose={() => setRunning(null)} live={live} />
+        <SessionRunner course={course} lesson={lessonOf(running.lessonId)} weekTitle={running.weekTitle} posts={studioPosts} onClose={() => setRunning(null)} />
       )}
 
       {cur && curModule && (

@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.83",
+    date: "2026-11-25",
+    changes: [
+      "Questhand is for courses students take at their own pace, so the live-class tools are gone: raising a hand, live polls and the random picker. Writing a document together stays live: you see who’s there, their cursor and their words as they type.",
+    ],
+  },
+  {
     version: "0.2.82",
     date: "2026-11-25",
     changes: [

@@ -608,7 +608,7 @@ export interface ClassEvent {
   text: string;
 }
 
-/** What's happening live in class right now: a quick poll and raised hands. */
+/** Live-class data (a quick poll, raised hands) from before Questhand dropped live classes: kept only so old saved data reads. */
 export interface Live {
   poll?: { id: string; question: string; options: string[]; votes: Record<string, number>; open: boolean; at: number };
   hands: Record<string, { kind: "question" | "stuck"; note?: string; at: number }>;
@@ -634,7 +634,6 @@ export interface CourseState {
   /** Learner plans (students get their own). */
   plans: Record<string, Plan>;
   /** For students, votes are counts only (plus their own) and hands are their own. */
-  live: Live & { myVote?: number; counts?: number[] };
   /** Teacher views only: this teacher's role, and who owns the course. */
   me?: { role: "owner" | "editor" | "viewer"; owner?: { name: string; email: string; picture?: string }; mail?: boolean };
 }
