@@ -5,7 +5,7 @@ import { randomCode } from "./uploads";
 import { DEFAULT_LEVELS } from "./skillsets";
 import { kindWeeks } from "./kinds";
 import { syncSignup } from "./shared";
-import type { Course, Lesson, Module, SessionPlan, Week } from "./types";
+import type { Course, Lesson, Module, Week } from "./types";
 import starter from "./questhand101.json";
 
 /**
@@ -50,7 +50,7 @@ export function makeCourse(ownerId: string, title: string, weeks: Week[], extra:
   return course;
 }
 
-type StarterLesson = { title: string; modules: Module[]; elective?: boolean; session?: SessionPlan };
+type StarterLesson = { title: string; modules: Module[]; elective?: boolean };
 type Starter = { title: string; subtitle?: string; electiveMin?: number; weeks: { title: string; lessons: StarterLesson[] }[] };
 
 /**
@@ -62,7 +62,7 @@ export function giveStarterCourse(ownerId: string): Course {
   const weeks = s.weeks.map((w) => cloneWeek({
     id: "",
     title: w.title,
-    lessons: w.lessons.map((l): Lesson => ({ id: "", title: l.title, modules: l.modules, branches: {}, elective: l.elective, session: l.session })),
+    lessons: w.lessons.map((l): Lesson => ({ id: "", title: l.title, modules: l.modules, branches: {}, elective: l.elective })),
   }, w.title));
   const course = makeCourse(ownerId, s.title, weeks, { subtitle: s.subtitle, electiveMin: s.electiveMin });
   // A sign-up poll's groups exist from the start, so cards that use them (or go to one of them) find them.

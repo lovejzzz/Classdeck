@@ -649,25 +649,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
       }));
       break;
     }
-    case "sessionNotes": {
-      // Notes the teacher typed while running a Collab Studio session, sent to each student's studio card.
-      // Sending again the same day replaces that day's notes rather than adding more.
-      const found = findModule(course, String(body.moduleId ?? ""));
-      if (!found || found.mod.type !== "studio") return fail("This lesson has no Collab Studio card to send notes to");
-      const notes = (body.notes && typeof body.notes === "object" ? body.notes : {}) as Record<string, unknown>;
-      // The class's own calendar day (sent by the teacher's browser), so a late class isn't split at midnight UTC.
-      const day = typeof body.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.day) && Math.abs(Date.parse(body.day) - Date.now()) < 2 * 86400_000 ? body.day : new Date().toISOString().slice(0, 10);
-      let sent = 0;
-      for (const [sid, v] of Object.entries(notes)) {
-        const st = course.students.find((x) => x.id === sid);
-        const text = typeof v === "string" ? v.trim().slice(0, 2000) : "";
-        if (!st || !text) continue;
-        const r = postUpdate(courseId, st, found.mod, { id: `session:${found.mod.id}:${day}`, source: "Your teacher’s notes from Collab Studio", at: Date.now(), text }, "");
-        if (!r.error) sent++;
-      }
-      extra = { sent };
-      break;
-    }
     case "setSkills": {
       // The skills students practise and are rated on, and the four level names. Existing skills keep their ids,
       // so ratings and reviews already given still line up; a removed skill is also taken off every card.
@@ -786,6 +767,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
         if (now) moveAnswers(now.modules, list[k].modules, d.progress[courseId]);
       }
       for (const next of list) {
+        delete (next as { session?: unknown }).session;
         next.modules = next.modules.map(cleanCard);
         if (next.date !== undefined && !(typeof next.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(next.date))) next.date = undefined;
         for (const w of course.weeks) {
@@ -848,7 +830,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (body.status === "done" && mustWatch.some((x) => !(p.watched ?? []).includes(x.id))) return fail("Watch the required videos first");
       if (Array.isArray(body.responses)) p.responses = body.responses.slice(0, 12).map((x: unknown) => String(x ?? "").slice(0, 4000));
       if (body.status === "done" && steps.length && (p.checks?.length ?? 0) < steps.length) return fail("Tick every step on the checklist first");
-      if (body.status) { p.status = body.status; if (body.status === "done") p.reopened = undefined; }
+      // When it was handed in (each time, revisions too), so work handed in after its due date shows as late.
+      if (body.status) { if (body.status === "done" && p.status !== "done") p.handedAt = Date.now(); p.status = body.status; if (body.status === "done") p.reopened = undefined; }
       if (typeof body.output === "string") p.output = body.output.slice(0, 8000);
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
@@ -1376,6 +1359,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       for (const sid of who) {
         const p = mine(sid, body.moduleId);
         p.output = md;
+        if (p.status !== "done") p.handedAt = Date.now();
         p.status = "done"; p.reopened = undefined;
         p.updatedAt = Date.now();
       }

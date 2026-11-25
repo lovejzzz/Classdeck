@@ -198,7 +198,7 @@ export default function TeachPage() {
               { keys: "2", label: "Students", run: () => setTab("students") },
               ...(viewer ? [] : [{ keys: "3", label: "Settings", run: () => setTab("settings") }]),
             ]}
-            extra={tab === "map" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "r", label: "Run today’s class session" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
+            extra={tab === "map" ? [{ keys: "n", label: "New card in today’s lesson" }, { keys: "mod+d", label: "Duplicate the card you’re editing" }] : []}
           />
           {/* The Inbox: messages (from every course) and this course's notifications. Messages show as conversations, so
               the notes about new messages aren't listed twice. */}
@@ -308,7 +308,7 @@ export default function TeachPage() {
               <Icon name="arrow" size={13} />
             </button>
           )}
-          {tab === "map" && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} studioPosts={state.studio.posts} choices={state.choices} view="map" />}
+          {tab === "map" && <Deck course={course} readOnly={viewer} onRefresh={refresh} progress={state.progress} choices={state.choices} view="map" />}
           {tab === "students" && lesson && (
             <StudentsPage courseId={courseId} state={state} connectors={connectors} lesson={lesson} setLesson={setPicked} who={who} setWho={setWho} sel={sel} setSel={setSel}
               readOnly={viewer} onMessage={viewer ? undefined : setTalkingTo} onInvite={() => setInviting(true)} onChanged={refresh} />

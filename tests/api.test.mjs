@@ -226,24 +226,16 @@ async function main() {
   const leo = courseOf(await A.state(fresh.id)).students.find((s) => s.name === "Leo Park");
   check("student can't act as another student", [401, 403].includes((await S1.op(fresh.id, { op: "setProgress", studentId: leo.id, moduleId: firstCard.id, status: "done" })).status));
   check("student can't do teacher ops", [401, 403].includes((await S1.op(fresh.id, { op: "addStudents", names: "Hacker" })).status));
-  check("student can't send session notes", [401, 403].includes((await S1.op(fresh.id, { op: "sessionNotes", moduleId: firstCard.id, notes: {} })).status));
   check("a student account's library is its own (empty)", ((await S1.get("/api/library")).cards ?? []).length === 0);
   check("student can't read another course", [401, 403, 404].includes((await S1.state(`${cid}?as=${mia.id}`)).status));
   check("student can't read as a classmate", [401, 403].includes((await S1.state(`${fresh.id}?as=${leo.id}`)).status));
   check("student can't read the teacher view", [401, 403].includes((await S1.state(fresh.id)).status));
-  // Session notes go with a discussion run in groups; the standard weeks don't start with one, so add one.
-  let studio = modulesOf(inClass).find((m) => m.type === "studio");
-  if (!studio) {
-    const l0 = inClass.weeks[0].lessons[0];
-    studio = { id: `m-studio-${run}`, type: "studio", kind: "discussion", title: "Group critique", body: "Post your work to your group.", audience: { kind: "all" }, tools: [], attachments: [], submitTo: "studio" };
-    await A.op(fresh.id, { op: "saveLesson", lesson: { ...l0, modules: [...l0.modules, studio] } });
-  }
-  if (studio) {
-    const sn = await A.op(fresh.id, { op: "sessionNotes", moduleId: studio.id, notes: { [mia.id]: "Nice pacing" } });
-    check("session notes sent", sn.ok !== false && sn.sent === 1, sn);
-    const again = await A.op(fresh.id, { op: "sessionNotes", moduleId: studio.id, day: new Date().toLocaleDateString("en-CA"), notes: { [mia.id]: "Updated note" } });
-    check("session notes resend on the same day", again.ok !== false && again.sent === 1, again);
-    check("session notes only go to studio cards", (await A.op(fresh.id, { op: "sessionNotes", moduleId: firstCard.id, notes: { [mia.id]: "x" } })).ok === false);
+  // Class sessions (and the notes sent after one) are gone: Questhand courses are taken at each student's own pace.
+  check("no class session notes", (await A.op(fresh.id, { op: "sessionNotes", moduleId: firstCard.id, notes: { [mia.id]: "x" } })).ok === false);
+  {
+    const l0 = courseOf(await A.state(fresh.id)).weeks[0].lessons[0];
+    await A.op(fresh.id, { op: "saveLesson", lesson: { ...l0, session: { minutes: 50, agenda: [{ label: "Warm-up", minutes: 10 }] } } });
+    check("a lesson saved with a class session keeps none", !courseOf(await A.state(fresh.id)).weeks[0].lessons[0].session);
   }
   // A question the teacher left blank never reaches students.
   {

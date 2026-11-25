@@ -251,6 +251,7 @@ async function main() {
   check("Dev sees it approved", (await board("Dev")).progress?.["m-notice"]?.review?.verdict === "good");
   {
     const dp = (await board("Dev")).progress?.["m-notice"];
+    check("when Dev handed it in is kept (to show late work)", typeof dp?.handedAt === "number" && Date.now() - dp.handedAt < 10 * 60_000, dp?.handedAt);
     check("the earlier round is kept for Dev", dp?.earlier?.[0]?.verdict === "revise" && dp.earlier[0].text === "Name two more non-living things.", dp?.earlier);
     check("each round knows the version it was about", dp?.review?.on === "Grass, ants, a robin; rocks, a puddle, sunlight, wind." && dp?.earlier?.[0]?.on === "Grass, ants, a robin; rocks and a puddle.");
     // Changing your mind on the same version: replaced, not another round.

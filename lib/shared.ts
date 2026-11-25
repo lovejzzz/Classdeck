@@ -130,3 +130,9 @@ export function repliesNeeded(course: Pick<Course, "groups" | "groupings" | "stu
   const others = pool.filter((id) => id !== studentId && course.students.some((s) => s.id === id)).length;
   return Math.min(asked, others);
 }
+
+/**
+ * Whether a student is in the class yet. Someone invited by email who hasn't made or linked an account isn't: they're
+ * on the list, not late. Demo students, and names added before accounts, count as in.
+ */
+export const joined = (st: { userId?: string; email?: string; demo?: boolean }) => !!st.userId || !!st.demo || !st.email;

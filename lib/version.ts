@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.84",
+    date: "2026-11-25",
+    changes: [
+      "Class sessions are gone (the timed agenda, Run the class session, turns and notes sent after class): Questhand courses are taken at each student’s own pace. Lessons that had one keep everything else.",
+      "When work is handed in after its due date, the teacher sees it: “handed in Nov 25, 2 days late” (or “on time”), for revisions too.",
+      "Students invited by email who haven’t joined yet are listed apart (“Haven’t joined yet”, marked “invited”), not counted as overdue or as not started, and Remind all no longer goes to them.",
+    ],
+  },
+  {
     version: "0.2.83",
     date: "2026-11-25",
     changes: [

@@ -203,6 +203,8 @@ function fill(d: DB): DB {
   for (const c of Object.values(d.courses ?? {})) if (c?.weeks) { foldWeeks(c.weeks); kindWeeks(c.weeks); nameGroups(c); }
   // Every card says who gets it (one saved without it made every student's page in its course fail to open).
   for (const c of Object.values(d.courses ?? {})) for (const w of c?.weeks ?? []) for (const l of w.lessons ?? []) for (const m of l.modules ?? []) if (!m.audience?.kind) m.audience = { kind: "all" };
+  // Class sessions (an agenda run in class) were taken out: Questhand is for courses taken at each student's own pace.
+  for (const c of Object.values(d.courses ?? {})) for (const w of c?.weeks ?? []) for (const l of w.lessons ?? []) delete (l as { session?: unknown }).session;
   for (const k of [...PER_COURSE, "users", "sessions", "uploads"] as const) (d as unknown as Record<string, unknown>)[k] ??= {};
   d.customConnectors ??= [];
   return d;

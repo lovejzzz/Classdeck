@@ -330,13 +330,6 @@ export interface ActivityForm {
   questions?: { id: string; text: string; options?: string[] }[];
 }
 
-export interface SessionPlan {
-  minutes: number;
-  agenda: { label: string; minutes: number; roundRobin?: boolean }[];
-  /** Rotate Toastmasters-style roles (host, timer, ah-counter, evaluator) through each group. */
-  roles?: boolean;
-}
-
 export interface Lesson {
   id: string;
   title: string;
@@ -347,8 +340,6 @@ export interface Lesson {
   modules: Module[];
   /** Version slots where students pick their own path. lesson.branches then holds the teacher's recommendation. */
   choiceSlots?: string[];
-  /** Agenda for this week's group session (Collab Studio). */
-  session?: SessionPlan;
   /** An elective: students choose whether to take it. */
   elective?: boolean;
   /** Card trees: students see every path out of this lesson's cards (titles and the answers that deal them), not card backs. */
@@ -510,6 +501,8 @@ export interface Progress {
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
+  /** When the work was last handed in (a revision too). */
+  handedAt?: number;
   /** Feedback from earlier rounds (newest first): a revision asked, then the work looked at again. */
   earlier?: Review[];
   /** The card was put back in the student's hand by "Ask to revise" (so taking that back, or approving, finishes it again). */

@@ -39,7 +39,6 @@ function lessonPage(w: Week, l: Lesson, origin: string) {
 <body style="font-family:system-ui,sans-serif;line-height:1.55;max-width:760px">
 <h1>${esc(l.title)}</h1>
 ${l.goal ? `<p><strong>Goal:</strong> ${esc(l.goal)}</p>` : ""}
-${l.session ? `<p><strong>Group session (${l.session.minutes} min):</strong> ${l.session.agenda.map((a) => `${esc(a.label)} ${a.minutes}`).join(" · ")}</p>` : ""}
 ${l.modules.map((m) => cardHtml(m, origin)).join("\n<hr>\n")}
 </body></html>`;
 }

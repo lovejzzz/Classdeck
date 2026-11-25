@@ -10,7 +10,7 @@ import { answerText, dueAt, fmtSec, isLate, quizSet, wallProgress } from "@/lib/
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { awaitingFeedback, faceMeta, isPoll, kindOf, reviewableCard, sharedDoc, writesOwn } from "@/lib/kinds";
-import { docKey, groupFor, groupingOf, repliesNeeded } from "@/lib/shared";
+import { docKey, groupFor, groupingOf, repliesNeeded, joined } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { DocReview } from "./DocReview";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
@@ -90,7 +90,9 @@ export function Classroom({
   };
   // Students who have cards in this lesson (an elective they didn't choose, or cards dealt only to others, leave some with none).
   const inLesson = course.students.filter((st) => statusIn(st.id).length > 0);
-  const notStarted = inLesson.filter((st) => statusIn(st.id).every((p) => !p || p.status === "todo"));
+  const notStarted = inLesson.filter((st) => joined(st) && statusIn(st.id).every((p) => !p || p.status === "todo"));
+  // Invited by email and not in yet: listed apart (a reminder can't reach them; the invitation can).
+  const notJoined = inLesson.filter((st) => !joined(st));
   // The class's numbers leave out the demo students (the teacher's own tests), unless they're all there is.
   const real = inLesson.some((st) => !st.demo) ? inLesson.filter((st) => !st.demo) : inLesson;
   const stalled = course.students.filter((st) => {
@@ -113,7 +115,8 @@ export function Classroom({
   const waiting = course.students.filter((st) => studioWaiting.has(st.id) || !!wallWaiting(st.id));
   const owing = course.students.filter((st) => (lessonPosts.some((p) => p.studentId === st.id) && feedbackGiven(st.id) < feedbackGoal(st.id)) || !!wallOwing(st.id));
   const lateCard = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && isLate(m, progress[sid]?.[m.id], now))?.id;
-  const overdue = course.students.filter((st) => !!lateCard(st.id));
+  // A student who hasn't joined the class yet (invited by email, no account linked) isn't overdue: they're not in yet.
+  const overdue = course.students.filter((st) => joined(st) && !!lateCard(st.id));
   // Finished written work the teacher hasn't responded to yet.
   const reviewable = (m: Module) => reviewableCard(m);
   const toReviewCell = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && reviewable(m) && awaitingFeedback(progress[sid]?.[m.id]))?.id;
@@ -148,6 +151,7 @@ export function Classroom({
     { key: "review", icon: "message", tint: "#287670", title: "Ready for your feedback", hint: "Finished work you haven’t reviewed yet.", who: toReview, cell: toReviewCell },
     { key: "low", icon: "quiz", tint: "var(--color-warn)", title: "Low quiz scores", hint: "Under half right on a quiz or card group here.", who: low, cell: (sid) => { const id = lowCell(sid); const g = lesson.modules.find((m) => m.id === id); return g?.type === "group" ? leavesOf(g, lesson.modules).find((c) => visible[sid].has(c.id))?.id : id; } },
     { key: "start", icon: "clock", tint: "var(--color-ink-2)", title: "Haven’t started", hint: "No card opened in this lesson yet.", who: notStarted, cell: firstVisible },
+    { key: "invited", icon: "user", tint: "var(--color-ink-3)", title: "Haven’t joined yet", hint: "Invited by email; they haven’t signed in to the class. Send the invitation again from Invite students.", who: notJoined, cell: () => undefined },
     { key: "stall", icon: "timer", tint: "var(--color-warn)", title: "Stalled", hint: "Started, but nothing new for 2+ days.", who: stalled, cell: (sid) => lesson.modules.find((m) => progress[sid]?.[m.id]?.status === "doing")?.id },
     { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted for peer review, no classmate has replied yet.", who: waiting, cell: (sid) => (studioWaiting.has(sid) ? studioId : wallWaiting(sid)) },
     { key: "owe", icon: "studio", tint: "#367195", title: "Owe feedback", hint: "Posted, but replied to fewer classmates than the card asks (fewer in a small group).", who: owing, cell: (sid) => wallOwing(sid) ?? studioId },
@@ -289,6 +293,7 @@ export function Classroom({
             {selModule.due && (
               <p className={`mt-2 text-[12.5px] ${isLate(selModule, selProgress ?? undefined, now) ? "text-bad" : "text-ink-3"}`}>
                 Due {new Date(dueAt(selModule.due)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}{isLate(selModule, selProgress ?? undefined, now) ? " · late" : ""}
+                {selProgress?.status === "done" && selProgress.handedAt ? <HandedIn at={selProgress.handedAt} due={dueAt(selModule.due)} /> : null}
               </p>
             )}
             {selModule.checklist?.length ? (
@@ -861,4 +866,10 @@ function LiveCopy({ startOpen, label, children }: { startOpen: boolean; label: s
       {open && <div className="mt-2">{children}</div>}
     </details>
   );
+}
+
+/** On a card with a due date: when it was handed in, and how late if it was. */
+function HandedIn({ at, due }: { at: number; due: number }) {
+  const late = at > due ? Math.max(1, Math.ceil((at - due) / 86400000)) : 0;
+  return <span className={late ? "text-bad" : "text-ink-3"}> · handed in {new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}{late ? `, ${late} day${late === 1 ? "" : "s"} late` : ", on time"}</span>;
 }

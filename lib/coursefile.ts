@@ -15,7 +15,7 @@ export const COURSE_FILE_VERSION = 1;
 /** Limits on what one file can make (a big course is still well within them). */
 const MAX = { weeks: 52, lessons: 40, cards: 200, total: 3000 };
 
-export type CourseFileLesson = { title: string; goal?: string; elective?: boolean; session?: Lesson["session"]; modules: Module[] };
+export type CourseFileLesson = { title: string; goal?: string; elective?: boolean; modules: Module[] };
 export type CourseFile = {
   format: typeof COURSE_FILE;
   version: number;
@@ -39,7 +39,6 @@ export function toCourseFile(course: Course): CourseFile {
         title: l.title,
         ...(l.goal ? { goal: l.goal } : {}),
         ...(l.elective ? { elective: true } : {}),
-        ...(l.session ? { session: l.session } : {}),
         // A card's link to the teacher's own saved copy means nothing in someone else's course.
         modules: l.modules.map(({ collected: _c, ...m }) => m as Module),
       })),
@@ -115,8 +114,7 @@ export function readCourseFile(raw: unknown): Read {
           collected: undefined,
         });
       }
-      const session = isObj(l.session) && typeof l.session.minutes === "number" && Array.isArray(l.session.agenda) ? (l.session as unknown as Lesson["session"]) : undefined;
-      lessons.push({ id: "", title: str(l.title, 80) || "Lesson 0", modules, branches: {}, ...(typeof l.goal === "string" && l.goal ? { goal: l.goal.slice(0, 300) } : {}), ...(l.elective === true ? { elective: true } : {}), ...(session ? { session } : {}) });
+      lessons.push({ id: "", title: str(l.title, 80) || "Lesson 0", modules, branches: {}, ...(typeof l.goal === "string" && l.goal ? { goal: l.goal.slice(0, 300) } : {}), ...(l.elective === true ? { elective: true } : {}) });
     }
     lessonsOf.push({ title: str(w.title, 80) || `Week ${wi + 1}`, lessons });
   }

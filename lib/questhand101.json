@@ -1427,19 +1427,6 @@
        "suit": "content"
       },
       {
-       "id": "m-q1tpl-session",
-       "type": "read",
-       "title": "Class sessions",
-       "body": "This lesson has a class session (look at its ⋯ menu). Add a class session to any lesson: an agenda of timed parts, and parts can go in turns.\n\nIn class, press Run the class session (or r). It fills the screen with a timer, the agenda and who speaks next. At the end, Send notes to students.",
-       "audience": {
-        "kind": "all"
-       },
-       "tools": [],
-       "attachments": [],
-       "kind": "content",
-       "suit": "content"
-      },
-      {
        "id": "m-q1tpl-ideas",
        "type": "wall",
        "title": "Share one idea",
@@ -1460,25 +1447,7 @@
         "replies": 1
        }
       }
-     ],
-     "session": {
-      "agenda": [
-       {
-        "label": "Warm-up: what did your branch do?",
-        "minutes": 10
-       },
-       {
-        "label": "Show your first lesson, in turns",
-        "minutes": 25,
-        "roundRobin": true
-       },
-       {
-        "label": "Plan next week",
-        "minutes": 10
-       }
-      ],
-      "minutes": 45
-     }
+     ]
     },
     {
      "title": "Wrap-up",

@@ -3,7 +3,7 @@ import { uid } from "./profile";
 import { db, logEvent } from "./store";
 import type { Attachment, Course, ExternalUpdate, Module, Student } from "./types";
 
-// Student invitation links, and updates posted onto a student's card (a teacher's form, class session notes).
+// Student invitation links, and updates posted onto a student's card (a teacher's form).
 
 const INVITE_DAYS = 120;
 /** Links kept per student: a new one (sent again, copied) doesn't break the ones already in their inbox. */

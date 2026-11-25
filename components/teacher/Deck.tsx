@@ -11,7 +11,7 @@ import type { ConnectorInfo } from "@/lib/connectors/types";
 import { uid } from "@/lib/profile";
 import { toast } from "@/lib/toast";
 import { ask } from "../Confirm";
-import type { Course, Lesson, Module, ProgressMap, StudioPost, TrashEntry } from "@/lib/types";
+import type { Course, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
 import { Icon } from "../Icon";
 import { useShortcuts } from "@/lib/shortcuts";
 import { useUrlState } from "@/lib/urlState";
@@ -21,7 +21,6 @@ import { CourseMap } from "./CourseMap";
 import { newCard, type CardKind } from "@/lib/kinds";
 import { NeighborGraph } from "./NeighborGraph";
 import { branchBelow, deleteCardIn, leavesOf, parentOf, SCORE, slotOf, targetsOf, topOf, wiresOf } from "@/lib/branching";
-import { SessionRunner } from "./SessionRunner";
 import { loadLibrary } from "./NewCardFan";
 
 /** The time, for grouping quick edits into one undo step (only ever called from event handlers). */
@@ -31,8 +30,8 @@ const clock = () => Date.now();
 /** What a saved card keeps (not where it is, who it's for, its due date or its tie to My cards), to tell if it changed. */
 const lookOfContent = (m: Module) => JSON.stringify({ ...m, id: "", audience: undefined, due: undefined, collected: undefined });
 
-export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choices = {}, readOnly = false, view = "map", onView }: {
-  course: Course; connectors?: ConnectorInfo[]; readOnly?: boolean; onRefresh: () => unknown; progress?: ProgressMap; studioPosts?: StudioPost[]; choices?: Record<string, Record<string, string>>;
+export function Deck({ course, onRefresh, progress = {}, choices = {}, readOnly = false, view = "map", onView }: {
+  course: Course; connectors?: ConnectorInfo[]; readOnly?: boolean; onRefresh: () => unknown; progress?: ProgressMap; choices?: Record<string, Record<string, string>>;
   /** Only the course map now (the list of weeks became part of it). */
   view?: "map";
   onView?: (v: "map") => void;
@@ -133,19 +132,8 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   }, [course.id]);
   const openRef = useRef(false);
   const pushedRef = useRef(false);
-  const [agendaFor, setAgendaFor] = useState<string | null>(null);
   const [scheduleFrom, setScheduleFrom] = useState<string | null>(null);
   const [renamingWeek, setRenamingWeek] = useState<string | null>(null);
-  // The session timer is in the address (?run=lesson), so the browser's Back button closes it.
-  const [runId, setRunId] = useUrlState("run");
-  const runLesson = runId ? course.weeks.flatMap((w) => w.lessons.map((l) => ({ l, w }))).find((x) => x.l.id === runId && x.l.session) : undefined;
-  const running = runLesson ? { lessonId: runLesson.l.id, weekTitle: runLesson.w.title } : null;
-  // Opening adds a history entry; closing on screen steps back out of it (only if this page opened it).
-  const ranHere = useRef(false);
-  const setRunning = (r: { lessonId: string; weekTitle?: string } | null) => {
-    if (r) { ranHere.current = true; setRunId(r.lessonId); }
-    else { setRunId(null, { back: ranHere.current }); ranHere.current = false; }
-  };
 
   useEffect(() => {
     const map = timers.current;
@@ -576,12 +564,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
         else { await op(course.id, { op: "setCurrentLesson", lessonId: l.id }); await onRefresh(); }
         toast(`“${l.title}” is today’s lesson`, { icon: "clock" });
       }] as [string, () => void]] : []),
-      ...(l.session ? [[`Run the class session (${l.session.minutes} min)`, () => setRunning({ lessonId: l.id, weekTitle: w.title })] as [string, () => void]] : []),
       ["Schedule lessons from here…", () => setScheduleFrom(l.id)],
-      [l.session ? "Edit the session agenda" : "Add a class session", () => {
-        if (!l.session) change({ ...l, session: { agenda: [{ label: "Warm-up", minutes: 10 }, { label: "Main activity", minutes: 30 }, { label: "Wrap-up", minutes: 10 }], minutes: 50 } });
-        setAgendaFor(l.id);
-      }],
       ...(lessonWires.length ? [[l.openPaths ? "Hide paths from students (card backs)" : "Show students every path", () => {
         change({ ...l, openPaths: !l.openPaths || undefined });
         toast(l.openPaths ? "Students see card backs for paths they haven’t taken" : "Students see every path and what deals it", { icon: "split" });
@@ -615,8 +598,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   const today = course.weeks.flatMap((w) => w.lessons).find((l) => l.id === course.currentLessonId);
   const dates = lessonDates({ weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => lessonOf(l.id)) })) });
   useShortcuts([
-    { keys: "n", label: "New card", run: () => today && addCard(lessonOf(today.id), "content"), enabled: !!today && !editorOpen && !running },
-    { keys: "r", label: "Run the class session", run: () => today?.session && setRunning({ lessonId: today.id, weekTitle: course.weeks.find((w) => w.lessons.includes(today))?.title ?? "" }), enabled: !!today?.session && !running },
+    { keys: "n", label: "New card", run: () => today && addCard(lessonOf(today.id), "content"), enabled: !!today && !editorOpen },
   ]);
 
   // Every card in course order, for stepping through them in the editor.
@@ -722,10 +704,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           />
         </div>
       ) : null}
-      {/* A lesson's class-session agenda, and renaming a week: small panels over the map. */}
-      {agendaFor && (() => { const l = allLessons().find((x) => x.id === agendaFor); return l ? (
-        <div className="fixed left-1/2 top-28 z-[55] -translate-x-1/2"><AgendaEditor lesson={l} onChange={change} onClose={() => setAgendaFor(null)} /></div>
-      ) : null; })()}
+      {/* Scheduling lessons, and renaming a week: small panels over the map. */}
       {scheduleFrom && (() => {
         const all = allLessons(), i = all.findIndex((x) => x.id === scheduleFrom);
         if (i < 0) return null;
@@ -739,10 +718,6 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       {renamingWeek && (() => { const w = course.weeks.find((x) => x.id === renamingWeek); return w ? (
         <WeekRename title={w.title} onClose={() => setRenamingWeek(null)} onSave={async (title) => { setRenamingWeek(null); if (title && title !== w.title) { await op(course.id, { op: "renameWeek", weekId: w.id, title }); onRefresh(); } }} />
       ) : null; })()}
-
-      {running && (
-        <SessionRunner course={course} lesson={lessonOf(running.lessonId)} weekTitle={running.weekTitle} posts={studioPosts} onClose={() => setRunning(null)} />
-      )}
 
       {cur && curModule && (
         <CardEditor
@@ -824,44 +799,6 @@ function NewWeek({ n, onBlank, onTemplate }: { n: number; onBlank: () => void; o
   );
 }
 
-/** Edit a lesson's Collab Studio agenda: parts with minutes, which part is round-robin, and the total. */
-function AgendaEditor({ lesson, onChange, onClose }: { lesson: Lesson; onChange: (l: Lesson) => void; onClose: () => void }) {
-  const agenda = lesson.session?.agenda ?? [];
-  const save = (next: typeof agenda | null) => {
-    if (!next) return onChange({ ...lesson, session: undefined });
-    onChange({ ...lesson, session: { ...lesson.session, agenda: next, minutes: next.reduce((n, a) => n + (a.minutes || 0), 0) } });
-  };
-  return (
-    <div className="pop mt-2 w-[30rem] max-w-[90vw] rounded-xl border border-line bg-white p-3 shadow-[0_16px_40px_-20px_rgba(20,20,18,0.35)]">
-      <div className="mb-2 flex items-center text-[12.5px]">
-        <span className="min-w-0 flex-1 truncate font-medium">Class session · {lesson.title}</span>
-        <span className="mono mr-2">{agenda.reduce((n, a) => n + (a.minutes || 0), 0)} min</span>
-        <button onClick={onClose} aria-label="Close agenda" className="btn btn-quiet press h-6 w-6 justify-center px-0"><Icon name="x" size={12} /></button>
-      </div>
-      <div className="space-y-1.5">
-        {agenda.map((a, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <input value={a.label} onChange={(e) => save(agenda.map((x, k) => (k === i ? { ...x, label: e.target.value } : x)))} aria-label="Part" className="field h-8 flex-1 py-0" />
-            <input type="number" min={1} max={180} value={a.minutes} onChange={(e) => save(agenda.map((x, k) => (k === i ? { ...x, minutes: Math.max(1, Number(e.target.value) || 1) } : x)))} aria-label="Minutes" className="field h-8 w-16 py-0 font-mono" />
-            <label className="flex items-center gap-1 text-[11.5px] text-ink-2" title="Each student presents in turn during this part">
-              <input type="checkbox" checked={!!a.roundRobin} onChange={(e) => save(agenda.map((x, k) => (k === i ? { ...x, roundRobin: e.target.checked || undefined } : x)))} className="accent-[#1b1b1a]" />Turns
-            </label>
-            <button onClick={() => save(agenda.filter((_, k) => k !== i))} aria-label="Remove part" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={12} /></button>
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 flex items-center gap-2">
-        <button onClick={() => save([...agenda, { label: "New part", minutes: 10 }])} className="btn btn-ghost press h-7 px-2.5 text-[12px]"><Icon name="plus" size={12} /> Part</button>
-        <label className="flex items-center gap-1.5 text-[12px] text-ink-2" title="Host, Timer, Ah-counter, and Evaluator rotate through each group every session">
-          <input type="checkbox" checked={!!lesson.session?.roles} onChange={(e) => lesson.session && onChange({ ...lesson, session: { ...lesson.session, roles: e.target.checked || undefined } })} className="accent-[#1b1b1a]" />
-          Rotate roles
-        </label>
-        <span className="flex-1" />
-        <button onClick={() => { save(null); onClose(); }} className="btn btn-quiet press h-7 px-2.5 text-[12px] hover:!text-bad">Remove class session</button>
-      </div>
-    </div>
-  );
-}
 
 /** A small "⋯" menu for the actions that don't need to be on screen all the time. */
 function More({ items, label }: { items: [string, () => void][]; label: string }) {

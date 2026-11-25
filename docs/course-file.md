@@ -24,7 +24,7 @@ nothing lost. Hand-written files can leave most fields out: the reader fills in 
 - `format` and `version` may be left out (a file with `weeks` is read as a course file). A newer `version` is turned away.
 - `title` names the course unless the teacher types a name in the New course dialog. `subtitle` is optional.
 - Each week needs at least one lesson. Limits: 52 weeks, 40 lessons a week, 200 cards a lesson, 3,000 cards in all.
-- A lesson may have `goal`, `elective: true` (students choose it) and `session` (`{ minutes, agenda: [{ label, minutes }] }`).
+- A lesson may have `goal` and `elective: true` (students choose it).
   `cards` is accepted as another name for `modules`.
 
 ## Cards

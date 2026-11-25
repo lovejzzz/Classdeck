@@ -6,7 +6,7 @@ import { exportGrades, gradeRows, type GradeRow } from "@/lib/gradebook";
 import { isFinished, isLate } from "@/lib/grading";
 import { visibleModules } from "@/lib/profile";
 import { treeView } from "@/lib/branching";
-import { groupingsOf } from "@/lib/shared";
+import { groupingsOf, joined } from "@/lib/shared";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import type { CourseState, Lesson } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
@@ -84,8 +84,11 @@ export function StudentsPage({ courseId, state, connectors, lesson, setLesson, w
                 {/* What needs you about them, most pressing first. */}
                 {msgs > 0 && <span title={`${msgs} new message${msgs === 1 ? "" : "s"}`} className="flex h-[18px] flex-none items-center gap-0.5 rounded-full bg-[#eef0fb] px-1.5 text-[10.5px] text-[#4b56a8]"><Icon name="message" size={10} />{msgs}</span>}
                 {r.waiting > 0 && <span title={`${r.waiting} waiting for your feedback`} className="flex h-[18px] min-w-[18px] flex-none items-center justify-center rounded-full bg-[#287670]/12 px-1.5 font-mono text-[10.5px] text-[#287670]">{r.waiting}</span>}
-                {r.late > 0 && <span title={`${r.late} overdue`} className="h-[18px] flex-none rounded-full bg-bad/10 px-1.5 text-[10.5px] leading-[18px] text-bad">late</span>}
-                {!started(r.st.id) && <span title="Hasn’t started" className="h-[18px] flex-none rounded-full bg-lane px-1.5 text-[10.5px] leading-[18px] text-ink-3">new</span>}
+                {/* Invited but not in the class yet: that's all there is to say about them (not "late"). */}
+                {!joined(r.st) ? <span title="Invited, hasn’t joined yet" className="h-[18px] flex-none rounded-full bg-lane px-1.5 text-[10.5px] leading-[18px] text-ink-3">invited</span> : <>
+                  {r.late > 0 && <span title={`${r.late} overdue`} className="h-[18px] flex-none rounded-full bg-bad/10 px-1.5 text-[10.5px] leading-[18px] text-bad">late</span>}
+                  {!started(r.st.id) && <span title="Hasn’t started" className="h-[18px] flex-none rounded-full bg-lane px-1.5 text-[10.5px] leading-[18px] text-ink-3">new</span>}
+                </>}
               </Row>
             );
           })}
