@@ -66,10 +66,14 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     if (!ids.length) return;
     retry.current.tries++;
     setRetries(retry.current.tries);
-    const sent = ids.map((id) => latest.current[id]).filter(Boolean);
-    const b = sending(sent);
-    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent, bases: b.sent });
-    if (r.ok === false) { b.failed(); return saveFailed(ids, r.error); }
+    const r = await inTurn(ids, async () => {
+      const sent = ids.map((id) => latest.current[id]).filter(Boolean);
+      const b = sending(sent);
+      const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent, bases: b.sent });
+      if (r.ok === false) b.failed();
+      return r;
+    });
+    if (r.ok === false) return saveFailed(ids, r.error);
     ids.forEach((id) => failed.current.delete(id));
     retry.current.tries = 0;
     setRetries(0);
@@ -88,6 +92,17 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   const startFrom = (id: string) => { if (!bases.current[id]) { const l = serverLesson(id); if (l) bases.current[id] = baseOf(l); } };
   // Sending a lesson: the next save starts from what this one sent (an Undo right after a delete must count as a
   // change). If the save fails, the base it was sent with comes back.
+  // One save at a time for each lesson: a later save waits for the one before it, so it starts from what really
+  // reached the server (if the earlier one failed, the later one carries its changes too).
+  const queue = useRef(new Map<string, Promise<unknown>>());
+  const inTurn = <T,>(ids: string[], run: () => Promise<T>): Promise<T> => {
+    const before = Promise.all(ids.map((id) => queue.current.get(id)));
+    const p = before.then(run);
+    const done = p.catch(() => undefined);
+    ids.forEach((id) => queue.current.set(id, done));
+    void done.then(() => ids.forEach((id) => { if (queue.current.get(id) === done) queue.current.delete(id); }));
+    return p;
+  };
   const sending = (list: Lesson[]) => {
     const sent = Object.fromEntries(list.filter((l) => bases.current[l.id]).map((l) => [l.id, bases.current[l.id]]));
     for (const l of list) bases.current[l.id] = baseOf(l);
@@ -204,11 +219,16 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       if (t) { clearTimeout(t); timers.current.delete(l.id); waiting++; }
     }
     setSaving((n) => n - waiting + 1);
-    const sent = list.map((l) => latest.current[l.id]);
-    const b = sending(sent);
-    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent, bases: b.sent });
+    let sent: Lesson[] = [];
+    const r = await inTurn(list.map((l) => l.id), async () => {
+      sent = list.map((l) => latest.current[l.id]);
+      const b = sending(sent);
+      const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent, bases: b.sent });
+      if (r.ok === false) b.failed();
+      return r;
+    });
     setSaving((n) => n - 1);
-    if (r.ok === false) { b.failed(); return saveFailed(sent.map((l) => l.id), r.error); }
+    if (r.ok === false) return saveFailed(sent.map((l) => l.id), r.error);
     sent.forEach((l) => failed.current.delete(l.id));
     if (!failed.current.size) setSaveError(null);
     await onRefresh();
@@ -221,12 +241,17 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   }
   async function sendNow(id: string, keepalive = false) {
     timers.current.delete(id);
-    const sent = latest.current[id];
-    const b = sending([sent]);
-    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent, base: b.sent[id] }, { keepalive });
+    let sent = latest.current[id];
+    // Leaving the page can't wait in line: it goes at once.
+    const r = await (keepalive ? (f: () => Promise<{ ok?: boolean; error?: string }>) => f() : (f: () => Promise<{ ok?: boolean; error?: string }>) => inTurn([id], f))(async () => {
+      sent = latest.current[id];
+      const b = sending([sent]);
+      const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent, base: b.sent[id] }, { keepalive });
+      if (r.ok === false) b.failed();
+      return r;
+    });
     setSaving((n) => n - 1);
     if (r.ok === false) {
-      b.failed();
       // Keep the edit on screen, say so, and try again by itself.
       return saveFailed([id], r.error);
     }

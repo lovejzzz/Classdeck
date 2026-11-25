@@ -210,6 +210,9 @@ export function CardDetail(p: DetailProps) {
   useEffect(() => {
     if (serverText === undefined || serverText === savedText || inFlight > 0) return;
     if (draftText !== (savedText ?? "")) return;
+    // Not while they're writing in it here: an older copy read a moment before their last save could still arrive.
+    const el = typeof document !== "undefined" ? document.activeElement : null;
+    if (el && (el.tagName === "TEXTAREA" || (el as HTMLElement).isContentEditable) && document.visibilityState === "visible") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- taking in a newer copy from the server
     setOutput(serverText);
     if (p.progress?.responses) setResponses(p.progress.responses);

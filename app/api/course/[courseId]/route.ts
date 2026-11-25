@@ -1,4 +1,4 @@
-import { mergeLesson, type LessonBase } from "@/lib/merge";
+import { mergeLesson, moveAnswers, type LessonBase } from "@/lib/merge";
 import { publicOrigin } from "@/lib/origin";
 import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
@@ -33,13 +33,12 @@ const STUDENT_OPS = new Set([
 ]);
 
 const AUTO_LESSON = /^Lesson \d+$/;
-/** A week still called by its number ("Week 3"): renumbered by its place, like lessons. */
+/** A week called only by its number ("Week 3"). */
 const AUTO_WEEK = /^Week \d+$/;
 const STRUCTURAL = new Set(["addLesson", "addWeek", "duplicateLesson", "duplicateWeek", "insertWeek", "insertLesson", "deleteLesson", "deleteWeek"]);
 
 /** Lessons still named "Lesson N" take their place in the course as their number; named lessons keep their names. */
 function renumberLessons(course: Course) {
-  course.weeks.forEach((w, n) => { if (AUTO_WEEK.test(w.title)) w.title = `Week ${n + 1}`; });
   let i = 0;
   for (const w of course.weeks) for (const l of w.lessons) {
     i++;
@@ -104,7 +103,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
       lessons: w.lessons.map((l) => ({
         ...l,
         // An elective a student hasn't chosen arrives as a catalog entry: its cards stay hidden until they pick it.
-        ...(l.elective ? { chosen: !!chosen[`elective:${l.id}`], takenBy: taken(l.id), catalog: { cards: l.modules.filter((m) => m.audience.kind === "all").length, skills: [...new Set(l.modules.flatMap((m) => m.skills ?? []))] } } : {}),
+        ...(l.elective ? { chosen: !!chosen[`elective:${l.id}`], takenBy: taken(l.id), catalog: { cards: l.modules.filter((m) => m.audience?.kind === "all").length, skills: [...new Set(l.modules.flatMap((m) => m.skills ?? []))] } } : {}),
         branches: {},
         // Students see each outermost group as one frame of its cards (a group inside it adds its cards in its place).
         decks: l.modules.filter((g) => g.type === "group" && visible.has(g.id) && !parentOf(l.modules).has(g.id)).map((g) => ({
@@ -140,7 +139,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
           })() : undefined,
           paths: paths.get(m.id),
           audience: { kind: "all" as const },
-          personal: m.audience.kind !== "all" && !m.choice && !m.picked,
+          personal: m.audience?.kind !== "all" && !m.choice && !m.picked,
           questions: asked(m).length ? asked(m).map(publicQuestion) : undefined,
         })),
       })),
@@ -193,7 +192,7 @@ function view(request: Request, courseId: string): Response {
       course: {
         ...course, students: [], groups: [], groupings: undefined, joinCode: "", access: undefined, waiting: undefined, people: undefined, ownerId: undefined, trash: undefined,
         // Cards made for one student stay private; shared and path cards are shown without who they're for.
-        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience.kind !== "student" && !unfinished(m)).map((m) => ({ ...m, bands: undefined, audience: m.audience.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
+        weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience?.kind !== "student" && !unfinished(m)).map((m) => ({ ...m, bands: undefined, audience: m.audience?.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
       },
       progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], live: { hands: {} }, uptake: {}, nudges: [], plans: {},
     };
@@ -383,7 +382,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
   // (A teacher posts in a discussion as "teacher".)
   const teacherPost = body.op === "addPost" && body.studentId === "teacher";
   if (body.studentId !== undefined && body.studentId !== null && !teacherPost && !isStudent(body.studentId)) return fail("No such student");
-  if (body.moduleId !== undefined && body.moduleId !== null && body.moduleId !== "" && !(typeof body.moduleId === "string" && findModule(course, body.moduleId))) return fail("No such card");
+  if (body.moduleId !== undefined && body.moduleId !== null && body.moduleId !== "" && !(typeof body.moduleId === "string" && findModule(course, body.moduleId))) return fail("This card was changed or removed by your teacher. Close it and look at your board again.");
   // A student only acts on cards that are on their own board.
   if (actor && actor !== "teacher" && typeof body.moduleId === "string" && body.moduleId && !canTeach(session, course) && !onBoard(course, actor, body.moduleId)) return fail("That card isn’t on your board");
   const prog = (d.progress[courseId] ??= {});
@@ -794,6 +793,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
       for (let k = 0; k < list.length; k++) {
         const now = course.weeks.flatMap((w) => w.lessons).find((l) => l.id === list[k].id);
         if (now && bases && typeof bases === "object") list[k] = mergeLesson(now, list[k], bases[list[k].id]);
+        // Options removed or reworded after students answered: their answers follow their options.
+        if (now) moveAnswers(now.modules, list[k].modules, d.progress[courseId]);
       }
       for (const next of list) {
         next.modules = next.modules.map(cleanCard);
@@ -928,7 +929,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
     case "chooseBranch": {
       const lesson = findLesson(course, body.lessonId);
       if (!lesson?.choiceSlots?.includes(body.slot)) return fail("That isn’t a path you can choose");
-      const exists = lesson.modules.some((m) => m.audience.kind === "branch" && m.audience.slot === body.slot && m.audience.variant === body.variant);
+      const exists = lesson.modules.some((m) => m.audience?.kind === "branch" && m.audience.slot === body.slot && m.audience.variant === body.variant);
       if (!exists) return fail("No such path");
       ((d.choices[courseId] ??= {})[body.studentId] ??= {})[body.slot] = body.variant;
       break;
@@ -978,7 +979,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const found = findModule(course, body.moduleId);
       const q = found?.mod.questions?.find((x) => x.id === body.qid);
       // A card or question that's gone (deleted while the student had it open): said, not taken as saved.
-      if (!found || !q) return fail("This question was changed or removed. Close the card and open it again.");
+      if (!found || !q) return fail("This question was changed or removed by your teacher. Close the card and open it again.");
       const p = mine(body.studentId, body.moduleId);
       if (p.status === "done" && found.mod.type === "quiz") break;
       const set = quizSet(found.mod, body.studentId, p.attempt ?? 1);
@@ -1595,8 +1596,10 @@ async function change(request: Request, courseId: string, body: Record<string, a
     case "duplicateWeek": {
       const i = course.weeks.findIndex((w) => w.id === body.weekId);
       if (i < 0) return fail("No such week");
-      // A copy of "Week 2" is the next week by number (renumbered below), not "Week 2 (copy)" again and again.
-      const copy = cloneWeek(course.weeks[i], AUTO_WEEK.test(course.weeks[i].title) ? "Week 0" : undefined);
+      // A copy of "Week 2" takes the next unused week number ("Week 9"), not "Week 2 (copy)" again and again. Other
+      // weeks keep their names: a teacher's "Week 36" or "Orientation" is theirs.
+      const top = Math.max(0, ...course.weeks.map((w) => Number(w.title.match(/^Week (\d+)\b/)?.[1] ?? 0)));
+      const copy = cloneWeek(course.weeks[i], AUTO_WEEK.test(course.weeks[i].title) ? `Week ${top + 1}` : undefined);
       course.weeks.splice(i + 1, 0, copy);
       extra = { weekId: copy.id };
       break;

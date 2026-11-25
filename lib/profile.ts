@@ -55,13 +55,13 @@ export function visibleModules(lesson: Lesson, studentId: string, chosen: Record
   const firstVariant: Record<string, string> = {};
   const counts: Record<string, number> = {};
   for (const m of lesson.modules) {
-    if (m.audience.kind !== "branch") continue;
+    if (m.audience?.kind !== "branch") continue;
     if (!(m.audience.slot in firstVariant)) firstVariant[m.audience.slot] = m.audience.variant;
     counts[m.audience.slot] = (counts[m.audience.slot] ?? 0) + 1;
   }
   const out: Module[] = [];
   for (const m of lesson.modules) {
-    const a = m.audience;
+    const a = m.audience ?? { kind: "all" as const };
     if (m.type === "group" || groupHidden.has(m.id) || unfinished(m)) continue;
     if (hidden.has(m.id) && !dealt.has(m.id)) continue;
     if (a.kind === "all") out.push(m);
@@ -84,7 +84,7 @@ export function visibleModules(lesson: Lesson, studentId: string, chosen: Record
 export function slotVariants(lesson: Lesson): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const m of lesson.modules) {
-    if (m.audience.kind !== "branch") continue;
+    if (m.audience?.kind !== "branch") continue;
     const list = (out[m.audience.slot] ??= []);
     if (!list.includes(m.audience.variant)) list.push(m.audience.variant);
   }

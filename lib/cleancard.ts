@@ -50,6 +50,9 @@ export function cleanCard(raw: Module): Module {
     const image = typeof m.look.image === "string" && safeUrl(m.look.image) ? m.look.image.slice(0, 2000) : undefined;
     m.look = color || image ? { color, image } : undefined;
   }
+  // Who gets it: every card has one (a card saved without it made every student's page fail to open).
+  if (!m.audience || typeof m.audience !== "object" || !["all", "branch", "student"].includes(m.audience.kind)) m.audience = { kind: "all" };
+  if (!Array.isArray(m.tools)) m.tools = [];
   m.form = cleanForm(m.form);
   if (m.suit !== undefined && !["learn", "do", "share"].includes(m.suit)) m.suit = undefined;
   return m;

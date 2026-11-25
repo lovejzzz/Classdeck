@@ -201,6 +201,8 @@ function fill(d: DB): DB {
   // Cards saved before the simplification: fold merged settings into the instructions (once; idempotent).
   // Older cards: settings that were merged away fold into what remains, and every card gets its kind.
   for (const c of Object.values(d.courses ?? {})) if (c?.weeks) { foldWeeks(c.weeks); kindWeeks(c.weeks); nameGroups(c); }
+  // Every card says who gets it (one saved without it made every student's page in its course fail to open).
+  for (const c of Object.values(d.courses ?? {})) for (const w of c?.weeks ?? []) for (const l of w.lessons ?? []) for (const m of l.modules ?? []) if (!m.audience?.kind) m.audience = { kind: "all" };
   for (const k of [...PER_COURSE, "users", "sessions", "uploads"] as const) (d as unknown as Record<string, unknown>)[k] ??= {};
   d.customConnectors ??= [];
   return d;
