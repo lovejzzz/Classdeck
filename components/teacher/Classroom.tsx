@@ -28,6 +28,9 @@ import { Avatar, Icon, StatusIcon } from "../Icon";
 import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
 import { groupScore, leavesOf, parentOf, treeView } from "@/lib/branching";
 
+/** How many names an attention card shows before “and N more”. */
+const MANY = 24;
+
 export function Classroom({
   courseId, state, lesson, connectors, sel, setSel, onMessage, readOnly = false, drawerOnly = false, extraExports = [],
 }: {
@@ -71,6 +74,8 @@ export function Classroom({
   const DAY = 86400000;
   // "Now" is fixed when the view opens; the page polls, so it never drifts far.
   const [now] = useState(() => Date.now());
+  // Attention cards showing every name, not only the first MANY.
+  const [allOf, setAllOf] = useState<Set<string>>(new Set());
   // A student's cards for this lesson; while they haven't picked a path, the versions count once.
   const statusIn = (sid: string) => {
     const mine = visibleModules(lesson, sid, state.choices[sid], treeView(course.weeks, progress[sid]), course);
@@ -423,7 +428,8 @@ export function Classroom({
                     text={a.key === "late" ? "You have a card past its due date. Can you finish it today?" : a.key === "start" ? `Time to start “${lesson.title}”. Open your first card when you can.` : "Pick up where you left off when you have a moment."} />
                 )}
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {a.who.map((st) => (
+                  {/* A big class: the first few names, the rest one click away (not a wall of 200 names). */}
+                  {(allOf.has(a.key) ? a.who : a.who.slice(0, MANY)).map((st) => (
                     <button key={st.id}
                       onClick={() => {
                         const mid = a.cell(st.id);
@@ -433,6 +439,12 @@ export function Classroom({
                       {(() => { const g = a.key === "review" ? groupWork(st.id) : undefined; return g ? <><Icon name="users" size={13} className="ml-1 text-ink-3" />{g.name}</> : <><Avatar name={st.name} size={20} />{st.name}</>; })()}
                     </button>
                   ))}
+                  {a.who.length > MANY && (
+                    <button onClick={() => setAllOf((x) => { const n = new Set(x); if (n.has(a.key)) n.delete(a.key); else n.add(a.key); return n; })}
+                      className="press inline-flex h-7 items-center rounded-full px-2.5 text-[12.5px] text-ink-2 hover:bg-lane hover:text-ink">
+                      {allOf.has(a.key) ? "Show fewer" : `and ${a.who.length - MANY} more`}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

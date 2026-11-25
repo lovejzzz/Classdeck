@@ -83,6 +83,14 @@ export function wiresOf(scope: HasModules | Module[]): Wire[] {
 /** The cards that are dealt by an answer or a score (and so are hidden until then). */
 export const followUps = (scope: HasModules | Module[]) => new Set(wiresOf(scope).map((w) => w.to));
 
+/**
+ * The answer that decides a student's follow-ups for a question: their first one, kept when they answered. A question
+ * the teacher wired only after the student had answered has nothing kept: their answer counts, so a card added to it
+ * later still reaches them (not on a quiz, which deals only once it's handed in).
+ */
+export const decidingAnswer = (p: Progress | undefined, qid: string, from?: Module) =>
+  p?.dealt?.[qid] ?? (qid !== SCORE && from?.type !== "quiz" ? p?.answers?.[qid] : undefined);
+
 /** Whether this answer (or score) takes the student down this wire. */
 export const picked = (v: AnswerValue | undefined, w: Wire) =>
   w.score ? scoresIn(v).some((x) => x >= w.score!.min && x < w.score!.max) : Array.isArray(v) ? (v as number[]).includes(w.option) : v === w.option;
@@ -150,7 +158,7 @@ export function dealtTo(scope: HasModules | Module[], prog: Record<string, Progr
     grew = false;
     for (const w of wires) {
       if (dealt.has(w.to) || !on.has(w.from)) continue;
-      if (picked(prog[w.from]?.dealt?.[w.q], w)) {
+      if (picked(decidingAnswer(prog[w.from], w.q, byId.get(w.from)), w)) {
         dealt.add(w.to);
         on.add(w.to);
         const t = byId.get(w.to);
@@ -371,7 +379,7 @@ export function pathsFor(weeks: { lessons: Lesson[] }[], prog: Record<string, Pr
     if (!dst) continue;
     const cond = w.score ? `Score ${bandLabel(w.score)}` : `“${src.m.questions?.find((q) => q.id === w.q)?.options[w.option]?.trim() || String.fromCharCode(65 + w.option)}”`;
     const list = out.get(w.from) ?? out.set(w.from, []).get(w.from)!;
-    const mine = picked(prog[w.from]?.dealt?.[w.q], w) && view.dealt.has(w.to) && visible.has(w.to);
+    const mine = picked(decidingAnswer(prog[w.from], w.q, src.m), w) && view.dealt.has(w.to) && visible.has(w.to);
     if (mine) { if (!list.some((x) => x.to === w.to)) list.push({ to: w.to, why: w.score ? cond : `You chose ${cond}` }); continue; }
     if (list.some((x) => x.to === w.to)) continue;
     list.push(src.lesson.openPaths ? { title: dst.m.title, type: dst.m.type, why: w.score ? cond : `If you choose ${cond}` } : {});

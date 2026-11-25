@@ -134,16 +134,29 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
     let pending: ReturnType<typeof setTimeout> | null = null;
     // A guest link reads the course without signing in, so it has no live stream: it just checks now and then.
     const es = typeof EventSource !== "undefined" && !as?.startsWith("guest:") ? new EventSource(`/api/course/${courseId}/stream`) : null;
+    // In a busy class every answer is a change, and every page re-reads the course on each one: 30 students answering
+    // together meant 30 × 30 reads. Changes that come close together are read once, at most once a second on a
+    // student's page (twice on the teacher's).
+    const gap = as ? 1000 : 500;
+    let lastRead = 0;
     es?.addEventListener("change", () => {
       if (pending) return;
       pending = setTimeout(() => {
         pending = null;
+        lastRead = Date.now();
         refresh();
-      }, 120);
+      }, Math.max(120, lastRead + gap - Date.now()));
     });
     const t = setInterval(refresh, es ? Math.max(everyMs, 20000) : everyMs);
+    // Coming back to this tab (after working in another one, or after the computer slept): read the course at once,
+    // before anything is changed on an old copy. A hidden tab's timers and live stream can be held back by the browser.
+    const back = () => { if (document.visibilityState === "visible") { lastRead = Date.now(); void refresh(); } };
+    document.addEventListener("visibilitychange", back);
+    window.addEventListener("focus", back);
     return () => {
       alive.current = false;
+      document.removeEventListener("visibilitychange", back);
+      window.removeEventListener("focus", back);
       es?.close();
       if (pending) clearTimeout(pending);
       clearInterval(t);

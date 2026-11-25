@@ -24,6 +24,8 @@ body {
   font-size: 14px;
   letter-spacing: -0.003em;
   -webkit-font-smoothing: antialiased;
+  /* A very long word or link (a pasted URL, "xxxxxxxx…") wraps instead of running out of its card. */
+  overflow-wrap: break-word;
 }
 
 :root {

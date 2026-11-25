@@ -206,31 +206,46 @@ function fill(d: DB): DB {
   return d;
 }
 
-export function save() {
+/**
+ * Write what changed to SQLite. With a course id, only that course's data (and the site-wide lists) is looked at:
+ * every answer, keystroke in a group doc or message used to turn every course on the site into JSON to find what
+ * changed, so each write got slower the more courses the site had. Without one, everything is compared.
+ */
+export function save(courseId?: string) {
   // A Student View test is never saved: its changes stay in its sandbox.
   if (g.__preview) return;
   const d = g.__lmsdb;
   if (!d) return;
   const next = new Map<string, string>();
-  for (const k of PER_COURSE) for (const [id, v] of Object.entries(d[k] ?? {})) if (v !== undefined) next.set(`${k}:${id}`, JSON.stringify(v));
+  if (courseId) {
+    for (const k of PER_COURSE) { const v = (d[k] as Record<string, unknown> | undefined)?.[courseId]; if (v !== undefined) next.set(`${k}:${courseId}`, JSON.stringify(v)); }
+  } else {
+    for (const k of PER_COURSE) for (const [id, v] of Object.entries(d[k] ?? {})) if (v !== undefined) next.set(`${k}:${id}`, JSON.stringify(v));
+  }
   for (const k of GLOBAL) next.set(k, JSON.stringify(d[k]));
-  const written = (g.__lmswritten ??= new Map());
+  const written: Map<string, string> = (g.__lmswritten ??= new Map());
   const conn = sql();
   const put = conn.prepare("INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v");
   const del = conn.prepare("DELETE FROM kv WHERE k = ?");
   // Which courses changed, so only pages showing those courses are told to refresh.
   const changed = new Set<string>();
   const note = (k: string) => { const i = k.indexOf(":"); if (i > 0) changed.add(k.slice(i + 1)); };
+  // The keys this save is about: all of them, or the one course's (and the site-wide ones).
+  const mine = (k: string) => !courseId || !k.includes(":") || k.slice(k.indexOf(":") + 1) === courseId;
+  const gone = [...written.keys()].filter((k) => mine(k) && !next.has(k));
   conn.exec("BEGIN");
   try {
     for (const [k, v] of next) if (written.get(k) !== v) { put.run(k, v); note(k); }
-    for (const k of written.keys()) if (!next.has(k)) { del.run(k); note(k); }
+    for (const k of gone) { del.run(k); note(k); }
     conn.exec("COMMIT");
   } catch (e) {
     conn.exec("ROLLBACK");
     throw e;
   }
-  g.__lmswritten = next;
+  if (courseId) {
+    for (const [k, v] of next) written.set(k, v);
+    for (const k of gone) written.delete(k);
+  } else g.__lmswritten = next;
   // Data that was loaded from the old JSON file now lives in SQLite.
   if (fs.existsSync(LEGACY)) fs.renameSync(LEGACY, `${LEGACY}.migrated`);
   publish(changed);

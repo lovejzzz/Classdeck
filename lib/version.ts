@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.7",
+    date: "2026-11-25",
+    changes: [
+      "The same course open in two tabs (or two teachers on one lesson): saving in a tab that still shows an older copy no longer undoes what was changed in the other. Each save keeps only what that tab changed; cards changed, added or deleted elsewhere stay that way. Coming back to a tab reads the course at once. A student's writing saved in one tab shows in another tab with the same card open.",
+      "Faster with many courses and busy classes: a save now writes only its own course (each save used to look through every course on the site), and a page re-reads the course at most once a second when many changes come together (a whole class answering at once).",
+      "Math typed into a card ($x^2$) is no longer saved with an extra $, and $$…$$ keeps its \\frac. Text with < > or & shows those characters, not “&lt;”. Very long words and links wrap inside cards and answers.",
+      "The ⋯ menu of a lesson near the bottom of the screen opens upward, so its last items (the week’s) can be reached. A copied week is numbered as the next week (“Week 9”, not “Week 1 (copy)” again). Teachers see at most 24 names on each Needs attention card, with the rest one click away. Adding a week from a template says its real name.",
+      "A card the teacher wires to an answer after students have already answered now reaches the students who gave that answer (it reached only students who answered later). Cards added to an answer that already dealt cards reach everyone who chose it, as before, and changes to later weeks show on students’ boards straight away.",
+      "An answer to a question that was removed while the card was open says so, instead of seeming to save.",
+    ],
+  },
+  {
     version: "0.2.6",
     date: "2026-11-25",
     changes: [

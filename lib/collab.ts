@@ -78,7 +78,7 @@ export function applyEdit(courseId: string, key: string, from: number, update: s
   e.state = b64(Y.encodeStateAsUpdate(l.doc));
   if (!(e.pending ??= []).includes(who)) e.pending.push(who);
   for (const [id, send] of l.listeners) if (id !== from) send("update", update);
-  save();
+  save(courseId);
 }
 
 /** A writer's cursor moved (or they left): pass it on. */
@@ -99,5 +99,5 @@ export function setText(courseId: string, key: string, md: string, force = false
     e.pending = [];
     if (e.history.length > KEEP_VERSIONS) e.history.splice(0, e.history.length - KEEP_VERSIONS);
   }
-  save();
+  save(courseId);
 }

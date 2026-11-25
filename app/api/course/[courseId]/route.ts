@@ -1,3 +1,4 @@
+import { mergeLesson, type LessonBase } from "@/lib/merge";
 import { publicOrigin } from "@/lib/origin";
 import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
@@ -8,7 +9,7 @@ import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { foldWeeks } from "@/lib/cardmodel";
 import { kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
-import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
+import { canBranch, cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
@@ -32,10 +33,13 @@ const STUDENT_OPS = new Set([
 ]);
 
 const AUTO_LESSON = /^Lesson \d+$/;
+/** A week still called by its number ("Week 3"): renumbered by its place, like lessons. */
+const AUTO_WEEK = /^Week \d+$/;
 const STRUCTURAL = new Set(["addLesson", "addWeek", "duplicateLesson", "duplicateWeek", "insertWeek", "insertLesson", "deleteLesson", "deleteWeek"]);
 
 /** Lessons still named "Lesson N" take their place in the course as their number; named lessons keep their names. */
 function renumberLessons(course: Course) {
+  course.weeks.forEach((w, n) => { if (AUTO_WEEK.test(w.title)) w.title = `Week ${n + 1}`; });
   let i = 0;
   for (const w of course.weeks) for (const l of w.lessons) {
     i++;
@@ -203,7 +207,7 @@ function view(request: Request, courseId: string): Response {
   }
   if (as ? !canBeStudent(session, course, as) : !canSeeTeacher(session, course)) return as ? unauthorized("student") : unauthorized("teacher", undefined, teacherAccessHint(session, course));
   if (as && !course.students.some((s) => s.id === as)) return Response.json({ error: "You’re not on this class list. Ask your teacher to add you." }, { status: 404 });
-  if (finishExpiredQuizzes(course)) save();
+  if (finishExpiredQuizzes(course)) save(courseId);
   const all = d.progress[courseId] ?? {};
   const choices = d.choices[courseId] ?? {};
   const studio = d.studio[courseId] ?? { posts: [], feedback: [] };
@@ -341,7 +345,7 @@ export async function POST(request: Request, { params }: Ctx) {
         const d = db();
         delete d.progress[courseId]?.[sid];
         delete d.choices[courseId]?.[sid];
-        save();
+        save(courseId);
         return Response.json({ ok: true });
       }
       endPreview(previewKey(session, courseId, sid), courseId, sid === DEMO_STUDENT.id);
@@ -785,6 +789,12 @@ async function change(request: Request, courseId: string, body: Record<string, a
         if (new Set(ids).size !== ids.length) return fail("Two cards in this course have the same id");
       }
       const cardsBefore = cardsOf(course.weeks).map((c) => c.m);
+      // What the page started from: changes made meanwhile elsewhere (another tab, a co-teacher) are kept.
+      const bases = (body.op === "saveLessons" ? body.bases : body.lesson ? { [body.lesson.id]: body.base } : {}) as Record<string, LessonBase | undefined> | undefined;
+      for (let k = 0; k < list.length; k++) {
+        const now = course.weeks.flatMap((w) => w.lessons).find((l) => l.id === list[k].id);
+        if (now && bases && typeof bases === "object") list[k] = mergeLesson(now, list[k], bases[list[k].id]);
+      }
       for (const next of list) {
         next.modules = next.modules.map(cleanCard);
         if (next.date !== undefined && !(typeof next.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(next.date))) next.date = undefined;
@@ -967,7 +977,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
     case "answer": {
       const found = findModule(course, body.moduleId);
       const q = found?.mod.questions?.find((x) => x.id === body.qid);
-      if (!found || !q) break;
+      // A card or question that's gone (deleted while the student had it open): said, not taken as saved.
+      if (!found || !q) return fail("This question was changed or removed. Close the card and open it again.");
       const p = mine(body.studentId, body.moduleId);
       if (p.status === "done" && found.mod.type === "quiz") break;
       const set = quizSet(found.mod, body.studentId, p.attempt ?? 1);
@@ -997,6 +1008,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
         target.studentIds.push(body.studentId);
       }
       const right = found.mod.poll ? true : isCorrect(q, given);
+      // What this student had before this answer (taken before it's kept: a kept answer can deal cards by itself).
+      const dealtBefore = treeOf(course, body.studentId).dealt;
       (p.answers ??= {})[q.id] = given;
       // Card tree: the first answer decides which follow-up cards this student gets; later answers don't change it.
       let dealtNow: string[] = [];
@@ -1006,9 +1019,10 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const firstTime = answeredNow && (p.first ??= {})[q.id] === undefined;
       // A quiz deals when it's submitted, not halfway through.
       if (found.mod.type !== "quiz" && answeredNow && (firstTime || (deals(q) && p.dealt?.[q.id] === undefined))) {
-        const before = treeOf(course, body.studentId).dealt;
+        const before = dealtBefore;
         if (firstTime) p.first![q.id] = right;
-        if (deals(q) && (p.dealt ??= {})[q.id] === undefined) p.dealt[q.id] = given;
+        // Kept even if nothing is wired to it yet: cards the teacher adds to this answer later reach this student too.
+        if ((deals(q) || canBranch(q)) && (p.dealt ??= {})[q.id] === undefined) p.dealt[q.id] = given;
         const byAnswer = treeOf(course, body.studentId).dealt;
         // A card group scores once every Multiple choice card in it has a first answer; so does a group it's in.
         for (const gid of groupsAbove(found.mod.id, parentOf(found.lesson.modules))) {
@@ -1581,7 +1595,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
     case "duplicateWeek": {
       const i = course.weeks.findIndex((w) => w.id === body.weekId);
       if (i < 0) return fail("No such week");
-      const copy = cloneWeek(course.weeks[i]);
+      // A copy of "Week 2" is the next week by number (renumbered below), not "Week 2 (copy)" again and again.
+      const copy = cloneWeek(course.weeks[i], AUTO_WEEK.test(course.weeks[i].title) ? "Week 0" : undefined);
       course.weeks.splice(i + 1, 0, copy);
       extra = { weekId: copy.id };
       break;
@@ -1697,7 +1712,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
     console.error("op failed", body.op, e instanceof Error ? e.message : e);
     return fail("Something in that request wasn’t right");
   }
-  save();
+  save(courseId);
   return Response.json({ ok: true, ...extra });
 }
 

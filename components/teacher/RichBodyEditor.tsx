@@ -42,7 +42,12 @@ const MathInline = Node.create({
   parseMarkdown: (token: { raw?: string }) => ({ type: "mathInline", attrs: { src: token.raw ?? "" } }),
   renderMarkdown: (node: { attrs?: { src?: string } }) => node.attrs?.src ?? "",
   addInputRules() {
-    return [nodeInputRule({ find: /(?<![\\$\w])(\$(?:[^\s$]|[^\s$][^$\n]*?[^\s\\$])\$)$/, type: this.type, getAttributes: (m) => ({ src: m[1] }) })];
+    // No capture group: with one, the rule puts the typed closing $ back after the chip ($x^2$ became $x^2$$).
+    return [
+      nodeInputRule({ find: /(?<![\\$\w])\$(?:[^\s$]|[^\s$][^$\n]*?[^\s\\$])\$$/, type: this.type, getAttributes: (m) => ({ src: m[0] }) }),
+      // $$…$$ (math on its own line) is one piece too, so its \frac isn't written back as \\frac.
+      nodeInputRule({ find: /(?<![\\$\w])\$\$[^$\n]+?\$\$$/, type: this.type, getAttributes: (m) => ({ src: m[0] }) }),
+    ];
   },
 });
 

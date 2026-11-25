@@ -75,6 +75,8 @@ export function CardDetail(p: DetailProps) {
   const [watched, setWatched] = useState<string[]>(p.progress?.watched ?? []);
   // The writing last sent to the server (null after a failed save), and whether "Done" is waiting on the server.
   const [savedText, setSavedText] = useState<string | null>(p.progress?.output ?? (personal ? m.body : ""));
+  // Saves of this card's writing still on their way to the server.
+  const [inFlight, setInFlight] = useState(0);
   // Bumped when a save fails, so unsaved writing is tried again a little later without more typing.
   const [retry, setRetry] = useState(0);
   const [finishing, setFinishing] = useState(false);
@@ -176,7 +178,9 @@ export function CardDetail(p: DetailProps) {
     const patch = prompts.length ? { output: text, responses } : { output: text };
     p.optimistic(status ? { ...patch, status } : patch);
     setSavedText(text);
+    setInFlight((n) => n + 1);
     const sent = op<{ ok?: boolean; error?: string }>(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, ...patch, status });
+    void sent.finally(() => setInFlight((n) => n - 1));
     if (!status) {
       void sent.then((r) => { if (r.ok === false) { setSavedText(null); setRetry((n) => n + 1); } else setRetry(0); p.onChanged(); });
       return;
@@ -199,6 +203,19 @@ export function CardDetail(p: DetailProps) {
 
   // Save while typing (a moment after the last keystroke), and warn before leaving with unsaved writing.
   const draftText = prompts.length ? promptsToText(prompts, responses) : output;
+  // The same card open in two tabs: writing saved in the other one shows here too, as long as nothing is waiting to
+  // be saved here (so an old copy here can't be typed on and saved over the newer one). Not while this tab's own save
+  // is on its way, when a copy read a moment earlier may still arrive.
+  const serverText = p.progress?.output;
+  useEffect(() => {
+    if (serverText === undefined || serverText === savedText || inFlight > 0) return;
+    if (draftText !== (savedText ?? "")) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- taking in a newer copy from the server
+    setOutput(serverText);
+    if (p.progress?.responses) setResponses(p.progress.responses);
+    setSavedText(serverText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverText]);
   const dirty = hasOutput && !m.choice && draftText !== (savedText ?? p.progress?.output ?? (personal ? m.body : ""));
   useEffect(() => {
     if (!dirty) return;
@@ -750,7 +767,7 @@ function Questions(p: DetailProps) {
                     <button key={oi} onClick={() => !mine && answer(q.id, oi)} disabled={v.locked || full || q.id in pending} aria-pressed={mine}
                       className={`press flex flex-col items-stretch gap-1.5 rounded-xl border px-3.5 py-3 text-left transition-colors disabled:cursor-not-allowed ${mine ? "border-[#4b56a8]/50 bg-[#eef0fb]" : full ? "border-line bg-lane/60 opacity-60" : "border-line bg-white hover:border-line-strong"}`}>
                       <span className="flex items-center gap-2">
-                        <span className="flex-1 font-medium"><MathText text={opt} /></span>
+                        <span className="min-w-0 flex-1 font-medium"><MathText text={opt} /></span>
                         <span className={`mono text-[12px] ${full ? "text-bad" : "text-ink-3"}`}>{v.counts[oi]}{v.max ? `/${v.max}` : ""}</span>
                       </span>
                       {v.names && v.names[oi].length > 0 && <span className="text-[12px] leading-snug text-ink-3">{v.names[oi].join(", ")}</span>}
@@ -778,7 +795,7 @@ function Questions(p: DetailProps) {
                       <span className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border ${isPicked ? "border-ink bg-ink" : "border-line-strong"}`}>
                         {isPicked && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </span>
-                      <span className="flex-1"><MathText text={opt} /></span>
+                      <span className="min-w-0 flex-1"><MathText text={opt} /></span>
                       {isPicked && showResult && !m.poll && <span className={`pop ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={15} strokeWidth={2.2} /></span>}
                       {isPicked && voted && <span className="text-[11.5px] font-medium text-[#4b56a8]">Your vote</span>}
                       {isKey && <span className="text-[11.5px] text-ok">Answer</span>}

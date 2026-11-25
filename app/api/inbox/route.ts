@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       list.push({ id: uid("dm-"), from: me, to: other, text, at: Date.now() } satisfies DirectMessage);
       if (list.length > 5000) list.splice(0, list.length - 5000);
     }
-    save();
+    save(c.id);
     return Response.json({ ok: true });
   }
   if (body.action === "read") {
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       // The other side's messages: the student's (read by the teacher) or the teacher's (read by the student).
       for (const n of d.nudges[c.id] ?? []) if (n.studentId === sid && (me === "teacher" ? n.from === "student" : !n.from)) n.read = true;
     } else for (const m of d.dms[c.id] ?? []) if (m.from === other && m.to === me) m.read = true;
-    save();
+    save(c.id);
     return Response.json({ ok: true });
   }
   return fail("Unknown action");

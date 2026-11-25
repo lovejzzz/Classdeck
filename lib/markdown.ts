@@ -135,6 +135,8 @@ const SAFE_URL = /^(https?:\/\/|mailto:)/i;
 const MATH = /\$\$[\s\S]+?\$\$|(?<![\\$])\$(?=[^\s$])(?:\\\$|[^$\n])*?[^\s\\$]\$(?!\d)/g;
 
 /** One line's runs of text: bold, italic, struck, code and links. $math$ is left as it is, for MathText. */
+const ENTITY: Record<string, string> = { lt: "<", gt: ">", amp: "&", quot: '"', "#39": "'", nbsp: "\u00a0" };
+
 export function inline(src: string): Inline[] {
   const out: Inline[] = [];
   let at = 0;
@@ -165,6 +167,8 @@ function runs(src: string): Inline[] {
   if (at < src.length) out.push({ t: src.slice(at) });
   // Backslash escapes (\_ \* \# …) show as the character itself; \$ is left for MathText.
   for (const x of out) if (!x.code && !x.mention) x.t = x.t.replace(/\\([\\`*_{}\[\]()#+\-.!|>~<])/g, "$1");
+  // The card editor writes < > & as &lt; &gt; &amp;: they show as the characters, not as those words.
+  for (const x of out) if (!x.code && !x.mention) x.t = x.t.replace(/&(lt|gt|amp|quot|#39|nbsp);/g, (_, e: string) => ENTITY[e]);
   // Bare web addresses become links too.
   return out.flatMap((x) => {
     if (x.href || x.code || x.mention) return [x];

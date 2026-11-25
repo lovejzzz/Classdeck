@@ -73,6 +73,9 @@ const course = () => [
   check("a chain waits for the next answer", !d.has("Z"));
   check("…and continues once given", dealtTo(all, prog({ src: { q: 1 }, Y: { qy: 0 } })).has("Z"));
   check("a card can't be dealt from a card the student doesn't have", !dealtTo(all, prog({ Y: { qy: 0 } })).has("Z"));
+  // Answered before the question was wired (nothing kept as dealt): the answer itself counts.
+  const answeredOnly = { src: { status: "done", answers: { q: 1 } } } as unknown as Parameters<typeof dealtTo>[1];
+  check("a card wired after the student answered still reaches them", dealtTo(all, answeredOnly).has("Y") && !dealtTo(all, answeredOnly).has("X"));
   const quiz = card("qz", { type: "quiz", questions: [ask("a", [null, null])], bands: [{ min: 0, next: "lo" }, { min: 60, next: "mid" }, { min: 90, next: "hi" }] });
   const pool = [quiz, card("lo"), card("mid"), card("hi")];
   const at = (pct: number) => [...dealtTo(pool, prog({ qz: { [SCORE]: pct } }))].join();

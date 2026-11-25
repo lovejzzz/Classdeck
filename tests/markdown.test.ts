@@ -53,6 +53,10 @@ const mi = inline("Hi @[Ana Li](@s-1), see [docs](https://x.y) and @[Teacher](@t
 check("a mention is one run with its id", mi[1].t === "@Ana Li" && mi[1].mention === "s-1" && !mi[1].href);
 check("links still work next to mentions", mi.some((x) => x.href === "https://x.y"));
 check("plain text reads a mention as @Name", plainText("Ask @[Ana Li](@s-1)") === "Ask @Ana Li");
+// The card editor writes < > & as entities: they read as the characters (once: &amp;lt; stays "&lt;").
+check("entities show as characters", plainText("&lt;b&gt;hi&lt;/b&gt; &amp; 3 &lt; 4") === "<b>hi</b> & 3 < 4");
+check("an escaped entity is decoded once", plainText("&amp;lt;") === "&lt;");
+check("code keeps entities as written", inline("`&lt;`")[0].t === "&lt;");
 check("who is mentioned (once each)", mentionsIn("@[A](@s-1) @[B](@teacher) @[A](@s-1)").join() === "s-1,teacher");
 check("an email address isn't a mention", mentionsIn("write to a@b.c").length === 0 && !inline("a@b.c").some((x) => x.mention));
 check("a preview can leave tables and charts out", plainText("Fill it in.\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n[chart: bar]", { tables: false }).trim() === "Fill it in." && plainText("| a |\n| --- |\n| 1 |").includes("1"));

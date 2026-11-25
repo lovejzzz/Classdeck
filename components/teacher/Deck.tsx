@@ -4,7 +4,8 @@ import { usePanelShift } from "./usePanelShift";
 import { createPortal } from "react-dom";
 import { lessonDates, localDay, shortDate, type LessonDate } from "@/lib/dates";
 import { ScheduleDialog } from "./ScheduleDialog";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { baseOf, type LessonBase } from "@/lib/merge";
 import { op } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { uid } from "@/lib/profile";
@@ -66,8 +67,9 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     retry.current.tries++;
     setRetries(retry.current.tries);
     const sent = ids.map((id) => latest.current[id]).filter(Boolean);
-    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent });
-    if (r.ok === false) return saveFailed(ids, r.error);
+    const b = sending(sent);
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent, bases: b.sent });
+    if (r.ok === false) { b.failed(); return saveFailed(ids, r.error); }
     ids.forEach((id) => failed.current.delete(id));
     retry.current.tries = 0;
     setRetries(0);
@@ -76,6 +78,21 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   }
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const latest = useRef<Record<string, Lesson>>({});
+  // What each lesson looked like on the server when this page started changing it. Sent with each save, so the server
+  // keeps changes made meanwhile in another tab (or by a co-teacher) to cards this page didn't touch.
+  const bases = useRef<Record<string, LessonBase>>({});
+  // The latest copy from the server, also for a callback made earlier (the Undo in a message after deleting).
+  const courseNow = useRef(course);
+  useEffect(() => { courseNow.current = course; }, [course]);
+  const serverLesson = (id: string) => courseNow.current.weeks.flatMap((w) => w.lessons).find((l) => l.id === id);
+  const startFrom = (id: string) => { if (!bases.current[id]) { const l = serverLesson(id); if (l) bases.current[id] = baseOf(l); } };
+  // Sending a lesson: the next save starts from what this one sent (an Undo right after a delete must count as a
+  // change). If the save fails, the base it was sent with comes back.
+  const sending = (list: Lesson[]) => {
+    const sent = Object.fromEntries(list.filter((l) => bases.current[l.id]).map((l) => [l.id, bases.current[l.id]]));
+    for (const l of list) bases.current[l.id] = baseOf(l);
+    return { sent, failed: () => { for (const [id, b] of Object.entries(sent)) bases.current[id] = b; } };
+  };
   // Edits wait a moment before they're saved. Leaving the page (closing the tab, reloading, typing another address)
   // sends whatever is still waiting at once, in a request that outlives the page; if that can't be done (a very big
   // lesson) or a save is still on its way, the browser asks before leaving.
@@ -122,7 +139,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       // Flush anything still waiting so no edit is lost when leaving the tab.
       map.forEach((t, id) => {
         clearTimeout(t);
-        op(course.id, { op: "saveLesson", lesson: pending[id] });
+        op(course.id, { op: "saveLesson", lesson: pending[id], base: bases.current[id] });
       });
     };
   }, [course.id]);
@@ -161,6 +178,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   /** Put lessons back to a saved state without recording it (Undo and Redo). */
   const restore = (list: Lesson[]) => (list.length === 1 ? change(list[0], false) : changeMany(list, false));
   function change(next: Lesson, record = true) {
+    startFrom(next.id);
     if (record) remember(next);
     latest.current[next.id] = next;
     setDrafts((d) => ({ ...d, [next.id]: next }));
@@ -176,6 +194,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
    */
   async function changeMany(list: Lesson[], record = true) {
     if (!list.length) return;
+    list.forEach((l) => startFrom(l.id));
     if (record) rememberAll(list);
     for (const l of list) latest.current[l.id] = l;
     setDrafts((d) => ({ ...d, ...Object.fromEntries(list.map((l) => [l.id, l])) }));
@@ -186,12 +205,14 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     }
     setSaving((n) => n - waiting + 1);
     const sent = list.map((l) => latest.current[l.id]);
-    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent });
+    const b = sending(sent);
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLessons", lessons: sent, bases: b.sent });
     setSaving((n) => n - 1);
-    if (r.ok === false) return saveFailed(sent.map((l) => l.id), r.error);
+    if (r.ok === false) { b.failed(); return saveFailed(sent.map((l) => l.id), r.error); }
     sent.forEach((l) => failed.current.delete(l.id));
     if (!failed.current.size) setSaveError(null);
     await onRefresh();
+    for (const l of sent) if (latest.current[l.id] === l) delete bases.current[l.id];
     setDrafts((d) => {
       const n = { ...d };
       for (const l of sent) if (n[l.id] === l && latest.current[l.id] === l) delete n[l.id];
@@ -201,15 +222,18 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   async function sendNow(id: string, keepalive = false) {
     timers.current.delete(id);
     const sent = latest.current[id];
-    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent }, { keepalive });
+    const b = sending([sent]);
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent, base: b.sent[id] }, { keepalive });
     setSaving((n) => n - 1);
     if (r.ok === false) {
+      b.failed();
       // Keep the edit on screen, say so, and try again by itself.
       return saveFailed([id], r.error);
     }
     failed.current.delete(id);
     if (!failed.current.size) setSaveError(null);
     await onRefresh();
+    if (latest.current[id] === sent) delete bases.current[id];
     // Once the server has this version, show the server's copy again (so edits made elsewhere appear).
     setDrafts((d) => (d[id] === sent && latest.current[id] === sent ? Object.fromEntries(Object.entries(d).filter(([k]) => k !== id)) : d));
   }
@@ -653,7 +677,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             }} onTemplate={async (theme) => {
               await op(course.id, { op: "insertWeek", week: standardWeek(theme, nextWeek) });
               onRefresh();
-              toast(`Added “Week ${nextWeek} · ${theme}” from the template`, { icon: "layers" });
+              toast(`Added Week ${nextWeek}: “${theme}”, from the template`, { icon: "layers" });
             }} />}
             trash={course.trash ?? []}
             onRestore={readOnly ? undefined : (e) => void restoreTrash(e)}
@@ -819,7 +843,17 @@ function More({ items, label }: { items: [string, () => void][]; label: string }
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
-  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const [at, setAt] = useState<{ x: number; y: number; above: number } | null>(null);
+  // Near the bottom of the screen the menu opens upward (and scrolls if it's taller than the room there), so its
+  // last items (the week's) can always be reached.
+  useLayoutEffect(() => {
+    const el = list.current;
+    if (!open || !at || !el) return;
+    const h = el.offsetHeight, room = window.innerHeight - 8;
+    const top = at.y + h <= room ? at.y : at.above - h >= 8 ? at.above - h : 8;
+    el.style.top = `${top}px`;
+    el.style.maxHeight = `${room - top}px`;
+  }, [open, at]);
   useEffect(() => {
     if (!open) return;
     const off = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && !list.current?.contains(e.target as Node) && setOpen(false);
@@ -833,13 +867,13 @@ function More({ items, label }: { items: [string, () => void][]; label: string }
   }, [open]);
   return (
     <div ref={ref} className="relative">
-      <button onClick={(e) => { const b = e.currentTarget.getBoundingClientRect(); setAt({ x: Math.min(b.left, window.innerWidth - 248), y: b.bottom + 4 }); setOpen((o) => !o); }} onPointerDown={(e) => e.stopPropagation()}
+      <button onClick={(e) => { const b = e.currentTarget.getBoundingClientRect(); setAt({ x: Math.min(b.left, window.innerWidth - 248), y: b.bottom + 4, above: b.top - 4 }); setOpen((o) => !o); }} onPointerDown={(e) => e.stopPropagation()}
         aria-label={label} aria-expanded={open} aria-haspopup="menu" className={`btn press h-6 w-7 justify-center px-0 ${open ? "bg-black/[0.06]" : "btn-quiet"}`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
       </button>
       {/* On the page itself, so it floats above the map's cards whatever the zoom. */}
       {open && at && createPortal(
-        <div ref={list} role="menu" className="pop fixed z-[60] w-60 rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]" style={{ left: at.x, top: at.y }}>
+        <div ref={list} role="menu" className="pop fixed z-[60] w-60 overflow-y-auto rounded-xl border border-line bg-white p-1 shadow-[0_16px_40px_-16px_rgba(20,20,18,0.35)]" style={{ left: at.x, top: at.y }}>
           {items.map(([text, fn]) => (
             text.startsWith("—") ? <div key={text} className="mx-2 my-1 border-t border-line" /> :
             <button key={text} role="menuitem" onClick={() => { setOpen(false); fn(); }} className="press block w-full rounded-lg px-3 py-2 text-left text-[13px] hover:bg-lane">{text}</button>
