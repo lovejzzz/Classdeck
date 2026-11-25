@@ -26,7 +26,7 @@ import { WallBoard } from "../WallBoard";
 import { RichText } from "../RichText";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
-import { groupScore, leavesOf, treeView } from "@/lib/branching";
+import { groupScore, leavesOf, parentOf, treeView } from "@/lib/branching";
 
 export function Classroom({
   courseId, state, lesson, connectors, sel, setSel, onMessage, readOnly = false, drawerOnly = false, extraExports = [],
@@ -125,10 +125,12 @@ export function Classroom({
   })();
   const firstVisible = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id))?.id;
   // A quiz handed in (best try) or a card group finished, under half right.
+  const inner = parentOf(lesson.modules);
   const lowCell = (sid: string) => lesson.modules.find((m) => {
     const pr = progress[sid]?.[m.id];
     if (m.type === "quiz" && visible[sid].has(m.id) && pr?.status === "done" && m.questions?.length) return (pr.best ?? pr.score ?? 0) / Math.max(1, quizSet(m, sid, pr.attempt ?? 1).length) < 0.5;
-    if (m.type === "group" && leavesOf(m, lesson.modules).some((c) => visible[sid].has(c.id))) { const g = groupScore(m, lesson.modules, progress[sid] ?? {}); return g.done && g.right / Math.max(1, g.total) < 0.5; }
+    // A group inside a group is judged by the outer group's score, which holds the same answers.
+    if (m.type === "group" && !inner.has(m.id) && leavesOf(m, lesson.modules).some((c) => visible[sid].has(c.id))) { const g = groupScore(m, lesson.modules, progress[sid] ?? {}); return g.done && g.right / Math.max(1, g.total) < 0.5; }
     return false;
   })?.id;
   const low = course.students.filter((st) => !!lowCell(st.id));

@@ -282,8 +282,8 @@ function StudentCourse({ state, row: r, courseId, onOpen, onMessage, now }: {
               <h3 className={sec}>Scores</h3>
               <ul className="space-y-1">
                 {r.scored.map((x) => (
-                  <li key={x.id} className="flex items-center gap-2 text-[13px]">
-                    <span className="min-w-0 flex-1 truncate">{x.title}</span>
+                  <li key={x.id} className={`flex items-center gap-2 text-[13px] ${"inside" in x && x.inside ? "pl-4 text-ink-3" : ""}`} title={"inside" in x && x.inside ? `Part of ${x.inside}: not counted again in the average` : undefined}>
+                    <span className="min-w-0 flex-1 truncate">{"inside" in x && x.inside ? <>↳ {x.title} <span className="text-[11.5px]">· in {x.inside}</span></> : x.title}</span>
                     {x.tries && x.tries > 1 && <span className="text-[11.5px] text-ink-3">best of {x.tries}</span>}
                     <span className={`font-mono text-[12px] ${x.right / x.total < 0.6 ? "text-bad" : "text-ink-2"}`}>{x.right}/{x.total}</span>
                   </li>

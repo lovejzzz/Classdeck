@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.96",
+    date: "2026-11-24",
+    changes: [
+      "A group of groups counts its answers once in the grades. A student’s quiz average uses the outer group’s score; each inner group is still listed under it in their Scores (“↳ Sea motion · in The ocean”) but isn’t counted again. Low quiz scores goes by the outer group too, so one weak inner group doesn’t flag a student who did well overall.",
+    ],
+  },
+  {
     version: "0.1.95",
     date: "2026-11-24",
     changes: [
