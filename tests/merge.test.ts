@@ -45,6 +45,14 @@ async function main() {
   moveAnswers([mod(["A", "B", "C"], 0)], [mod(["A", "B", "C"], 1)], p as never);
   check("the right answer fixed: first answers are marked again", p.s1.m.first.q === true && p.s2.m.first.q === false, [p.s1.m.first, p.s2.m.first]);
 
+  // What changed between two versions of a student's work.
+  const { wordDiff } = await import("../lib/diff");
+  const dd = wordDiff("¿Dónde está hotel? Gracias.", "¿Dónde está el hotel? Muchas gracias.")!;
+  const show = dd.map((x) => (x.k === "same" ? x.t : x.k === "add" ? `[+${x.t.trim()}]` : `[-${x.t.trim()}]`)).join("");
+  check("word diff: added and removed words", show.includes("[+el]") && show.includes("[-Gracias.]") && show.includes("[+Muchas"), show);
+  check("word diff: unchanged text is one piece", wordDiff("a b c", "a b c")!.length === 1);
+  check("word diff: too long to compare says so", wordDiff("x ".repeat(3000), "y") === null);
+
   let failed = 0;
   for (const [name, ok, extra] of rows) { if (!ok) failed++; console.log(`${ok ? "  ✓" : "  ✗"} ${name}${!ok && extra !== undefined ? ` — ${JSON.stringify(extra)}` : ""}`); }
   console.log(`\n${rows.length - failed} passed, ${failed} failed`);

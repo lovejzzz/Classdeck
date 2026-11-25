@@ -2,6 +2,7 @@
 
 import { MathText, hasMath, plainMath } from "../MathText";
 import { useEffect, useRef, useState } from "react";
+import { EarlierFeedback } from "../FeedbackHistory";
 import { op } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { useShortcuts } from "@/lib/shortcuts";
@@ -265,6 +266,7 @@ export function CardDetail(p: DetailProps) {
         )}
 
         {review && !m.choice && <ReviewNote review={review} big={p.big} skills={p.course.skills} levels={p.course.levels} />}
+        {!m.choice && <EarlierFeedback earlier={p.progress?.earlier} />}
         {p.progress?.updates?.length ? <UpdatesNote updates={p.progress.updates} big={p.big} skills={p.course.skills} levels={p.course.levels} /> : null}
 
         {m.choice && (

@@ -863,7 +863,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (body.status === "done" && mustWatch.some((x) => !(p.watched ?? []).includes(x.id))) return fail("Watch the required videos first");
       if (Array.isArray(body.responses)) p.responses = body.responses.slice(0, 12).map((x: unknown) => String(x ?? "").slice(0, 4000));
       if (body.status === "done" && steps.length && (p.checks?.length ?? 0) < steps.length) return fail("Tick every step on the checklist first");
-      if (body.status) p.status = body.status;
+      if (body.status) { p.status = body.status; if (body.status === "done") p.reopened = undefined; }
       if (typeof body.output === "string") p.output = body.output.slice(0, 8000);
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
@@ -1362,7 +1362,12 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const reviewed = ids.map((sid) => mine(sid, body.moduleId));
       extra = { reviewed: ids.length };
       if (body.clear) {
-        for (const x of reviewed) x.review = undefined;
+        for (const x of reviewed) {
+          x.review = undefined;
+          // Taking back a request to revise: the work was handed in, so it's finished again.
+          if (x.reopened && x.status !== "done") x.status = "done";
+          x.reopened = undefined;
+        }
         break;
       }
       // Feedback is for work handed in (an open answer, a worksheet); a card that's only read, a quiz or a discussion has none.
@@ -1374,11 +1379,18 @@ async function change(request: Request, courseId: string, body: Record<string, a
         if (v >= 1 && v <= 4) levels[sk.id] = v;
       }
       const attachments = (Array.isArray(body.attachments) ? body.attachments : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 3);
-      const review: NonNullable<Progress["review"]> = { verdict, text: String(body.text ?? "").slice(0, 2000), at: Date.now(), levels: Object.keys(levels).length ? levels : undefined, attachments: attachments.length ? attachments : undefined };
+      const review: NonNullable<Progress["review"]> = { verdict, text: String(body.text ?? "").slice(0, 5000), at: Date.now(), levels: Object.keys(levels).length ? levels : undefined, attachments: attachments.length ? attachments : undefined };
       for (const x of reviewed) {
-        x.review = { ...review };
-        // Asking for a revision puts the card back in the student's hand.
-        if (verdict === "revise" && x.status === "done") x.status = "doing";
+        const was = x.review;
+        const on = typeof x.output === "string" && x.output ? x.output.slice(0, 20000) : undefined;
+        // A new round (the work changed since the last feedback) keeps the last one; changing feedback on the same
+        // version (a typo, a second thought) just replaces it.
+        if (was && (was.on ?? "") !== (on ?? "")) x.earlier = [was, ...(x.earlier ?? [])].slice(0, 10);
+        x.review = { ...review, on };
+        // Asking for a revision puts the card back in the student's hand; approving it (or taking the request back)
+        // without another hand-in finishes it again.
+        if (verdict === "revise" && x.status === "done") { x.status = "doing"; x.reopened = true; }
+        else if (verdict === "good" && x.reopened) { if (x.status !== "done") x.status = "done"; x.reopened = undefined; }
       }
       break;
     }
@@ -1421,7 +1433,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       for (const sid of who) {
         const p = mine(sid, body.moduleId);
         p.output = md;
-        p.status = "done";
+        p.status = "done"; p.reopened = undefined;
         p.updatedAt = Date.now();
       }
       extra = { handedIn: who.length };

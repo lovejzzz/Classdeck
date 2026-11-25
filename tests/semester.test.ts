@@ -249,6 +249,24 @@ async function main() {
   check("no feedback on a card that's only read", (await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-intro", verdict: "good", text: "Nice reading." })).ok === false);
   check("approve it", (await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-notice", verdict: "good", text: "Great." })).ok);
   check("Dev sees it approved", (await board("Dev")).progress?.["m-notice"]?.review?.verdict === "good");
+  {
+    const dp = (await board("Dev")).progress?.["m-notice"];
+    check("the earlier round is kept for Dev", dp?.earlier?.[0]?.verdict === "revise" && dp.earlier[0].text === "Name two more non-living things.", dp?.earlier);
+    check("each round knows the version it was about", dp?.review?.on === "Grass, ants, a robin; rocks, a puddle, sunlight, wind." && dp?.earlier?.[0]?.on === "Grass, ants, a robin; rocks and a puddle.");
+    // Changing your mind on the same version: replaced, not another round.
+    await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-notice", verdict: "good", text: "Great work." });
+    check("feedback changed on the same version replaces it", (await board("Dev")).progress?.["m-notice"]?.earlier?.length === 1);
+    // A revision asked, then approved (or taken back) without another hand-in: the card is finished again.
+    await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-notice", verdict: "revise", text: "Hmm, one more." });
+    check("asking again puts it back in Dev's hand", (await board("Dev")).progress?.["m-notice"]?.status === "doing");
+    await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-notice", verdict: "good", text: "No, it's fine." });
+    check("approving without a new hand-in finishes it again", (await board("Dev")).progress?.["m-notice"]?.status === "done");
+    await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-notice", verdict: "revise", text: "Actually…" });
+    await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-notice", clear: true });
+    const cleared = (await board("Dev")).progress?.["m-notice"];
+    check("taking a revision request back finishes it again", cleared?.status === "done" && !cleared?.review, cleared);
+    await op(T, { op: "review", studentId: S.Dev.id, moduleId: "m-notice", verdict: "good", text: "Great." });
+  }
   // Feedback to a whole group on work each did on their own: the card uses the teams, and Ana's team gets one note.
   {
     const c0 = await course();

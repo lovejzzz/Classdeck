@@ -3,6 +3,7 @@
 import { usePanelShift } from "./usePanelShift";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { ChangedSince, EarlierFeedback } from "../FeedbackHistory";
 import { createPortal } from "react-dom";
 import { invokeTool, op } from "@/lib/client";
 import { answerText, dueAt, fmtSec, isLate, quizSet, wallProgress } from "@/lib/grading";
@@ -27,6 +28,9 @@ import { RichText } from "../RichText";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
 import { groupScore, leavesOf, parentOf, treeView } from "@/lib/branching";
+
+/** The longest feedback note (the server keeps the same). */
+const FEEDBACK_MAX = 5000;
 
 /** How many names an attention card shows before “and N more”. */
 const MANY = 24;
@@ -372,8 +376,13 @@ export function Classroom({
               <p className="mt-6 border-t border-line pt-5 text-[13px] text-ink-2"><span className="font-medium">{selProgress.review.verdict === "revise" ? "Asked to revise" : "Looks good"}</span>{selProgress.review.text ? `: ${selProgress.review.text}` : ""}</p>
             )}
             {!readOnly && reviewable(selModule) && (
-              <ReviewBox key={`${sel.sid}-${sel.mid}-${selProgress?.review?.at ?? 0}`} group={groupOnCard(selModule, sel.sid)} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"}
+              <>
+              {selProgress?.review && selProgress.output && <ChangedSince review={selProgress.review} now={selProgress.output} />}
+              <EarlierFeedback earlier={selProgress?.earlier} teacher />
+              <ReviewBox key={`${sel.sid}-${sel.mid}-${selProgress?.review?.at ?? 0}`}
+                fresh={!!selProgress?.review && selProgress.review.verdict === "revise" && selProgress.review.on !== undefined && selProgress.review.on !== (selProgress.output ?? "")} group={groupOnCard(selModule, sel.sid)} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"}
                 skills={selModule.skills?.length ? (course.skills ?? []).filter((sk) => selModule.skills!.includes(sk.id)) : course.skills ?? []} rateOpen={!!selModule.skills?.length} levels={course.levels ?? []} onNext={() => nextWaiting(sel.sid)} />
+              </>
             )}
             </div>
           </aside>,
@@ -716,14 +725,16 @@ function ExportMenu({ items }: { items: [string, () => void][] }) {
 }
 
 /** The teacher's response to one piece of work: a note, and either "looks good" or "revise". */
-function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels, onNext, rateOpen = false, group }: {
+function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, levels, onNext, rateOpen = false, group, fresh = false }: {
+  /** A revision has come in since the last feedback: a new round, so the note starts empty (the last one is shown above). */
+  fresh?: boolean;
   /**
    * The student's group on this card. `shared`: the group wrote one worksheet, so feedback always goes to all of them.
    * Otherwise each member did their own work, and the teacher can choose to send the same feedback to the whole group.
    */
   group?: { name: string; members: string[]; shared: boolean };
   courseId: string; studentId: string; moduleId: string; name: string; review?: Review; done: boolean; skills: Skill[]; rateOpen?: boolean; levels: Level[]; onNext?: () => void }) {
-  const [text, setText] = useState(review?.text ?? "");
+  const [text, setText] = useState(fresh ? "" : review?.text ?? "");
   const [rubric, setRubric] = useState<Record<string, number>>(review?.levels ?? {});
   const [files, setFiles] = useState<Attachment[]>(review?.attachments ?? []);
   const [busy, setBusy] = useState(false);
@@ -787,8 +798,9 @@ function ReviewBox({ courseId, studentId, moduleId, name, review, done, skills, 
           </label>
         )
       )}
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder={whole ? `What ${who} did well, and one thing to try next` : `What ${name} did well, and one thing to try next`} aria-label={whole ? "Feedback for the group" : "Feedback for the student"} className="field resize-y leading-relaxed"
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={FEEDBACK_MAX} placeholder={whole ? `What ${who} did well, and one thing to try next` : `What ${name} did well, and one thing to try next`} aria-label={whole ? "Feedback for the group" : "Feedback for the student"} className="field resize-y leading-relaxed"
         onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send("good"); } }} />
+      {text.length > FEEDBACK_MAX - 500 && <p className="mt-1 text-right font-mono text-[11px] text-ink-3">{FEEDBACK_MAX - text.length} characters left</p>}
       {files.length > 0 && (
         <div className="mt-2 space-y-2">
           {files.map((a) => (

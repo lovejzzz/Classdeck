@@ -129,6 +129,8 @@ export interface Review {
   levels?: Record<string, number>;
   /** A recording or file sent with the feedback, such as the teacher playing it the way they mean. */
   attachments?: Attachment[];
+  /** The work as it was when this feedback was given, so the next round can show what changed since. */
+  on?: string;
 }
 
 /** The parts of a talk, as the speech builder lays them out. */
@@ -508,6 +510,10 @@ export interface Progress {
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
+  /** Feedback from earlier rounds (newest first): a revision asked, then the work looked at again. */
+  earlier?: Review[];
+  /** The card was put back in the student's hand by "Ask to revise" (so taking that back, or approving, finishes it again). */
+  reopened?: boolean;
   /** Comments on the student's own copy of a Text card: the teacher's (on a passage, `quote`) and replies to them. */
   notes?: DocNote[];
   /** Updates posted onto the card: a teacher's form, or notes from a class session. */

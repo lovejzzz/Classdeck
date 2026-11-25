@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.82",
+    date: "2026-11-25",
+    changes: [
+      "Feedback keeps its rounds. When a student hands in a revision, the teacher sees what changed since their last feedback (words added and taken out, with what they said then), and the note starts empty for the new round. Earlier feedback stays on the card for both the teacher and the student, under “Earlier feedback”.",
+      "Approving a card you had sent back for a revision, or taking that request back, finishes it again (it stayed in the student’s hand saying “Hand in”).",
+      "Feedback notes can be up to 5,000 characters, and the box says how many are left near the end (longer notes used to be cut at 2,000 without a word).",
+    ],
+  },
+  {
     version: "0.2.81",
     date: "2026-11-25",
     changes: [
