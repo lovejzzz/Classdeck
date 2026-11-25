@@ -102,7 +102,7 @@ interface Region { lesson: Lesson; li: number; x: number; y: number; w: number; 
  * its first line), and what their answers deal hanging below the card that deals them, wired into its top. A card dealt
  * from an earlier lesson starts its own lesson's row, with the wire coming down from above.
  */
-function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolean, weekOfLesson: Record<string, string> = {}) {
+function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolean, weekOfLesson: Record<string, string> = {}, room?: string | null) {
   const nodes = new Map<string, Node>();
   const regions: Region[] = [];
   // Zoomed far out, each week is a column (its lessons stacked in it), so a long course fits on one screen. Closer
@@ -176,7 +176,8 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
       for (const c of k) { place(c, x); x += span.get(c)! + HGAP; }
     };
     let x = x0;
-    for (const r of order) { place(r.id, x); x += span.get(r.id)! + HGAP * (level === "far" ? 0.6 : 1); }
+    // The card being made into a group (or added to) has an empty place beside it for the next card.
+    for (const r of order) { place(r.id, x); x += span.get(r.id)! + HGAP * (level === "far" ? 0.6 : 1) + (r.id === room ? W + HGAP : 0); }
     const w = Math.max(W * 2, x - HGAP - x0);
     const h = (rowH.length ? rowTop(rowH.length) - VGAP : top + 120) - y0 + 36;
     const region = { lesson, li, x: x0, y: y0, w, h };
@@ -217,13 +218,13 @@ function applyMove(lessons: Lesson[], id: string, toId: string, before: string |
 }
 
 /** Positions that glide to their new place when the map changes (nodes and wires read the same numbers). */
-function useGlide(target: Map<string, { x: number; y: number }>, spawnAt: (id: string) => { x: number; y: number } | undefined) {
+function useGlide(target: Map<string, { x: number; y: number }>, spawnAt: (id: string, now: Map<string, { x: number; y: number }>) => { x: number; y: number } | undefined) {
   const [pos, setPos] = useState(target);
   const cur = useRef(target);
   useEffect(() => {
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const from = new Map<string, { x: number; y: number }>();
-    for (const [id, p] of target) from.set(id, cur.current.get(id) ?? spawnAt(id) ?? p);
+    for (const [id, p] of target) from.set(id, cur.current.get(id) ?? spawnAt(id, cur.current) ?? p);
     const same = [...target].every(([id, p]) => { const f = from.get(id)!; return f.x === p.x && f.y === p.y; });
     let raf = 0;
     if (reduce || same) {
@@ -287,7 +288,7 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new"; saved?: bo
  * lesson or into a later one). Zoomed out, cards shrink to their titles; zoomed in, they show what to do. Drag from a
  * port onto a card to deal it, or into empty space for a new card. Click a card to edit it in the panel.
  */
-export function CourseMap({ lessons, weekOf, todayId, students, progress, readOnly, busy, selected, onDeselect, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, footer, weekNames = {}, onDeleteMany }: {
+export function CourseMap({ lessons, weekOf, todayId, students, live = true, progress, readOnly, busy, selected, onDeselect, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, footer, weekNames = {}, onDeleteMany }: {
   /** Delete several picked cards at once (it asks first, and offers Undo). */
   onDeleteMany?: (ms: Module[]) => void;
   /** Lesson id → its week's full title, for the contents panel. */
@@ -307,6 +308,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   weekOf: Record<string, string>;
   todayId?: string;
   students: { id: string; name: string }[];
+  /** Show where students are: who's on which card, and how many went down each answer (the course's setting). */
+  live?: boolean;
   progress: ProgressMap;
   readOnly?: boolean;
   /** Something is open over the map (the card editor): leave Escape to it. */
@@ -371,12 +374,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const shownLessons = useMemo(() => (hidden.size ? lessons.map((l) => ({ ...l, modules: l.modules.filter((m) => !hidden.has(m.id) && !hidden.has(groupOf.get(m.id) ?? "")) })) : lessons), [lessons, hidden]);
   // A card being dragged: where the pointer is, the lesson under it and the card it would go before (null: the end),
   // or the trash bin.
-  const [moving, setMoving] = useState<{ id: string; x: number; y: number; to?: string; before?: string | null; trash?: boolean } | null>(null);
+  const [moving, setMoving] = useState<{ id: string; x: number; y: number; to?: string; before?: string | null; trash?: boolean; join?: boolean } | null>(null);
+  // Grouping by hand: the card (or card group) with an empty place beside it, where other cards are dragged in.
+  const [gather, setGather] = useState<string | null>(null);
   // The lesson → week names, kept the same object while they don't change (the caller builds a new one each time).
   const weekKey = JSON.stringify(weekOf);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const weeksOf = useMemo(() => weekOf, [weekKey]);
-  const base = useMemo(() => layout(shownLessons, wires, level, !!readOnly, weeksOf), [shownLessons, wires, level, readOnly, weeksOf]);
+  const base = useMemo(() => layout(shownLessons, wires, level, !!readOnly, weeksOf, gather), [shownLessons, wires, level, readOnly, weeksOf, gather]);
   // While a card is dragged, the map shows it where it would land: the other cards slide aside to make room.
   const preview = useMemo(() => {
     if (!moving?.to || moving.trash || moving.before === undefined) return null;
@@ -385,7 +390,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const by = new Map(changed.map((l) => [l.id, l]));
     const next = shownLessons.map((l) => by.get(l.id) ?? l);
     // Cards from one answer sit in their lesson order, so a reorder among them shows in the wires' order too.
-    return layout(next, wiresOf(next.flatMap((l) => l.modules)), level, !!readOnly, weeksOf);
+    return layout(next, wiresOf(next.flatMap((l) => l.modules)), level, !!readOnly, weeksOf, gather);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moving?.id, moving?.to, moving?.before, moving?.trash, shownLessons, wires, level, readOnly]);
   const { nodes, regions, width, height } = preview ?? base;
@@ -429,7 +434,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, []);
-  const [live, setLive] = useState(false);
   // Hold a card (like an app on a phone's home screen): the cards jiggle and each shows a button to delete it.
   const [jiggle, setJiggle] = useState(false);
   // The jiggle runs as its own animation on each card's `rotate`, so it never touches the cards' CSS animation: ending
@@ -446,7 +450,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
   const [born] = useState(() => new Map<string, { x: number; y: number }>());
 
   const targets = useMemo(() => new Map([...nodes].map(([id, n]) => [id, { x: n.x, y: n.y }])), [nodes]);
-  const pos = useGlide(targets, (id) => born.get(id) ?? (nodes.get(id)?.parent ? targets.get(nodes.get(id)!.parent!) : undefined));
+  // Cards that were in a group a moment ago (it was ungrouped) come out of where the group was.
+  const wasIn = useRef(groupOf);
+  const pos = useGlide(targets, (id, now) => born.get(id) ?? (wasIn.current.has(id) ? now.get(wasIn.current.get(id)!) : undefined) ?? (nodes.get(id)?.parent ? targets.get(nodes.get(id)!.parent!) : undefined));
+  useEffect(() => { wasIn.current = groupOf; }, [groupOf]);
   const at = (id: string) => pos.get(id) ?? targets.get(id)!;
   const lessonIndex = (lid: string) => lessons.findIndex((l) => l.id === lid);
 
@@ -471,10 +478,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     const k = (e: KeyboardEvent) => {
       if (e.key === "Escape" && menu && !busy && !document.querySelector("[data-confirm]")) setMenu(null);
       if (e.key === "Escape" && jiggle && !busy && !document.querySelector("[data-confirm]")) setJiggle(false);
+      if (e.key === "Escape" && gather && !busy && !document.querySelector("[data-confirm]")) endGather();
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  }, [menu, busy, jiggle]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menu, busy, jiggle, gather]);
   useEffect(() => {
     if (!fresh) return;
     const t = setTimeout(() => setFresh(null), 1600);
@@ -874,21 +883,82 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
 
   /** Why the picked cards can't become a card group, or null if they can. */
   function whyNoGroup(ids: string[]): string | null {
-    if (ids.length < 2) return "Pick at least two cards (shift-click them, or shift-drag a box).";
+    if (ids.length < 2) return "Pick at least two cards (drag a box around them, or shift-click them).";
     const ls = new Set(ids.map((id) => lessonWith(id)?.id));
     if (ls.size > 1) return "A card group’s cards all come from one lesson.";
-    const ms = ids.map((id) => all.find((x) => x.m.id === id)!.m);
-    if (ms.some((m) => m.type === "group")) return "A card group can’t go inside another one.";
-    if (ms.some((m) => groupOf.has(m.id))) return "One of these cards is already in a card group.";
-    const dealt = ms.find((m) => wires.some((w) => w.to === m.id));
-    if (dealt) return `“${dealt.title}” is dealt by an answer. Group the cards first, then deal the group.`;
-    // A group's score counts its questions answered once; a quiz (with tries) has its own score.
-    const quiz = ms.find((m) => m.type === "quiz");
-    if (quiz) return `“${quiz.title}” is a quiz with its own score and tries, so it can’t join a card group.`;
-    // Everyone answers every card in a group, or its score never comes.
-    const some = ms.find((m) => m.audience.kind === "student");
-    if (some) return `“${some.title}” is only for some students, so it can’t join a card group everyone answers.`;
+    for (const id of ids) { const why = whyNotInGroup(all.find((x) => x.m.id === id)!.m); if (why) return why; }
     return null;
+  }
+  /** Why one card can't go into a card group, or null if it can. */
+  function whyNotInGroup(m: Module): string | null {
+    if (m.type === "group") return "A card group can’t go inside another one (yet).";
+    if (groupOf.has(m.id)) return `“${m.title}” is already in a card group.`;
+    if (wires.some((w) => w.to === m.id)) return `“${m.title}” is dealt by an answer. Group the cards first, then deal the group.`;
+    // A group's score counts its questions answered once; a quiz (with tries) has its own score.
+    if (m.type === "quiz") return `“${m.title}” is a quiz with its own score and tries, so it can’t join a card group.`;
+    // Everyone answers every card in a group, or its score never comes.
+    if (m.audience.kind === "student") return `“${m.title}” is only for some students, so it can’t join a card group everyone answers.`;
+    return null;
+  }
+  /** Why a card can't be dragged into the group being made (or added to), or null if it can. */
+  function whyNoJoin(id: string): string | null {
+    if (!gather || id === gather) return "";
+    if (lessonWith(id)?.id !== lessonWith(gather)?.id) return "Only cards from the same lesson can go in.";
+    return whyNotInGroup(all.find((x) => x.m.id === id)!.m);
+  }
+  /** Start grouping by hand: the card gets a frame with an empty place beside it, and other cards are dragged in. */
+  function startGather(m: Module) {
+    const why = m.type === "group" ? null : whyNotInGroup(m);
+    if (why) { toast(why, { icon: "layers", tone: "plain" }); return; }
+    setJiggle(false);
+    setPicks(new Set());
+    setGather(m.id);
+    setTimeout(() => bringIntoView(m.id), 420);
+  }
+  function endGather() {
+    const id = gather;
+    setGather(null);
+    if (id && all.find((x) => x.m.id === id)?.m.type === "group") setFresh(id);
+  }
+  /** A card dropped in the empty place: the first one makes the group, the rest join it. */
+  function joinGather(id: string, from: { x: number; y: number }) {
+    const why = whyNoJoin(id);
+    if (why !== null) { if (why) toast(why, { icon: "layers", tone: "plain" }); return; }
+    const l = lessonWith(gather!)!;
+    const anchor = l.modules.find((m) => m.id === gather)!;
+    const card = l.modules.find((m) => m.id === id)!;
+    const ap = at(gather!);
+    fly([{ m: card, from, to: { x: ap.x, y: ap.y + (nodes.get(gather!)?.h ?? CARD_H) - SEC } }]);
+    if (anchor.type === "group") {
+      // Into the group, after its last card (in the lesson's order too).
+      const members = [...(anchor.members ?? []), id];
+      const rest = l.modules.filter((m) => m.id !== id).map((m) => (m.id === anchor.id ? { ...m, members } : m));
+      const last = rest.findIndex((m) => m.id === members[members.length - 2]);
+      rest.splice(last + 1, 0, card);
+      onChange({ ...l, modules: rest });
+      toast(`Added “${card.title || "the card"}” to the group`, { icon: "layers" });
+      return;
+    }
+    const g = newGroup(l, [anchor.id, id]);
+    born.set(g.id, { x: ap.x, y: ap.y });
+    setGather(g.id);
+    toast("Made a card group", { icon: "layers" });
+  }
+  /** A new card group of these cards (in this order), where the first of them was, saved. */
+  function newGroup(l: Lesson, ordered: string[]): Module {
+    const g: Module = { ...makeCard("content", "Card group"), type: "group", kind: "group", suit: "question", members: ordered };
+    const before = l.modules.slice(0, l.modules.findIndex((m) => m.id === ordered[0])).filter((m) => !ordered.includes(m.id));
+    const after = l.modules.filter((m) => !ordered.includes(m.id) && !before.includes(m));
+    onChange({ ...l, modules: [...before, g, ...ordered.map((id) => l.modules.find((m) => m.id === id)!), ...after] });
+    return g;
+  }
+  // Cards flying into a group (a picture of each, from where it was to the group): the grouping, seen.
+  const [flying, setFlying] = useState<{ key: string; m: Module; from: { x: number; y: number }; to: { x: number; y: number } }[]>([]);
+  function fly(list: { m: Module; from: { x: number; y: number }; to: { x: number; y: number } }[]) {
+    if (reducedMotion()) return;
+    const items = list.map((x) => ({ ...x, key: `${x.m.id}-${Date.now()}` }));
+    setFlying((f) => [...f, ...items]);
+    setTimeout(() => setFlying((f) => f.filter((x) => !items.includes(x))), 700);
   }
   /** Put the picked cards in a new card group, where the first of them was. */
   function makeGroup() {
@@ -897,11 +967,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     if (why) { toast(why, { icon: "layers", tone: "plain" }); return; }
     const l = lessonWith(ids[0])!;
     const ordered = l.modules.filter((m) => ids.includes(m.id)).map((m) => m.id);
-    const g: Module = { ...makeCard("content", "Card group"), type: "group", kind: "group", suit: "question", members: ordered };
-    // The group goes where its first card was, its cards right after it in their order.
-    const before = l.modules.slice(0, l.modules.findIndex((m) => m.id === ordered[0])).filter((m) => !ordered.includes(m.id));
-    const after = l.modules.filter((m) => !ordered.includes(m.id) && !before.includes(m));
-    onChange({ ...l, modules: [...before, g, ...ordered.map((id) => l.modules.find((m) => m.id === id)!), ...after] });
+    // The group goes where its first card was, its cards right after it in their order; they fly into it.
+    const first = at(ordered[0]);
+    fly(ordered.slice(1).map((id) => ({ m: l.modules.find((m) => m.id === id)!, from: at(id), to: first })));
+    const g = newGroup(l, ordered);
+    born.set(g.id, first);
     setPicks(new Set());
     setPicking(false);
     setFresh(g.id);
@@ -999,8 +1069,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     toast(`Moved “${m.title}” to ${lessons.find((l) => l.id === to)?.title}`, { icon: "layers" });
   }
   /** Where a dragged card would land: the trash bin, or a lesson and the card in its row it would go before. */
-  function dropAt(id: string, p: { x: number; y: number }, ev: PointerEvent): { to?: string; before?: string | null; trash?: boolean } {
+  function dropAt(id: string, p: { x: number; y: number }, ev: PointerEvent): { to?: string; before?: string | null; trash?: boolean; join?: boolean } {
     if ((document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest("[data-trash]")) return { trash: true };
+    // Over the empty place beside the card being grouped (or anywhere in its frame): into the group.
+    const g = gather ? base.nodes.get(gather) : undefined;
+    if (g && id !== gather && p.x >= g.x - 20 && p.x <= g.x + 2 * W + HGAP + 20 && p.y >= g.y - 20 && p.y <= g.y + Math.max(g.h, CARD_H) + 20) return { join: true };
     // Read from the map as it is without the drag, so the cards sliding aside don't move the target.
     const to = base.regions.find((r) => p.x >= r.x - REGION_GAP / 2 && p.x <= r.x + r.w + REGION_GAP / 2 && p.y >= r.y - REGION_GAP / 2 && p.y <= r.y + r.h + REGION_GAP / 2)?.lesson.id;
     if (!to) return {};
@@ -1033,7 +1106,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
     let last: ReturnType<typeof dropAt> = {};
     // Held still for a moment: show the delete buttons (and don't open the card on release).
     let held = false;
-    const hold = onDelete ? window.setTimeout(() => { held = true; setJiggle(true); navigator.vibrate?.(10); }, 520) : 0;
+    const hold = onDelete && !gather ? window.setTimeout(() => { held = true; setJiggle(true); navigator.vibrate?.(10); }, 520) : 0;
     const show = (ev: PointerEvent) => {
       const p = toCanvas(ev.clientX, ev.clientY);
       last = dropAt(id, p, ev);
@@ -1058,6 +1131,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       setDragged(true);
       setTimeout(() => setDragged(false), 0);
       if (ev.type !== "pointerup") return setMoving(null);
+      if (last.join) {
+        setMoving(null);
+        joinGather(id, toCanvas(ev.clientX, ev.clientY));
+        return;
+      }
       if (last.trash) {
         setMoving(null);
         const m = all.find((x) => x.m.id === id)?.m;
@@ -1244,8 +1322,15 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
       {jiggle && (
         // In the map's top-right corner, where it stays while the map scrolls under it.
         <div className="pop absolute top-2.5 z-30 flex items-center gap-3 rounded-2xl border border-line bg-white py-1.5 pl-4 pr-1.5 text-[13px] shadow-[0_16px_40px_-16px_rgba(20,20,18,0.4)]" style={{ right: gap + 10, transition: "right 0.45s cubic-bezier(0.22, 1, 0.36, 1)" }}>
-          <span className="text-ink-2">Tap <span className="inline-flex h-4 w-4 -translate-y-[1px] align-middle items-center justify-center rounded-full bg-[#6f6f6c]"><span className="block h-[2px] w-2 rounded-full bg-white" /></span> to delete a card</span>
+          <span className="text-ink-2">Tap <span className="inline-flex h-4 w-4 -translate-y-[1px] align-middle items-center justify-center rounded-full bg-[#6f6f6c]"><span className="block h-[2px] w-2 rounded-full bg-white" /></span> to delete a card, <span className="inline-flex h-4 w-4 -translate-y-[1px] align-middle items-center justify-center rounded-full bg-[#4b56a8] text-white"><Icon name="layers" size={9} /></span> to group it with others</span>
           <button onClick={() => setJiggle(false)} className="btn btn-dark press h-8 px-4 text-[12.5px]">Done</button>
+        </div>
+      )}
+      {gather && (
+        <div className="pop absolute top-2.5 z-30 flex items-center gap-3 rounded-2xl border border-line bg-white py-1.5 pl-4 pr-1.5 text-[13px] shadow-[0_16px_40px_-16px_rgba(20,20,18,0.4)]" style={{ right: gap + 10, transition: "right 0.45s cubic-bezier(0.22, 1, 0.36, 1)" }}>
+          <Icon name="layers" size={14} className="text-[#4b56a8]" />
+          <span className="text-ink-2">Drag cards into the empty place to put them in the group</span>
+          <button onClick={endGather} className="btn btn-dark press h-8 px-4 text-[12.5px]">Done</button>
         </div>
       )}
       {(picks.size > 0 || picking) && (
@@ -1260,50 +1345,42 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           <button onClick={() => { setPicks(new Set()); setPicking(false); }} className="btn btn-quiet press h-8 px-2 text-[12.5px]">Cancel</button>
         </div>
       )}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex flex-wrap items-center gap-2">
-        <div className="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-line bg-white/95 p-0.5 shadow-sm backdrop-blur">
-          <button onClick={() => zoomTo(zoom - 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom out">−</button>
-          <button onClick={fitAll} className="mono h-7 w-12 rounded-lg text-center hover:bg-lane" title="Fit the map’s width (press again to see the whole course)">{Math.round(zoom * 100)}%</button>
-          <button onClick={() => zoomTo(zoom + 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom in">+</button>
-        </div>
-        <MapSearch cards={all} lessons={lessons} open={searching} onOpen={setSearching} onPick={(lessonId, id) => {
-          setSearching(false);
-          // Open it first: the card panel makes room by moving the map, so the map goes to the card once that's done.
-          onEdit(lessonId, id);
-          setTimeout(() => {
-            if (hidden.has(id)) reveal(id); else bringIntoView(id);
+      {/* The map's tools, as one small bar of icons (each says its name on hover). Grouping is done by dragging a box
+          around cards, or by holding a card; where students are is the course's setting. */}
+      <div className="pointer-events-none absolute bottom-3 left-3 z-20">
+        <div className="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-line bg-white/95 p-0.5 shadow-[0_1px_2px_rgba(20,20,18,0.05),0_8px_20px_-12px_rgba(20,20,18,0.3)] backdrop-blur">
+          <button onClick={() => zoomTo(zoom - 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom out" data-tip="Zoom out">−</button>
+          <button onClick={fitAll} className="mono h-7 w-11 rounded-lg text-center text-[12px] text-ink-2 hover:bg-lane" aria-label="Fit the map" data-tip="Fit the map">{Math.round(zoom * 100)}%</button>
+          <button onClick={() => zoomTo(zoom + 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom in" data-tip="Zoom in">+</button>
+          <span className="mx-0.5 h-4 w-px bg-line" />
+          <MapSearch cards={all} lessons={lessons} open={searching} onOpen={setSearching} onPick={(lessonId, id) => {
+            setSearching(false);
+            // Open it first: the card panel makes room by moving the map, so the map goes to the card once that's done.
+            onEdit(lessonId, id);
             setTimeout(() => {
-              const el = document.querySelector(`[data-node="${CSS.escape(id)}"]`);
-              el?.classList.add("dealt-glow");
-              setTimeout(() => el?.classList.remove("dealt-glow"), 3600);
-            }, 500);
-          }, 480);
-        }} />
-        {!readOnly && (
-          <button onClick={() => { setPicking((v) => !v); setJiggle(false); }} aria-pressed={picking} aria-label="Group cards" title="Put cards together as one card group (any kind of card). With question cards in it, its score can deal cards"
-            className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${picking ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
-            <Icon name="layers" size={13} /><span className="hidden sm:inline">Group cards</span>
-          </button>
-        )}
-        {wires.length > 0 && (
-          <button
-            onClick={() => {
-              const all = [...new Set(wires.map((w) => nodeOf(w.from)))];
-              setFolded(folded.size ? new Set<string>() : new Set(all));
-            }}
-            title={folded.size ? "Show every card again" : "Fold away every card an answer deals, to see the main path"}
-            aria-label={folded.size ? "Unfold all" : "Fold all"}
-            className="pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-2.5 text-[12.5px] text-ink-2 shadow-sm"
-          >
-            <Icon name="chevron" size={13} className={folded.size ? "-rotate-90" : ""} /><span className="hidden sm:inline">{folded.size ? "Unfold all" : "Fold all"}</span>
-          </button>
-        )}
-        {!readOnly && onDelete && <TrashBin entries={trash} hot={!!moving?.trash} dragging={!!moving} onRestore={onRestore} onForget={onForget} />}
-        {students.length > 0 && (
-          <button onClick={() => setLive((v) => !v)} aria-pressed={live} aria-label="Where students are" title="Where students are" className={`pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm ${live ? "border-[#4b56a8]/30 bg-[#eef0fb] text-[#4b56a8]" : "border-line bg-white/95 text-ink-2"}`}>
-            <Icon name="users" size={13} /><span className="hidden sm:inline">Where students are</span>
-          </button>
-        )}
+              if (hidden.has(id)) reveal(id); else bringIntoView(id);
+              setTimeout(() => {
+                const el = document.querySelector(`[data-node="${CSS.escape(id)}"]`);
+                el?.classList.add("dealt-glow");
+                setTimeout(() => el?.classList.remove("dealt-glow"), 3600);
+              }, 500);
+            }, 480);
+          }} />
+          {wires.length > 0 && (
+            <button
+              onClick={() => {
+                const all = [...new Set(wires.map((w) => nodeOf(w.from)))];
+                setFolded(folded.size ? new Set<string>() : new Set(all));
+              }}
+              data-tip={folded.size ? "Unfold all" : "Fold all branches"}
+              aria-label={folded.size ? "Unfold all" : "Fold all"}
+              className={`press grid h-7 w-7 place-items-center rounded-lg hover:bg-lane ${folded.size ? "bg-[#eef0fb] text-[#4b56a8]" : "text-ink-2 hover:text-ink"}`}
+            >
+              <Icon name={folded.size ? "unfold" : "fold"} size={14} />
+            </button>
+          )}
+          {!readOnly && onDelete && <TrashBin entries={trash} hot={!!moving?.trash} dragging={!!moving} onRestore={onRestore} onForget={onForget} />}
+        </div>
       </div>
 
       <div
@@ -1320,6 +1397,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
           if (t !== e.currentTarget && !t.dataset.canvas && (t.closest("[data-node], button, input, textarea, select, a, label, [role=menu], .pop") || !t.closest("[data-canvas]"))) return;
           setMenu(null);
           if (jiggle) setJiggle(false);
+          if (gather) { endGather(); return; }
           // With a mouse, dragging on empty space draws a box that picks every card it touches (Shift adds to what's
           // picked). Holding Space, the middle button, or a finger on a touch screen moves the map instead.
           if (!readOnly && e.pointerType === "mouse" && e.button === 0 && !spaceDown.current) {
@@ -1483,11 +1561,22 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                       <span className="block h-[2.5px] w-3 rounded-full bg-white" />
                     </button>
                   )}
+                  {jiggle && !readOnly && !groupOf.has(m.id) && (
+                    <button onClick={(e) => { e.stopPropagation(); startGather(m); }} onPointerDown={(e) => e.stopPropagation()} aria-label={m.type === "group" ? `Add cards to ${m.title || "this group"}` : `Group ${m.title || "this card"} with other cards`}
+                      title={m.type === "group" ? "Add cards to this group" : "Group with other cards"}
+                      className="pop absolute -right-2.5 -top-2.5 z-30 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#4b56a8] text-white shadow-md hover:bg-[#3c4690]">
+                      <Icon name="layers" size={12} />
+                    </button>
+                  )}
                   {m.type === "group" && (
-                    // A card group looks like a small stack of cards.
+                    // A card group looks like a small, slightly untidy stack of its cards (each edge in its card's colour).
                     <>
-                      <span aria-hidden="true" className="absolute inset-0 -z-10 translate-x-[6px] translate-y-[6px] rounded-[18px] border border-line bg-white" />
-                      <span aria-hidden="true" className="absolute inset-0 -z-20 translate-x-[12px] translate-y-[12px] rounded-[18px] border border-line bg-white" />
+                      {(nd.members ?? []).slice(0, 2).map((c, k) => (
+                        <span key={c.id} aria-hidden="true" className={`tree-stack absolute inset-0 overflow-hidden rounded-[18px] border border-line bg-white ${k ? "-z-20" : "-z-10"} ${fresh === m.id ? "tree-stack-in" : ""}`}
+                          style={{ "--sx": `${k ? 11 : 6}px`, "--sy": `${k ? 10 : 5}px`, "--sr": `${k ? 2.6 : 1.3}deg`, transform: "translate(var(--sx), var(--sy)) rotate(var(--sr))" } as React.CSSProperties}>
+                          <span className="block h-[5px]" style={{ background: suitOfCard(c).tint, opacity: 0.55 }} />
+                        </span>
+                      ))}
                     </>
                   )}
                   {inbound.length > 0 && <span className={`absolute left-1/2 z-10 -translate-x-1/2 rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(255,255,255,0.6)] ${level === "far" ? "-top-[8px] h-3.5 w-3.5" : "-top-[7px] h-3 w-3"}`} style={{ background: colorOf(inbound[0]) }} />}
@@ -1680,6 +1769,30 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
               <div className="pointer-events-none absolute z-30 rounded-lg border-2 border-dashed border-[#4b56a8] bg-[#4b56a8]/[0.06]"
                 style={{ left: Math.min(box.x0, box.x1), top: Math.min(box.y0, box.y1), width: Math.abs(box.x1 - box.x0), height: Math.abs(box.y1 - box.y0) }} />
             )}
+            {gather && nodes.get(gather) && (() => {
+              // The frame round the card being grouped, and the empty place beside it for the next card.
+              const g = nodes.get(gather)!, p = at(gather), h = Math.max(g.h, CARD_H);
+              const over = !!moving?.join;
+              const bad = over && moving ? whyNoJoin(moving.id) : null;
+              return (
+                <>
+                  <div aria-hidden="true" className={`gather-frame pointer-events-none absolute rounded-[30px] border-2 border-dashed transition-colors duration-200 ${bad ? "border-bad/50 bg-bad/[0.04]" : over ? "border-[#4b56a8] bg-[#4b56a8]/[0.08]" : "border-[#4b56a8]/45 bg-[#4b56a8]/[0.035]"}`}
+                    style={{ left: p.x - 18, top: p.y - 18, width: 2 * W + HGAP + 36, height: h + 36 }} />
+                  <div className={`gather-slot pointer-events-none absolute z-10 flex flex-col items-center justify-center gap-2 rounded-[18px] border-2 border-dashed transition-[transform,background-color,border-color] duration-200 ${bad ? "border-bad/40 bg-white/70 text-bad" : over ? "scale-[1.03] border-[#4b56a8] bg-white text-[#4b56a8]" : "border-[#4b56a8]/35 bg-white/60 text-[#4b56a8]/70"}`}
+                    style={{ left: p.x + W + HGAP, top: p.y, width: W, height: CARD_H }}>
+                    <span className="grid h-16 w-16 place-items-center rounded-full bg-[#4b56a8]/[0.08] text-[40px] font-light leading-none">+</span>
+                    <span className="px-6 text-center text-[12px]">{bad || (over ? "Let go to add it" : "Drag a card here")}</span>
+                  </div>
+                </>
+              );
+            })()}
+            {flying.map((f) => (
+              <div key={f.key} aria-hidden="true" className="tree-fly pointer-events-none absolute z-30 overflow-hidden rounded-[18px] border border-[#4b56a8]/50 bg-white shadow-[0_24px_50px_-18px_rgba(20,20,18,0.55)]"
+                style={{ left: f.from.x - W / 2, top: f.from.y - 20, width: W, "--fx": `${f.to.x - f.from.x + W / 2}px`, "--fy": `${f.to.y - f.from.y + 20}px` } as React.CSSProperties}>
+                <span className="block h-1.5" style={{ background: suitOfCard(f.m).tint }} />
+                <span className="block truncate px-3.5 pb-3 pt-2 text-[14px] font-semibold text-ink">{f.m.title || "Untitled card"}</span>
+              </div>
+            ))}
             {moving && (() => {
               const m = all.find((x) => x.m.id === moving.id)?.m;
               if (!m) return null;
@@ -1688,7 +1801,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, progress, readOn
                 <div className="pointer-events-none absolute z-30 rotate-[2deg] overflow-hidden rounded-[18px] border border-[#4b56a8] bg-white shadow-[0_24px_50px_-18px_rgba(20,20,18,0.55)]" style={{ left: moving.x - W / 2, top: moving.y - 20, width: W }}>
                   <span className="block h-1.5" style={{ background: suitOfCard(m).tint }} />
                   <span className="block truncate px-3.5 pb-3 pt-2 text-[14px] font-semibold text-ink">{m.title || "Untitled card"}</span>
-                  {moving.trash ? (
+                  {moving.join ? (
+                    <span className={`block border-t border-line px-3.5 py-1.5 text-[11.5px] ${whyNoJoin(moving.id) ? "text-bad" : "text-[#4b56a8]"}`}>{whyNoJoin(moving.id) ? "Can’t go in this group" : "Add to the group"}</span>
+                  ) : moving.trash ? (
                     <span className="block border-t border-line px-3.5 py-1.5 text-[11.5px] text-bad">Drop to delete</span>
                   ) : moving.to && moving.to !== lessonWith(moving.id)?.id && (
                     <span className={`block border-t border-line px-3.5 py-1.5 text-[11.5px] ${bad ? "text-bad" : "text-[#4b56a8]"}`}>{bad ? "Can’t go here" : `Move to ${lessons.find((l) => l.id === moving.to)?.title}`}</span>
@@ -1909,10 +2024,10 @@ function TrashBin({ entries, hot, dragging, onRestore, onForget }: { entries: Tr
   return (
     <div ref={box} className="pointer-events-auto relative">
       <button data-trash="1" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={`Trash${entries.length ? `, ${entries.length} deleted` : ""}`}
-        title="Drag a card here to delete it. Click to see deleted cards and put them back."
-        className={`press relative flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-[12.5px] shadow-sm transition-[transform,background-color,border-color,color] duration-200 ${hot ? "scale-110 border-bad bg-bad text-white" : dragging ? "border-bad/40 bg-white text-bad" : "border-line bg-white/95 text-ink-2"}`}>
-        <Icon name="trash" size={13} /><span className="hidden sm:inline">Trash</span>
-        {entries.length > 0 && !hot && <span className="mono rounded-full bg-lane px-1.5 text-[10.5px] text-ink-3">{entries.length}</span>}
+        data-tip={dragging ? "Drop here to delete" : "Trash"}
+        className={`press relative grid h-7 w-7 place-items-center rounded-lg transition-[transform,background-color,color] duration-200 ${hot ? "scale-125 bg-bad text-white" : dragging ? "bg-bad/10 text-bad" : open ? "bg-lane text-ink" : "text-ink-2 hover:bg-lane hover:text-ink"}`}>
+        <Icon name="trash" size={14} />
+        {entries.length > 0 && !hot && <span className="mono absolute -right-1 -top-1 grid h-[15px] min-w-[15px] place-items-center rounded-full bg-[#6f6f6c] px-1 text-[9px] font-medium text-white">{entries.length}</span>}
       </button>
       {open && (
         <div className="pop absolute bottom-10 left-0 z-30 w-80 rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)]">
@@ -1970,14 +2085,14 @@ function MapSearch({ cards, lessons, open, onOpen, onPick }: {
   }).filter((x): x is NonNullable<typeof x> => !!x).sort((a, b) => a.score - b.score).slice(0, 8) : [];
   const lessonTitle = (id: string) => lessons.find((l) => l.id === id)?.title ?? "";
   if (!open) return (
-    <button onClick={() => onOpen(true)} title="Find a card (/)" aria-label="Search cards"
-      className="pointer-events-auto press flex h-8 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-2.5 text-[12.5px] text-ink-2 shadow-sm">
-      <Icon name="search" size={13} /><span className="hidden sm:inline">Search</span>
+    <button onClick={() => onOpen(true)} data-tip="Search  /" aria-label="Search cards"
+      className="press grid h-7 w-7 place-items-center rounded-lg text-ink-2 hover:bg-lane hover:text-ink">
+      <Icon name="search" size={14} />
     </button>
   );
   return (
     <div className="pointer-events-auto relative">
-      <div className="flex h-8 w-64 items-center gap-1.5 rounded-xl border border-[#4b56a8]/40 bg-white px-2.5 shadow-sm">
+      <div className="flex h-7 w-56 items-center gap-1.5 rounded-lg bg-lane px-2">
         <Icon name="search" size={13} className="text-ink-3" />
         <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a card…" aria-label="Find a card"
           onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setQ(""); onOpen(false); } if (e.key === "Enter" && hits[0]) { onPick(hits[0].lessonId, hits[0].m.id); setQ(""); } }}

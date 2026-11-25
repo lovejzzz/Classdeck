@@ -136,6 +136,20 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
         </label>
       </section>
 
+      {/* The course map (in Settings): where students are shows on it unless the teacher turns it off. */}
+      <section className="card flex flex-wrap items-center gap-3 p-6">
+        <span className="min-w-[14rem] flex-1">
+          <span className="block text-[15px] font-medium">Course map</span>
+          <span className="block text-[13px] text-ink-3">The map shows who is working on which card, and how many students went down each answer.</span>
+        </span>
+        <label className="inline-flex items-center gap-2 text-[13.5px]">
+          <input type="checkbox" disabled={readOnly} checked={course.mapLive !== false} aria-label="Show where students are on the map"
+            onChange={async (e) => { await op(course.id, { op: "setMapLive", on: e.target.checked }); onChanged(); toast(e.target.checked ? "The map shows where students are" : "The map shows only the cards now", { icon: "users" }); }}
+            className="h-4 w-4 accent-[#1b1b1a]" />
+          Show where students are
+        </label>
+      </section>
+
       {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
         <section className="card flex flex-wrap items-center gap-3 p-6">
           <span className="min-w-[14rem] flex-1">

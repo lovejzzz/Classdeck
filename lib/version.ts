@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.92",
+    date: "2026-11-24",
+    changes: [
+      "The map’s tools are one small bar of icons: zoom, search, fold, and trash. Point at one to see its name. Group cards is gone from it (drag a box around cards instead).",
+      "Where students are is always on: the map shows who is on which card and how many went down each answer. Turn it off in Settings → Course map.",
+      "Hold a card and every card wiggles with two buttons: delete (top left) and group (top right). Press group, and the card gets a frame with an empty place beside it (a big +): drag cards into it. The first one makes a card group, and the place stays for more until you press Done or click elsewhere. On a card group, the button adds cards to it.",
+      "A card group looks like a small stack of its cards, each edge in its card’s colour. Cards fly into a group when it’s made, the stack fans out, and on Ungroup the cards slide out of the stack to their places.",
+    ],
+  },
+  {
     version: "0.1.91",
     date: "2026-11-24",
     changes: [

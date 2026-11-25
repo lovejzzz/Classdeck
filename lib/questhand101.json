@@ -323,7 +323,7 @@
        "id": "m-q1tpl-ahead",
        "type": "read",
        "title": "Ahead of the class: card groups",
-       "body": "You got all three. The quiz you just took was a card group: several cards answered together, with one score.\n\nTo make one, press Group cards under the Map, tap the cards (or drag a box around them), then Make a card group. Next week you'll see how a score can deal cards.",
+       "body": "You got all three. The quiz you just took was a card group: several cards answered together, with one score.\n\nTo make one, drag a box around cards on the Map and press Make a card group. Or hold a card until the cards wiggle, press the blue group button on it, and drag other cards into the empty place beside it. Next week you'll see how a score can deal cards.",
        "audience": {
         "kind": "all"
        },
@@ -820,7 +820,7 @@
        "id": "m-q1tpl-moves",
        "type": "read",
        "title": "Move, pick and tidy",
-       "body": "- Contents: point at the map's left edge (the bar with ›) to see every week and lesson. Click one to go there.\n- Search: press / (or Search under the map) and type any word on a card; pick a result to go to it.\n- Move a card: drag it along its row, or into another lesson.\n- Pick several: drag a box on empty space (Shift adds more). Then make them a card group, or delete them.\n- Pan: hold Space and drag.\n- Zoom: − and + under the map, or pinch. The % button fits the map's width; press it again to see the whole course.\n- Fold all / Unfold all hides or shows the cards answers deal.",
+       "body": "- Contents: point at the map's left edge (the bar with ›) to see every week and lesson. Click one to go there.\n- Search: press / (or the magnifier under the map) and type any word on a card; pick a result to go to it.\n- Move a card: drag it along its row, or into another lesson.\n- Pick several: drag a box on empty space (Shift adds more). Then make them a card group, or delete them.\n- Pan: hold Space and drag.\n- Zoom: − and + under the map, or pinch. The % button fits the map's width; press it again to see the whole course.\n- The fold button under the map hides or shows the cards answers deal. Point at any button there to see its name.\n- Hold a card: the cards wiggle. Each has a delete button (top left) and a group button (top right): press it, then drag other cards into the empty place beside the card.",
        "audience": {
         "kind": "all"
        },
@@ -873,12 +873,12 @@
          "kind": "order",
          "text": "Put the steps of making a card group in order.",
          "options": [
-          "Press Group cards",
-          "Tap the cards, or drag a box around them",
-          "Press Make a card group",
+          "Hold a card until the cards wiggle",
+          "Press the blue group button on it",
+          "Drag other cards into the empty place beside it",
           "Drag a score range to the card it deals"
          ],
-         "explain": "Group cards, pick the cards, make the group, then branch from its score ranges if you like."
+         "explain": "Hold a card, press its group button, drag cards in, then branch from the group's score ranges if you like. (Or drag a box around the cards and press Make a card group.)"
         }
        ]
       }
@@ -1362,7 +1362,7 @@
        "id": "m-q1tpl-watch",
        "type": "read",
        "title": "Who needs you",
-       "body": "The Students tab has your class list on the left. Pick **Whole class** to see a lesson: who needs attention (Overdue, Ready for your feedback, Low quiz scores, Haven't started, Stalled; press Remind to send a short note), every student's cards, and its discussions. Pick a **student** for their whole course: work waiting for you, week by week, scores and your feedback. Tags beside each name say who needs you.\n\nOn the Map, **Where students are** shows who is on which card, and how many took each answer.\n\nThe Inbox at the top lists what students did, as it happens: handed in, discussions, progress, and @mentions of you.\n\n> This course's eight demo students are part-way through, so these lists aren't empty. Have a look.",
+       "body": "The Students tab has your class list on the left. Pick **Whole class** to see a lesson: who needs attention (Overdue, Ready for your feedback, Low quiz scores, Haven't started, Stalled; press Remind to send a short note), every student's cards, and its discussions. Pick a **student** for their whole course: work waiting for you, week by week, scores and your feedback. Tags beside each name say who needs you.\n\nThe Map shows who is on which card, and how many took each answer (turn it off in Settings → Course map).\n\nThe Inbox at the top lists what students did, as it happens: handed in, discussions, progress, and @mentions of you.\n\n> This course's eight demo students are part-way through, so these lists aren't empty. Have a look.",
        "audience": {
         "kind": "all"
        },

@@ -276,3 +276,21 @@ body[data-panel="open"] .panel-shift-row { padding-right: var(--panel-row, 0px);
 
 /* @mentions, in the editor and in rendered text */
 .mention { display: inline; border-radius: 6px; background: #eef0fb; color: #4b56a8; font-weight: 500; padding: 0 3px; white-space: nowrap; }
+
+/* A short name over an icon-only button, on hover or keyboard focus (data-tip="Search  /"). */
+[data-tip] { position: relative; }
+[data-tip]:hover::after, [data-tip]:focus-visible::after {
+  content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; translate: -50% 0; z-index: 60;
+  white-space: nowrap; pointer-events: none; border-radius: 7px; background: #1b1b1a; padding: 4px 8px;
+  font-size: 11.5px; font-weight: 500; line-height: 1.3; color: #fff; animation: fade 0.15s 0.25s both;
+}
+
+/* A card group's stack: the cards under the top one fan out when the group is made. */
+@keyframes tree-stack-in { from { transform: none; opacity: 0; } to { transform: translate(var(--sx), var(--sy)) rotate(var(--sr)); opacity: 1; } }
+.tree-stack-in { animation: tree-stack-in 0.5s 0.15s cubic-bezier(0.34, 1.4, 0.64, 1) backwards; }
+/* A card flying into a group: from where it was to the group, shrinking into it. */
+@keyframes tree-fly { 0% { transform: rotate(2deg); opacity: 1; } 100% { transform: translate(var(--fx), var(--fy)) scale(0.55) rotate(0deg); opacity: 0; } }
+.tree-fly { transform-origin: 50% 0; animation: tree-fly 0.55s cubic-bezier(0.5, 0, 0.3, 1) forwards; }
+/* Grouping by hand: the frame and the empty place come in softly. */
+.gather-frame { animation: fade 0.3s var(--ease-out) both; }
+.gather-slot { animation: pop 0.35s 0.1s var(--ease-out) both; }

@@ -452,6 +452,8 @@ export interface Course {
   groupings?: Grouping[];
   /** Students may message each other (Students → "Students can message each other"). Unset: yes. */
   peerMessages?: boolean;
+  /** The course map shows where students are (who's on which card, how many went down each answer). Unset: yes. */
+  mapLive?: boolean;
   access?: { joinOpen: boolean; passcode?: string; guestToken?: string;
     /** Students not on the class list may add themselves: straight in, or after the teacher lets them in. Unset: they can't. */
     selfJoin?: "open" | "approve" };

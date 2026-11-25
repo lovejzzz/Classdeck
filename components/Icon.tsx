@@ -46,6 +46,8 @@ const P: Record<string, React.ReactNode> = {
   type: <><path d="M4 7V4h16v3" /><path d="M9 20h6" /><path d="M12 4v16" /></>,
   plug: <><path d="M12 22v-5" /><path d="M9 8V2" /><path d="M15 8V2" /><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z" /></>,
   chevron: <path d="m6 9 6 6 6-6" />,
+  fold: <><path d="m7 20 5-5 5 5" /><path d="m7 4 5 5 5-5" /></>,
+  unfold: <><path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" /></>,
   back: <><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></>,
   users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.9" /><path d="M16 3.1a4 4 0 0 1 0 7.8" /></>,
   user: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,

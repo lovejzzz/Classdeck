@@ -604,6 +604,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             weekNames={Object.fromEntries(course.weeks.flatMap((w) => w.lessons.map((l) => [l.id, w.title])))}
             todayId={course.currentLessonId}
             students={course.students}
+            live={course.mapLive !== false}
             progress={progress}
             readOnly={readOnly}
             busy={editorOpen}
