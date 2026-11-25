@@ -285,6 +285,23 @@ body[data-panel="open"] .panel-shift-row { padding-right: var(--panel-row, 0px);
   font-size: 11.5px; font-weight: 500; line-height: 1.3; color: #fff; animation: fade 0.15s 0.25s both;
 }
 
+/* Tips that open beside or below their button, where above would cover what it's about. */
+.tip-right[data-tip]:hover::after, .tip-right[data-tip]:focus-visible::after { bottom: auto; top: 50%; left: calc(100% + 8px); translate: 0 -50%; }
+.tip-below[data-tip]:hover::after, .tip-below[data-tip]:focus-visible::after { bottom: auto; top: calc(100% + 8px); }
+/* A card's paper tabs: a bit of the card's own paper folded out past its edge. On the right edge (near the top) it shows
+   or folds the cards the card deals; on the bottom edge of a card group, its own cards. White: something is folded
+   away; pale blue: it's showing. */
+.paper-tab {
+  position: absolute; z-index: 10; display: flex; align-items: center; justify-content: center; border-width: 1px; border-style: solid;
+  background: #fff; color: #4b56a8; box-shadow: 3px 3px 8px -5px rgba(20, 20, 18, 0.35);
+  transition: background-color 0.2s, width 0.18s var(--ease-out), height 0.18s var(--ease-out), right 0.18s var(--ease-out), bottom 0.18s var(--ease-out);
+}
+.paper-tab.tab-r { right: -16px; top: 24px; width: 16px; height: 40px; border-left: 0; border-radius: 0 10px 10px 0; }
+.paper-tab.tab-b { left: 50%; translate: -50% 0; bottom: -16px; width: 40px; height: 16px; border-top: 0; border-radius: 0 0 10px 10px; }
+.paper-tab.tab-r:hover { right: -19px; width: 19px; }
+.paper-tab.tab-b:hover { bottom: -19px; height: 19px; }
+.paper-tab.is-open { background: #eef0fb; }
+.paper-tab:focus-visible { outline: 2px solid #4b56a8; outline-offset: 2px; }
 /* A card group: its cards fan out of the top of a frosted sleeve (the node), and rise out of it when it's made. */
 .tree-node.tree-sleeve { background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.95) 96px, #fff 160px); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
 .fan-card { transform-origin: 50% 230%; transform: rotate(var(--a)); transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1); animation: fan-in 0.65s cubic-bezier(0.34, 1.45, 0.64, 1) var(--d) backwards; }

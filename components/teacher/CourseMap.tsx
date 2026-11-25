@@ -35,7 +35,6 @@ const ROW = 30; // one answer or one score band
 const MEDIA = 112; // a question card's picture, video, recording or file, above its question
 const PAD = 10;
 const FAN = 70; // room above a card group for its cards, fanned out of its sleeve
-const MORE = 26; // the row in a card group that shows all its cards, or fewer
 const HGAP = 64; // gap between cards side by side (room for the wires leaving their right edge)
 const VGAP = 84; // gap between a card and the cards it deals below it
 const REGION_GAP = 56; // gap between lessons
@@ -94,22 +93,21 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
       if (isQuiz(c, cards)) scoreRows(c, (i) => `${c.id}|${SCORE}:${i}`);
     }
     // A card group is as tall as a card with its fan (its card rows cut off, the score kept at the bottom), until it's
-    // opened to show them all. A row between them says so; wires from the rows cut off leave from where the cut is.
+    // opened to show them all (the tab on its bottom edge). Wires from the rows cut off leave from where the cut is.
     const memEnd = y;
     if (isQuiz(m, cards)) scoreRows(m, (i) => `${SCORE}:${i}`);
     const limit = CARD_H - FAN;
     if (y + PAD <= limit) return { h: limit, ports };
     const scoreH = y - memEnd;
     if (open) {
-      for (const [k, v] of ports) if (v >= memEnd) ports.set(k, v + MORE);
-      return { h: y + MORE + PAD, ports, more: true };
+      return { h: y + PAD, ports, more: true };
     }
     // What room is left goes to the card rows (the last one fades out where it's cut; beside a long score that may be
     // little or none: the fan above still shows the cards).
-    const clip = Math.max(0, limit - PAD - scoreH - MORE - HEAD);
+    const clip = Math.max(0, limit - PAD - scoreH - HEAD);
     const cut = HEAD + clip;
-    for (const [k, v] of ports) ports.set(k, v >= memEnd ? v - (memEnd - cut) + MORE : Math.min(v, cut - 6));
-    return { h: cut + MORE + scoreH + PAD, ports, clip, more: true };
+    for (const [k, v] of ports) ports.set(k, v >= memEnd ? v - (memEnd - cut) : Math.min(v, cut - 6));
+    return { h: cut + scoreH + PAD, ports, clip, more: true };
   }
   for (const q of branchQs(m)) {
     y += SEC;
@@ -1338,9 +1336,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     const a = portPos(w), b = inPos(w.to), k = laneOf.get(w) ?? 0;
     if (b.y < p.y + n.h + 24) return { d: curve(a, b), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
     // The bottom of the source card's row (a taller card beside it reaches lower).
-    const rowBottom = Math.max(...[...nodes.values()].filter((o) => o.li === n.li && Math.abs(o.y - n.y) < 1).map((o) => at(o.m.id).y + o.h));
+    const row = [...nodes.values()].filter((o) => o.li === n.li && Math.abs(o.y - n.y) < 1);
+    const rowBottom = Math.max(...row.map((o) => at(o.m.id).y + o.h));
     const gx = p.x + W + 18 + k * 7;
-    const under = rowBottom + 20 + k * 7;
+    // Below a card group's bottom tab, so the wires and their labels don't cover it.
+    const under = rowBottom + (row.some((o) => o.more) ? 36 : 20) + k * 7;
     const above = Math.max(under, b.y - 26 - k * 6);
     // Straight into the next row: across the gap under the source's row, and down.
     if (b.y - rowBottom <= VGAP + 24)
@@ -1744,15 +1744,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                       {nd.clip !== undefined && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-white/0" />}
                       </div>
                       )}
-                      {nd.more && (
-                        // The group's cards cut off to keep it a card's height, or all shown: one row says which, and switches.
-                        <button onClick={(e) => { e.stopPropagation(); setOpened((o) => { const n = new Set(o); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); }}
-                          onPointerDown={(e) => e.stopPropagation()} aria-expanded={nd.clip === undefined}
-                          className="flex w-full items-center justify-center gap-1 text-[11.5px] font-medium text-[#4b56a8] hover:bg-lane" style={{ height: MORE }}>
-                          {nd.clip !== undefined ? `Show all ${leavesOf(m, lessonCards).length} cards` : "Show fewer"}
-                          <Icon name="chevron" size={11} className={nd.clip !== undefined ? "" : "rotate-180"} />
-                        </button>
-                      )}
                       {qs.map((q) => (
                         <div key={q.id}>
                           {typing?.id === m.id && typing.field === `q:${q.id}`
@@ -1810,20 +1801,28 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                   {!nd.members && <CardRest m={m} far={level === "far"} art={level === "far" || !hasBody(m)} tint={suit.tint} cover={suit.cover}
                     onMedia={(a, el, e) => { if (e.shiftKey || picking || jiggle || dragged) return; e.stopPropagation(); setViewing({ a, title: m.title, from: el.getBoundingClientRect(), open: true }); }} />}
                   {dealsSome(m.id) && (() => {
-                    // Fold this card's follow-ups away to see just this card, or bring them back.
+                    // A paper tab at the top of the right edge, where the wires leave: fold the cards it deals away, or
+                    // bring them back. White with an arrow: some are folded away; pale blue: they're showing.
                     const shut = folded.has(m.id);
                     const n = shut ? foldedUnder(m.id) : 0;
+                    const say = shut ? `Show the ${n} card${n === 1 ? "" : "s"} this card deals` : "Fold away the cards this card deals";
                     return (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); fold(m.id, !shut); }}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        aria-pressed={shut}
-                        aria-label={shut ? `Show the ${n} card${n === 1 ? "" : "s"} this card deals` : "Fold away the cards this card deals"}
-                        title={shut ? "Show the cards this card deals" : "Fold away the cards this card deals"}
-                        className={`press absolute bottom-0 left-1/2 z-10 flex -translate-x-1/2 translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full border font-medium shadow-sm transition-colors ${shut ? "border-[#4b56a8] bg-[#4b56a8] text-white hover:bg-[#3f4991]" : "border-line bg-white text-ink-3 hover:border-line-strong hover:text-ink"} ${level === "far" ? "h-10 px-4 text-[18px]" : "h-6 px-2.5 text-[11.5px]"}`}
-                      >
-                        <Icon name="chevron" size={level === "far" ? 16 : 11} className={`transition-transform ${shut ? "-rotate-90" : "rotate-0"}`} />
-                        {shut ? `${n} card${n === 1 ? "" : "s"}` : "Fold"}
+                      <button onClick={(e) => { e.stopPropagation(); fold(m.id, !shut); }} onPointerDown={(e) => e.stopPropagation()}
+                        aria-pressed={shut} aria-label={say} data-tip={say}
+                        className={`paper-tab tab-r tip-right border-line ${shut ? "" : "is-open"}`}>
+                        <Icon name="chevron" size={level === "far" ? 16 : 11} className={shut ? "-rotate-90" : "rotate-90"} />
+                      </button>
+                    );
+                  })()}
+                  {nd.more && (() => {
+                    // A paper tab in the middle of the bottom edge: show all the group's cards, or cut it back to a card's height.
+                    const shut = nd.clip !== undefined;
+                    const say = shut ? `Show all ${leavesOf(m, lessonCards).length} cards` : "Show fewer";
+                    return (
+                      <button onClick={(e) => { e.stopPropagation(); setOpened((o) => { const k = new Set(o); if (k.has(m.id)) k.delete(m.id); else k.add(m.id); return k; }); }}
+                        onPointerDown={(e) => e.stopPropagation()} aria-expanded={!shut} aria-label={say} data-tip={say}
+                        className={`paper-tab tab-b tip-below border-line ${shut ? "" : "is-open"}`}>
+                        <Icon name="chevron" size={11} className={shut ? "" : "rotate-180"} />
                       </button>
                     );
                   })()}

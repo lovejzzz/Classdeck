@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.0",
+    date: "2026-11-24",
+    changes: [
+      "The map’s fold controls are now small paper tabs, with no words (pointing at one says what it does). A tab at the top of a card’s right edge, where its wires leave, shows or folds the cards it deals; a tab in the middle of a card group’s bottom edge shows all its cards or cuts it back to a card’s height. White with an arrow: something is folded away; pale blue: it’s showing. They replace the “› 2 cards” pill and the Show all row.",
+      "The wires under a card group now run below its bottom tab, so their labels don’t cover it.",
+    ],
+  },
+  {
     version: "0.1.99",
     date: "2026-11-24",
     changes: [
