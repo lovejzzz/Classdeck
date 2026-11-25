@@ -93,6 +93,45 @@ export const scoresIn = (v: AnswerValue | undefined): number[] =>
 /** The best score kept under SCORE, if any. */
 export const bestScore = (v: AnswerValue | undefined) => { const s = scoresIn(v); return s.length ? Math.max(...s) : undefined; };
 
+// —— Card groups inside card groups ——
+// A card group holds cards, and (one level down only) other card groups: a group with groups in it is never inside
+// another. These helpers are the one place that walks the levels; everything else asks them.
+
+/** Each card or group in a group → that group (its direct parent). */
+export function parentOf(modules: Module[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const m of modules) if (m.type === "group") for (const id of m.members ?? []) out.set(id, m.id);
+  return out;
+}
+/** The outermost group a card (or group) is in, or the id itself when it's in none. */
+export function topOf(id: string, parents: Map<string, string>): string {
+  let at = id;
+  for (let k = 0; k < 4 && parents.has(at); k++) at = parents.get(at)!;
+  return at;
+}
+/** Every group a card is in, nearest first. */
+export function groupsAbove(id: string, parents: Map<string, string>): string[] {
+  const out: string[] = [];
+  for (let at = parents.get(id), k = 0; at && k < 4; at = parents.get(at), k++) out.push(at);
+  return out;
+}
+/** A group's cards, with the cards of each group inside it in that group's place (in order). */
+export function leavesOf(g: Module, modules: Module[]): Module[] {
+  const byId = new Map(modules.map((m) => [m.id, m]));
+  const out: Module[] = [];
+  const walk = (x: Module, depth: number) => {
+    for (const id of x.members ?? []) {
+      const m = byId.get(id);
+      if (!m) continue;
+      if (m.type === "group") { if (depth < 2) walk(m, depth + 1); } else out.push(m);
+    }
+  };
+  walk(g, 1);
+  return out;
+}
+/** Whether a group has groups in it (then it can't go inside another). */
+export const holdsGroups = (g: Module, modules: Module[]) => (g.members ?? []).some((id) => modules.find((m) => m.id === id)?.type === "group");
+
 /**
  * The follow-up cards this student has been dealt. A card counts only once the card that deals it is on their board,
  * so a chain deals one step at a time. Pass every card in the course so wires between lessons count.
@@ -102,9 +141,8 @@ export function dealtTo(scope: HasModules | Module[], prog: Record<string, Progr
   const wires = wiresOf(modules);
   const hidden = new Set(wires.map((w) => w.to));
   // A card in a group is on the board when its group is.
-  const groupOf = new Map<string, string>();
-  for (const m of modules) if (m.type === "group") for (const id of m.members ?? []) groupOf.set(id, m.id);
-  const onAtStart = (m: Module) => !hidden.has(m.id) && !(groupOf.has(m.id) && hidden.has(groupOf.get(m.id)!));
+  const parents = parentOf(modules);
+  const onAtStart = (m: Module) => !hidden.has(m.id) && !groupsAbove(m.id, parents).some((g) => hidden.has(g));
   const on = new Set(modules.filter(onAtStart).map((m) => m.id));
   const dealt = new Set<string>();
   const byId = new Map(modules.map((m) => [m.id, m]));
@@ -115,7 +153,8 @@ export function dealtTo(scope: HasModules | Module[], prog: Record<string, Progr
       if (picked(prog[w.from]?.dealt?.[w.q], w)) {
         dealt.add(w.to);
         on.add(w.to);
-        for (const id of byId.get(w.to)?.members ?? []) on.add(id);
+        const t = byId.get(w.to);
+        if (t?.type === "group") { for (const id of t.members ?? []) on.add(id); for (const c of leavesOf(t, modules)) on.add(c.id); }
         grew = true;
       }
     }
@@ -239,7 +278,7 @@ export function scoreCount(m: Module, cards: Module[]): number {
   const asked = (c: Module) => (c.questions ?? []).filter(isAsked).length;
   if (m.type === "quiz") return m.pick && m.pick > 0 ? Math.min(m.pick, asked(m)) : asked(m);
   if (m.type !== "group") return 0;
-  return (m.members ?? []).map((id) => cards.find((c) => c.id === id)).filter((c): c is Module => !!c && !c.poll && (c.type === "practice" || c.type === "quiz")).reduce((n, c) => n + asked(c), 0);
+  return leavesOf(m, cards).filter((c) => !c.poll && (c.type === "practice" || c.type === "quiz")).reduce((n, c) => n + asked(c), 0);
 }
 
 /** The scores a student can get with n questions, as a percent rounded the way scores are (2 of 3 is 67%). */
@@ -280,7 +319,7 @@ export function deleteCardIn(lessons: Lesson[], id: string): { before: Lesson[];
   const all = lessons.flatMap((l) => l.modules);
   const gone = new Set([id, ...branchBelow(all, id)]);
   // A card group goes with its cards (and theirs).
-  for (const g of all.filter((m) => gone.has(m.id) && m.type === "group")) for (const x of g.members ?? []) { gone.add(x); branchBelow(all, x).forEach((y) => gone.add(y)); }
+  for (const g of all.filter((m) => gone.has(m.id) && m.type === "group")) for (const x of [...(g.members ?? []), ...leavesOf(g, all).map((c) => c.id)]) { gone.add(x); branchBelow(all, x).forEach((y) => gone.add(y)); }
   const before: Lesson[] = [];
   const after: Lesson[] = [];
   for (const l of lessons) {
@@ -348,29 +387,44 @@ export function pathsFor(weeks: { lessons: Lesson[] }[], prog: Record<string, Pr
 }
 
 /**
- * Keep card groups sound: members are other cards of the same lesson, each in one group only, never a group; the
- * members sit right after their group, in its order; a group left with fewer than two cards is dissolved.
+ * Keep card groups sound: members are other cards (or groups) of the same lesson, each in one group only. A group in a
+ * group holds only cards (two levels at most). Members sit right after their group, in its order (a group's own
+ * members right after it); a group left with fewer than two members is dissolved (its members stay, loose).
  */
 export function cleanGroups(weeks: { lessons: Lesson[] }[]): void {
   for (const w of weeks)
     for (const l of w.lessons) {
       const byId = new Map(l.modules.map((m) => [m.id, m]));
-      const taken = new Set<string>();
-      for (const g of l.modules.filter((m) => m.type === "group")) {
-        g.members = [...new Set(g.members ?? [])].filter((id) => { const m = byId.get(id); return m && m.type !== "group" && !taken.has(id); });
-        g.members.forEach((id) => taken.add(id));
-        // Its score ranges follow how many questions it now has.
-        if (g.bands?.length) g.bands = snapBands(g.bands, scoreCount(g, l.modules));
+      const groups = l.modules.filter((m) => m.type === "group");
+      // Groups that hold only cards first, then the ones that hold groups, so an inner group is settled before its outer one.
+      const inner = (g: Module) => !(g.members ?? []).some((id) => byId.get(id)?.type === "group");
+      for (let round = 0; round < 3; round++) {
+        const taken = new Set<string>();
+        for (const g of [...groups.filter(inner), ...groups.filter((x) => !inner(x))]) {
+          g.members = [...new Set(g.members ?? [])].filter((id) => {
+            const m = byId.get(id);
+            if (!m || m.id === g.id || taken.has(id)) return false;
+            // A group inside holds only cards: one that holds groups can't go in (nor can a group into one inside another).
+            if (m.type === "group") return inner(m) && (m.members?.length ?? 0) >= 2;
+            return true;
+          });
+          g.members.forEach((id) => taken.add(id));
+        }
+        // A group in a group can't hold groups of its own.
+        const parent = parentOf(groups);
+        for (const g of groups) if (parent.has(g.id)) g.members = (g.members ?? []).filter((id) => byId.get(id)?.type !== "group");
+        const tooSmall = groups.filter((g) => (g.members?.length ?? 0) < 2);
+        if (!tooSmall.length) break;
+        // Dissolve those; any group holding one lets go of it.
+        for (const g of tooSmall) { groups.splice(groups.indexOf(g), 1); byId.delete(g.id); }
       }
-      const gone = new Set(l.modules.filter((m) => m.type === "group" && (m.members?.length ?? 0) < 2).map((m) => m.id));
-      const mods = l.modules.filter((m) => !gone.has(m.id));
-      const members = new Set(mods.flatMap((m) => (m.type === "group" ? m.members! : [])));
+      for (const g of groups) if (g.bands?.length) g.bands = snapBands(g.bands, scoreCount(g, l.modules));
+      const kept = new Set(groups.map((g) => g.id));
+      const mods = l.modules.filter((m) => m.type !== "group" || kept.has(m.id));
+      const inSome = new Set(groups.flatMap((g) => g.members ?? []));
       const out: Module[] = [];
-      for (const m of mods) {
-        if (members.has(m.id)) continue;
-        out.push(m);
-        if (m.type === "group") for (const id of m.members!) out.push(byId.get(id)!);
-      }
+      const put = (m: Module) => { out.push(m); if (m.type === "group") for (const id of m.members ?? []) { const x = byId.get(id); if (x) put(x); } };
+      for (const m of mods) if (!inSome.has(m.id)) put(m);
       l.modules = out;
     }
 }
@@ -378,9 +432,8 @@ export function cleanGroups(weeks: { lessons: Lesson[] }[]): void {
 /** A card group's score so far, from the first answers to its Multiple choice cards: done once all are answered. */
 export function groupScore(group: Module, cards: Module[], prog: Record<string, Progress>): { done: boolean; right: number; total: number; pct?: number } {
   let right = 0, total = 0, done = true;
-  for (const id of group.members ?? []) {
-    const m = cards.find((c) => c.id === id);
-    if (!m || m.poll || !(m.type === "practice" || m.type === "quiz")) continue;
+  for (const m of leavesOf(group, cards)) {
+    if (m.poll || !(m.type === "practice" || m.type === "quiz")) continue;
     for (const q of (m.questions ?? []).filter(isAsked)) {
       total++;
       const f = prog[m.id]?.first?.[q.id];

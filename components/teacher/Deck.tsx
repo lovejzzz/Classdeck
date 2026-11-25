@@ -19,7 +19,7 @@ import { CardEditor } from "./CardEditor";
 import { CourseMap } from "./CourseMap";
 import { newCard, type CardKind } from "@/lib/kinds";
 import { NeighborGraph } from "./NeighborGraph";
-import { branchBelow, deleteCardIn, SCORE, slotOf, targetsOf, wiresOf } from "@/lib/branching";
+import { branchBelow, deleteCardIn, parentOf, SCORE, slotOf, targetsOf, topOf, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
 import { loadLibrary } from "./NewCardFan";
 
@@ -406,7 +406,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
     const body = lesson
       ? { name: lesson.title, kind: "lesson", modules: lesson.modules }
       : m && m.type === "group" && l
-        ? { name: m.title, kind: "group", modules: [m, ...l.modules.filter((x) => m.members?.includes(x.id))] }
+        ? { name: m.title, kind: "group", modules: [m, ...l.modules.filter((x) => x.id !== m.id && topOf(x.id, parentOf(l.modules)) === m.id)] }
         : { module: m, name: m?.title };
     // A card already in My cards: Collect again keeps its newest version there (no second copy).
     if (m && !lesson && m.type !== "group" && m.collected && (await updateCollected(m, true))) return;

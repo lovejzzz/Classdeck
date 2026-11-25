@@ -26,7 +26,7 @@ import { WallBoard } from "../WallBoard";
 import { RichText } from "../RichText";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
-import { groupScore, treeView } from "@/lib/branching";
+import { groupScore, leavesOf, treeView } from "@/lib/branching";
 
 export function Classroom({
   courseId, state, lesson, connectors, sel, setSel, onMessage, readOnly = false, drawerOnly = false, extraExports = [],
@@ -128,14 +128,14 @@ export function Classroom({
   const lowCell = (sid: string) => lesson.modules.find((m) => {
     const pr = progress[sid]?.[m.id];
     if (m.type === "quiz" && visible[sid].has(m.id) && pr?.status === "done" && m.questions?.length) return (pr.best ?? pr.score ?? 0) / Math.max(1, quizSet(m, sid, pr.attempt ?? 1).length) < 0.5;
-    if (m.type === "group" && m.members?.some((id) => visible[sid].has(id))) { const g = groupScore(m, lesson.modules, progress[sid] ?? {}); return g.done && g.right / Math.max(1, g.total) < 0.5; }
+    if (m.type === "group" && leavesOf(m, lesson.modules).some((c) => visible[sid].has(c.id))) { const g = groupScore(m, lesson.modules, progress[sid] ?? {}); return g.done && g.right / Math.max(1, g.total) < 0.5; }
     return false;
   })?.id;
   const low = course.students.filter((st) => !!lowCell(st.id));
   const attention: { key: string; icon: string; tint: string; title: string; hint: string; who: typeof course.students; cell: (sid: string) => string | undefined }[] = [
     { key: "late", icon: "clock", tint: "var(--color-bad)", title: "Overdue", hint: "A card past its due date isn’t done.", who: overdue, cell: lateCard },
     { key: "review", icon: "message", tint: "#287670", title: "Ready for your feedback", hint: "Finished work you haven’t reviewed yet.", who: toReview, cell: toReviewCell },
-    { key: "low", icon: "quiz", tint: "var(--color-warn)", title: "Low quiz scores", hint: "Under half right on a quiz or card group here.", who: low, cell: (sid) => { const id = lowCell(sid); const g = lesson.modules.find((m) => m.id === id); return g?.type === "group" ? g.members?.find((x) => visible[sid].has(x)) : id; } },
+    { key: "low", icon: "quiz", tint: "var(--color-warn)", title: "Low quiz scores", hint: "Under half right on a quiz or card group here.", who: low, cell: (sid) => { const id = lowCell(sid); const g = lesson.modules.find((m) => m.id === id); return g?.type === "group" ? leavesOf(g, lesson.modules).find((c) => visible[sid].has(c.id))?.id : id; } },
     { key: "start", icon: "clock", tint: "var(--color-ink-2)", title: "Haven’t started", hint: "No card opened in this lesson yet.", who: notStarted, cell: firstVisible },
     { key: "stall", icon: "timer", tint: "var(--color-warn)", title: "Stalled", hint: "Started, but nothing new for 2+ days.", who: stalled, cell: (sid) => lesson.modules.find((m) => progress[sid]?.[m.id]?.status === "doing")?.id },
     { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted for peer review, no classmate has replied yet.", who: waiting, cell: (sid) => (studioWaiting.has(sid) ? studioId : wallWaiting(sid)) },

@@ -3,7 +3,7 @@ import { download, toCsv } from "./download";
 import { isFinished, isLate, quizSet } from "./grading";
 import { visibleModules } from "./profile";
 import type { CourseState, Module } from "./types";
-import { groupScore, treeView } from "./branching";
+import { groupScore, leavesOf, treeView } from "./branching";
 import { awaitingFeedback, reviewableCard } from "./kinds";
 
 /** Per student over the whole course: cards done, late, quiz and card-group scores, reviews given, work waiting, skill levels. */
@@ -30,7 +30,7 @@ export function gradeRows(state: CourseState, now: number) {
     const quizzes = cards.filter(({ m }) => m.type === "quiz" && m.questions?.length && isFinished(m, mine[m.id]));
     // A card group of questions counts too, once all its questions are answered, by its first answers.
     const shown = new Set(cards.map(({ m }) => m.id));
-    const groups = all.flatMap(({ w, l }) => l.modules.filter((g) => g.type === "group" && g.members?.some((id) => shown.has(id))).map((g) => ({ g, week: w.title, s: groupScore(g, l.modules, mine) })).filter((x) => x.s.done));
+    const groups = all.flatMap(({ w, l }) => l.modules.filter((g) => g.type === "group" && leavesOf(g, l.modules).some((c) => shown.has(c.id))).map((g) => ({ g, week: w.title, s: groupScore(g, l.modules, mine) })).filter((x) => x.s.done));
     // Each score, to list under the student: the quiz or card group, its week, right of total, and tries used.
     const scored = [
       ...quizzes.map(({ m, week }) => ({ id: m.id, title: m.title, week, right: mine[m.id].best ?? mine[m.id].score ?? 0, total: Math.max(1, quizSet(m, st.id, mine[m.id].attempt ?? 1).length), tries: mine[m.id].attempt ?? 1 })),

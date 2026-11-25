@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.94",
+    date: "2026-11-24",
+    changes: [
+      "Card groups can hold card groups (two levels at most). Hold a group, press its group button, and drag another group into the empty place: the two go together in a new group, like a unit. A group of groups can also hold loose cards. Box-picking groups and pressing Make a card group works too.",
+      "The outer group’s sleeve fans out its groups (each a small stack) and lists each group with its cards. Every inner group keeps its own score and can still deal cards by it; the outer group’s score counts all their questions together.",
+      "Students see a group of groups as one frame of all its cards, with the outer group’s score. Ungrouping an inner group keeps its cards in the outer one; ungrouping the outer keeps its groups. Saving it to My cards keeps every group and card in it.",
+    ],
+  },
+  {
     version: "0.1.93",
     date: "2026-11-24",
     changes: [

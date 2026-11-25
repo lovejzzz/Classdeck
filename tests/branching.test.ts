@@ -1,5 +1,5 @@
 // Card-tree rules, checked without a server: npx tsx tests/branching.test.ts
-import { bandRight, bandsOf, cleanGroups, snapBands, scoreCount, cleanCourseWiring, dealtTo, deleteCardIn, orphansOf, treeView, unwire, wiresOf, SCORE } from "../lib/branching";
+import { bandRight, bandsOf, cleanGroups, groupScore, leavesOf, snapBands, scoreCount, cleanCourseWiring, dealtTo, deleteCardIn, orphansOf, treeView, unwire, wiresOf, SCORE } from "../lib/branching";
 import { cloneWeek } from "../lib/clone";
 import type { Lesson, Module, Progress, Week } from "../lib/types";
 
@@ -145,6 +145,50 @@ const course = () => [
   const { after } = deleteCardIn(ls, "B");
   const src = after.flatMap((l) => l.modules).find((m) => m.id === "src");
   check("deleting a card from an answer of two keeps the other wired", src?.questions![0].next![0] === "A");
+}
+
+// Card groups inside card groups (two levels at most).
+{
+  const mc = (id: string) => card(id, { type: "practice", kind: "choice", questions: [ask(`${id}q`, [null, null])] });
+  const nested = () => [lesson("L", [
+    card("U", { type: "group", members: ["G1", "G2", "x"] }),
+    mc("a"), card("G1", { type: "group", members: ["a", "b"] }), mc("b"),
+    card("G2", { type: "group", members: ["c", "d"], bands: [{ min: 0, next: null }, { min: 100, next: "after" }] }), mc("c"), mc("d"),
+    mc("x"), card("after"),
+  ])];
+  const ls = nested();
+  cleanGroups([{ lessons: ls }]);
+  const byId = (id: string) => ls[0].modules.find((m) => m.id === id)!;
+  check("a group of groups survives tidying", byId("U").members?.join() === "G1,G2,x");
+  check("…its members sit right after it, each group's cards right after that group", ids(ls).join() === "U,G1,a,b,G2,c,d,x,after");
+  check("an outer group's cards are its groups' cards and its own", leavesOf(byId("U"), ls[0].modules).map((m) => m.id).join() === "a,b,c,d,x");
+  check("an outer group counts every question in it", scoreCount(byId("U"), ls[0].modules) === 5);
+  const done = prog({ aq: {}, bq: {}, cq: {}, dq: {}, xq: {} });
+  for (const [k, v] of Object.entries({ a: 1, b: 1, c: 1, d: 0, x: 1 })) done[k] = { status: "done", first: { [`${k}q`]: !!v }, updatedAt: 0 } as Progress;
+  const sc = groupScore(byId("U"), ls[0].modules, done);
+  check("…and scores once they're all answered (4 of 5)", sc.done && sc.right === 4 && sc.total === 5);
+  check("an inner group still scores on its own (1 of 2)", groupScore(byId("G2"), ls[0].modules, done).right === 1);
+
+  // Two levels at most: a group of groups put inside another loses it; an inner group can't hold a group.
+  const deep = [lesson("L", [card("V", { type: "group", members: ["U", "y"] }), ...nested()[0].modules, mc("y")])];
+  cleanGroups([{ lessons: deep }]);
+  const V = deep[0].modules.find((m) => m.id === "V");
+  check("a group with groups in it can't go inside another", !V || !V.members?.includes("U"));
+
+  // An outer group dealt by an answer: none of its cards are on the board until it's dealt.
+  const dealtL = [lesson("L", [card("src", { type: "practice", questions: [ask("q", ["U", null])] }), ...nested()[0].modules])];
+  cleanGroups([{ lessons: dealtL }]);
+  const onAtStart = treeView([{ lessons: dealtL }], {});
+  check("cards in an inner group of a dealt outer group are hidden at first", onAtStart.hidden.has("U") && !dealtTo(dealtL[0].modules, {}).has("U"));
+  const dealt = dealtTo(dealtL[0].modules, prog({ src: { q: 0 } }));
+  check("dealing the outer group deals it", dealt.has("U"));
+
+  // Deleting an outer group takes its groups and all their cards.
+  const del = nested();
+  cleanGroups([{ lessons: del }]);
+  const { gone } = deleteCardIn(del, "U");
+  check("deleting an outer group takes every card in it", ["G1", "G2", "a", "b", "c", "d", "x"].every((id) => gone.has(id)));
+  check("…and the card only its inner group dealt", gone.has("after"));
 }
 
 const failed = rows.filter(([, ok]) => !ok);

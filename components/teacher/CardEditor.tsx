@@ -362,7 +362,8 @@ export function CardEditor({
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {onTree && <button onClick={onTree} className="btn btn-ghost press h-8 px-3 text-[12.5px] text-[#4b56a8]"><Icon name="split" size={12} /> Branch by score on the map</button>}
-              <button onClick={() => { onChange({ ...lessonRef.current, modules: lessonRef.current.modules.filter((x) => x.id !== m.id) }); onClose(); }} className="btn btn-ghost press h-8 px-3 text-[12.5px]">Ungroup (keep the cards)</button>
+              {/* Ungroup: the cards stay; in a group inside another, they stay in that outer group, in its place. */}
+              <button onClick={() => { onChange({ ...lessonRef.current, modules: lessonRef.current.modules.filter((x) => x.id !== m.id).map((x) => (x.type === "group" && x.members?.includes(m.id) ? { ...x, members: x.members.flatMap((id) => (id === m.id ? m.members ?? [] : [id])) } : x)) }); onClose(); }} className="btn btn-ghost press h-8 px-3 text-[12.5px]">Ungroup (keep the cards)</button>
             </div>
           </Panel>
           ) : (

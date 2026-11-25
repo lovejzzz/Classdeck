@@ -8,7 +8,7 @@ import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { fold, foldWeeks } from "@/lib/cardmodel";
 import { kindOf, kindWeeks, reviewableCard, unfinished, withKind } from "@/lib/kinds";
-import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, orphansOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
+import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
@@ -77,7 +77,8 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
   const tree = treeOf(course, studentId);
   const visible = new Set(course.weeks.flatMap((w) => w.lessons.flatMap((l) => (l.elective && !chosen[`elective:${l.id}`] ? [] : visibleModules(l, studentId, chosen, tree, course)).map((m) => m.id))));
   // A card group is on the board when its cards are (it has paths out by score, like a card).
-  for (const w of course.weeks) for (const l of w.lessons) for (const g of l.modules) if (g.type === "group" && g.members?.some((id) => visible.has(id))) visible.add(g.id);
+  // (A group with groups in it: when any of their cards is.)
+  for (const w of course.weeks) for (const l of w.lessons) for (const g of l.modules) if (g.type === "group" && leavesOf(g, l.modules).some((c) => visible.has(c.id))) visible.add(g.id);
   const prog = db().progress[course.id]?.[studentId] ?? {};
   const paths = pathsFor(course.weeks, prog, tree, visible);
   return {
@@ -101,8 +102,9 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
         // An elective a student hasn't chosen arrives as a catalog entry: its cards stay hidden until they pick it.
         ...(l.elective ? { chosen: !!chosen[`elective:${l.id}`], takenBy: taken(l.id), catalog: { cards: l.modules.filter((m) => m.audience.kind === "all").length, skills: [...new Set(l.modules.flatMap((m) => m.skills ?? []))] } } : {}),
         branches: {},
-        decks: l.modules.filter((g) => g.type === "group" && visible.has(g.id)).map((g) => ({
-          id: g.id, title: g.title, members: (g.members ?? []).filter((id) => visible.has(id)),
+        // Students see each outermost group as one frame of its cards (a group inside it adds its cards in its place).
+        decks: l.modules.filter((g) => g.type === "group" && visible.has(g.id) && !parentOf(l.modules).has(g.id)).map((g) => ({
+          id: g.id, title: g.title, members: leavesOf(g, l.modules).map((c) => c.id).filter((id) => visible.has(id)),
           done: prog[g.id]?.status === "done" || undefined, score: typeof prog[g.id]?.dealt?.[SCORE] === "number" ? (prog[g.id]!.dealt![SCORE] as number) : undefined,
           paths: paths.get(g.id),
         })),
@@ -1040,9 +1042,10 @@ async function change(request: Request, courseId: string, body: Record<string, a
         const before = treeOf(course, body.studentId).dealt;
         if (firstTime) p.first![q.id] = right;
         if (deals(q) && (p.dealt ??= {})[q.id] === undefined) p.dealt[q.id] = given;
-        // A card group scores once every Multiple choice card in it has a first answer.
-        const group = found.lesson.modules.find((g) => g.type === "group" && g.members?.includes(found.mod.id));
-        if (group) {
+        // A card group scores once every Multiple choice card in it has a first answer; so does a group it's in.
+        for (const gid of groupsAbove(found.mod.id, parentOf(found.lesson.modules))) {
+          const group = found.lesson.modules.find((g) => g.id === gid);
+          if (!group) continue;
           const gp = mine(body.studentId, group.id);
           const sc = groupScore(group, found.lesson.modules, d.progress[courseId]?.[body.studentId] ?? {});
           if (sc.done && gp.dealt?.[SCORE] === undefined) {

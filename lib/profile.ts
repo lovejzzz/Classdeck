@@ -1,6 +1,6 @@
 import { unfinished } from "./kinds";
 import type { Audience, Course, Lesson, Module, PresetId, Profile } from "./types";
-import { followUps, type TreeView } from "./branching";
+import { followUps, leavesOf, type TreeView } from "./branching";
 import { groupingsOf } from "./shared";
 
 export const PRESETS: Record<PresetId, Omit<Profile, "preset">> = {
@@ -51,7 +51,7 @@ export function visibleModules(lesson: Lesson, studentId: string, chosen: Record
   const dealt = tree?.dealt ?? new Set<string>();
   // A card group isn't a card a student opens: its cards are, framed together, and only while the group is on the board.
   const groupHidden = new Set<string>();
-  for (const g of lesson.modules) if (g.type === "group" && hidden.has(g.id) && !dealt.has(g.id)) for (const id of g.members ?? []) groupHidden.add(id);
+  for (const g of lesson.modules) if (g.type === "group" && hidden.has(g.id) && !dealt.has(g.id)) for (const c of leavesOf(g, lesson.modules)) groupHidden.add(c.id);
   const firstVariant: Record<string, string> = {};
   const counts: Record<string, number> = {};
   for (const m of lesson.modules) {
