@@ -96,6 +96,8 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
       if (!alive.current) return;
       const data = JSON.parse(raw);
       if (!res.ok) {
+        // Removed from the class: the page stops showing the course and says why.
+        if (data.removed) setState(null);
         setError(data.error ?? "Couldn't load");
         setNeedAuth(data.needAuth ?? null);
         setAuthDetail(data.detail);

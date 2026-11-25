@@ -204,6 +204,10 @@ function view(request: Request, courseId: string): Response {
   if (waiting && canBeStudent(session, course, as!)) {
     return Response.json({ error: `Thanks, ${waiting.name}. Your teacher needs to let you into ${course.title}. This page opens your board as soon as they do.`, waiting: true }, { status: 403 });
   }
+  // A signed-in student whose place in the class is gone (the teacher removed them): said so, not "signed out".
+  if (as && session?.kind === "teacher" && !course.students.some((s) => s.id === as) && !course.waiting?.some((s) => s.id === as) && !roleOf(session, course)) {
+    return Response.json({ error: `You’re no longer in ${course.title}. If that’s a mistake, ask your teacher to add you again.`, removed: true }, { status: 404 });
+  }
   if (as ? !canBeStudent(session, course, as) : !canSeeTeacher(session, course)) return as ? unauthorized("student") : unauthorized("teacher", undefined, teacherAccessHint(session, course));
   if (as && !course.students.some((s) => s.id === as)) return Response.json({ error: "You’re not on this class list. Ask your teacher to add you." }, { status: 404 });
   if (finishExpiredQuizzes(course)) save(courseId);

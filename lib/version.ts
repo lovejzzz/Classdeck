@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.81",
+    date: "2026-11-25",
+    changes: [
+      "Fixes from testing teachers and students working together. A student waiting to be let into a class sees the course open up on their page as soon as the teacher says yes (it said “Waiting for your teacher” until they reloaded).",
+      "A student the teacher removes from a class is told so (“You’re no longer in …”), instead of “You’ve been signed out”.",
+      "Students see “Teacher is here” in a group doc only while the teacher has the group’s live copy open, not while it sits folded under a hand-in. Before a group doc is handed in, the teacher’s panel says it hasn’t been handed in yet (it said “Nothing written yet” under a doc full of writing).",
+    ],
+  },
+  {
     version: "0.2.8",
     date: "2026-11-25",
     changes: [

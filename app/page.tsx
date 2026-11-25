@@ -35,6 +35,17 @@ export default function Home() {
     fetch("/api/auth").then((r) => r.json()).then(setMe).catch(() => setMe({ kind: null }));
   };
   useEffect(load, []);
+  // Waiting to be let into a class: look again every few seconds (and on coming back to the tab), so the course opens
+  // up here as soon as the teacher says yes, without reloading.
+  const waitingNow = studying.some((x) => x.waiting);
+  useEffect(() => {
+    if (!waitingNow) return;
+    const again = () => fetch("/api/courses").then((r) => r.json()).then((d) => setStudying(d.studying ?? [])).catch(() => {});
+    const t = setInterval(again, 8000);
+    const back = () => document.visibilityState === "visible" && again();
+    document.addEventListener("visibilitychange", back);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", back); };
+  }, [waitingNow]);
 
   // Until we know who's here, show nothing: otherwise a signed-in person sees the sign-in page flash past.
   if (me === null) return <main className="flex-1" aria-busy="true" />;

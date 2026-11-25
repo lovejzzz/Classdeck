@@ -321,10 +321,9 @@ export function Classroom({
               // A shared copy: the live document (the teacher can watch it being written, and write in it too).
               const key = docKey(course, selModule, sel!.sid);
               return key ? (
-                <details className="mt-3 rounded-lg border border-line px-3 py-2" open={!selProgress?.output}>
-                  <summary className="cursor-pointer text-[12.5px] font-medium text-ink-2">{selModule.writers === "class" ? "The class’s live copy" : "This group’s live copy"}</summary>
-                  <div className="mt-2"><SharedDoc courseId={courseId} docKey={key} template={selModule.body} name="Teacher" readOnly={readOnly} /></div>
-                </details>
+                <LiveCopy key={key} startOpen={!selProgress?.output} label={selModule.writers === "class" ? "The class’s live copy" : "This group’s live copy"}>
+                  <SharedDoc courseId={courseId} docKey={key} template={selModule.body} name="Teacher" readOnly={readOnly} />
+                </LiveCopy>
               ) : null;
             })()}
             {selProgress?.output && (writesOwn(selModule) || sharedDoc(selModule)) ? (
@@ -333,7 +332,8 @@ export function Classroom({
             ) : selProgress?.output ? (
               <p className="mt-3 whitespace-pre-wrap rounded-lg bg-lane px-3.5 py-3 text-[13.5px] leading-relaxed">{selProgress.output}</p>
             ) : (
-              !selModule.questions && kindOf(selModule) !== "content" && <p className="mt-3 text-[13px] text-ink-3">Nothing written yet.</p>
+              // A shared doc is written in its live copy above; what's said here is about the copy handed in.
+              !selModule.questions && kindOf(selModule) !== "content" && <p className="mt-3 text-[13px] text-ink-3">{sharedDoc(selModule) ? "Not handed in yet. Once it is, you can comment on any passage of the copy they hand in." : "Nothing written yet."}</p>
             )}
             {selModule.questions && selProgress?.attempt && selProgress.attempt > 1 ? (
               <p className="mt-3 text-[12.5px] text-ink-3">Try {selProgress.attempt} of {selModule.attempts ?? 1} · best score {selProgress.best ?? 0}/{quizSet(selModule, sel!.sid, selProgress.attempt ?? 1).length}</p>
@@ -834,5 +834,19 @@ function RemindButton({ courseId, ids, names, moduleId, text }: { courseId: stri
     </form>
   ) : (
     <button onClick={() => setOpen(true)} className="btn btn-quiet press mt-2 h-7 px-2 text-[12px]"><Icon name="clock" size={12} /> Remind {ids.length > 1 ? `all ${ids.length}` : names}</button>
+  );
+}
+
+/**
+ * A group's live document, folded or open. Only open is it connected: students see "Teacher is here" only while the
+ * teacher actually has it open, not while it sits folded under a hand-in.
+ */
+function LiveCopy({ startOpen, label, children }: { startOpen: boolean; label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(startOpen);
+  return (
+    <details className="mt-3 rounded-lg border border-line px-3 py-2" open={open} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary className="cursor-pointer text-[12.5px] font-medium text-ink-2">{label}</summary>
+      {open && <div className="mt-2">{children}</div>}
+    </details>
   );
 }
