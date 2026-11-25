@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.99",
+    date: "2026-11-24",
+    changes: [
+      "The cards fanned out of a card group’s sleeve on the map can be used one by one: click one to open it in the panel, drag one along the fan to put it in another place in the group, or hold one: the fan’s cards wiggle, each with a delete button. Holding a card on the map still wiggles only the map’s cards and the group as a whole.",
+      "A card group on the map is now always a card’s height with its fan: its card rows are cut off (with Show all to open it to full height, and Show fewer to close it), and its Group score stays in view at the bottom.",
+      "Fixed: opening a card at the far right of the map left it under the card panel. The map now has room to scroll it clear, as it does for other cards.",
+    ],
+  },
+  {
     version: "0.1.98",
     date: "2026-11-24",
     changes: [

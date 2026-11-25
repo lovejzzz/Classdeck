@@ -35,6 +35,7 @@ const ROW = 30; // one answer or one score band
 const MEDIA = 112; // a question card's picture, video, recording or file, above its question
 const PAD = 10;
 const FAN = 70; // room above a card group for its cards, fanned out of its sleeve
+const MORE = 26; // the row in a card group that shows all its cards, or fewer
 const HGAP = 64; // gap between cards side by side (room for the wires leaving their right edge)
 const VGAP = 84; // gap between a card and the cards it deals below it
 const REGION_GAP = 56; // gap between lessons
@@ -67,7 +68,7 @@ const letter = (i: number) => String.fromCharCode(65 + i);
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 /** The rows on a card at a zoom level: its head, (zoomed in) a preview, then each question's answers and the score bands. */
-function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = [], cards: Module[] = members) {
+function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = [], cards: Module[] = members, open = false): { h: number; ports: Map<string, number>; clip?: number; more?: boolean } {
   const ports = new Map<string, number>();
   if (level === "far") return { h: Math.max(CARD_H, m.type === "group" ? FAR_H + members.length * 26 + PAD : 0), ports };
   let y = HEAD;
@@ -83,7 +84,7 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
     bands.forEach((_, i) => { ports.set(key(i), y + ROW / 2); y += ROW; });
     if (!bands.length && !readOnly) y += ROW;
   };
-  if (m.type === "group")
+  if (m.type === "group") {
     for (const c of members) {
       if (c.type !== "group") { cardRows(c); continue; }
       // A group inside: its name, its cards, and its own score (it deals by score too).
@@ -92,19 +93,36 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
       inner.forEach(cardRows);
       if (isQuiz(c, cards)) scoreRows(c, (i) => `${c.id}|${SCORE}:${i}`);
     }
-  for (const q of m.type === "group" ? [] : branchQs(m)) {
+    // A card group is as tall as a card with its fan (its card rows cut off, the score kept at the bottom), until it's
+    // opened to show them all. A row between them says so; wires from the rows cut off leave from where the cut is.
+    const memEnd = y;
+    if (isQuiz(m, cards)) scoreRows(m, (i) => `${SCORE}:${i}`);
+    const limit = CARD_H - FAN;
+    if (y + PAD <= limit) return { h: limit, ports };
+    const scoreH = y - memEnd;
+    if (open) {
+      for (const [k, v] of ports) if (v >= memEnd) ports.set(k, v + MORE);
+      return { h: y + MORE + PAD, ports, more: true };
+    }
+    // What room is left goes to the card rows (the last one fades out where it's cut; beside a long score that may be
+    // little or none: the fan above still shows the cards).
+    const clip = Math.max(0, limit - PAD - scoreH - MORE - HEAD);
+    const cut = HEAD + clip;
+    for (const [k, v] of ports) ports.set(k, v >= memEnd ? v - (memEnd - cut) + MORE : Math.min(v, cut - 6));
+    return { h: cut + MORE + scoreH + PAD, ports, clip, more: true };
+  }
+  for (const q of branchQs(m)) {
     y += SEC;
     q.options.forEach((_, i) => { ports.set(`${q.id}:${i}`, y + ROW / 2); y += ROW; });
   }
-  if (m.type !== "group") for (const q of otherQs(m)) y += SEC + otherRows(q, m) * ROW;
-  if (isQuiz(m, m.type === "group" ? cards : undefined)) scoreRows(m, (i) => `${SCORE}:${i}`);
+  for (const q of otherQs(m)) y += SEC + otherRows(q, m) * ROW;
+  if (isQuiz(m)) scoreRows(m, (i) => `${SCORE}:${i}`);
   // Only a Multiple choice or Poll card without its question yet gets a line inviting one; other kinds don't branch.
   if (wantsQuestion(m)) y += 34;
-  // A card group's fan sits above its sleeve: together they're as tall as a card (the sleeve grows only for more rows).
-  return { h: Math.max(m.type === "group" ? CARD_H - FAN : CARD_H, y + PAD), ports };
+  return { h: Math.max(CARD_H, y + PAD), ports };
 }
 
-interface Node { m: Module; lessonId: string; li: number; x: number; y: number; h: number; ports: Map<string, number>; parent?: string; members?: Module[] }
+interface Node { m: Module; lessonId: string; li: number; x: number; y: number; h: number; ports: Map<string, number>; parent?: string; members?: Module[]; clip?: number; more?: boolean }
 interface Region { lesson: Lesson; li: number; x: number; y: number; w: number; h: number }
 
 /**
@@ -112,7 +130,7 @@ interface Region { lesson: Lesson; li: number; x: number; y: number; w: number; 
  * its first line), and what their answers deal hanging below the card that deals them, wired into its top. A card dealt
  * from an earlier lesson starts its own lesson's row, with the wire coming down from above.
  */
-function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolean, weekOfLesson: Record<string, string> = {}, room?: string | null) {
+function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolean, weekOfLesson: Record<string, string> = {}, room?: string | null, opened: Set<string> = new Set()) {
   const nodes = new Map<string, Node>();
   const regions: Region[] = [];
   // Zoomed far out, each week is a column (its lessons stacked in it), so a long course fits on one screen. Closer
@@ -158,7 +176,7 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
     loose.forEach((m) => walk(m.id));
     const byId = new Map(lesson.modules.map((m) => [m.id, m]));
     const membersOf = (id: string) => (byId.get(id)?.members ?? []).map((x) => byId.get(x)).filter((x): x is Module => !!x);
-    const size = (id: string) => rowsOf(byId.get(id)!, level, readOnly, membersOf(id), lesson.modules);
+    const size = (id: string) => rowsOf(byId.get(id)!, level, readOnly, membersOf(id), lesson.modules, opened.has(id));
     // A card group (not zoomed far out) has its cards fanned out above it: its sleeve sits that much lower.
     const fanned = (id: string) => level !== "far" && byId.get(id)?.type === "group";
     // How wide each card's family is (the card, or what it deals side by side below it), and each card's depth.
@@ -179,11 +197,11 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
     const top = y0 + TOP;
     const rowTop = (d: number) => top + rowH.slice(0, d).reduce((n, h) => n + h, 0) + d * VGAP;
     const place = (id: string, left: number) => {
-      const { h, ports } = size(id);
+      const { h, ports, clip, more } = size(id);
       const s = span.get(id)!;
       const k = kids.get(id) ?? [];
       const below = k.reduce((n, c) => n + span.get(c)!, 0) + Math.max(0, k.length - 1) * HGAP;
-      nodes.set(id, { m: byId.get(id)!, lessonId: lesson.id, li, x: left + (s - W) / 2, y: rowTop(depthOf.get(id)!) + (fanned(id) ? FAN : 0), h, ports, parent: parent.get(id), members: byId.get(id)!.type === "group" ? membersOf(id) : undefined });
+      nodes.set(id, { m: byId.get(id)!, lessonId: lesson.id, li, x: left + (s - W) / 2, y: rowTop(depthOf.get(id)!) + (fanned(id) ? FAN : 0), h, ports, clip, more, parent: parent.get(id), members: byId.get(id)!.type === "group" ? membersOf(id) : undefined });
       let x = left + (s - below) / 2;
       for (const c of k) { place(c, x); x += span.get(c)! + HGAP; }
     };
@@ -395,7 +413,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
   const weekKey = JSON.stringify(weekOf);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const weeksOf = useMemo(() => weekOf, [weekKey]);
-  const base = useMemo(() => layout(shownLessons, wires, level, !!readOnly, weeksOf, gather), [shownLessons, wires, level, readOnly, weeksOf, gather]);
+  // Card groups opened to show all their cards (a group is as tall as a card until then).
+  const [opened, setOpened] = useState<Set<string>>(() => new Set());
+  const base = useMemo(() => layout(shownLessons, wires, level, !!readOnly, weeksOf, gather, opened), [shownLessons, wires, level, readOnly, weeksOf, gather, opened]);
   // While a card is dragged, the map shows it where it would land: the other cards slide aside to make room.
   const preview = useMemo(() => {
     if (!moving?.to || moving.trash || moving.before === undefined) return null;
@@ -404,7 +424,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     const by = new Map(changed.map((l) => [l.id, l]));
     const next = shownLessons.map((l) => by.get(l.id) ?? l);
     // Cards from one answer sit in their lesson order, so a reorder among them shows in the wires' order too.
-    return layout(next, wiresOf(next.flatMap((l) => l.modules)), level, !!readOnly, weeksOf, gather);
+    return layout(next, wiresOf(next.flatMap((l) => l.modules)), level, !!readOnly, weeksOf, gather, opened);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moving?.id, moving?.to, moving?.before, moving?.trash, shownLessons, wires, level, readOnly]);
   const { nodes, regions, width, height } = preview ?? base;
@@ -1511,7 +1531,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
       >
         {/* While Add a card is open beside the last card of the widest lesson, the map makes room for it on the right. */}
         {/* Room under the last row for the floating toolbar, so it never sits on the Lesson / week buttons. */}
-        <div data-canvas="1" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0) * zoom, height: (height + 64) * zoom }} className="relative">
+        {/* While the card panel is open there's a panel's width of room past the last card, so even a card at the far
+            right can scroll clear of the panel (the map narrows as the panel slides in, which would stop it short). */}
+        <div data-canvas="1" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0) * zoom + (gap > 0 ? PANEL : 0), height: (height + 64) * zoom }} className="relative">
           <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0), height: height + 64, transform: `scale(${zoom})` }}>
             {/* Lessons: a quiet band each, with its name and a way to add a card. */}
             {regions.map((r) => {
@@ -1594,7 +1616,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
               const p = at(nd.m.id);
               // A card held over this sleeve: it shows in the fan, at the end, as it would be once let go.
               const adding = moving?.into === nd.m.id ? all.find((x) => x.m.id === moving.id)?.m : undefined;
-              return <Fan key={`fan-${nd.m.id}`} members={nd.members ?? []} x={p.x} y={p.y} open={hot === nd.m.id || !!adding} faded={moving?.id === nd.m.id} adding={adding} bad={!!adding && !!whyInto(adding.id, nd.m.id)} />;
+              return <Fan key={`fan-${nd.m.id}`} members={nd.members ?? []} x={p.x} y={p.y} open={hot === nd.m.id || !!adding} faded={moving?.id === nd.m.id} adding={adding} bad={!!adding && !!whyInto(adding.id, nd.m.id)}
+                act={readOnly || moving || gather ? undefined : {
+                  toCanvas,
+                  onOpen: (id) => onEdit(nd.lessonId, id),
+                  onReorder: (ids) => { const l = lessonWith(nd.m.id); if (l) onChange(tidy({ ...l, modules: l.modules.map((x) => (x.id === nd.m.id ? { ...x, members: ids } : x)) })); },
+                  onDelete,
+                  onHot: (on) => setHot((h) => (on ? nd.m.id : h === nd.m.id ? null : h)),
+                }} />;
             })}
             {[...nodes.values()].map((nd, i) => {
               const { m } = nd;
@@ -1698,7 +1727,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                           </div>
                         </div>
                       )}
-                      {nd.members?.map((c) => c.type === "group" ? (
+                      {nd.members && (
+                      <div className={nd.clip !== undefined ? "relative overflow-hidden" : undefined} style={nd.clip !== undefined ? { maxHeight: nd.clip } : undefined}>
+                      {nd.members.map((c) => c.type === "group" ? (
                         // A group inside this one: its name, its cards, and its own score.
                         <div key={c.id} className="bg-[#f6f6f9] shadow-[inset_3px_0_0_#c9cdee]">
                           <button onClick={() => onEdit(nd.lessonId, c.id)} className="flex w-full items-center gap-2 px-3.5 text-left hover:bg-lane" style={{ height: SEC }} title="Edit this group">
@@ -1710,6 +1741,18 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                           {isQuiz(c, lessonCards) && scoreRows(c, scoreCount(c, lessonCards))}
                         </div>
                       ) : memberRow(c, nd.lessonId))}
+                      {nd.clip !== undefined && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-white/0" />}
+                      </div>
+                      )}
+                      {nd.more && (
+                        // The group's cards cut off to keep it a card's height, or all shown: one row says which, and switches.
+                        <button onClick={(e) => { e.stopPropagation(); setOpened((o) => { const n = new Set(o); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); }}
+                          onPointerDown={(e) => e.stopPropagation()} aria-expanded={nd.clip === undefined}
+                          className="flex w-full items-center justify-center gap-1 text-[11.5px] font-medium text-[#4b56a8] hover:bg-lane" style={{ height: MORE }}>
+                          {nd.clip !== undefined ? `Show all ${leavesOf(m, lessonCards).length} cards` : "Show fewer"}
+                          <Icon name="chevron" size={11} className={nd.clip !== undefined ? "" : "rotate-180"} />
+                        </button>
+                      )}
                       {qs.map((q) => (
                         <div key={q.id}>
                           {typing?.id === m.id && typing.field === `q:${q.id}`
@@ -2161,29 +2204,120 @@ function someOf(m: Module) {
 
 /**
  * A card group's cards, fanned out of the top of its sleeve like a hand of cards: a wider fan for more cards (up to
- * seven shown). They rise out of the sleeve when it's made, and spread a little more on hover.
+ * seven shown). They rise out of the sleeve when it's made, and spread a little more on hover. Each card can be
+ * clicked (it opens in the panel), dragged along the fan to put it somewhere else in the group, or held: the fan's
+ * own cards wiggle and each gets a delete button (holding a card on the map wiggles the map's cards, not these).
  */
-function Fan({ members, x, y, open, faded, adding, bad }: { members: Module[]; x: number; y: number; open: boolean; faded: boolean; adding?: Module; bad?: boolean }) {
+function Fan({ members, x, y, open, faded, adding, bad, act }: {
+  members: Module[]; x: number; y: number; open: boolean; faded: boolean; adding?: Module; bad?: boolean;
+  /** What a teacher can do with the fan's cards (none while zoomed out, read only, or a card is being dragged). */
+  act?: {
+    toCanvas: (cx: number, cy: number) => { x: number; y: number };
+    onOpen: (id: string) => void;
+    onReorder: (ids: string[]) => void;
+    onDelete?: (m: Module) => void;
+    onHot: (on: boolean) => void;
+  };
+}) {
+  // A card being dragged along the fan: which, and the place it would go.
+  const [drag, setDrag] = useState<{ id: string; to: number } | null>(null);
+  // Held: this fan's cards wiggle, each with a delete button, until a press anywhere else.
+  const [jiggle, setJiggle] = useState(false);
+  const fanRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!jiggle) return;
+    const off = (e: PointerEvent) => { if (!(e.target as HTMLElement | null)?.closest("[data-fan-delete]")) setJiggle(false); };
+    window.addEventListener("pointerdown", off, true);
+    const els = [...(fanRef.current?.querySelectorAll<HTMLElement>("[data-fan-face]") ?? [])];
+    const runs = reducedMotion() ? [] : els.map((el, i) => el.animate([{ rotate: "-2deg" }, { rotate: "2deg" }], { duration: 240, iterations: Infinity, direction: "alternate", easing: "ease-in-out", delay: -(i % 4) * 60 }));
+    return () => { window.removeEventListener("pointerdown", off, true); runs.forEach((a) => a.cancel()); };
+  }, [jiggle, members.length]);
+  const order = (() => {
+    const list = members.slice(0, 7);
+    if (!drag) return list;
+    const rest = list.filter((c) => c.id !== drag.id);
+    rest.splice(drag.to, 0, list.find((c) => c.id === drag.id)!);
+    return rest;
+  })();
   // A card held over the sleeve joins the fan at its end; the group's own cards go see-through so it stands out.
-  const shown = adding ? [...members.slice(0, 6), adding] : members.slice(0, 7);
+  const shown = adding ? [...members.slice(0, 6), adding] : order;
   const n = shown.length;
   const spread = Math.min(9 * (n - 1), 42);
+  const angle = (i: number) => (n === 1 ? 0 : -spread / 2 + (i * spread) / (n - 1));
+  /** Press a card: a click opens it, a drag moves it along the fan, holding still shows the delete buttons. */
+  function press(e: React.PointerEvent, id: string) {
+    if (!act || e.button !== 0) return;
+    if ((e.target as HTMLElement).closest("[data-fan-delete]")) return;
+    e.stopPropagation();
+    const list = members.slice(0, 7);
+    const from = list.findIndex((c) => c.id === id);
+    const start = { x: e.clientX, y: e.clientY };
+    let moved = false, held = false, to = from;
+    const hold = act.onDelete ? window.setTimeout(() => { held = true; setJiggle(true); navigator.vibrate?.(10); }, 520) : 0;
+    // The cards turn about a point well below the fan (2.3 card heights under their tops), so the pointer's side
+    // of the fan says which place it's over.
+    const R = 128 * 2.3 * (open ? 1.3 : 1);
+    const move = (ev: PointerEvent) => {
+      if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
+      clearTimeout(hold);
+      moved = true;
+      const p = act.toCanvas(ev.clientX, ev.clientY);
+      const a = (Math.asin(Math.max(-1, Math.min(1, (p.x - (x + W / 2)) / R))) * 180) / Math.PI;
+      let best = 0, gap = Infinity;
+      for (let k = 0; k < list.length; k++) { const g = Math.abs(angle(k) - a); if (g < gap) { gap = g; best = k; } }
+      to = best;
+      setDrag({ id, to });
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      clearTimeout(hold);
+      setDrag(null);
+      if (ev.type !== "pointerup") return;
+      if (moved) {
+        if (to !== from) {
+          const ids = members.map((c) => c.id).filter((x) => x !== id);
+          ids.splice(to, 0, id);
+          act.onReorder(ids);
+        }
+        return;
+      }
+      if (!held) act.onOpen(id);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  }
+  const live = !!act && !adding && !faded;
   return (
-    <span aria-hidden="true" className={`pointer-events-none absolute z-0 transition-opacity ${open ? "fan-open" : ""} ${faded ? "opacity-35" : ""}`} style={{ left: x, top: y - FAN + 4, width: W, height: FAN + 70 }}>
+    <span ref={fanRef} className={`absolute z-0 transition-opacity ${live ? "" : "pointer-events-none"} ${open || drag ? "fan-open" : ""} ${faded ? "opacity-35" : ""}`} style={{ left: x, top: y - FAN + 4, width: W, height: FAN + 70 }}
+      onPointerEnter={() => act?.onHot(true)} onPointerLeave={() => act?.onHot(false)}>
       {shown.map((c, i) => {
-        const a = n === 1 ? 0 : -spread / 2 + (i * spread) / (n - 1);
+        const a = angle(i);
         const suit = suitOfCard(c);
+        const dragged = drag?.id === c.id;
         return (
-          <span key={c.id} className={`fan-card absolute left-1/2 top-0 block overflow-hidden rounded-[10px] border bg-white transition-opacity duration-200 ${adding ? (c === adding ? `${bad ? "!border-bad" : "!border-[#4b56a8] ring-2 ring-[#4b56a8]/25"}` : "opacity-30") : ""} ${c.type === "group" ? "border-[#c9cdee] shadow-[3px_-3px_0_-1px_#fff,3px_-3px_0_0_#d9dcf1,6px_-6px_0_-1px_#fff,6px_-6px_0_0_#e3e5f5,0_6px_14px_-8px_rgba(20,20,18,0.45)]" : "border-line shadow-[0_6px_14px_-8px_rgba(20,20,18,0.45)]"}`}
-            style={{ width: 92, height: 128, marginLeft: -46, "--a": `${a}deg`, "--d": `${i * 55}ms`, zIndex: i } as React.CSSProperties}>
-            <span className="block h-[4px]" style={{ background: c.type === "group" ? "#4b56a8" : suit.tint }} />
-            <span className="block truncate px-2 pt-1 text-[7.5px] font-semibold uppercase tracking-[0.06em]" style={{ color: c.type === "group" ? "#4b56a8" : suit.tint }}>{c.type === "group" ? `Group · ${c.members?.length ?? 0}` : faceMeta(c).name}</span>
-            <span className="block truncate px-2 text-[9.5px] font-semibold leading-tight text-ink">{c.title || "Untitled card"}</span>
-            <span className="mx-2 mt-1 block h-[46px] rounded-[6px]" style={{ background: suit.cover }} />
+          <span key={c.id} role={live ? "button" : undefined} aria-label={live ? `Open ${c.title || "this card"} (drag to move it in the group)` : undefined} aria-hidden={live ? undefined : true}
+            data-fan-card={live ? c.id : undefined} onPointerDown={live ? (e) => press(e, c.id) : undefined}
+            className={`fan-card absolute left-1/2 top-0 block rounded-[10px] border bg-white transition-opacity duration-200 ${live ? "cursor-pointer touch-none" : ""} ${dragged ? "!border-[#4b56a8] ring-2 ring-[#4b56a8]/25" : ""} ${adding ? (c === adding ? `${bad ? "!border-bad" : "!border-[#4b56a8] ring-2 ring-[#4b56a8]/25"}` : "opacity-30") : ""} ${c.type === "group" ? "border-[#c9cdee] shadow-[3px_-3px_0_-1px_#fff,3px_-3px_0_0_#d9dcf1,6px_-6px_0_-1px_#fff,6px_-6px_0_0_#e3e5f5,0_6px_14px_-8px_rgba(20,20,18,0.45)]" : "border-line shadow-[0_6px_14px_-8px_rgba(20,20,18,0.45)]"}`}
+            style={{ width: 92, height: 128, marginLeft: -46, "--a": `${a}deg`, "--d": `${i * 55}ms`, zIndex: dragged ? 20 : i } as React.CSSProperties}>
+            <span data-fan-face className="block overflow-hidden rounded-[9px] bg-white">
+              <span className="block h-[4px]" style={{ background: c.type === "group" ? "#4b56a8" : suit.tint }} />
+              <span className="block truncate px-2 pt-1 text-[7.5px] font-semibold uppercase tracking-[0.06em]" style={{ color: c.type === "group" ? "#4b56a8" : suit.tint }}>{c.type === "group" ? `Group · ${c.members?.length ?? 0}` : faceMeta(c).name}</span>
+              <span className="block truncate px-2 text-[9.5px] font-semibold leading-tight text-ink">{c.title || "Untitled card"}</span>
+              <span className="mx-2 mt-1 block h-[46px] rounded-[6px]" style={{ background: suit.cover }} />
+            </span>
+            {live && jiggle && act.onDelete && (
+              <button type="button" data-fan-delete onClick={(e) => { e.stopPropagation(); act.onDelete!(c); }} onPointerDown={(e) => e.stopPropagation()} aria-label={`Delete ${c.title || "this card"}`}
+                className="pop absolute -left-2 -top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#6f6f6c] text-white shadow-md hover:bg-bad">
+                <span className="block h-[2px] w-2.5 rounded-full bg-white" />
+              </button>
+            )}
           </span>
         );
       })}
-      {!adding && members.length > n && <span className="absolute -top-2 right-6 rounded-full bg-ink px-1.5 text-[10px] font-semibold text-white">+{members.length - n}</span>}
+      {!adding && members.length > n && <span className="pointer-events-none absolute -top-2 right-6 rounded-full bg-ink px-1.5 text-[10px] font-semibold text-white">+{members.length - n}</span>}
     </span>
   );
 }
