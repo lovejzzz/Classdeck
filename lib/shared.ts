@@ -89,7 +89,9 @@ export function groupBase(name: string): string {
 export function groupName(raw: string, i = 0): string {
   let base = groupBase(String(raw ?? "")).slice(0, 40);
   if (!base || /^\d+$/.test(base)) base = GROUP_COLORS[((Number(base) || i + 1) - 1) % GROUP_COLORS.length];
-  return `${base} Group`;
+  // A short name reads as a group with “Group” after it (“Bridges Group”); a longer one, like a whole sign-up answer
+  // (“Yes: start at 10am”), stays as it is.
+  return base.split(/\s+/).length >= 3 || /[:?!.,;]/.test(base) ? base : `${base} Group`;
 }
 /** Every group in a course named that way (old courses had names like "Group 1" or "Review group 2"). */
 export function nameGroups(course: Pick<Course, "groups" | "groupings">) {

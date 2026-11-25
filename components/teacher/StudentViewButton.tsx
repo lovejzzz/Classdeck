@@ -38,26 +38,26 @@ export function StudentViewButton({ courseId, students }: { courseId: string; st
           <div className="px-2 pb-1.5 pt-1 text-[12px] text-ink-3">See and try the course as a student. What you do as a demo student is kept; as anyone else it’s only a test, and nothing is saved.</div>
           {/* Demo students: the two on the class list (their work is real, kept and in Students), or a way to add them. */}
           <div className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.06em] text-ink-3">Demo students</div>
-          {demos.length ? demos.map((s) => (
+          {demos.map((s) => (
             <Link role="menuitem" key={s.id} href={href(s.id)} className="press flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-[13px] hover:bg-lane">
               <Avatar name={s.name} size={24} />
               <span className="min-w-0 flex-1"><span className="block truncate font-medium">{s.name}</span><span className="block text-[11.5px] text-ink-3">Act as them; their work is kept and shows in Students</span></span>
             </Link>
-          )) : (
-            <>
-              <button role="menuitem" onClick={async () => {
-                const r = await op<{ ok?: boolean; error?: string; studentId?: string }>(courseId, { op: "addDemoStudent" });
-                if (r.ok === false || !r.studentId) return toast(String(r.error ?? "Couldn’t add one"), { icon: "x", tone: "bad" });
-                router.push(href(r.studentId));
-              }} className="press flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-[13px] hover:bg-lane">
-                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#fff2c7] text-[#7a5a00]"><Icon name="users" size={12} /></span>
-                <span className="min-w-0 flex-1"><span className="block font-medium">Add a demo student</span><span className="block text-[11.5px] text-ink-3">On your class list to act as; their work is kept. Add more and name them under Students</span></span>
-              </button>
-              <Link role="menuitem" href={href(DEMO_STUDENT_ID)} className="press flex items-center gap-2.5 rounded-xl px-2 py-2 text-[13px] hover:bg-lane">
-                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#eef0fb] text-[#4b56a8]"><Icon name="eye" size={12} /></span>
-                <span className="min-w-0 flex-1"><span className="block font-medium">Quick demo student</span><span className="block text-[11.5px] text-ink-3">Not on the class list. Their progress is kept, so you can pick up where you left off</span></span>
-              </Link>
-            </>
+          ))}
+          {/* Another demo student any time (the next letter; rename them under Students). */}
+          <button role="menuitem" onClick={async () => {
+            const r = await op<{ ok?: boolean; error?: string; studentId?: string }>(courseId, { op: "addDemoStudent" });
+            if (r.ok === false || !r.studentId) return toast(String(r.error ?? "Couldn’t add one"), { icon: "x", tone: "bad" });
+            router.push(href(r.studentId));
+          }} className="press flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-[13px] hover:bg-lane">
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#fff2c7] text-[#7a5a00]"><Icon name="plus" size={12} /></span>
+            <span className="min-w-0 flex-1"><span className="block font-medium">{demos.length ? "Add another demo student" : "Add a demo student"}</span><span className="block text-[11.5px] text-ink-3">On your class list to act as; their work is kept. Name them under Students</span></span>
+          </button>
+          {!demos.length && (
+            <Link role="menuitem" href={href(DEMO_STUDENT_ID)} className="press flex items-center gap-2.5 rounded-xl px-2 py-2 text-[13px] hover:bg-lane">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#eef0fb] text-[#4b56a8]"><Icon name="eye" size={12} /></span>
+              <span className="min-w-0 flex-1"><span className="block font-medium">Quick demo student</span><span className="block text-[11.5px] text-ink-3">Not on the class list. Their progress is kept, so you can pick up where you left off</span></span>
+            </Link>
           )}
           <Link role="menuitem" href={href(TEST_STUDENT_ID)} className="press flex items-center gap-2.5 rounded-xl px-2 py-2 text-[13px] hover:bg-lane">
             <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-3"><Icon name="plus" size={12} /></span>

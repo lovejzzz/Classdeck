@@ -25,7 +25,7 @@ export const entryOf = (courseId: string, key: string): CollabEntry | undefined 
 
 // —— Open documents, in memory: the Yjs doc, who's listening, and each writer's latest cursor ——
 type Send = (event: string, data: unknown) => void;
-type Live = { doc: Y.Doc; listeners: Map<number, Send>; cursors: Map<number, { update: string; at: number }>; seeding?: number };
+type Live = { doc: Y.Doc; listeners: Map<number, Send>; cursors: Map<number, { update: string; at: number }>; seeding?: number; clientOf?: Map<number, number> };
 const g = globalThis as unknown as { __collab?: Map<string, Live> };
 const live = (g.__collab ??= new Map());
 const b64 = (u: Uint8Array) => Buffer.from(u).toString("base64");
@@ -57,7 +57,16 @@ export function listen(courseId: string, key: string, listener: number, send: Se
   for (const [c, v] of l.cursors) if (now - v.at > 60_000) l.cursors.delete(c);
   send("init", { state: b64(Y.encodeStateAsUpdate(l.doc)), cursors: [...l.cursors.values()].map((v) => v.update), seed });
   l.listeners.set(listener, send);
-  return () => { l.listeners.delete(listener); };
+  return () => {
+    l.listeners.delete(listener);
+    // Their page closed: their cursor and name go from everyone else's view at once (not a minute later).
+    const client = l.clientOf?.get(listener);
+    l.clientOf?.delete(listener);
+    if (client !== undefined && ![...(l.clientOf?.values() ?? [])].includes(client)) {
+      l.cursors.delete(client);
+      for (const [, s] of l.listeners) s("gone", client);
+    }
+  };
 }
 
 /** A writer's edit: apply it, keep it, and pass it on to everyone else. */
@@ -76,6 +85,7 @@ export function applyEdit(courseId: string, key: string, from: number, update: s
 export function moveCursor(courseId: string, key: string, from: number, client: number, update: string) {
   const l = open(courseId, key);
   l.cursors.set(client, { update, at: Date.now() });
+  (l.clientOf ??= new Map()).set(from, client);
   for (const [id, send] of l.listeners) if (id !== from) send("cursor", update);
 }
 

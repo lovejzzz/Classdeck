@@ -157,7 +157,7 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
           </span>
           <label className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
             Each student takes at least
-            <input type="number" min={0} max={10} defaultValue={course.electiveMin ?? 2} aria-label="Minimum electives" disabled={readOnly}
+            <input type="number" min={0} max={10} defaultValue={course.electiveMin ?? 1} aria-label="Minimum electives" disabled={readOnly}
               onBlur={async (e) => { await op(course.id, { op: "setElectiveMin", min: Number(e.target.value) }); onChanged(); }}
               className="field h-8 w-14 py-0 text-center" />
             electives

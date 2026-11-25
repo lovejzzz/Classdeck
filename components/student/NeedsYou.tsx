@@ -51,7 +51,7 @@ export function NeedsYou({ state, studentId, onOpen, onElectives, heading, skip 
   if (behind.length) groups.push({ kind: "behind", label: `${behind.length} to catch up`, items: behind });
   const electives = order.filter((l) => l.elective);
   // No more than the course has: one elective and a minimum of 2 still means choose that one.
-  const need = Math.min(state.course.electiveMin ?? 2, electives.length) - electives.filter((l) => l.chosen).length;
+  const need = Math.min(state.course.electiveMin ?? 1, electives.length) - electives.filter((l) => l.chosen).length;
   if (need > 0) groups.push({ kind: "electives", label: `Choose ${need} elective${need === 1 ? "" : "s"}`, items: [] });
 
   // A reminder from the teacher while this tab is in the background: a system notification.

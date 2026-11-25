@@ -26,10 +26,11 @@ export const SIGNED_OUT = "qh:signed-out";
  * Network trouble, an ended session, or a server error also show a toast, since many callers don't check;
  * ordinary refusals (400) are left to the caller to explain.
  */
-export async function op<T = Record<string, unknown>>(courseId: string, body: Record<string, unknown>): Promise<T> {
+export async function op<T = Record<string, unknown>>(courseId: string, body: Record<string, unknown>, opts: { keepalive?: boolean } = {}): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`/api/course/${courseId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(previewing() ? { ...body, preview: true, as: previewing() } : body) });
+    // keepalive: the request carries on if the page is closed or reloaded meanwhile (bodies up to 64 KB).
+    res = await fetch(`/api/course/${courseId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(previewing() ? { ...body, preview: true, as: previewing() } : body), keepalive: opts.keepalive });
   } catch {
     toast("Can’t reach the server. Your last change wasn’t saved; check your connection and try again.", { icon: "x", tone: "bad" });
     return { ok: false, error: "Can’t reach the server" } as T;

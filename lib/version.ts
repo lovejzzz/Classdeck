@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.6",
+    date: "2026-11-25",
+    changes: [
+      "Fixes from building three whole courses by hand and taking them as students. An edit made a moment before closing or reloading the page is now saved (it was lost); leaving with a very big unsaved lesson asks first.",
+      "Electives start at “choose at least 1” (they started at 2, so with two electives students had to take both).",
+      "In a group doc, a classmate who has left no longer shows as “here” with their cursor.",
+      "On the map: answers that deal the same card share one label (“B · Sand / C · Seawater”) instead of one hiding the other; a card a group’s score deals says “dealt by a score”; there’s room below the last lesson so + Lesson isn’t under the map’s tools.",
+      "Student View always offers to add another demo student. A class session starts as Warm-up, Main activity, Wrap-up (not a speaking class’s round of presentations), and its panel names the lesson. Long group names from a sign-up (“Yes: start at 10am”) no longer get “Group” added. The card editor’s tip about dealing cards by answer shows only on Choice cards, and an order question no longer says “Put these in order” twice.",
+    ],
+  },
+  {
     version: "0.2.5",
     date: "2026-11-25",
     changes: [

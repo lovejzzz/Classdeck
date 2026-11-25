@@ -1537,8 +1537,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
         {/* Room under the last row for the floating toolbar, so it never sits on the Lesson / week buttons. */}
         {/* While the card panel is open there's a panel's width of room past the last card, so even a card at the far
             right can scroll clear of the panel (the map narrows as the panel slides in, which would stop it short). */}
-        <div data-canvas="1" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0) * zoom + (gap > 0 ? PANEL : 0), height: (height + 64) * zoom }} className="relative">
-          <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0), height: height + 64, transform: `scale(${zoom})` }}>
+        <div data-canvas="1" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0) * zoom + (gap > 0 ? PANEL : 0), height: (height + 120) * zoom }} className="relative">
+          <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0), height: height + 120, transform: `scale(${zoom})` }}>
             {/* Lessons: a quiet band each, with its name and a way to add a card. */}
             {regions.map((r) => {
               const today = r.lesson.id === todayId;
@@ -1607,13 +1607,20 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
               {menu && "port" in menu && menu.mode === "new" && <path d={curve(portPos(menu.port), menu)} fill="none" stroke={INK} strokeWidth={2.2} strokeDasharray="6 6" markerEnd="url(#map-arrow)" className="tree-dash" />}
             </svg>
 
-            {level !== "far" && !drag && drawn.filter((w) => hot === w.from || hot === w.to || selected === w.from || selected === w.to).map((w) => {
-              const { mid } = route(w);
-              return (
-                <span key={`why-${w.from}-${w.q}-${w.option}-${w.to}`} className="pop pointer-events-none absolute z-20 max-w-[180px] -translate-x-1/2 -translate-y-1/2 truncate rounded-full border bg-white px-2.5 py-[3px] text-[11px] font-medium shadow-[0_6px_16px_-8px_rgba(20,20,18,0.45)]"
-                  style={{ left: mid.x, top: mid.y, color: colorOf(w), borderColor: `${colorOf(w)}55` }}>{whyOf(w)}</span>
-              );
-            })}
+            {level !== "far" && !drag && (() => {
+              // Answers that lead to the same card share a wire's last stretch: one label says them all ("B · Sand / C · Seawater").
+              const shown = new Map<string, { w: Wire; mid: { x: number; y: number }; texts: string[] }>();
+              for (const w of drawn.filter((x) => hot === x.from || hot === x.to || selected === x.from || selected === x.to)) {
+                const { mid } = route(w);
+                const key = `${nodeOf(w.from)}|${w.to}`;
+                const had = shown.get(key);
+                if (had) had.texts.push(whyOf(w)); else shown.set(key, { w, mid, texts: [whyOf(w)] });
+              }
+              return [...shown.values()].map(({ w, mid, texts }) => (
+                <span key={`why-${w.from}-${w.q}-${w.option}-${w.to}`} title={texts.join(" / ")} className="pop pointer-events-none absolute z-20 max-w-[260px] -translate-x-1/2 -translate-y-1/2 truncate rounded-full border bg-white px-2.5 py-[3px] text-[11px] font-medium shadow-[0_6px_16px_-10px_rgba(20,20,18,0.4)]"
+                  style={{ left: mid.x, top: mid.y, color: colorOf(w), borderColor: `${colorOf(w)}55` }}>{texts.join(" / ")}</span>
+              ));
+            })()}
 
             {/* Card groups' fans, drawn before the cards so each group's sleeve covers the bottom of its cards. */}
             {level !== "far" && [...nodes.values()].filter((nd) => nd.m.type === "group").map((nd) => {
@@ -1698,7 +1705,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
                           <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[6px]" style={{ background: `${suit.tint}16` }}><Icon name={faceMeta(m).icon} size={11} /></span><span className="flex-none whitespace-nowrap">{m.type === "group" ? (() => { const gs = (nd.members ?? []).filter((c) => c.type === "group").length, n = leavesOf(m, lessonCards).length; return gs ? `${gs} group${gs === 1 ? "" : "s"} · ${n} cards` : `${n} cards`; })() : faceMeta(m).name}</span>
                           <span className={`truncate normal-case tracking-normal text-ink-3 ${m.type === "group" ? "pr-14" : ""}`}>
-                            · {unfinished(m) ? <span className="text-[#a0561f]">{blankContent(m) ? "hidden until it has something in it" : "hidden until it has a question"}</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : m.audience.kind === "student" ? someOf(m) : "everyone"}
+                            · {unfinished(m) ? <span className="text-[#a0561f]">{blankContent(m) ? "hidden until it has something in it" : "hidden until it has a question"}</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? (inbound.some((w) => w.q !== SCORE) ? "dealt by an answer" : "dealt by a score") : m.audience.kind === "student" ? someOf(m) : "everyone"}
                           </span>
                         </span>
                         {typing?.id === m.id && typing.field === "title"

@@ -47,6 +47,8 @@ class Provider {
     });
     this.es.addEventListener("update", (e) => Y.applyUpdate(doc, unb64(JSON.parse((e as MessageEvent).data)), this));
     this.es.addEventListener("cursor", (e) => applyAwarenessUpdate(this.awareness, unb64(JSON.parse((e as MessageEvent).data)), "remote"));
+    // A writer whose page closed: take their cursor and name away.
+    this.es.addEventListener("gone", (e) => removeAwarenessStates(this.awareness, [Number(JSON.parse((e as MessageEvent).data))], "remote"));
   }
   post(body: object) {
     return fetch(`/api/collab/${encodeURIComponent(this.courseId)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ doc: this.key, listener: this.listener, ...body }), keepalive: true })

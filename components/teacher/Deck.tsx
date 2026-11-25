@@ -76,6 +76,29 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
   }
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const latest = useRef<Record<string, Lesson>>({});
+  // Edits wait a moment before they're saved. Leaving the page (closing the tab, reloading, typing another address)
+  // sends whatever is still waiting at once, in a request that outlives the page; if that can't be done (a very big
+  // lesson) or a save is still on its way, the browser asks before leaving.
+  useEffect(() => {
+    const flush = () => {
+      for (const [id, t] of timers.current) {
+        // keepalive requests are limited to 64 KB: a bigger lesson stays waiting, and leaving asks first.
+        if (JSON.stringify(latest.current[id]).length > 60_000) continue;
+        clearTimeout(t);
+        void sendNow(id, true);
+      }
+    };
+    const hidden = () => { if (document.visibilityState === "hidden") flush(); };
+    const leaving = (e: BeforeUnloadEvent) => {
+      flush();
+      if (timers.current.size) { e.preventDefault(); e.returnValue = ""; }
+    };
+    document.addEventListener("visibilitychange", hidden);
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", leaving);
+    return () => { document.removeEventListener("visibilitychange", hidden); window.removeEventListener("pagehide", flush); window.removeEventListener("beforeunload", leaving); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course.id]);
   const openRef = useRef(false);
   const pushedRef = useRef(false);
   const [agendaFor, setAgendaFor] = useState<string | null>(null);
@@ -175,10 +198,10 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       return n;
     });
   }
-  async function sendNow(id: string) {
+  async function sendNow(id: string, keepalive = false) {
     timers.current.delete(id);
     const sent = latest.current[id];
-    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent });
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "saveLesson", lesson: sent }, { keepalive });
     setSaving((n) => n - 1);
     if (r.ok === false) {
       // Keep the edit on screen, say so, and try again by itself.
@@ -507,7 +530,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
       ...(l.session ? [[`Run the class session (${l.session.minutes} min)`, () => setRunning({ lessonId: l.id, weekTitle: w.title })] as [string, () => void]] : []),
       ["Schedule lessons from here…", () => setScheduleFrom(l.id)],
       [l.session ? "Edit the session agenda" : "Add a class session", () => {
-        if (!l.session) change({ ...l, session: { agenda: [{ label: "Warm-up", minutes: 10 }, { label: "Round-robin presentations and feedback", minutes: 30, roundRobin: true }, { label: "Reflection", minutes: 10 }], minutes: 50 } });
+        if (!l.session) change({ ...l, session: { agenda: [{ label: "Warm-up", minutes: 10 }, { label: "Main activity", minutes: 30 }, { label: "Wrap-up", minutes: 10 }], minutes: 50 } });
         setAgendaFor(l.id);
       }],
       ...(lessonWires.length ? [[l.openPaths ? "Hide paths from students (card backs)" : "Show students every path", () => {
@@ -762,7 +785,7 @@ function AgendaEditor({ lesson, onChange, onClose }: { lesson: Lesson; onChange:
   return (
     <div className="pop mt-2 w-[30rem] max-w-[90vw] rounded-xl border border-line bg-white p-3 shadow-[0_16px_40px_-20px_rgba(20,20,18,0.35)]">
       <div className="mb-2 flex items-center text-[12.5px]">
-        <span className="flex-1 font-medium">Class session agenda</span>
+        <span className="min-w-0 flex-1 truncate font-medium">Class session · {lesson.title}</span>
         <span className="mono mr-2">{agenda.reduce((n, a) => n + (a.minutes || 0), 0)} min</span>
         <button onClick={onClose} aria-label="Close agenda" className="btn btn-quiet press h-6 w-6 justify-center px-0"><Icon name="x" size={12} /></button>
       </div>
@@ -785,7 +808,7 @@ function AgendaEditor({ lesson, onChange, onClose }: { lesson: Lesson; onChange:
           Rotate roles
         </label>
         <span className="flex-1" />
-        <button onClick={() => { save(null); onClose(); }} className="btn btn-quiet press h-7 px-2.5 text-[12px] hover:!text-bad">Remove group session</button>
+        <button onClick={() => { save(null); onClose(); }} className="btn btn-quiet press h-7 px-2.5 text-[12px] hover:!text-bad">Remove class session</button>
       </div>
     </div>
   );

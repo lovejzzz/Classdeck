@@ -2,6 +2,7 @@
 
 import { bandLabel, wiresOf, type Wire } from "@/lib/branching";
 import { suitOfCard } from "@/lib/ui";
+import { kindOf } from "@/lib/kinds";
 import type { Lesson, Module } from "@/lib/types";
 import { Icon } from "../Icon";
 
@@ -47,7 +48,7 @@ export function NeighborGraph({ card, lessons, onGo, onMap }: {
     return (
       <div className="flex items-center gap-2 rounded-2xl border border-dashed border-line px-3 py-2.5 text-[12px] text-ink-3">
         <Icon name="split" size={13} />
-        <span className="flex-1">{who}. A Question card with choices can deal different cards by answer: drag an answer to a card on the map.</span>
+        <span className="flex-1">{who}.{kindOf(card) === "choice" && !card.poll ? " Its answers can deal different cards: drag an answer to a card on the map." : ""}</span>
         {onMap && <button onClick={onMap} className="press flex-none rounded-lg px-2 py-1 font-medium text-[#4b56a8] hover:bg-[#eef0fb]">Open in map</button>}
       </div>
     );

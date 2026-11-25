@@ -657,7 +657,6 @@ function Questions(p: DetailProps) {
               {set.length > 1 && <span className="mono mr-2">{String(qi + 1).padStart(2, "0")}</span>}
               <MathText text={q.text.trim() || (set.length > 1 ? m.title : "")} />
               {q.kind === "multi" && <span className="ml-2 text-[12px] font-normal text-ink-3">Choose all that apply</span>}
-              {q.kind === "order" && <span className="ml-2 text-[12px] font-normal text-ink-3">Put these in order</span>}
             </legend>
 
             {q.kind === "short" ? (() => {
