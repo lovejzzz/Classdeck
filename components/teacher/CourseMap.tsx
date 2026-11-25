@@ -101,7 +101,8 @@ function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = 
   if (isQuiz(m, m.type === "group" ? cards : undefined)) scoreRows(m, (i) => `${SCORE}:${i}`);
   // Only a Multiple choice or Poll card without its question yet gets a line inviting one; other kinds don't branch.
   if (wantsQuestion(m)) y += 34;
-  return { h: Math.max(CARD_H, y + PAD), ports };
+  // A card group's fan sits above its sleeve: together they're as tall as a card (the sleeve grows only for more rows).
+  return { h: Math.max(m.type === "group" ? CARD_H - FAN : CARD_H, y + PAD), ports };
 }
 
 interface Node { m: Module; lessonId: string; li: number; x: number; y: number; h: number; ports: Map<string, number>; parent?: string; members?: Module[] }

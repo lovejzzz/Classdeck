@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.97",
+    date: "2026-11-24",
+    changes: [
+      "A card group on the map is now as tall as the cards beside it: its fanned cards and its sleeve together take one card’s height, instead of the sleeve alone being a card tall with empty space at the bottom. A group with many cards still grows to fit them.",
+    ],
+  },
+  {
     version: "0.1.96",
     date: "2026-11-24",
     changes: [
