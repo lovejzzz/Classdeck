@@ -183,6 +183,13 @@ const course = () => [
   const dealt = dealtTo(dealtL[0].modules, prog({ src: { q: 0 } }));
   check("dealing the outer group deals it", dealt.has("U"));
 
+  // An inner group left with one card hands it to the outer group, in its place (the outer stays whole).
+  const thin = nested();
+  cleanGroups([{ lessons: thin }]);
+  thin[0].modules = thin[0].modules.filter((m) => m.id !== "b");
+  cleanGroups([{ lessons: thin }]);
+  check("an inner group of one card dissolves into the outer group", thin[0].modules.find((m) => m.id === "U")?.members?.join() === "a,G2,x" && !thin[0].modules.some((m) => m.id === "G1"));
+
   // Deleting an outer group takes its groups and all their cards.
   const del = nested();
   cleanGroups([{ lessons: del }]);

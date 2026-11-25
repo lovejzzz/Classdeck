@@ -19,7 +19,7 @@ import { CardEditor } from "./CardEditor";
 import { CourseMap } from "./CourseMap";
 import { newCard, type CardKind } from "@/lib/kinds";
 import { NeighborGraph } from "./NeighborGraph";
-import { branchBelow, deleteCardIn, parentOf, SCORE, slotOf, targetsOf, topOf, wiresOf } from "@/lib/branching";
+import { branchBelow, deleteCardIn, leavesOf, parentOf, SCORE, slotOf, targetsOf, topOf, wiresOf } from "@/lib/branching";
 import { SessionRunner } from "./SessionRunner";
 import { loadLibrary } from "./NewCardFan";
 
@@ -637,7 +637,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             }}
             onDelete={readOnly ? undefined : async (m) => {
               if (m.type === "group") {
-                if (!(await ask({ title: `Delete “${m.title}” and its ${m.members?.length ?? 0} cards?`, body: "To keep the cards, open the group and use Ungroup instead. You can undo this.", confirm: "Delete all", danger: true }))) return;
+                if (!(await ask({ title: `Delete “${m.title}” and its ${leavesOf(m, allLessons().flatMap((l) => l.modules)).length} cards?`, body: "To keep the cards, open the group and use Ungroup instead. You can undo this.", confirm: "Delete all", danger: true }))) return;
                 deletedToast(m.title, deleteCard(m.id));
               } else removeCard(allLessons().find((l) => l.modules.some((x) => x.id === m.id))!, m);
             }}
@@ -714,7 +714,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           }}
           onDelete={async () => {
             const removed = curModule;
-            if (removed.type === "group" && !(await ask({ title: `Delete “${removed.title}” and its ${removed.members?.length ?? 0} cards?`, body: "To keep the cards, use Ungroup instead. You can undo this.", confirm: "Delete all", danger: true }))) return;
+            if (removed.type === "group" && !(await ask({ title: `Delete “${removed.title}” and its ${leavesOf(removed, allLessons().flatMap((l) => l.modules)).length} cards?`, body: "To keep the cards, use Ungroup instead. You can undo this.", confirm: "Delete all", danger: true }))) return;
             const before = deleteCard(removed.id);
             closeEditor();
             deletedToast(removed.title, before);

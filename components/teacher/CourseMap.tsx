@@ -949,6 +949,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     const mods = l.modules;
     // A group dropped on a group of cards: the two go together in a new group around them (a group of groups).
     const outer = anchor.type === "group" && card.type === "group" && !holdsGroups(anchor, mods);
+    // The held group goes inside the new one, so it must be able to (not dealt by an answer, say).
+    const whyAnchor = outer ? whyNotInGroup(anchor) : null;
+    if (whyAnchor) { toast(whyAnchor, { icon: "layers", tone: "plain" }); return; }
     if (anchor.type === "group" && !outer) {
       // Into the group, at its end.
       onChange(tidy({ ...l, modules: mods.map((m) => (m.id === anchor.id ? { ...m, members: [...(m.members ?? []), id] } : m)) }));

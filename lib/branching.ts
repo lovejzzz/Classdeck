@@ -405,7 +405,8 @@ export function cleanGroups(weeks: { lessons: Lesson[] }[]): void {
             const m = byId.get(id);
             if (!m || m.id === g.id || taken.has(id)) return false;
             // A group inside holds only cards: one that holds groups can't go in (nor can a group into one inside another).
-            if (m.type === "group") return inner(m) && (m.members?.length ?? 0) >= 2;
+            // (One with too few cards stays for now: dissolving it below hands its cards to this group.)
+            if (m.type === "group") return inner(m);
             return true;
           });
           g.members.forEach((id) => taken.add(id));
@@ -415,8 +416,14 @@ export function cleanGroups(weeks: { lessons: Lesson[] }[]): void {
         for (const g of groups) if (parent.has(g.id)) g.members = (g.members ?? []).filter((id) => byId.get(id)?.type !== "group");
         const tooSmall = groups.filter((g) => (g.members?.length ?? 0) < 2);
         if (!tooSmall.length) break;
-        // Dissolve those; any group holding one lets go of it.
-        for (const g of tooSmall) { groups.splice(groups.indexOf(g), 1); byId.delete(g.id); }
+        // Dissolve those. One inside another hands what it has left to that group, in its place (like Ungroup).
+        const parentNow = parentOf(groups);
+        for (const g of tooSmall) {
+          const up = groups.find((x) => x.id === parentNow.get(g.id));
+          if (up) up.members = (up.members ?? []).flatMap((id) => (id === g.id ? g.members ?? [] : [id]));
+          groups.splice(groups.indexOf(g), 1);
+          byId.delete(g.id);
+        }
       }
       for (const g of groups) if (g.bands?.length) g.bands = snapBands(g.bands, scoreCount(g, l.modules));
       const kept = new Set(groups.map((g) => g.id));
