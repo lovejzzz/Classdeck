@@ -558,6 +558,12 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
 
   const cur = editing && lessonOf(editing.lessonId);
   const curModule = cur?.modules.find((m) => m.id === editing?.moduleId);
+  // The card being edited is gone (a card group came apart when its second-to-last card was deleted): close the panel.
+  const gone = editorOpen && !!editing && !curModule;
+  useEffect(() => {
+    if (gone) queueMicrotask(() => closeEditor());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gone]);
 
   // Undo, redo and the history of changes: one set for the whole course, shown above the map and in the card editor.
   const undoBar = (where: "bar" | "editor") => (
@@ -684,6 +690,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
           onPrev={at > 0 ? () => step(-1) : undefined}
           onNext={at >= 0 && at < order.length - 1 ? () => step(1) : undefined}
           onSaveToLibrary={() => saveToLibrary(curModule)}
+          onDeleteCard={readOnly ? undefined : (id) => { const l = allLessons().find((x) => x.modules.some((y) => y.id === id)); const c = l?.modules.find((y) => y.id === id); if (l && c) void removeCard(l, c); }}
           onTree={readOnly ? undefined : () => { showOnMap(curModule.id); if (view !== "map") closeEditor(); }}
           onOpen={readOnly ? undefined : (id) => setEditing({ lessonId: cur.id, moduleId: id })}
           onGo={(id) => {

@@ -6,7 +6,6 @@ import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFA
 import { bandTone, pathColor, suitOfCard } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
-import { KindCard } from "../cards/KindCard";
 import { MathText, plainMath } from "../MathText";
 import { plainText } from "@/lib/markdown";
 import { isAsked } from "@/lib/grading";
@@ -22,6 +21,7 @@ import { toast } from "@/lib/toast";
 import { reducedMotion } from "@/lib/spring";
 import { ask } from "../Confirm";
 import { loadLibrary, useLibrary } from "./NewCardFan";
+import { KindPick, copyOfSaved } from "./KindPick";
 import type { SavedCard } from "@/lib/store";
 
 // Fixed sizes, so ports and wires are placed from numbers, not by measuring the page.
@@ -40,7 +40,6 @@ const VGAP = 84; // gap between a card and the cards it deals below it
 const REGION_GAP = 56; // gap between lessons
 const TOP = 92; // room for each lesson's header
 // The two kinds of card you put down: Content, or a Question (it starts with choices; its form is set in the editor).
-const NEW_KINDS: CardKind[] = FAMILIES.map((f) => f.start);
 const familyName = (k: CardKind) => FAMILIES.find((f) => f.start === k)!.name;
 const INK = "#4b56a8";
 const DAY = 86400000;
@@ -294,7 +293,7 @@ function scrollIntoMap(el: HTMLElement | null) {
 }
 
 // `saved`: the menu is showing the teacher's saved cards instead of Content / Question.
-type Menu = { port: Port; x: number; y: number; mode: "port" | "new"; saved?: boolean } | { add: string; x: number; y: number; saved?: boolean };
+type Menu = { port: Port; x: number; y: number; mode: "port" | "new" } | { add: string; x: number; y: number };
 
 /**
  * The course map: every lesson's cards on one canvas, with the wires that deal follow-ups (by answer or score, within a
@@ -389,7 +388,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
   const shownLessons = useMemo(() => (hidden.size ? lessons.map((l) => ({ ...l, modules: l.modules.filter((m) => !hidden.has(m.id) && !hidden.has(topOf(m.id, groupOf))) })) : lessons), [lessons, hidden]);
   // A card being dragged: where the pointer is, the lesson under it and the card it would go before (null: the end),
   // or the trash bin.
-  const [moving, setMoving] = useState<{ id: string; x: number; y: number; to?: string; before?: string | null; trash?: boolean; join?: boolean } | null>(null);
+  const [moving, setMoving] = useState<{ id: string; x: number; y: number; to?: string; before?: string | null; trash?: boolean; join?: boolean; into?: string } | null>(null);
   // Grouping by hand: the card (or card group) with an empty place beside it, where other cards are dragged in.
   const [gather, setGather] = useState<string | null>(null);
   // The lesson → week names, kept the same object while they don't change (the caller builds a new one each time).
@@ -774,7 +773,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
 
   /** A fresh copy of one of the teacher's saved cards, ready to put down. */
   // A copy remembers the saved card it came from, so changing it can offer to update that one too.
-  const copyOf = (sc: SavedCard): Module => ({ ...structuredClone(sc.module), id: makeCard(kindOf(sc.module as Module), "").id, audience: { kind: "all" }, collected: sc.id } as Module);
+  const copyOf = copyOfSaved;
   /** Fresh copies of a saved set (a lesson, or a card group and its cards), wired to each other as they were saved. */
   const copiesOf = (sc: SavedCard): Module[] => {
     if (!sc.set) return [copyOf(sc)];
@@ -834,66 +833,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     toast(`Removed “${sc.name}” from Saved cards`);
   }
 
-  /**
-   * What a new card can be: Content, Question, or one of the teacher's Saved cards (from Save to my cards, in any of
-   * their courses). Saved cards open a list in the same menu, with a way back.
-   */
+  /** What a new card can be (Content, Question, or a Saved card). An answer deals one card, so its menu offers saved single cards only. */
   function kindPicker(onKind: (t: CardKind) => void, onSaved: (sc: SavedCard) => void, singles = false) {
-    // An answer deals one card, so its menu offers saved single cards only (not whole lessons or groups).
-    const saved = singles ? savedAll.filter((x) => !x.set) : savedAll;
-    if (menu?.saved) return (
-      <div>
-        <button onClick={() => setMenu({ ...menu, saved: false })} className="press flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[12.5px] font-medium text-ink hover:bg-lane">
-          <Icon name="chevron" size={12} className="rotate-90" /> Saved cards
-        </button>
-        {saved.length ? (
-          <div className="max-h-56 overflow-y-auto">
-            {saved.map((sc) => (
-              <div key={sc.id} className="group/saved flex items-center rounded-lg hover:bg-lane">
-                <button onClick={() => onSaved(sc)} className="press flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-[12.5px]">
-                  <span className="h-3 w-2 flex-none rounded-[3px]" style={{ background: suitOfCard(sc.module as Module).tint }} />
-                  <span className="min-w-0 flex-1 truncate">{sc.name}</span>
-                  <span className="flex-none text-[11px] text-ink-3">{sc.set ? `${sc.set.kind === "group" ? "Card group" : "Lesson"} · ${sc.set.modules.filter((m) => m.type !== "group").length} cards` : faceMeta(sc.module as Module).name}</span>
-                </button>
-                <button onClick={() => forgetSaved(sc)} aria-label={`Remove “${sc.name}” from Saved cards`} title="Remove from Saved cards" className="press mr-1 flex h-6 w-6 flex-none items-center justify-center rounded-md text-ink-3 opacity-0 hover:bg-white hover:text-bad focus:opacity-100 group-hover/saved:opacity-100"><Icon name="x" size={11} /></button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="px-2 pb-1.5 pt-0.5 text-[12px] leading-snug text-ink-3">No saved cards yet. Open a card and press Collect at the top of its panel; it shows up here in all your courses.</p>
-        )}
-      </div>
-    );
-    // The two kinds as two small cards, like the ones they put down; the teacher's saved cards as a stack under them.
-    return (
-      <div>
-        <div className="flex justify-center gap-2.5">
-          {NEW_KINDS.map((t) => (
-            <button key={t} onClick={() => onKind(t)} aria-label={`New ${familyName(t)} card`} className="press rounded-[12px] transition-transform hover:-translate-y-1 focus-visible:-translate-y-1">
-              <KindCard kind={t} />
-            </button>
-          ))}
-        </div>
-        <button onClick={() => menu && setMenu({ ...menu, saved: true })} className="press mt-2.5 flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-lane">
-          <span className="relative h-[44px] w-[44px] flex-none" aria-hidden="true">
-            {(saved.length ? saved.slice(0, 3) : [null, null, null]).map((sc, i, list) => {
-              const suit = sc ? suitOfCard(sc.module as Module) : null;
-              return (
-                <span key={i} className={`absolute top-0 h-[42px] w-[30px] rounded-[6px] border bg-white shadow-sm ${suit ? "" : "border-dashed border-line-strong"}`}
-                  style={{ left: 4 + i * 5, transform: `rotate(${(i - (list.length - 1) / 2) * 7}deg)`, borderColor: suit ? `${suit.tint}55` : undefined }}>
-                  {suit && <span className="mx-[3px] mt-[5px] block h-[16px] rounded-[3px]" style={{ background: suit.cover }} />}
-                </span>
-              );
-            })}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[12.5px] font-medium text-ink">Saved cards</span>
-            <span className="block truncate text-[11px] text-ink-3">{saved.length ? `${saved.length} card${saved.length === 1 ? "" : "s"} you saved, from any course` : "Cards you save show up here"}</span>
-          </span>
-          <Icon name="chevron" size={13} className="-rotate-90 flex-none text-ink-3" />
-        </button>
-      </div>
-    );
+    return <KindPick saved={singles ? savedAll.filter((x) => !x.set) : savedAll} onKind={onKind} onSaved={onSaved} onForget={forgetSaved} />;
   }
 
   /** Why the picked cards can't become a card group, or null if they can. */
@@ -915,6 +857,22 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     // Everyone answers every card in a group, or its score never comes.
     if (m.audience.kind === "student") return `“${m.title}” is only for some students, so it can’t join a card group everyone answers.`;
     return null;
+  }
+  /** Why a card can't be dropped into this card group on the map, or null if it can. */
+  function whyInto(id: string, gid: string): string | null {
+    if (lessonWith(id)?.id !== lessonWith(gid)?.id) return "Only cards from the same lesson can go in.";
+    return whyNotInGroup(all.find((x) => x.m.id === id)!.m);
+  }
+  /** A card dropped on a card group's sleeve: it goes in, at the end. */
+  function dropInto(id: string, gid: string) {
+    const why = whyInto(id, gid);
+    if (why) { toast(why, { icon: "layers", tone: "plain" }); return; }
+    const l = lessonWith(gid)!;
+    const g = l.modules.find((m) => m.id === gid)!;
+    const card = l.modules.find((m) => m.id === id)!;
+    onChange(tidy({ ...l, modules: l.modules.map((m) => (m.id === gid ? { ...m, members: [...(m.members ?? []), id] } : m)) }));
+    setFresh(gid);
+    toast(`Added “${card.title || "the card"}” to ${g.title || "the group"}`, { icon: "layers" });
   }
   /** Why a card can't be dragged into the group being made (or added to), or null if it can. */
   function whyNoJoin(id: string): string | null {
@@ -1171,8 +1129,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     toast(`Moved “${m.title}” to ${lessons.find((l) => l.id === to)?.title}`, { icon: "layers" });
   }
   /** Where a dragged card would land: the trash bin, or a lesson and the card in its row it would go before. */
-  function dropAt(id: string, p: { x: number; y: number }, ev: PointerEvent): { to?: string; before?: string | null; trash?: boolean; join?: boolean } {
+  function dropAt(id: string, p: { x: number; y: number }, ev: PointerEvent): { to?: string; before?: string | null; trash?: boolean; join?: boolean; into?: string } {
     if ((document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest("[data-trash]")) return { trash: true };
+    // A card held over a card group's sleeve (or its fan): into that group, at its end.
+    if (!gather && all.find((x) => x.m.id === id)?.m.type !== "group") {
+      const g = [...base.nodes.values()].find((n) => n.m.type === "group" && n.m.id !== id && p.x >= n.x && p.x <= n.x + W && p.y >= n.y - (level !== "far" ? FAN : 0) && p.y <= n.y + n.h);
+      if (g) return { into: g.m.id };
+    }
     // Over the empty place beside the card being grouped (or anywhere in its frame): into the group.
     const g = gather ? base.nodes.get(gather) : undefined;
     if (g && id !== gather && p.x >= g.x - 20 && p.x <= g.x + 2 * W + HGAP + 20 && p.y >= g.y - 20 && p.y <= g.y + Math.max(g.h, CARD_H) + 20) return { join: true };
@@ -1238,6 +1201,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
       if (last.join) {
         setMoving(null);
         joinGather(id, toCanvas(ev.clientX, ev.clientY));
+        return;
+      }
+      if (last.into) {
+        setMoving(null);
+        dropInto(id, last.into);
         return;
       }
       if (last.trash) {
@@ -1624,7 +1592,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
             {/* Card groups' fans, drawn before the cards so each group's sleeve covers the bottom of its cards. */}
             {level !== "far" && [...nodes.values()].filter((nd) => nd.m.type === "group").map((nd) => {
               const p = at(nd.m.id);
-              return <Fan key={`fan-${nd.m.id}`} members={nd.members ?? []} x={p.x} y={p.y} open={hot === nd.m.id} faded={moving?.id === nd.m.id} />;
+              // A card held over this sleeve: it shows in the fan, at the end, as it would be once let go.
+              const adding = moving?.into === nd.m.id ? all.find((x) => x.m.id === moving.id)?.m : undefined;
+              return <Fan key={`fan-${nd.m.id}`} members={nd.members ?? []} x={p.x} y={p.y} open={hot === nd.m.id || !!adding} faded={moving?.id === nd.m.id} adding={adding} bad={!!adding && !!whyInto(adding.id, nd.m.id)} />;
             })}
             {[...nodes.values()].map((nd, i) => {
               const { m } = nd;
@@ -1661,7 +1631,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                     if ((e.shiftKey || picking) && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
                     onEdit(nd.lessonId, m.id);
                   }}
-                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? `isolate ${level !== "far" ? "tree-sleeve" : ""}` : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "tree-picked border-[#4b56a8]" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
+                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? `isolate ${level !== "far" ? "tree-sleeve" : ""}` : ""} ${fresh === m.id ? "tree-fresh" : ""} ${moving?.into === m.id ? (whyInto(moving.id, m.id) ? "border-bad" : "tree-target border-[#4b56a8]") : isSel || picks.has(m.id) ? "tree-picked border-[#4b56a8]" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
                   style={{ left: p.x, top: p.y, width: W, height: nd.h, animationDelay: `${Math.min(i, 14) * 25}ms` }}
                 >
                   {jiggle && onDelete && (
@@ -1851,6 +1821,16 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
               const m = all.find((x) => x.m.id === moving.id)?.m;
               if (!m) return null;
               const bad = moving.to && moving.to !== lessonWith(moving.id)?.id ? whyNot(moving.id, moving.to) : null;
+              // Over a sleeve: the card shows in that group's fan instead, so here only a word on what letting go does.
+              if (moving.into) {
+                const why = whyInto(moving.id, moving.into);
+                const g = all.find((x) => x.m.id === moving.into)?.m;
+                return (
+                  <div className={`pointer-events-none absolute z-30 max-w-[260px] rounded-full border bg-white px-3 py-1 text-[11.5px] shadow-[0_12px_30px_-14px_rgba(20,20,18,0.5)] ${why ? "border-bad/40 text-bad" : "border-[#4b56a8]/40 text-[#4b56a8]"}`} style={{ left: moving.x + 14, top: moving.y + 16 }}>
+                    {why ?? `Let go to add it to ${g?.title || "the group"}`}
+                  </div>
+                );
+              }
               return (
                 <div className="pointer-events-none absolute z-30 rotate-[2deg] overflow-hidden rounded-[18px] border border-[#4b56a8] bg-white shadow-[0_24px_50px_-18px_rgba(20,20,18,0.55)]" style={{ left: moving.x - W / 2, top: moving.y - 20, width: W }}>
                   <span className="block h-1.5" style={{ background: suitOfCard(m).tint }} />
@@ -2183,8 +2163,9 @@ function someOf(m: Module) {
  * A card group's cards, fanned out of the top of its sleeve like a hand of cards: a wider fan for more cards (up to
  * seven shown). They rise out of the sleeve when it's made, and spread a little more on hover.
  */
-function Fan({ members, x, y, open, faded }: { members: Module[]; x: number; y: number; open: boolean; faded: boolean }) {
-  const shown = members.slice(0, 7);
+function Fan({ members, x, y, open, faded, adding, bad }: { members: Module[]; x: number; y: number; open: boolean; faded: boolean; adding?: Module; bad?: boolean }) {
+  // A card held over the sleeve joins the fan at its end; the group's own cards go see-through so it stands out.
+  const shown = adding ? [...members.slice(0, 6), adding] : members.slice(0, 7);
   const n = shown.length;
   const spread = Math.min(9 * (n - 1), 42);
   return (
@@ -2193,7 +2174,7 @@ function Fan({ members, x, y, open, faded }: { members: Module[]; x: number; y: 
         const a = n === 1 ? 0 : -spread / 2 + (i * spread) / (n - 1);
         const suit = suitOfCard(c);
         return (
-          <span key={c.id} className={`fan-card absolute left-1/2 top-0 block overflow-hidden rounded-[10px] border bg-white ${c.type === "group" ? "border-[#c9cdee] shadow-[3px_-3px_0_-1px_#fff,3px_-3px_0_0_#d9dcf1,6px_-6px_0_-1px_#fff,6px_-6px_0_0_#e3e5f5,0_6px_14px_-8px_rgba(20,20,18,0.45)]" : "border-line shadow-[0_6px_14px_-8px_rgba(20,20,18,0.45)]"}`}
+          <span key={c.id} className={`fan-card absolute left-1/2 top-0 block overflow-hidden rounded-[10px] border bg-white transition-opacity duration-200 ${adding ? (c === adding ? `${bad ? "!border-bad" : "!border-[#4b56a8] ring-2 ring-[#4b56a8]/25"}` : "opacity-30") : ""} ${c.type === "group" ? "border-[#c9cdee] shadow-[3px_-3px_0_-1px_#fff,3px_-3px_0_0_#d9dcf1,6px_-6px_0_-1px_#fff,6px_-6px_0_0_#e3e5f5,0_6px_14px_-8px_rgba(20,20,18,0.45)]" : "border-line shadow-[0_6px_14px_-8px_rgba(20,20,18,0.45)]"}`}
             style={{ width: 92, height: 128, marginLeft: -46, "--a": `${a}deg`, "--d": `${i * 55}ms`, zIndex: i } as React.CSSProperties}>
             <span className="block h-[4px]" style={{ background: c.type === "group" ? "#4b56a8" : suit.tint }} />
             <span className="block truncate px-2 pt-1 text-[7.5px] font-semibold uppercase tracking-[0.06em]" style={{ color: c.type === "group" ? "#4b56a8" : suit.tint }}>{c.type === "group" ? `Group · ${c.members?.length ?? 0}` : faceMeta(c).name}</span>
@@ -2202,7 +2183,7 @@ function Fan({ members, x, y, open, faded }: { members: Module[]; x: number; y: 
           </span>
         );
       })}
-      {members.length > n && <span className="absolute -top-2 right-6 rounded-full bg-ink px-1.5 text-[10px] font-semibold text-white">+{members.length - n}</span>}
+      {!adding && members.length > n && <span className="absolute -top-2 right-6 rounded-full bg-ink px-1.5 text-[10px] font-semibold text-white">+{members.length - n}</span>}
     </span>
   );
 }

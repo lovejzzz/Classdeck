@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.98",
+    date: "2026-11-24",
+    changes: [
+      "A card group’s panel: the dashed card at the end of its hand now says Add a card, and offers what + Card does (Content, Question, or one of your Saved cards), instead of always adding a question.",
+      "Drag a card along the group’s hand to put it in another place (the arrow buttons are gone). Hold a card and the cards wiggle, each with a button to delete it; or pick a card and press Delete. Open the whole card is now Edit this card.",
+      "On the map, drag a card onto a card group’s sleeve: before you let go, it shows at the end of the group’s fan with the group’s own cards see-through. Let go and it joins the group; drag it away and nothing changes.",
+      "Fixed: deleting a group’s second-to-last card (so the group comes apart) left the page squeezed as if the card panel were still open.",
+    ],
+  },
+  {
     version: "0.1.97",
     date: "2026-11-24",
     changes: [

@@ -14,7 +14,7 @@ import { Clearable } from "../Clearable";
 import { clearOlder, olderSettings } from "@/lib/cardmodel";
 import { MathPreview } from "../MathText";
 import { RichBodyEditor } from "./RichBodyEditor";
-import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, type CardKind } from "@/lib/kinds";
+import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, newCard, type CardKind } from "@/lib/kinds";
 import type { Attachment, Course, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { GroupingPicker, SignupGroups } from "./Groupings";
 import { SCORE, sharedOnly, targetsOf, wiresOf } from "@/lib/branching";
@@ -27,6 +27,8 @@ import { playableArt } from "../cards/PlayArt";
 import { Avatar, Icon } from "../Icon";
 import { AttachMenu } from "../AttachMenu";
 import { GroupHand } from "./GroupHand";
+import { KindPick, copyOfSaved } from "./KindPick";
+import { useLibrary } from "./NewCardFan";
 import { groupingsOf, signupGroupingId } from "@/lib/shared";
 
 /** A card preview that tilts toward the pointer, so teachers see exactly what students will hold. */
@@ -93,8 +95,10 @@ function Seg({ value, options, onPick }: { value: string; options: [string, stri
 }
 
 export function CardEditor({
-  lesson, module: m, students, open, onChange, onClose, onDelete, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, onOpen, allCards, neighbors, undoBar, onGo, back, course, onCourseChanged,
+  lesson, module: m, students, open, onChange, onClose, onDelete, onDeleteCard, onDuplicate, onSaveToLibrary, onPrev, onNext, position, started = 0, onTree, onOpen, allCards, neighbors, undoBar, onGo, back, course, onCourseChanged,
 }: {
+  /** Delete another card (one in this group's hand): asks first, and offers Undo. */
+  onDeleteCard?: (id: string) => void;
   /** The course, for the groups a card can use (Each group); and refreshing it after groups change. */
   course?: Course;
   onCourseChanged?: () => unknown;
@@ -151,6 +155,9 @@ export function CardEditor({
   const attachments = m.attachments ?? [];
   // A card group: which of its cards is picked in the hand (and edited under it).
   const [handSel, setHandSel] = useState<string | null>(null);
+  // The group's "Add a card" picker is open under its hand.
+  const [adding, setAdding] = useState(false);
+  const saved = useLibrary(adding);
   // An attachment opened to check it: a video or picture grown big, or a recording playing under its row.
   const [viewing, setViewing] = useState<{ a: Attachment; from: DOMRect; open: boolean } | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
@@ -330,12 +337,26 @@ export function CardEditor({
               const cur = members.find((c) => c.id === handSel) ?? members[0];
               const i = cur ? members.indexOf(cur) : -1;
               const putMember = (id: string, patch: Partial<Module>) => onChange({ ...lessonRef.current, modules: lessonRef.current.modules.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
-              const move = (d: number) => { const ids = members.map((c) => c.id); [ids[i], ids[i + d]] = [ids[i + d], ids[i]]; set({ members: ids }); };
+              // A new card at the end of the group: a blank one of a kind, or a copy of a saved card (as + Card on the map).
+              const put = (card: Module) => {
+                if (card.type === "quiz") { toast(`“${card.title}” is a quiz with its own score and tries, so it can’t join a card group.`, { icon: "layers", tone: "plain" }); return; }
+                const { lesson: next } = addToGroup(lessonRef.current, m.id, card);
+                onChange(next); setHandSel(card.id); setAdding(false);
+                toast(`Added “${card.title || "a card"}” to the group`, { icon: "plus" });
+              };
               return (
                 <>
-                  <GroupHand cards={members} selected={cur?.id ?? null} onSelect={setHandSel}
-                    onAdd={() => { const { lesson: next, card } = addToGroup(lessonRef.current, m.id); onChange(next); setHandSel(card.id); toast(`Added “${card.title}” to the group`, { icon: "plus" }); }} />
-                  {cur && (
+                  <GroupHand cards={members} selected={adding ? null : cur?.id ?? null} onSelect={(id) => { setAdding(false); setHandSel(id); }} adding={adding}
+                    onAdd={() => setAdding((a) => !a)}
+                    onReorder={(ids) => set({ members: ids })}
+                    onDelete={onDeleteCard} />
+                  {adding ? (
+                    <div ref={(el) => { el?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }} className="hand-edit mt-1 rounded-xl border border-line bg-[#fbfbfa] p-3">
+                      <p className="mb-2.5 text-[12.5px] text-ink-2">Add a card to the group:</p>
+                      <KindPick saved={saved.filter((x) => !x.set)} onSaved={(sc) => put(copyOfSaved(sc))}
+                        onKind={(t) => put(newCard(t, `New ${FAMILIES.find((f) => f.start === t)?.name ?? ""} card`))} />
+                    </div>
+                  ) : cur && (
                     <div key={cur.id} className="hand-edit mt-1 rounded-xl border border-line bg-[#fbfbfa] p-3">
                       <input value={cur.title} onChange={(e) => putMember(cur.id, { title: e.target.value })} placeholder="Title" aria-label={`Title of card ${i + 1}`} className="field font-semibold" />
                       {kindOf(cur) === "choice" && !isPoll(cur) ? (
@@ -347,9 +368,7 @@ export function CardEditor({
                         <p className="mt-2 text-[12.5px] text-ink-3">A {faceMeta(cur).name.toLowerCase()} card: open it to change what’s on it.</p>
                       )}
                       <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[12.5px]">
-                        {onOpen && <button onClick={() => onOpen(cur.id)} className="mr-auto text-[#4b56a8] hover:underline">Open the whole card ›</button>}
-                        <button onClick={() => move(-1)} disabled={i <= 0} aria-label="Move it left" title="Move it left" className="btn btn-quiet press h-7 w-7 justify-center px-0 disabled:opacity-30">←</button>
-                        <button onClick={() => move(1)} disabled={i >= members.length - 1} aria-label="Move it right" title="Move it right" className="btn btn-quiet press h-7 w-7 justify-center px-0 disabled:opacity-30">→</button>
+                        {onOpen && <button onClick={() => onOpen(cur.id)} className="mr-auto text-[#4b56a8] hover:underline">Edit this card</button>}
                         <button onClick={() => { set({ members: members.map((c) => c.id).filter((x) => x !== cur.id) }); setHandSel(null); }} className="btn btn-quiet press h-7 px-2 text-[12px] hover:!text-bad">Take out of the group</button>
                       </div>
                     </div>

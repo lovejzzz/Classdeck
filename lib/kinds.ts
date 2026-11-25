@@ -214,10 +214,10 @@ export function newCard(k: CardKind, title?: string, poll?: boolean): Module {
  * Add a new Choice card to a card group: it goes into the lesson right after the group's last card, at the end of the
  * group. Returns the changed lesson and the new card. A quick way to build a quiz one question at a time.
  */
-export function addToGroup<L extends { modules: Module[] }>(lesson: L, groupId: string): { lesson: L; card: Module } {
+export function addToGroup<L extends { modules: Module[] }>(lesson: L, groupId: string, given?: Module): { lesson: L; card: Module } {
   const g = lesson.modules.find((x) => x.id === groupId);
   const members = g?.members ?? [];
-  const card = newCard("choice", `Question ${members.length + 1}`);
+  const card = given ?? newCard("choice", `Question ${members.length + 1}`);
   const last = Math.max(-1, ...members.map((id) => lesson.modules.findIndex((x) => x.id === id)));
   const at = last >= 0 ? last + 1 : lesson.modules.length;
   const modules = lesson.modules.map((x) => (x.id === groupId ? { ...x, members: [...members, card.id] } : x));
