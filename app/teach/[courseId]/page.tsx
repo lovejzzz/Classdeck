@@ -8,7 +8,7 @@ import { TeacherLive } from "@/components/LiveClass";
 import { StudentsPage } from "@/components/teacher/StudentsPage";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { InboxCenter } from "@/components/InboxCenter";
 import type { Note } from "@/components/NotificationCenter";
@@ -62,6 +62,16 @@ export default function TeachPage() {
   if (typeof window !== "undefined") setPreview(null);
   const { state, error, refresh, needAuth, authDetail } = useCourse(courseId, undefined, 3000);
   const { connectors } = useConnectors();
+  // A note left by the page that made this course (what a course file made), said once the course is on screen.
+  const loaded = !!state;
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      const key = `questhand:made:${courseId}`;
+      const note = sessionStorage.getItem(key);
+      if (note) { sessionStorage.removeItem(key); toast(note, { icon: "upload", action: { label: "OK", run: () => {} } }); }
+    } catch { /* storage blocked: nothing to say */ }
+  }, [loaded, courseId]);
   // The tab lives in the address, so Back returns to the previous tab and a reload stays put.
   const [tabParam, setTabParam] = useUrlState("tab");
   // "class" was its own tab before it joined Students; "plan" (the List) is part of the Map now.

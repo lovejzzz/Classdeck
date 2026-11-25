@@ -6,17 +6,17 @@ import { db, endPreview, inPreview, logEvent, reset, runPreview, save } from "@/
 import { mentionsIn, plainText } from "@/lib/markdown";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
-import { fold, foldWeeks } from "@/lib/cardmodel";
-import { kindOf, kindWeeks, reviewableCard, unfinished, withKind } from "@/lib/kinds";
+import { foldWeeks } from "@/lib/cardmodel";
+import { kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
 import { cardsOf, cleanCourseWiring, deals, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
-import { CARD_COLORS } from "@/lib/ui";
+import { cleanAttachment, cleanCard } from "@/lib/cleancard";
 import { DEFAULT_GROUPING, DEMO_PREFIX, DEMO_STUDENTS, demoStudent, groupFor, isDemoStudent, nameGroups, nextDemoName, repliesNeeded, signupGroupId, signupGroupingId, syncSignup } from "@/lib/shared";
 
-import type { ActivityForm, AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
+import type { AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Live, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
 // "order" questions go out alphabetised, so the correct order never reaches the browser.
@@ -307,38 +307,6 @@ function visibleWork(course: Course, studentId: string): Set<string> {
   for (const p of Object.values(d.progress[course.id]?.[studentId] ?? {})) for (const w of p.work ?? []) ids.add(w.id);
   for (const p of d.studio[course.id]?.posts ?? []) if (p.studentId === studentId || groupFor(course, findModule(course, p.moduleId)?.mod, studentId)?.studentIds.includes(p.studentId)) for (const w of p.work) ids.add(w.id);
   return ids;
-}
-
-function cleanAttachment(a: Attachment): Attachment | null {
-  if (!a || typeof a.url !== "string" || !safeUrl(a.url)) return null;
-  const kinds = ["image", "video", "audio", "file", "link"];
-  if (!kinds.includes(a.kind)) return null;
-  const sec = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.round(Number(v)) : undefined);
-  return {
-    id: a.id || uid("w-"), kind: a.kind, url: a.url, name: String(a.name ?? "").slice(0, 120) || undefined, size: Number(a.size) || undefined,
-    start: sec(a.start), end: sec(a.end), credit: a.credit ? String(a.credit).slice(0, 200) : undefined,
-    transcript: a.transcript && (a.kind === "audio" || a.kind === "video") ? String(a.transcript).slice(0, 20000) : undefined,
-    duration: Number(a.duration) > 0 && Number(a.duration) < 36000 ? Math.round(Number(a.duration)) : undefined,
-  };
-}
-
-const FORM_PARTS: FormPart[] = ["feedback", "next", "levels", "score", "links", "status"];
-
-function cleanForm(f: ActivityForm | undefined): ActivityForm | undefined {
-  if (!f || typeof f !== "object") return undefined;
-  // Blank questions are kept while the teacher is still typing; filling in skips them.
-  const questions = (Array.isArray(f.questions) ? f.questions : []).slice(0, 12).map((q) => {
-    const options = Array.isArray(q?.options) ? q.options.map((o) => String(o).slice(0, 80)).slice(0, 8) : [];
-    return { id: String(q?.id || uid("fq-")).slice(0, 40), text: String(q?.text ?? "").slice(0, 200), ...(options.length ? { options } : {}) };
-  });
-  const student = f.by === "student";
-  // A student form can ask them to rate themselves and add links; the rest are the teacher's to give.
-  const parts = FORM_PARTS.filter((x) => Array.isArray(f.parts) && f.parts.includes(x) && (!student || x === "levels" || x === "links"));
-  const max = Number(f.max);
-  return {
-    title: String(f.title ?? "").slice(0, 80), ...(student ? { by: "student" as const, finish: !!f.finish || undefined } : {}),
-    parts, max: !student && max > 0 ? Math.min(1000, max) : undefined, questions: questions.length ? questions : undefined,
-  };
 }
 
 /** Keys that would reach an object's prototype; dropped from every request body. */
@@ -818,19 +786,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       }
       const cardsBefore = cardsOf(course.weeks).map((c) => c.m);
       for (const next of list) {
-        next.modules = next.modules.map((m) => withKind(fold(m)));
-        for (const m of next.modules) {
-          if (m.playlist) m.playlist = m.playlist.filter((x) => typeof x.url === "string" && /^https:\/\//.test(x.url)).slice(0, 60);
-          m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a).slice(0, 12);
-          // The card's own look: a colour from the list, and a picture at a safe address.
-          if (m.look) {
-            const color = CARD_COLORS.some((c) => c.id === m.look!.color) ? m.look.color : undefined;
-            const image = typeof m.look.image === "string" && safeUrl(m.look.image) ? m.look.image.slice(0, 2000) : undefined;
-            m.look = color || image ? { color, image } : undefined;
-          }
-          m.form = cleanForm(m.form);
-          if (m.suit !== undefined && !["learn", "do", "share"].includes(m.suit)) m.suit = undefined;
-        }
+        next.modules = next.modules.map(cleanCard);
         if (next.date !== undefined && !(typeof next.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(next.date))) next.date = undefined;
         for (const w of course.weeks) {
           const i = w.lessons.findIndex((l) => l.id === next.id);
@@ -1647,7 +1603,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const copy = cloneWeek(src, String(src.title ?? `Week ${course.weeks.length}`).slice(0, 80));
       foldWeeks([copy]);
       kindWeeks([copy]);
-      copy.lessons.forEach((l) => l.modules.forEach((m) => { m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a); }));
+      copy.lessons.forEach((l) => { l.modules = l.modules.map(cleanCard); });
       const at = typeof body.index === "number" ? body.index : course.weeks.length;
       course.weeks.splice(at, 0, copy);
       extra = { weekId: copy.id };
@@ -1659,7 +1615,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const copy = cloneLesson(body.lesson as Lesson);
       foldWeeks([{ lessons: [copy] }]);
       kindWeeks([{ lessons: [copy] }]);
-      copy.modules.forEach((m) => { m.attachments = (m.attachments ?? []).map(cleanAttachment).filter((a): a is Attachment => !!a); });
+      copy.modules = copy.modules.map(cleanCard);
       w.lessons.push(copy);
       extra = { lessonId: copy.id };
       break;

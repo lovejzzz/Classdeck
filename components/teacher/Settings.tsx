@@ -2,7 +2,6 @@
 
 import { op } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
-import { download } from "@/lib/download";
 import { toast } from "@/lib/toast";
 import { DocImport } from "./DocImport";
 import { InviteTeachers } from "./ShareDialog";
@@ -239,18 +238,11 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
 
       <section className="card p-6">
         <h3 className="text-[15px] font-medium">Back up and share</h3>
-        <p className="mt-1 text-[13px] text-ink-3">Export the course (weeks, cards, media links, rubric, session agendas) as a file, or as a Common Cartridge for another LMS. Import adds weeks after your current ones, from a Questhand file or straight from a course plan document; nothing is replaced.</p>
+        <p className="mt-1 text-[13px] text-ink-3">Export the course (weeks, cards, media links, rubric, session agendas) as a file, or as a Common Cartridge for another LMS. Import adds weeks after your current ones, from a Questhand file or straight from a course plan document; nothing is replaced. To make a whole new course from a file, use New course → From a course file on your courses page.</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            onClick={() => {
-              const { weeks, skills, levels, title, subtitle } = course;
-              download(`${course.title} course.json`, JSON.stringify({ format: "questhand-course", version: 1, title, subtitle, skills, levels, weeks }, null, 2), "application/json");
-              toast("Course exported", { icon: "download" });
-            }}
-            className="btn btn-ghost press"
-          >
+          <a href={`/api/course/${course.id}/file`} download className="btn btn-ghost press" title="A Questhand course file: make a new course from it with New course → From a course file">
             <Icon name="download" size={13} /> Export course (.json)
-          </button>
+          </a>
           <a href={`/api/course/${course.id}/export`} className="btn btn-ghost press" title="IMS Common Cartridge: imports into Canvas, Moodle, Blackboard, Brightspace, and Schoology">
             <Icon name="download" size={13} /> Export for Canvas / Moodle (.imscc)
           </a>

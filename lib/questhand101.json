@@ -755,7 +755,7 @@
        "id": "m-q1tpl-import",
        "type": "read",
        "title": "Already have a plan written?",
-       "body": "Settings → Back up and share → Import from a document… Upload your course plan, look over the weeks and cards Questhand proposes, untick what you don't want, and press Add.\n\nThe same place exports a course: Export course (.json) to keep a copy, or Export for Canvas / Moodle (.imscc).",
+       "body": "Settings → Back up and share → Import from a document… Upload your course plan, look over the weeks and cards Questhand proposes, untick what you don't want, and press Add.\n\nThe same place exports a course: Export course (.json) to keep a copy, or Export for Canvas / Moodle (.imscc). To make a new course from a .json file (yours, or one a colleague sent), use New course → From a course file on your courses page.",
        "audience": {
         "kind": "all"
        },

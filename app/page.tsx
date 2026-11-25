@@ -217,9 +217,29 @@ function NewCourse({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
-  const [start, setStart] = useState<"blank" | "template">("blank");
+  const [start, setStart] = useState<"blank" | "template" | "file">("blank");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // A course file picked to make the course from: its contents, and a line saying what's in it.
+  const [file, setFile] = useState<{ data: unknown; name: string; summary: string } | null>(null);
+  async function pick(f: File | undefined) {
+    setError("");
+    if (!f) return;
+    if (f.size > 20 * 1024 * 1024) { setFile(null); setError("That file is too big for a course file (20 MB at most)."); return; }
+    try {
+      const data = JSON.parse(await f.text());
+      const weeks = Array.isArray(data?.weeks) ? data.weeks : [];
+      if (!weeks.length) throw new Error();
+      const lessons = weeks.reduce((n: number, w: { lessons?: unknown[] }) => n + (Array.isArray(w?.lessons) ? w.lessons.length : 0), 0);
+      const cards = weeks.reduce((n: number, w: { lessons?: { modules?: { type?: string }[] }[] }) => n + (w?.lessons ?? []).reduce((k, l) => k + (l?.modules ?? []).filter((m) => m?.type !== "group" && (m as { kind?: string })?.kind !== "group").length, 0), 0);
+      setFile({ data, name: f.name, summary: `${weeks.length} week${weeks.length === 1 ? "" : "s"} · ${lessons} lesson${lessons === 1 ? "" : "s"} · ${cards} card${cards === 1 ? "" : "s"}` });
+      if (!title.trim() && typeof data.title === "string") setTitle(data.title.slice(0, 80));
+      if (!subtitle.trim() && typeof data.subtitle === "string") setSubtitle(data.subtitle.slice(0, 120));
+    } catch {
+      setFile(null);
+      setError("That file isn’t a Questhand course file. Export one from a course’s Settings → Export course.");
+    }
+  }
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", k);
@@ -227,9 +247,11 @@ function NewCourse({ onClose }: { onClose: () => void }) {
   }, [onClose]);
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || (start === "file" && !file)) return;
     setBusy(true);
-    const r = await fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, subtitle, start }) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
+    const r = await fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(start === "file" ? { title, subtitle, file: file!.data } : { title, subtitle, start }) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
+    // What a file made, and anything that had to change on the way in, said once the course opens.
+    if (r.ok && start === "file") { try { sessionStorage.setItem(`questhand:made:${r.id}`, [`Made “${title.trim()}” from ${file!.name}: ${r.cards} card${r.cards === 1 ? "" : "s"}.`, ...(r.notes ?? [])].join(" ")); } catch { /* storage blocked */ } }
     if (r.ok) router.push(`/teach/${r.id}`);
     else { setBusy(false); setError(r.error ?? "That didn’t work"); }
   }
@@ -240,17 +262,24 @@ function NewCourse({ onClose }: { onClose: () => void }) {
         <Clearable><input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course name" aria-label="Course name" className="field h-11 text-[14px]" /></Clearable>
         <Clearable><input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Subtitle (optional), e.g. Spring 2027 · Tuesdays" aria-label="Subtitle" className="field" /></Clearable>
         <div className="grid gap-1.5">
-          {([["blank", "Start blank", "One empty week."], ["template", "Standard weeks", "Three weeks with a ready-made rhythm: goal, example, quick check, task, discussion, reflection."]] as const).map(([k, label, hint]) => (
+          {([["blank", "Start blank", "One empty week."], ["template", "Standard weeks", "Three weeks with a ready-made rhythm: goal, example, quick check, task, discussion, reflection."], ["file", "From a course file", "A Questhand course file (.json): its weeks, lessons and cards, wired as they were."]] as const).map(([k, label, hint]) => (
             <label key={k} className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 text-[13px] transition-colors ${start === k ? "border-ink" : "border-line hover:border-line-strong"}`}>
               <input type="radio" name="start" checked={start === k} onChange={() => setStart(k)} className="mt-0.5 accent-[#1b1b1a]" />
               <span><span className="font-medium">{label}</span><span className="block text-[12px] text-ink-3">{hint}</span></span>
             </label>
           ))}
+          {start === "file" && (
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-dashed border-line-strong px-3 py-2.5 text-[13px] hover:border-ink-3">
+              <Icon name="upload" size={14} className="flex-none text-ink-2" />
+              <span className="min-w-0 flex-1">{file ? <><span className="block truncate font-medium">{file.name}</span><span className="block text-[12px] text-ink-3">{file.summary}</span></> : <span className="text-ink-2">Choose a course file…</span>}</span>
+              <input type="file" accept="application/json,.json" aria-label="Course file" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+          )}
         </div>
         {error && <p className="text-[13px] text-bad">{error}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" onClick={onClose} className="btn btn-quiet press">Cancel</button>
-          <button type="submit" disabled={!title.trim() || busy} className="btn btn-dark press">{busy ? "Creating…" : "Create course"}</button>
+          <button type="submit" disabled={!title.trim() || busy || (start === "file" && !file)} className="btn btn-dark press">{busy ? "Creating…" : "Create course"}</button>
         </div>
       </form>
     </div>

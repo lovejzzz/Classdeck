@@ -71,7 +71,7 @@ const isRecording = (a?: { kind: string; url: string; name?: string }) => !!a &&
 const VIDEO_LINK = /^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be|vimeo\.com)/;
 
 type KindFields = Pick<Module, "kind" | "type" | "attachments" | "poll" | "questions"> & Partial<Pick<Module, "writers" | "signup" | "body">>;
-const isKind = (k: unknown): k is CardKind => KINDS.some((x) => x.id === k);
+export const isKind = (k: unknown): k is CardKind => KINDS.some((x) => x.id === k);
 
 /** A card's kind: the one stored, or (for a card made without one, such as a template) the one its type points to. */
 export function kindOf(m: KindFields): CardKind {

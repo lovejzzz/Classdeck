@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.2",
+    date: "2026-11-25",
+    changes: [
+      "New course → From a course file: make a whole course from a Questhand course file (.json), with its weeks, lessons, cards, card groups and the answers and scores that deal cards, all wired as they were. The dialog shows what’s in the file and fills in its name; anything that had to change on the way in (a card for named students from another class goes to everyone) is said once the course opens.",
+      "Settings → Export course now writes that same file (nothing about the course’s students in it), so a course can be kept, sent to a colleague and made again. Wires that reach into later weeks are kept on the way back in.",
+      "Import weeks and every save now clean a card the same way (attachments, look, forms), and a file that isn’t a course file, or has two cards with one id, is turned away with a reason.",
+    ],
+  },
+  {
     version: "0.2.1",
     date: "2026-11-25",
     changes: [

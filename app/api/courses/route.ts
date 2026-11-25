@@ -8,9 +8,11 @@ import { db, listCourses, removeCourse, save } from "@/lib/store";
 import { UPLOAD_DIR } from "@/lib/uploads";
 import { standardWeek } from "@/lib/templates";
 import { makeCourse } from "@/lib/newcourse";
-import { treeView } from "@/lib/branching";
+import { cleanCourseWiring, treeView } from "@/lib/branching";
 import { visibleModules } from "@/lib/profile";
 import { lessonDates } from "@/lib/dates";
+import { readCourseFile } from "@/lib/coursefile";
+import { syncSignup } from "@/lib/shared";
 
 /**
  * The signed-in account's courses: the ones it teaches (its own and those shared with it), and the ones it's a student
@@ -71,7 +73,8 @@ export async function POST(request: Request) {
   const session = getSession(request);
   const t = teacherOf(session);
   if (!t) return unauthorized("teacher", "Sign in to create a course");
-  const body = await request.json().catch(() => ({}));
+  // Keys that would reach an object's prototype are dropped (a course file is the teacher's to write).
+  const body = await request.text().then((x) => JSON.parse(x, (k, v) => (/^(__proto__|constructor|prototype)$/.test(k) ? undefined : v))).catch(() => ({}));
   if (body.claim) {
     if (!isAdmin(session)) return Response.json({ ok: false, error: "Only the site owner can claim older courses" }, { status: 403 });
     const c = db().courses[String(body.claim)];
@@ -79,6 +82,18 @@ export async function POST(request: Request) {
     c.ownerId = t.id;
     save();
     return Response.json({ ok: true, id: c.id });
+  }
+  // From a course file: its weeks, lessons and cards, wired as they were (a name typed here wins over the file's).
+  if (body.file !== undefined) {
+    const f = readCourseFile(body.file);
+    if (!f.ok) return Response.json({ ok: false, error: f.error }, { status: 400 });
+    const name = String(body.title ?? "").trim().slice(0, 80) || f.title;
+    if (!name) return Response.json({ ok: false, error: "Give the course a name" }, { status: 400 });
+    const course = makeCourse(t.id, name, f.weeks, { subtitle: String(body.subtitle ?? "").trim().slice(0, 120) || f.subtitle, electiveMin: f.electiveMin });
+    cleanCourseWiring(course.weeks);
+    for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) syncSignup(course, m);
+    save();
+    return Response.json({ ok: true, id: course.id, cards: f.cards, notes: f.notes });
   }
   const title = String(body.title ?? "").trim().slice(0, 80);
   if (!title) return Response.json({ ok: false, error: "Give the course a name" }, { status: 400 });
