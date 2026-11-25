@@ -1,1 +1,2746 @@
-{"exportedAt":1795407576785,"courses":{"id":"demo","title":"Questhand 101","createdAt":1795407545144,"joinCode":"DEMO26","access":{"joinOpen":true,"selfJoin":"approve"},"profile":{"preset":"custom","density":"comfortable","autonomy":"free","horizon":"term","entry":"code"},"students":[{"id":"s-iq38b15","name":"Ana Park"},{"id":"s-1e0f3o4","name":"Ben Diaz"},{"id":"s-yqvby2c","name":"Cara Moreau"},{"id":"s-qbijyyj","name":"Dev Shah"},{"id":"s-tamvltz","name":"Eli Novak"},{"id":"s-g5u1plz","name":"Fay Lee"}],"skills":[],"levels":[{"n":1,"name":"Starting","description":"The skill isn’t evident yet; a lot of help is needed.","use":"Pick one thing to practice next."},{"n":2,"name":"Developing","description":"The skill shows up, but not consistently.","use":"Point to what worked and one place to adjust."},{"n":3,"name":"Meeting the goal","description":"The skill is clear and consistent in this activity.","use":"Explain its effect using specific evidence."},{"n":4,"name":"Going beyond","description":"The skill is used with judgment and adapted to the situation.","use":"Explain the choice and its effect."}],"groups":[{"id":"g-49n3gvd","name":"Studio A","studentIds":["s-iq38b15","s-1e0f3o4","s-yqvby2c","s-qbijyyj","s-tamvltz","s-g5u1plz"]}],"currentLessonId":"l-gayubro","enabledConnectors":["wikipedia","dictionary","ai"],"weeks":[{"id":"w-ba4u1me","title":"Week 1 · Getting started","lessons":[{"id":"l-zgt54dm","title":"Welcome to Questhand","modules":[{"id":"m-q1d-hello","type":"read","title":"A hello from your guide","body":"Press play for a short welcome (under 20 seconds). Then work through the cards in order.","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-hello","kind":"audio","url":"/samples/questhand101/hello.m4a","name":"Welcome (voice note)"}],"kind":"content","minutes":1},{"id":"m-q1d-tour","type":"read","title":"Watch: a 30-second tour","body":"The places you'll use most: the Map, Students and Grades (Settings is the fourth tab).","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-tour","kind":"video","url":"/samples/questhand101/tour.mp4","name":"Tour of the teacher page"}],"kind":"content","minutes":1},{"id":"m-q1d-used","type":"practice","title":"Where are you starting from?","body":"There's no wrong answer: it only changes which cards you get next.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","poll":true,"questions":[{"id":"q-q1d-1","text":"How much have you used online course tools?","options":["Never, this is new to me","A little","A lot"],"next":[["m-q1d-what-card","m-q1d-your-students"],"m-q1d-your-students","m-q1d-coming-from"]}]},{"id":"m-q1d-what-card","type":"read","title":"Start here: a course is a deck of cards","body":"Each lesson is a short row of cards. A card is one small thing to do: read, watch, answer, make or discuss.\n\nStudents open one card at a time and see right away what comes next. You see every card at once on the Map.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-your-students","type":"read","title":"What your students see","body":"Students get a board with today's lesson on top and the next card to play. Cards they've done go on a pile; cards for later wait in their hand.\n\nThey never see a card that isn't meant for them. You'll try this yourself in Week 2 with Student View.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-coming-from","type":"read","title":"Coming from another tool?","body":"Two things are different here.\n\n1. Everything is a card, so a lesson is quick to build and easy to rearrange: drag cards on the Map.\n2. Answers can deal cards. The card a student gets next can depend on what they just answered, without any extra settings.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-check1","type":"practice","title":"Quick check","body":"Due soon: finish it before the next lesson.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","questions":[{"id":"q-q1d-2","text":"Where do you see every card of the course at once, with the lines between them?","options":["Grades","Student View","The Map"],"answer":2,"explain":"The Map shows each lesson as a row of cards, and the lines show which answer deals which card."}],"due":"2026-11-22"}],"branches":{}},{"id":"l-id14d0d","title":"Cards, the building blocks","modules":[{"id":"m-q1d-kinds","type":"read","title":"Two kinds of card","body":"Content cards hold something to read, watch or listen to.\n\nQuestion cards ask something back: multiple choice, a poll, an open answer, or a discussion.","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-kinds","kind":"image","url":"/samples/questhand101/newcard.jpg","name":"The new card menu"}],"kind":"content","minutes":2},{"id":"m-q1d-first","type":"read","title":"Watch: make your first card","body":"See a card made from start to finish, with a title, instructions and media.","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-first","kind":"video","url":"/samples/questhand101/firstcard.mp4","name":"Making a card"}],"kind":"content","minutes":1},{"id":"m-q1d-kq","type":"group","title":"Card quiz","body":"Three quick questions. Your score decides what you get next.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"group","bands":[{"min":0,"next":"m-q1d-kinds-again"},{"min":67,"next":null},{"min":100,"next":"m-q1d-ahead"}],"members":["m-q1d-kq1","m-q1d-kq2","m-q1d-kq3"]},{"id":"m-q1d-kq1","type":"practice","title":"Card quiz 1","body":"","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","questions":[{"id":"q-q1d-3","text":"You want students to watch a video. Which card?","options":["A Poll card","A Content card","A Discussion card"],"answer":1,"explain":"A Content card holds words, pictures, videos, links and recordings."}]},{"id":"m-q1d-kq2","type":"practice","title":"Card quiz 2","body":"","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","questions":[{"id":"q-q1d-4","text":"Which card lets students vote, with no right answer?","options":["Multiple choice","Open answer","Poll"],"answer":2,"explain":"A poll has no right answer; every vote counts."}]},{"id":"m-q1d-kq3","type":"practice","title":"Card quiz 3","body":"","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","questions":[{"id":"q-q1d-5","text":"A student should write a paragraph or upload a photo. Which card?","options":["Content","Open answer","Multiple choice"],"answer":1,"explain":"An open answer card takes words, a drawing, a recording or a file."}]},{"id":"m-q1d-kinds-again","type":"read","title":"The card kinds again, side by side","body":"- Content: something to read, watch or listen to.\n- Multiple choice: one right answer (or several), checked at once.\n- Poll: a vote, no right answer.\n- Open answer: students hand in words, a drawing, a recording or a file, and you give feedback.\n- Discussion: a shared wall where the class posts and replies.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-ahead","type":"read","title":"Ahead of the class: card groups","body":"You got all three. The quiz you just took was a card group: several question cards answered together, with one score.\n\nTo make one, press Group cards under the Map and pick the cards. Next week you'll see how a score can deal cards.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-plan","type":"submit","title":"Your turn: plan a card","body":"Think of one lesson you'll teach soon. Which card would you start it with, and why? Write a few lines, or record yourself saying it.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"answer","minutes":5,"due":"2026-11-21"}],"branches":{}}]},{"id":"w-y6qq4yl","title":"Week 2 · Card trees and your class","lessons":[{"id":"l-4s4lu8d","title":"Card trees","modules":[{"id":"m-q1d-map","type":"read","title":"Why branch?","body":"A class doesn't all need the same next step. Some need another example; some are ready for a challenge.\n\nOn the Map, each line runs from an answer to the card it deals. Students who pick that answer get the card; the others never see it.","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-map","kind":"image","url":"/samples/questhand101/map.jpg","name":"A course map with branches"}],"kind":"content","minutes":2},{"id":"m-q1d-tree","type":"read","title":"Watch: draw a branch","body":"Drag an answer's dot to make the card it deals. One answer can deal more than one card.","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-tree","kind":"video","url":"/samples/questhand101/tree.mp4","name":"Drawing a card tree"}],"kind":"content","minutes":1},{"id":"m-q1d-stuck","type":"practice","title":"Try a branch","body":"This card is a branch itself: each answer deals a different card.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","questions":[{"id":"q-q1d-6","text":"A student answers “I'm not sure yet”. What should they get next?","options":["The same card again","Another example, explained step by step","Nothing: move on"],"answer":1,"next":["m-q1d-same","m-q1d-example","m-q1d-moveon"],"explain":"A short extra example, only for the students who need it, is what a branch is for."}]},{"id":"m-q1d-example","type":"read","title":"Yes: a short extra example","body":"That's the idea. Make the extra example a small card, and drag the “not sure” answer to it. Only those students get it.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-same","type":"read","title":"Why not the same card again?","body":"Showing the same card rarely helps. Give a different way in instead: another example, a video, a picture.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-moveon","type":"read","title":"Why not just move on?","body":"A student who isn't sure yet will likely be stuck on the next card too. A short detour card helps them catch up.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-sketch","type":"submit","title":"Sketch your own tree","body":"Draw (or describe) a small tree for one of your lessons: one question, its answers, and the card each answer deals. Use Draw if you like.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"answer","minutes":8,"due":"2026-11-24"}],"branches":{}},{"id":"l-gayubro","title":"Running your class","modules":[{"id":"m-q1d-sv","type":"read","title":"Watch: try it as a student","body":"Student View shows exactly what a student sees. Nothing you do there is graded, and no one is notified.","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-sv","kind":"video","url":"/samples/questhand101/studentview.mp4","name":"Student View"}],"kind":"content","minutes":1},{"id":"m-q1d-review","type":"read","title":"Watch: give feedback","body":"Work students hand in waits for you in Grades and Students.","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-review","kind":"video","url":"/samples/questhand101/review.mp4","name":"Reviewing work"}],"kind":"content","minutes":1},{"id":"m-q1d-tip","type":"read","title":"A tip on feedback","body":"A short voice note: what makes feedback useful.","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-tip","kind":"audio","url":"/samples/questhand101/tip.m4a","name":"Feedback tip (voice note)"}],"kind":"content","minutes":1},{"id":"m-q1d-ideas","type":"wall","title":"Share one idea","body":"What will your first Questhand lesson be about? Post one idea, and reply to someone else's.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"discussion","wall":{"posting":"students","comments":true,"reactions":"likes","anonymous":false,"approval":false,"replies":1}}],"branches":{},"session":{"agenda":[{"label":"Warm-up: what did your branch do?","minutes":10},{"label":"Show and tell, in turns","minutes":25,"roundRobin":true},{"label":"Plan next week","minutes":10}],"minutes":45}},{"id":"l-6hub5qw","title":"Wrap-up","modules":[{"id":"m-q1d-final","type":"quiz","title":"Final check","body":"Five questions, two tries. Your score decides your last card.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","attempts":2,"bands":[{"min":0,"next":"m-q1d-go-over"},{"min":60,"next":null},{"min":100,"next":"m-q1d-ready"}],"questions":[{"id":"q-q1d-7","text":"How does a student get a card that an answer deals?","options":["The teacher sends it by hand","By picking that answer","Everyone gets it anyway"],"answer":1,"explain":"The answer deals it: only students who pick it get the card."},{"id":"q-q1d-8","text":"Can one answer deal more than one card?","options":["No, only one","Yes: drag its dot to each card"],"answer":1,"explain":"Drag the same answer's dot onto another card and a second line appears."},{"id":"q-q1d-9","text":"Where do you try the course as a student, with nothing graded?","options":["Grades","Settings","Student View"],"answer":2},{"id":"q-q1d-10","text":"A student handed in work. Where is it waiting?","options":["Grades and Students, marked To review","In your email only","Nowhere until they finish the course"],"answer":0},{"id":"q-q1d-11","text":"Good feedback has two parts:","options":["A score and a grade","A long list of mistakes","One thing done well, one thing to try next"],"answer":2}]},{"id":"m-q1d-go-over","type":"read","title":"Let's go over it","body":"No problem: these are the five things to remember.\n\n1. Answers deal cards; only students who pick an answer get its card.\n2. One answer can deal several cards.\n3. Student View is a safe test: nothing is graded.\n4. Handed-in work waits in Grades and Students.\n5. Feedback: one thing done well, one to try next.\n\nThen take the final check again.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-ready","type":"read","title":"You're ready","body":"Full marks. Go and build your first lesson: one Content card, one question, and one branch. Your students will feel the difference.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-reflect","type":"submit","title":"What will you build first?","body":"One or two sentences: the lesson you'll build first, and the branch you'll put in it.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"answer","minutes":3}],"branches":{}}]},{"id":"w-bpgch9t","title":"Week 3 · More ways to build","lessons":[{"id":"l-e7d7biv","title":"Every kind of question","modules":[{"id":"m-q1d-forms","type":"read","title":"Five ways to ask","body":"A Question card can ask in different ways. Try each one below: pick one, pick several, put in order, type a word, or vote.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-multi","type":"practice","title":"Pick all that apply","body":"","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","questions":[{"id":"q-q1d-12","kind":"multi","text":"What can a Content card hold? Choose all that apply.","options":["A video","A recording","A picture","A grade"],"answerSet":[0,1,2],"explain":"Grades come from Question cards; Content cards hold things to read, watch or listen to."}]},{"id":"m-q1d-order","type":"practice","title":"Put them in order","body":"","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","questions":[{"id":"q-q1d-13","kind":"order","text":"Put the steps of making a branch in order.","options":["Make a question card","Add its answers","Drag an answer's dot to a card","Try it in Student View"],"explain":"Question, answers, then drag each answer to the card it deals, and check it as a student."}]},{"id":"m-q1d-short","type":"practice","title":"Type the answer","body":"","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","questions":[{"id":"q-q1d-14","kind":"short","text":"Which view shows every card of the course at once, with its branches? (one word)","options":[],"accept":["map","the map","course map"],"explain":"The Map: every lesson as a row of cards, and the lines between them."}]},{"id":"m-q1d-feel","type":"practice","title":"How is it going?","body":"Pick one, then press Submit vote. You can't change it after.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"choice","poll":true,"questions":[{"id":"q-q1d-15","text":"How do you feel about building your first course?","options":["Ready to start","Getting there","I need more help"],"next":[null,null,"m-q1d-help"]}]},{"id":"m-q1d-help","type":"read","title":"More help, just for you","body":"You said you need more help, so this card is yours. Start small: one lesson, three cards (something to read, one question, one branch). Then open Student View and try it as a student.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-record","type":"submit","title":"Record a hello","body":"Record a short hello for your future class: who you are, and what the first lesson is about. Use Record (your voice or a video). You can also write it instead.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"answer","minutes":3},{"id":"m-q1d-draw","type":"submit","title":"Draw your lesson","body":"Sketch your first lesson as a row of cards, with one branch. Use Draw, or upload a photo of a paper sketch.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"answer","minutes":6,"due":"2026-11-27"}],"branches":{}},{"id":"l-h2j0tnw","title":"Elective: one lesson, three readings","modules":[{"id":"m-q1d-why-elective","type":"read","title":"Why an elective?","body":"An elective is a lesson students choose to take (or not). Set how many electives each student should pick, and they choose from a short catalogue.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-pack","type":"group","title":"Reading pack","body":"Three short readings that go together. A card group can hold any kind of card, not only questions.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"group","members":["m-q1d-read1","m-q1d-read2","m-q1d-read3"]},{"id":"m-q1d-read1","type":"read","title":"Reading 1: small cards","body":"Short cards are easier to start and easier to finish. Students see progress after every card.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-read2","type":"read","title":"Reading 2: one question per card","body":"One question per card makes the card tree simple: each answer deals the next card.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-read3","type":"read","title":"Reading 3: feedback that moves","body":"Feedback is most useful with one thing done well and one thing to try next.","audience":{"kind":"all"},"tools":[],"attachments":[],"kind":"content"},{"id":"m-q1d-listen","type":"read","title":"Listen: a feedback tip","body":"The same voice note as in Week 2, here as part of the elective.","audience":{"kind":"all"},"tools":[],"attachments":[{"id":"a-q1d-listen","kind":"audio","url":"/samples/questhand101/tip.m4a","name":"Feedback tip (voice note)"}],"kind":"content","minutes":1}],"branches":{},"elective":true}]}],"electiveMin":1,"waiting":[{"id":"s-3htfr19","name":"Gus Wong","email":"t-demo-gus-cee38e@example.test","joinedAt":1795407547552}],"subtitle":"Demo course · look around, change anything (it resets every night)"},"progress":{"s-iq38b15":{"m-q1d-hello":{"status":"done","updatedAt":1795407546336},"m-q1d-tour":{"status":"done","updatedAt":1795407546355},"m-q1d-used":{"status":"done","updatedAt":1795407546375,"answers":{"q-q1d-1":2},"first":{"q-q1d-1":true},"dealt":{"q-q1d-1":2},"results":{"q-q1d-1":true},"score":1},"m-q1d-coming-from":{"status":"done","updatedAt":1795407546401},"m-q1d-check1":{"status":"done","updatedAt":1795407546416,"answers":{"q-q1d-2":2},"first":{"q-q1d-2":true},"results":{"q-q1d-2":true},"score":1},"m-q1d-kinds":{"status":"done","updatedAt":1795407546432},"m-q1d-first":{"status":"done","updatedAt":1795407546447},"m-q1d-kq1":{"status":"done","updatedAt":1795407546466,"answers":{"q-q1d-3":1},"first":{"q-q1d-3":true},"results":{"q-q1d-3":true},"score":1},"m-q1d-kq":{"status":"done","updatedAt":1795407546499,"dealt":{"#score":100},"score":3},"m-q1d-kq2":{"status":"done","updatedAt":1795407546488,"answers":{"q-q1d-4":2},"first":{"q-q1d-4":true},"results":{"q-q1d-4":true},"score":1},"m-q1d-kq3":{"status":"done","updatedAt":1795407546499,"answers":{"q-q1d-5":1},"first":{"q-q1d-5":true},"results":{"q-q1d-5":true},"score":1},"m-q1d-ahead":{"status":"done","updatedAt":1795407546511},"m-q1d-plan":{"status":"done","updatedAt":1795407546522,"output":"I'd open my fractions unit with a short video card, then a poll: students who aren't sure get an extra example card, the rest move on.","review":{"verdict":"good","text":"A clear opening, and the poll is a great check. Try timing the video: under two minutes keeps everyone with you.","at":1795407547560}},"m-q1d-map":{"status":"done","updatedAt":1795407546530},"m-q1d-tree":{"status":"done","updatedAt":1795407546540,"starred":true},"m-q1d-stuck":{"status":"done","updatedAt":1795407546551,"answers":{"q-q1d-6":1},"first":{"q-q1d-6":true},"dealt":{"q-q1d-6":1},"results":{"q-q1d-6":true},"score":1},"m-q1d-example":{"status":"done","updatedAt":1795407546566},"m-q1d-sketch":{"status":"done","updatedAt":1795407546592,"work":[{"id":"w-pcoiam3","kind":"image","url":"/samples/demo/tree-sketch.jpg","name":"my card tree.jpg"}],"output":"My tree: one question, three answers, and a 'try again' card under the extra example.","review":{"verdict":"good","text":"Lovely tree. The 'try again' card is a smart touch.","at":1795407547574}},"m-q1d-sv":{"status":"done","updatedAt":1795407546600},"m-q1d-review":{"status":"done","updatedAt":1795407546610},"m-q1d-tip":{"status":"done","updatedAt":1795407546618},"m-q1d-ideas":{"status":"doing","updatedAt":1795407546628},"m-q1d-final":{"status":"done","updatedAt":1795407546695,"answers":{"q-q1d-7":1,"q-q1d-8":1,"q-q1d-9":2,"q-q1d-10":0,"q-q1d-11":2},"first":{},"results":{"q-q1d-7":true,"q-q1d-8":true,"q-q1d-9":true,"q-q1d-10":true,"q-q1d-11":true},"score":5,"dealt":{"#score":[100]},"attempt":1,"best":5},"m-q1d-ready":{"status":"done","updatedAt":1795407546704},"m-q1d-why-elective":{"status":"done","updatedAt":1795407546727},"m-q1d-read1":{"status":"done","updatedAt":1795407546740},"m-q1d-read2":{"status":"done","updatedAt":1795407546750},"m-q1d-read3":{"status":"done","updatedAt":1795407546763},"m-q1d-multi":{"status":"done","updatedAt":1795407546774,"answers":{"q-q1d-12":[0,1,2]},"first":{"q-q1d-12":true},"results":{"q-q1d-12":true},"score":1},"m-q1d-order":{"status":"done","updatedAt":1795407546784,"answers":{"q-q1d-13":["Make a question card","Add its answers","Drag an answer's dot to a card","Try it in Student View"]},"first":{"q-q1d-13":true},"results":{"q-q1d-13":true},"score":1},"m-q1d-short":{"status":"done","updatedAt":1795407546794,"answers":{"q-q1d-14":"the map"},"first":{"q-q1d-14":true},"results":{"q-q1d-14":true},"score":1},"m-q1d-feel":{"status":"done","updatedAt":1795407546808,"answers":{"q-q1d-15":0},"first":{"q-q1d-15":true},"dealt":{"q-q1d-15":0},"results":{"q-q1d-15":true},"score":1},"m-q1d-forms":{"status":"done","updatedAt":1795407546819}},"s-1e0f3o4":{"m-q1d-hello":{"status":"done","updatedAt":1795407546840},"m-q1d-tour":{"status":"done","updatedAt":1795407546853},"m-q1d-used":{"status":"done","updatedAt":1795407546865,"answers":{"q-q1d-1":0},"first":{"q-q1d-1":true},"dealt":{"q-q1d-1":0},"results":{"q-q1d-1":true},"score":1},"m-q1d-what-card":{"status":"done","updatedAt":1795407546874},"m-q1d-your-students":{"status":"done","updatedAt":1795407546882},"m-q1d-check1":{"status":"done","updatedAt":1795407546914,"answers":{"q-q1d-2":2},"first":{"q-q1d-2":false},"results":{"q-q1d-2":true},"score":1},"m-q1d-kinds":{"status":"done","updatedAt":1795407546930},"m-q1d-first":{"status":"done","updatedAt":1795407546948},"m-q1d-kq1":{"status":"done","updatedAt":1795407546964,"answers":{"q-q1d-3":0},"first":{"q-q1d-3":false},"results":{"q-q1d-3":false},"score":0},"m-q1d-kq":{"status":"done","updatedAt":1795407546983,"dealt":{"#score":33},"score":1},"m-q1d-kq2":{"status":"done","updatedAt":1795407546975,"answers":{"q-q1d-4":2},"first":{"q-q1d-4":true},"results":{"q-q1d-4":true},"score":1},"m-q1d-kq3":{"status":"done","updatedAt":1795407546984,"answers":{"q-q1d-5":0},"first":{"q-q1d-5":false},"results":{"q-q1d-5":false},"score":0},"m-q1d-kinds-again":{"status":"done","updatedAt":1795407546994},"m-q1d-plan":{"status":"doing","updatedAt":1795407547005,"output":"Maybe a video? I'm not sure which card comes first.","review":{"verdict":"revise","text":"Good start. Pick one card to open with and say why: what should students do first?","at":1795407547582}},"m-q1d-map":{"status":"done","updatedAt":1795407547016},"m-q1d-tree":{"status":"done","updatedAt":1795407547033},"m-q1d-stuck":{"status":"done","updatedAt":1795407547045,"answers":{"q-q1d-6":0},"first":{"q-q1d-6":false},"dealt":{"q-q1d-6":0},"results":{"q-q1d-6":false},"score":0},"m-q1d-same":{"status":"done","updatedAt":1795407547059},"m-q1d-ideas":{"status":"todo","updatedAt":1795407547070},"m-q1d-final":{"status":"done","updatedAt":1795407547156,"answers":{"q-q1d-7":0,"q-q1d-8":0,"q-q1d-9":2,"q-q1d-10":1,"q-q1d-11":2},"first":{},"results":{"q-q1d-7":false,"q-q1d-8":false,"q-q1d-9":true,"q-q1d-10":false,"q-q1d-11":true},"score":2,"dealt":{"#score":[40]},"attempt":1,"best":2},"m-q1d-feel":{"status":"done","updatedAt":1795407547167,"answers":{"q-q1d-15":2},"first":{"q-q1d-15":true},"dealt":{"q-q1d-15":2},"results":{"q-q1d-15":true},"score":1},"m-q1d-help":{"status":"done","updatedAt":1795407547176}},"s-yqvby2c":{"m-q1d-hello":{"status":"done","updatedAt":1795407547184},"m-q1d-tour":{"status":"done","updatedAt":1795407547191}},"s-qbijyyj":{"m-q1d-hello":{"status":"done","updatedAt":1795407547198},"m-q1d-tour":{"status":"done","updatedAt":1795407547207},"m-q1d-used":{"status":"done","updatedAt":1795407547216,"answers":{"q-q1d-1":1},"first":{"q-q1d-1":true},"dealt":{"q-q1d-1":1},"results":{"q-q1d-1":true},"score":1},"m-q1d-your-students":{"status":"done","updatedAt":1795407547225},"m-q1d-check1":{"status":"done","updatedAt":1795407547233,"answers":{"q-q1d-2":2},"first":{"q-q1d-2":true},"results":{"q-q1d-2":true},"score":1},"m-q1d-kinds":{"status":"done","updatedAt":1795407547242},"m-q1d-first":{"status":"done","updatedAt":1795407547249},"m-q1d-kq1":{"status":"done","updatedAt":1795407547260,"answers":{"q-q1d-3":1},"first":{"q-q1d-3":true},"results":{"q-q1d-3":true},"score":1},"m-q1d-kq":{"status":"done","updatedAt":1795407547278,"dealt":{"#score":67},"score":2},"m-q1d-kq2":{"status":"done","updatedAt":1795407547269,"answers":{"q-q1d-4":0},"first":{"q-q1d-4":false},"results":{"q-q1d-4":false},"score":0},"m-q1d-kq3":{"status":"done","updatedAt":1795407547278,"answers":{"q-q1d-5":1},"first":{"q-q1d-5":true},"results":{"q-q1d-5":true},"score":1},"m-q1d-plan":{"status":"done","updatedAt":1795407547290,"output":"The water cycle: a video of rain on a window, then a poll, then students draw the arrows.","review":{"verdict":"good","text":"Voice note attached.","at":1795407547590,"attachments":[{"id":"fb-dev-1","kind":"audio","url":"/samples/demo/teacher-feedback.m4a","name":"feedback.m4a"}]}},"m-q1d-map":{"status":"done","updatedAt":1795407547302},"m-q1d-tree":{"status":"done","updatedAt":1795407547313},"m-q1d-stuck":{"status":"done","updatedAt":1795407547322,"answers":{"q-q1d-6":1},"first":{"q-q1d-6":true},"dealt":{"q-q1d-6":1},"results":{"q-q1d-6":true},"score":1},"m-q1d-example":{"status":"done","updatedAt":1795407547330},"m-q1d-sketch":{"status":"done","updatedAt":1795407547348,"work":[{"id":"w-rb9s1d2","kind":"image","url":"/samples/demo/lesson-sketch.jpg","name":"water cycle lesson.jpg"}],"output":"Here's my lesson as cards, with one branch for students who aren't sure."},"m-q1d-sv":{"status":"done","updatedAt":1795407547359},"m-q1d-review":{"status":"done","updatedAt":1795407547367},"m-q1d-tip":{"status":"done","updatedAt":1795407547375},"m-q1d-ideas":{"status":"doing","updatedAt":1795407547383},"m-q1d-record":{"status":"done","updatedAt":1795407547399,"work":[{"id":"w-23gewnv","kind":"audio","url":"/samples/demo/dev-hello.m4a","name":"hello.m4a"}],"output":""},"m-q1d-feel":{"status":"done","updatedAt":1795407547410,"answers":{"q-q1d-15":1},"first":{"q-q1d-15":true},"dealt":{"q-q1d-15":1},"results":{"q-q1d-15":true},"score":1}},"s-tamvltz":{"m-q1d-hello":{"status":"done","updatedAt":1795407547417},"m-q1d-tour":{"status":"done","updatedAt":1795407547425},"m-q1d-used":{"status":"done","updatedAt":1795407547433,"answers":{"q-q1d-1":1},"first":{"q-q1d-1":true},"dealt":{"q-q1d-1":1},"results":{"q-q1d-1":true},"score":1},"m-q1d-your-students":{"status":"done","updatedAt":1795407547442},"m-q1d-check1":{"status":"done","updatedAt":1795407547452,"answers":{"q-q1d-2":2},"first":{"q-q1d-2":true},"results":{"q-q1d-2":true},"score":1},"m-q1d-kinds":{"status":"done","updatedAt":1795407547463},"m-q1d-first":{"status":"done","updatedAt":1795407547471},"m-q1d-kq1":{"status":"done","updatedAt":1795407547480,"answers":{"q-q1d-3":1},"first":{"q-q1d-3":true},"results":{"q-q1d-3":true},"score":1},"m-q1d-kq":{"status":"done","updatedAt":1795407547498,"dealt":{"#score":100},"score":3},"m-q1d-kq2":{"status":"done","updatedAt":1795407547489,"answers":{"q-q1d-4":2},"first":{"q-q1d-4":true},"results":{"q-q1d-4":true},"score":1},"m-q1d-kq3":{"status":"done","updatedAt":1795407547498,"answers":{"q-q1d-5":1},"first":{"q-q1d-5":true},"results":{"q-q1d-5":true},"score":1},"m-q1d-plan":{"status":"doing","updatedAt":1795407547506,"output":"A reading card.","review":{"verdict":"revise","text":"Tell me more: which reading, and what question comes after it?","at":1795407547597}}}},"posts":[{"id":"p-7ezyn4c","moduleId":"m-q1d-ideas","studentId":"s-iq38b15","text":"Fractions on a number line: a poll first, then an extra example card for anyone who isn't sure where 3/2 goes.","work":[],"createdAt":1795407546627,"comments":[{"id":"c-f8b6i0x","from":"s-1e0f3o4","text":"Love the extra example idea. Can I copy it for my maths class?","at":1795407547070},{"id":"c-jfj4vs2","from":"teacher","text":"Great idea, Ana. Everyone: notice how the branch only goes to the students who need it.","at":1795407547613}]},{"id":"p-4xueus0","moduleId":"m-q1d-ideas","studentId":"s-qbijyyj","text":"The water cycle, as four cards. Sketch attached.","work":[{"id":"w-dev-sk","kind":"image","url":"/samples/demo/lesson-sketch.jpg","name":"lesson sketch.jpg"}],"createdAt":1795407547383}],"toolLog":[],"events":[{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-hello","text":"Finished “A hello from your guide”","id":"j17vyen3","at":1795407546336},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-tour","text":"Finished “Watch: a 30-second tour”","id":"rh4ky6oz","at":1795407546355},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-used","text":"Finished “Where are you starting from?”","id":"mnxp66vb","at":1795407546375},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-coming-from","text":"Finished “Coming from another tool?”","id":"s3iogcoj","at":1795407546401},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-check1","text":"Finished “Quick check”","id":"dbsg5zz6","at":1795407546416},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-kinds","text":"Finished “Two kinds of card”","id":"js2v2s59","at":1795407546432},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-first","text":"Finished “Watch: make your first card”","id":"zx8zsolf","at":1795407546447},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-kq1","text":"Finished “Card quiz 1”","id":"29bdjf2l","at":1795407546466},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-kq2","text":"Finished “Card quiz 2”","id":"tt6yl82h","at":1795407546488},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-kq3","text":"Finished “Card quiz 3”","id":"v08j31ws","at":1795407546499},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-ahead","text":"Finished “Ahead of the class: card groups”","id":"dkhwxk09","at":1795407546511},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-plan","text":"Finished “Your turn: plan a card”","id":"k0wurf71","at":1795407546522},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-map","text":"Finished “Why branch?”","id":"72j6uors","at":1795407546530},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-tree","text":"Finished “Watch: draw a branch”","id":"iop2ofbs","at":1795407546540},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-stuck","text":"Finished “Try a branch”","id":"ks8p2r8p","at":1795407546551},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-example","text":"Finished “Yes: a short extra example”","id":"9ionue9m","at":1795407546566},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-sketch","text":"Finished “Sketch your own tree”","id":"34huysgd","at":1795407546592},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-sv","text":"Finished “Watch: try it as a student”","id":"2ra40fbl","at":1795407546600},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-review","text":"Finished “Watch: give feedback”","id":"2mxls7mo","at":1795407546610},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-tip","text":"Finished “A tip on feedback”","id":"gtzgptm5","at":1795407546618},{"kind":"post","studentId":"s-iq38b15","moduleId":"m-q1d-ideas","text":"Fractions on a number line: a poll first, then an extra example card for anyone ","id":"5gd60iq5","at":1795407546627},{"kind":"quiz","studentId":"s-iq38b15","moduleId":"m-q1d-final","text":"Submitted “Final check”: 5/5","id":"nj61fzrp","at":1795407546695},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-ready","text":"Finished “You're ready”","id":"y14zze51","at":1795407546704},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-why-elective","text":"Finished “Why an elective?”","id":"tff8oqld","at":1795407546727},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-read1","text":"Finished “Reading 1: small cards”","id":"h9r2ws4c","at":1795407546740},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-read2","text":"Finished “Reading 2: one question per card”","id":"2jked3q2","at":1795407546750},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-read3","text":"Finished “Reading 3: feedback that moves”","id":"g26yj8ft","at":1795407546763},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-multi","text":"Finished “Pick all that apply”","id":"ts4y2b3x","at":1795407546774},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-order","text":"Finished “Put them in order”","id":"lv8anqvo","at":1795407546784},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-short","text":"Finished “Type the answer”","id":"fmmlkc3b","at":1795407546794},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-feel","text":"Finished “How is it going?”","id":"cg4gc7bm","at":1795407546808},{"kind":"done","studentId":"s-iq38b15","moduleId":"m-q1d-forms","text":"Finished “Five ways to ask”","id":"pf0j2zsi","at":1795407546819},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-hello","text":"Finished “A hello from your guide”","id":"o8l1x3hr","at":1795407546840},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-tour","text":"Finished “Watch: a 30-second tour”","id":"xx6cts27","at":1795407546853},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-used","text":"Finished “Where are you starting from?”","id":"hr28volx","at":1795407546865},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-what-card","text":"Finished “Start here: a course is a deck of cards”","id":"tfhqfqj6","at":1795407546874},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-your-students","text":"Finished “What your students see”","id":"yml0qkhu","at":1795407546882},{"kind":"wrong","studentId":"s-1e0f3o4","moduleId":"m-q1d-check1","text":"Q1: chose “Grades”; answer is “The Map”","id":"2r1rv9qz","at":1795407546899},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-check1","text":"Finished “Quick check”","id":"spjc186y","at":1795407546899},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-kinds","text":"Finished “Two kinds of card”","id":"s83c2b18","at":1795407546930},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-first","text":"Finished “Watch: make your first card”","id":"rzzdri3b","at":1795407546948},{"kind":"wrong","studentId":"s-1e0f3o4","moduleId":"m-q1d-kq1","text":"Q1: chose “A Poll card”; answer is “A Content card”","id":"883k9oqc","at":1795407546964},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-kq1","text":"Finished “Card quiz 1”","id":"40d5393o","at":1795407546964},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-kq2","text":"Finished “Card quiz 2”","id":"s2tuq0zh","at":1795407546975},{"kind":"wrong","studentId":"s-1e0f3o4","moduleId":"m-q1d-kq3","text":"Q1: chose “Content”; answer is “Open answer”","id":"5dz4fpgf","at":1795407546984},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-kq3","text":"Finished “Card quiz 3”","id":"2k3md4r6","at":1795407546984},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-kinds-again","text":"Finished “The card kinds again, side by side”","id":"f336cnwb","at":1795407546994},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-plan","text":"Finished “Your turn: plan a card”","id":"4rz8x2v1","at":1795407547005},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-map","text":"Finished “Why branch?”","id":"jjimdvei","at":1795407547016},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-tree","text":"Finished “Watch: draw a branch”","id":"tlpvq1ev","at":1795407547033},{"kind":"wrong","studentId":"s-1e0f3o4","moduleId":"m-q1d-stuck","text":"Q1: chose “The same card again”; answer is “Another example, explained step by step”","id":"r6oeo2j6","at":1795407547045},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-stuck","text":"Finished “Try a branch”","id":"ojuspfjl","at":1795407547045},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-same","text":"Finished “Why not the same card again?”","id":"8ewimga2","at":1795407547059},{"kind":"quiz","studentId":"s-1e0f3o4","moduleId":"m-q1d-final","text":"Submitted “Final check”: 2/5","id":"n7aen4xh","at":1795407547156},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-feel","text":"Finished “How is it going?”","id":"ae01wknk","at":1795407547167},{"kind":"done","studentId":"s-1e0f3o4","moduleId":"m-q1d-help","text":"Finished “More help, just for you”","id":"n5czchak","at":1795407547176},{"kind":"done","studentId":"s-yqvby2c","moduleId":"m-q1d-hello","text":"Finished “A hello from your guide”","id":"i9dg6k5p","at":1795407547184},{"kind":"done","studentId":"s-yqvby2c","moduleId":"m-q1d-tour","text":"Finished “Watch: a 30-second tour”","id":"w77vggl5","at":1795407547191},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-hello","text":"Finished “A hello from your guide”","id":"l40mwjxg","at":1795407547198},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-tour","text":"Finished “Watch: a 30-second tour”","id":"exyevjbo","at":1795407547207},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-used","text":"Finished “Where are you starting from?”","id":"046sobww","at":1795407547216},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-your-students","text":"Finished “What your students see”","id":"wld8a2uh","at":1795407547225},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-check1","text":"Finished “Quick check”","id":"yrkrvmhq","at":1795407547233},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-kinds","text":"Finished “Two kinds of card”","id":"zh9yivrg","at":1795407547242},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-first","text":"Finished “Watch: make your first card”","id":"v08f6vcr","at":1795407547249},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-kq1","text":"Finished “Card quiz 1”","id":"14o9c1tm","at":1795407547260},{"kind":"wrong","studentId":"s-qbijyyj","moduleId":"m-q1d-kq2","text":"Q1: chose “Multiple choice”; answer is “Poll”","id":"yqh1i7p3","at":1795407547269},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-kq2","text":"Finished “Card quiz 2”","id":"s0gb5kdq","at":1795407547269},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-kq3","text":"Finished “Card quiz 3”","id":"4xybv8b4","at":1795407547278},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-plan","text":"Finished “Your turn: plan a card”","id":"wjrqpwar","at":1795407547290},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-map","text":"Finished “Why branch?”","id":"4ac92ys2","at":1795407547302},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-tree","text":"Finished “Watch: draw a branch”","id":"n5u35pvv","at":1795407547313},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-stuck","text":"Finished “Try a branch”","id":"dj9nfdii","at":1795407547322},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-example","text":"Finished “Yes: a short extra example”","id":"25iizmfm","at":1795407547330},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-sketch","text":"Finished “Sketch your own tree”","id":"lg4u631k","at":1795407547348},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-sv","text":"Finished “Watch: try it as a student”","id":"r1y3mjak","at":1795407547359},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-review","text":"Finished “Watch: give feedback”","id":"0cn8euwc","at":1795407547367},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-tip","text":"Finished “A tip on feedback”","id":"mdfdmzg2","at":1795407547375},{"kind":"post","studentId":"s-qbijyyj","moduleId":"m-q1d-ideas","text":"The water cycle, as four cards. Sketch attached.","id":"r1x0y51w","at":1795407547383},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-record","text":"Finished “Record a hello”","id":"8tdbp4id","at":1795407547399},{"kind":"done","studentId":"s-qbijyyj","moduleId":"m-q1d-feel","text":"Finished “How is it going?”","id":"tiysxt6c","at":1795407547410},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-hello","text":"Finished “A hello from your guide”","id":"cjrgt50u","at":1795407547417},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-tour","text":"Finished “Watch: a 30-second tour”","id":"w5y7vset","at":1795407547425},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-used","text":"Finished “Where are you starting from?”","id":"i453g17k","at":1795407547433},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-your-students","text":"Finished “What your students see”","id":"ujaft75h","at":1795407547442},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-check1","text":"Finished “Quick check”","id":"4zzsv0h3","at":1795407547452},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-kinds","text":"Finished “Two kinds of card”","id":"fyo9l2hi","at":1795407547463},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-first","text":"Finished “Watch: make your first card”","id":"xahcq9ln","at":1795407547471},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-kq1","text":"Finished “Card quiz 1”","id":"1il31trr","at":1795407547480},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-kq2","text":"Finished “Card quiz 2”","id":"i91g3rrk","at":1795407547489},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-kq3","text":"Finished “Card quiz 3”","id":"3bi17dw7","at":1795407547498},{"kind":"done","studentId":"s-tamvltz","moduleId":"m-q1d-plan","text":"Finished “Your turn: plan a card”","id":"dg4pcxwz","at":1795407547506}],"choices":{"s-iq38b15":{"elective:l-h2j0tnw":"yes"}},"studio":{"posts":[],"feedback":[]},"marks":null,"live":null,"uptake":null,"nudges":[{"id":"n-uii48x0","studentId":"s-yqvby2c","text":"Hi Cara, you're two lessons behind. Start with the quick check in Welcome to Questhand; it takes two minutes.","at":1795407547605}],"plans":null}
+{
+ "exportedAt": 1795591939161,
+ "courses": {
+  "id": "demo",
+  "title": "Mission to Mars",
+  "createdAt": 1795591935563,
+  "joinCode": "U9GM9A",
+  "access": {
+   "joinOpen": true,
+   "selfJoin": "approve"
+  },
+  "profile": {
+   "preset": "custom",
+   "density": "comfortable",
+   "autonomy": "free",
+   "horizon": "term",
+   "entry": "code"
+  },
+  "students": [
+   {
+    "id": "s-vny9yoq",
+    "name": "Ava Chen"
+   },
+   {
+    "id": "s-c7j45cl",
+    "name": "Leo Park"
+   },
+   {
+    "id": "s-yjd0k1q",
+    "name": "Mia Rossi"
+   },
+   {
+    "id": "s-rlzns3t",
+    "name": "Noah Kim"
+   },
+   {
+    "id": "s-0gv4pys",
+    "name": "Zara Ali"
+   },
+   {
+    "id": "s-fj99uev",
+    "name": "Sam Okafor"
+   }
+  ],
+  "skills": [],
+  "levels": [
+   {
+    "n": 1,
+    "name": "Starting",
+    "description": "The skill isn’t evident yet; a lot of help is needed.",
+    "use": "Pick one thing to practice next."
+   },
+   {
+    "n": 2,
+    "name": "Developing",
+    "description": "The skill shows up, but not consistently.",
+    "use": "Point to what worked and one place to adjust."
+   },
+   {
+    "n": 3,
+    "name": "Meeting the goal",
+    "description": "The skill is clear and consistent in this activity.",
+    "use": "Explain its effect using specific evidence."
+   },
+   {
+    "n": 4,
+    "name": "Going beyond",
+    "description": "The skill is used with judgment and adapted to the situation.",
+    "use": "Explain the choice and its effect."
+   }
+  ],
+  "groups": [],
+  "currentLessonId": "l-y2pjian",
+  "enabledConnectors": [
+   "wikipedia",
+   "dictionary",
+   "ai"
+  ],
+  "weeks": [
+   {
+    "id": "w-fxjafxk",
+    "title": "Week 1 · Launch training",
+    "lessons": [
+     {
+      "id": "l-y2pjian",
+      "title": "Welcome aboard, cadet",
+      "modules": [
+       {
+        "id": "m-lr2nei9",
+        "kind": "content",
+        "title": "Your mission briefing",
+        "minutes": 3,
+        "body": "Good morning, cadet. 🚀\n\nIn three weeks our crew leaves for **Mars**, the red planet. Before then you'll train: how far it is, what to pack, how to breathe and drink when there's no air or rain, and how to build a base.\n\nEvery card is one step of your training. Some cards only appear when you need them, so your board won't look exactly like your friend's.\n\nReady? Pick your crew job next.",
+        "attachments": [
+         {
+          "id": "a-6n6aufq",
+          "kind": "image",
+          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/Mars_Valles_Marineris.jpeg/960px-Mars_Valles_Marineris.jpeg",
+          "name": "Mars, with the canyon Valles Marineris across the middle",
+          "credit": "NASA / JPL / USGS"
+         },
+         {
+          "id": "a-ez3uo4j",
+          "kind": "link",
+          "url": "https://science.nasa.gov/mars/",
+          "name": "NASA: All about Mars"
+         }
+        ],
+        "type": "read",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": []
+       },
+       {
+        "id": "m-706fg3x",
+        "kind": "choice",
+        "title": "Pick your crew job",
+        "poll": true,
+        "signup": {
+         "max": 3,
+         "names": true
+        },
+        "minutes": 1,
+        "body": "Every crew needs all four jobs. Up to three cadets per job, so pick fast!",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "Which job do you want on the crew?",
+          "options": [
+           "Pilot",
+           "Engineer",
+           "Botanist",
+           "Medic"
+          ]
+         }
+        ],
+        "type": "practice",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-nnpkijh",
+        "kind": "choice",
+        "title": "How far is Mars?",
+        "minutes": 2,
+        "body": "Mars is our neighbour, but neighbours in space are a long way apart.",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "How long does the trip to Mars take?",
+          "options": [
+           "About 7 months",
+           "About 3 days",
+           "About 10 years"
+          ],
+          "answer": 0,
+          "explain": "With today's rockets it takes about 7 months, when Earth and Mars are on the same side of the Sun.",
+          "next": [
+           null,
+           "m-sf03u4w",
+           "m-sf03u4w"
+          ]
+         }
+        ],
+        "type": "practice",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-sf03u4w",
+        "kind": "content",
+        "title": "Space is BIG",
+        "minutes": 2,
+        "body": "Not quite! The Moon is 3 days away, but Mars is about **150 times further**.\n\nIf you drove a car to Mars at motorway speed without stopping, you'd arrive in about **100 years**. A rocket is much faster, but the trip still takes about **7 months**.\n\nPack some good books. 📚",
+        "type": "read",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       }
+      ],
+      "branches": {},
+      "goal": "Know where we're going, how far it is, and which job you'll do on the crew.",
+      "session": {
+       "minutes": 50,
+       "agenda": [
+        {
+         "label": "Mission briefing",
+         "minutes": 10
+        },
+        {
+         "label": "Pick your crew job",
+         "minutes": 10
+        },
+        {
+         "label": "How far is Mars?",
+         "minutes": 15
+        },
+        {
+         "label": "Crew huddle",
+         "minutes": 15
+        }
+       ]
+      },
+      "date": "2026-11-18"
+     },
+     {
+      "id": "l-v7kdyzd",
+      "title": "Pack the rocket",
+      "modules": [
+       {
+        "id": "m-yg6xo33",
+        "kind": "choice",
+        "title": "What goes on board?",
+        "minutes": 2,
+        "body": "Every kilogram costs fuel, so only take what you need.",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "multi",
+          "text": "Tick everything the crew needs.",
+          "options": [
+           "Oxygen",
+           "Water",
+           "Food",
+           "Your bicycle",
+           "A spare spacesuit"
+          ],
+          "answerSet": [
+           0,
+           1,
+           2,
+           4
+          ],
+          "explain": "The bicycle stays home: there are no roads on Mars (yet)."
+         }
+        ],
+        "type": "practice",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-k2l2r2h",
+        "kind": "choice",
+        "title": "Countdown",
+        "minutes": 2,
+        "questions": [
+         {
+          "id": "q",
+          "kind": "order",
+          "text": "Put the launch steps in order.",
+          "options": [
+           "Close the hatch",
+           "Check the fuel",
+           "Start the engines",
+           "Lift off!"
+          ]
+         }
+        ],
+        "attachments": [
+         {
+          "id": "a-8tdgcki",
+          "kind": "image",
+          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Space_Shuttle_Columbia_launching.jpg/960px-Space_Shuttle_Columbia_launching.jpg",
+          "name": "A space shuttle lifting off",
+          "credit": "NASA"
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": []
+       },
+       {
+        "id": "m-pvs61ja",
+        "kind": "choice",
+        "title": "One word",
+        "minutes": 1,
+        "questions": [
+         {
+          "id": "q",
+          "kind": "short",
+          "text": "Which gas do your lungs need? (one word)",
+          "options": [],
+          "accept": [
+           "oxygen",
+           "O2"
+          ]
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-dgy5qek",
+        "kind": "group",
+        "title": "Fuel check",
+        "members": [
+         "m-1iizdkb",
+         "m-2ckwc6d",
+         "m-ubvofxs"
+        ],
+        "bands": [
+         {
+          "min": 0,
+          "next": "m-gsmh3wr"
+         },
+         {
+          "min": 67,
+          "next": null
+         },
+         {
+          "min": 100,
+          "next": "m-44kf2df"
+         }
+        ],
+        "type": "group",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-1iizdkb",
+        "kind": "choice",
+        "title": "Closest to the Sun",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "Which planet is closest to the Sun?",
+          "options": [
+           "Mercury",
+           "Mars",
+           "Earth"
+          ],
+          "answer": 0
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-2ckwc6d",
+        "kind": "choice",
+        "title": "The red planet",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "Why does Mars look red?",
+          "options": [
+           "Its dust has rust in it",
+           "It's very hot",
+           "It's covered in lava"
+          ],
+          "answer": 0,
+          "explain": "Mars dust is full of iron oxide: rust!"
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-ubvofxs",
+        "kind": "choice",
+        "title": "Moons",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "How many moons does Mars have?",
+          "options": [
+           "Two",
+           "None",
+           "Twelve"
+          ],
+          "answer": 0,
+          "explain": "Two small ones, Phobos and Deimos. Phobos is only about 22 km across."
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-gsmh3wr",
+        "kind": "content",
+        "title": "Refuel: planet facts",
+        "minutes": 3,
+        "body": "Your tank's a bit low, cadet. Top up with these:\n\n- **Mercury** is the closest planet to the Sun. Earth is third, Mars is fourth.\n- Mars is red because its dust has **rust** (iron oxide) in it.\n- Mars has **two** small moons: Phobos and Deimos.\n\nThen you're cleared for the next lesson.",
+        "attachments": [
+         {
+          "id": "a-ig2uryf",
+          "kind": "image",
+          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5c/Phobos_colour_2008.jpg/960px-Phobos_colour_2008.jpg",
+          "name": "Phobos, the bigger of Mars's two moons",
+          "credit": "NASA / JPL-Caltech / University of Arizona"
+         }
+        ],
+        "type": "read",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": []
+       },
+       {
+        "id": "m-44kf2df",
+        "kind": "content",
+        "title": "Bonus: the tallest volcano",
+        "minutes": 2,
+        "body": "Full tank! 🌋 Here's a reward fact: Mars has **Olympus Mons**, the tallest volcano in the solar system. It's about **22 km** high, nearly three times taller than Mount Everest, and as wide as France.",
+        "attachments": [
+         {
+          "id": "a-0oxs3lz",
+          "kind": "image",
+          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/00/Olympus_Mons_alt.jpg/960px-Olympus_Mons_alt.jpg",
+          "name": "Olympus Mons from above",
+          "credit": "NASA"
+         }
+        ],
+        "type": "read",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": []
+       }
+      ],
+      "branches": {},
+      "goal": "Choose what the crew needs, and pass the fuel check.",
+      "date": "2026-11-20"
+     }
+    ]
+   },
+   {
+    "id": "w-yoywrr0",
+    "title": "Week 2 · Life on Mars",
+    "lessons": [
+     {
+      "id": "l-uv35orj",
+      "title": "Build the base",
+      "modules": [
+       {
+        "id": "m-lmd7krb",
+        "kind": "content",
+        "title": "Three things to stay alive",
+        "minutes": 3,
+        "body": "On Earth, air, water and food are easy. On Mars:\n\n- The **air** is thin and mostly carbon dioxide. We can't breathe it.\n- The **water** is frozen as ice, under the ground and at the poles.\n- **Food** has to be grown indoors, under lights, in a greenhouse.\n\nPass the base inspection, then design your greenhouse.",
+        "attachments": [
+         {
+          "id": "a-ic53m8j",
+          "kind": "image",
+          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7a/Jezero_crater_on_Mars%2C_sol_43_of_Perseverance_mission.png/960px-Jezero_crater_on_Mars%2C_sol_43_of_Perseverance_mission.png",
+          "name": "Jezero crater, seen by the Perseverance rover",
+          "credit": "NASA / JPL-Caltech"
+         }
+        ],
+        "type": "read",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": []
+       },
+       {
+        "id": "m-n1nbco5",
+        "kind": "group",
+        "title": "Base inspection",
+        "members": [
+         "m-rj83uuv",
+         "m-zo7fygi"
+        ],
+        "bands": [
+         {
+          "min": 0,
+          "next": "m-kc97zt0"
+         },
+         {
+          "min": 75,
+          "next": null
+         }
+        ],
+        "type": "group",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-rj83uuv",
+        "kind": "group",
+        "title": "Air",
+        "members": [
+         "m-aem0uj4",
+         "m-8qrg8oh"
+        ],
+        "type": "group",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-aem0uj4",
+        "kind": "choice",
+        "title": "Mars air",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "What is the air on Mars mostly made of?",
+          "options": [
+           "Carbon dioxide",
+           "Oxygen",
+           "Helium"
+          ],
+          "answer": 0
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-8qrg8oh",
+        "kind": "choice",
+        "title": "A walk outside",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "Can you breathe outside on Mars?",
+          "options": [
+           "No: you need a spacesuit",
+           "Yes, on sunny days"
+          ],
+          "answer": 0
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-zo7fygi",
+        "kind": "group",
+        "title": "Water",
+        "members": [
+         "m-c03dvtj",
+         "m-3tv8tti"
+        ],
+        "type": "group",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-c03dvtj",
+        "kind": "choice",
+        "title": "Where's the water?",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "Where is the water on Mars?",
+          "options": [
+           "Frozen as ice",
+           "In big oceans",
+           "Falling as rain"
+          ],
+          "answer": 0
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-3tv8tti",
+        "kind": "choice",
+        "title": "A drink, please",
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "How could the crew get drinking water?",
+          "options": [
+           "Dig up ice, melt it and clean it",
+           "Wait for it to rain"
+          ],
+          "answer": 0
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-kc97zt0",
+        "kind": "content",
+        "title": "Fix-it list",
+        "minutes": 2,
+        "body": "The inspector found a few problems. 🔧\n\n- The air outside is mostly **carbon dioxide**: always wear your suit.\n- There's no rain on Mars. Water comes from **ice**, which we dig up, melt and clean.\n\nRead the first card again, then carry on to the greenhouse.",
+        "attachments": [
+         {
+          "id": "a-t3i84zi",
+          "kind": "image",
+          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/Martian_north_polar_cap.jpg/960px-Martian_north_polar_cap.jpg",
+          "name": "The ice cap at Mars's north pole",
+          "credit": "NASA / JPL / MSSS"
+         }
+        ],
+        "type": "read",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": []
+       },
+       {
+        "id": "m-o57ayfd",
+        "kind": "answer",
+        "title": "Design a Mars greenhouse",
+        "minutes": 20,
+        "body": "Draw your greenhouse (on paper or with **Draw**), then add a photo or your drawing here.\n\nLabel:\n1. Where the light comes from\n2. Where the water comes from\n3. Three plants you'd grow, and why\n\nDone when: A labelled drawing with light, water and three plants.",
+        "attachments": [
+         {
+          "id": "a-70ndhg4",
+          "kind": "image",
+          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/ISS-44_VEGGIE_Red_Romaine_Lettuce.jpg/960px-ISS-44_VEGGIE_Red_Romaine_Lettuce.jpg",
+          "name": "Lettuce grown on the International Space Station",
+          "credit": "NASA"
+         }
+        ],
+        "type": "submit",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "due": "2026-11-27"
+       },
+       {
+        "id": "m-husy3fv",
+        "kind": "discussion",
+        "title": "What would you miss from Earth?",
+        "minutes": 5,
+        "body": "Seven months there, seven months back. What would you miss most? Post one thing, then reply to a classmate.",
+        "wall": {
+         "posting": "students",
+         "comments": true,
+         "reactions": "likes",
+         "anonymous": false,
+         "approval": false,
+         "replies": 1
+        },
+        "type": "wall",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       }
+      ],
+      "branches": {},
+      "goal": "Work out how the crew gets air and water, then design a greenhouse for food.",
+      "date": "2026-11-25"
+     },
+     {
+      "id": "l-yfy7qg3",
+      "title": "Elective: Rover driving school",
+      "modules": [
+       {
+        "id": "m-vlw32mc",
+        "kind": "content",
+        "title": "Meet the rover",
+        "minutes": 3,
+        "body": "A rover is a car for Mars, driven from Earth. Radio signals take **up to 20 minutes** to get there, so every turn arrives late. Drivers plan each move carefully, and the rover checks for rocks by itself.",
+        "attachments": [
+         {
+          "id": "a-8qcmz8y",
+          "kind": "image",
+          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/PIA16239_High-Resolution_Self-Portrait_by_Curiosity_Rover_Arm_Camera.jpg/960px-PIA16239_High-Resolution_Self-Portrait_by_Curiosity_Rover_Arm_Camera.jpg",
+          "name": "The Curiosity rover takes a selfie",
+          "credit": "NASA / JPL-Caltech / MSSS"
+         },
+         {
+          "id": "a-diws783",
+          "kind": "link",
+          "url": "https://science.nasa.gov/mission/mars-2020-perseverance/",
+          "name": "NASA: the Perseverance rover"
+         }
+        ],
+        "type": "read",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": []
+       },
+       {
+        "id": "m-p9q3wn9",
+        "kind": "choice",
+        "title": "Rock ahead!",
+        "minutes": 1,
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "Your rover sees a big rock 2 metres ahead. Your command takes 20 minutes to arrive. What should the rover do?",
+          "options": [
+           "Stop and steer around it by itself",
+           "Wait for you and hope"
+          ],
+          "answer": 0
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       }
+      ],
+      "branches": {},
+      "goal": "Drive a rover safely across Mars.",
+      "elective": true,
+      "date": "2026-11-27"
+     },
+     {
+      "id": "l-va3hp99",
+      "title": "Elective: Space kitchen",
+      "modules": [
+       {
+        "id": "m-gcl1h5r",
+        "kind": "content",
+        "title": "Why crumbs are a problem",
+        "minutes": 2,
+        "body": "In a spaceship, crumbs don't fall. They float into eyes, noses and machines! That's why astronauts eat tortillas instead of bread.",
+        "attachments": [
+         {
+          "id": "a-w4wiyal",
+          "kind": "image",
+          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/ISS-50_Peggy_Whitson_with_a_%27space_cheeseburger%27.jpg/960px-ISS-50_Peggy_Whitson_with_a_%27space_cheeseburger%27.jpg",
+          "name": "Astronaut Peggy Whitson with a “space cheeseburger”",
+          "credit": "NASA"
+         }
+        ],
+        "type": "read",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": []
+       },
+       {
+        "id": "m-27uhoec",
+        "kind": "answer",
+        "title": "Invent a space snack",
+        "minutes": 10,
+        "body": "Invent a snack for the trip. Give it a name, say what's in it, and how it stays crumb-free. A drawing or a recording is welcome.",
+        "type": "submit",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       }
+      ],
+      "branches": {},
+      "goal": "Invent a snack astronauts can eat without crumbs.",
+      "elective": true,
+      "date": "2026-11-27"
+     }
+    ]
+   },
+   {
+    "id": "w-ujzpva1",
+    "title": "Week 3 · Mission debrief",
+    "lessons": [
+     {
+      "id": "l-wtltlhg",
+      "title": "Mission debrief",
+      "modules": [
+       {
+        "id": "m-5zmhp4n",
+        "kind": "worksheet",
+        "title": "Captain's log",
+        "writers": "each",
+        "minutes": 10,
+        "body": "**Day 1 on Mars**\n\nToday I woke up and …\n\nFor breakfast we …\n\nThe hardest part of the day was …",
+        "type": "read",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-nazzadu",
+        "kind": "choice",
+        "title": "Ready for launch?",
+        "poll": true,
+        "minutes": 1,
+        "questions": [
+         {
+          "id": "q",
+          "kind": "choice",
+          "text": "How ready do you feel to go to Mars?",
+          "options": [
+           "Pack my bags!",
+           "Almost",
+           "Not yet"
+          ]
+         }
+        ],
+        "type": "practice",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       },
+       {
+        "id": "m-j8uqr88",
+        "kind": "answer",
+        "title": "Mission report",
+        "minutes": 10,
+        "body": "Write three things you learned in training, and one question you still have about Mars.",
+        "type": "submit",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": []
+       }
+      ],
+      "branches": {},
+      "goal": "Look back on the training and get ready to launch.",
+      "date": "2026-12-02"
+     }
+    ]
+   }
+  ],
+  "subtitle": "Year 6 Science · a three-week mission",
+  "electiveMin": 1,
+  "groupings": [
+   {
+    "id": "gs-m-706fg3x",
+    "name": "Pick your crew job",
+    "groups": [
+     {
+      "id": "m-706fg3x-o0",
+      "name": "Pilot Group",
+      "studentIds": [
+       "s-vny9yoq",
+       "s-fj99uev"
+      ]
+     },
+     {
+      "id": "m-706fg3x-o1",
+      "name": "Engineer Group",
+      "studentIds": [
+       "s-c7j45cl",
+       "s-rlzns3t"
+      ]
+     },
+     {
+      "id": "m-706fg3x-o2",
+      "name": "Botanist Group",
+      "studentIds": [
+       "s-yjd0k1q"
+      ]
+     },
+     {
+      "id": "m-706fg3x-o3",
+      "name": "Medic Group",
+      "studentIds": [
+       "s-0gv4pys"
+      ]
+     }
+    ]
+   }
+  ],
+  "waiting": [
+   {
+    "id": "s-bhzhbpd",
+    "name": "Ivy Moreno",
+    "email": "ivy@example.test",
+    "joinedAt": 1795591936511
+   }
+  ]
+ },
+ "progress": {
+  "s-vny9yoq": {
+   "m-lr2nei9": {
+    "status": "done",
+    "updatedAt": 1794967976161
+   },
+   "m-706fg3x": {
+    "status": "done",
+    "updatedAt": 1794970413161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-nnpkijh": {
+    "status": "done",
+    "updatedAt": 1794972850161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "dealt": {
+     "q": 0
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-yg6xo33": {
+    "status": "done",
+    "updatedAt": 1795148087161,
+    "answers": {
+     "q": [
+      0,
+      1,
+      2,
+      4
+     ]
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-k2l2r2h": {
+    "status": "done",
+    "updatedAt": 1795150524161,
+    "answers": {
+     "q": [
+      "Close the hatch",
+      "Check the fuel",
+      "Start the engines",
+      "Lift off!"
+     ]
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-pvs61ja": {
+    "status": "done",
+    "updatedAt": 1795152961161,
+    "answers": {
+     "q": "oxygen"
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-1iizdkb": {
+    "status": "done",
+    "updatedAt": 1795155398161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-dgy5qek": {
+    "status": "done",
+    "updatedAt": 1795139835161,
+    "dealt": {
+     "#score": 100
+    },
+    "score": 3
+   },
+   "m-2ckwc6d": {
+    "status": "done",
+    "updatedAt": 1795142272161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-ubvofxs": {
+    "status": "done",
+    "updatedAt": 1795144709161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-44kf2df": {
+    "status": "done",
+    "updatedAt": 1795147146161
+   },
+   "m-lmd7krb": {
+    "status": "done",
+    "updatedAt": 1795581583161
+   },
+   "m-aem0uj4": {
+    "status": "done",
+    "updatedAt": 1795584020161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-rj83uuv": {
+    "status": "done",
+    "updatedAt": 1795586457161,
+    "dealt": {
+     "#score": 100
+    },
+    "score": 2
+   },
+   "m-n1nbco5": {
+    "status": "done",
+    "updatedAt": 1795570894161,
+    "dealt": {
+     "#score": 100
+    },
+    "score": 4
+   },
+   "m-8qrg8oh": {
+    "status": "done",
+    "updatedAt": 1795573331161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-c03dvtj": {
+    "status": "done",
+    "updatedAt": 1795575768161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-zo7fygi": {
+    "status": "done",
+    "updatedAt": 1795578205161,
+    "dealt": {
+     "#score": 100
+    },
+    "score": 2
+   },
+   "m-3tv8tti": {
+    "status": "done",
+    "updatedAt": 1795580642161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-o57ayfd": {
+    "status": "done",
+    "updatedAt": 1795583079161,
+    "output": "My greenhouse is a dome made of thick clear plastic, half buried so it stays warm.\n1. Light: sunlight through the dome, plus LED lamps for dust storms.\n2. Water: ice from under the base, melted and cleaned in the tank by the door.\n3. Plants: potatoes (lots of food, grow in poor soil), lettuce (fast), and strawberries (for morale!).",
+    "review": {
+     "verdict": "good",
+     "text": "Brilliant, Ava. Half-burying it is exactly what real designs do. Strawberries for morale: approved. 🍓",
+     "at": 1795581139161
+    }
+   },
+   "m-husy3fv": {
+    "status": "doing",
+    "updatedAt": 1795585516161
+   },
+   "m-vlw32mc": {
+    "status": "done",
+    "updatedAt": 1795587953161
+   },
+   "m-p9q3wn9": {
+    "status": "done",
+    "updatedAt": 1795572390161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   }
+  },
+  "s-c7j45cl": {
+   "m-lr2nei9": {
+    "status": "done",
+    "updatedAt": 1794970027161
+   },
+   "m-706fg3x": {
+    "status": "done",
+    "updatedAt": 1794972464161,
+    "answers": {
+     "q": 1
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-nnpkijh": {
+    "status": "done",
+    "updatedAt": 1794974901161,
+    "answers": {
+     "q": 1
+    },
+    "first": {
+     "q": false
+    },
+    "dealt": {
+     "q": 1
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-sf03u4w": {
+    "status": "done",
+    "updatedAt": 1794977338161
+   },
+   "m-yg6xo33": {
+    "status": "done",
+    "updatedAt": 1795152575161,
+    "answers": {
+     "q": [
+      0,
+      1,
+      2,
+      4
+     ]
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-k2l2r2h": {
+    "status": "done",
+    "updatedAt": 1795155012161,
+    "answers": {
+     "q": [
+      "Close the hatch",
+      "Check the fuel",
+      "Start the engines",
+      "Lift off!"
+     ]
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-pvs61ja": {
+    "status": "done",
+    "updatedAt": 1795139449161,
+    "answers": {
+     "q": "oxygen"
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-1iizdkb": {
+    "status": "done",
+    "updatedAt": 1795141886161,
+    "answers": {
+     "q": 1
+    },
+    "first": {
+     "q": false
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-dgy5qek": {
+    "status": "done",
+    "updatedAt": 1795144323161,
+    "dealt": {
+     "#score": 33
+    },
+    "score": 1
+   },
+   "m-2ckwc6d": {
+    "status": "done",
+    "updatedAt": 1795146760161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-ubvofxs": {
+    "status": "done",
+    "updatedAt": 1795149197161,
+    "answers": {
+     "q": 1
+    },
+    "first": {
+     "q": false
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-gsmh3wr": {
+    "status": "doing",
+    "updatedAt": 1795151634161
+   },
+   "m-lmd7krb": {
+    "status": "done",
+    "updatedAt": 1795586071161
+   }
+  },
+  "s-yjd0k1q": {
+   "m-lr2nei9": {
+    "status": "done",
+    "updatedAt": 1794965708161
+   },
+   "m-706fg3x": {
+    "status": "done",
+    "updatedAt": 1794968145161,
+    "answers": {
+     "q": 2
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-nnpkijh": {
+    "status": "done",
+    "updatedAt": 1794970582161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "dealt": {
+     "q": 0
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-yg6xo33": {
+    "status": "done",
+    "updatedAt": 1795145819161,
+    "answers": {
+     "q": [
+      0,
+      1,
+      2,
+      4
+     ]
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-k2l2r2h": {
+    "status": "done",
+    "updatedAt": 1795148256161,
+    "answers": {
+     "q": [
+      "Close the hatch",
+      "Check the fuel",
+      "Start the engines",
+      "Lift off!"
+     ]
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-pvs61ja": {
+    "status": "done",
+    "updatedAt": 1795150693161,
+    "answers": {
+     "q": "oxygen"
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-1iizdkb": {
+    "status": "done",
+    "updatedAt": 1795153130161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-dgy5qek": {
+    "status": "done",
+    "updatedAt": 1795155567161,
+    "dealt": {
+     "#score": 67
+    },
+    "score": 2
+   },
+   "m-2ckwc6d": {
+    "status": "done",
+    "updatedAt": 1795140004161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-ubvofxs": {
+    "status": "done",
+    "updatedAt": 1795142441161,
+    "answers": {
+     "q": 2
+    },
+    "first": {
+     "q": false
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-lmd7krb": {
+    "status": "done",
+    "updatedAt": 1795576878161
+   },
+   "m-aem0uj4": {
+    "status": "done",
+    "updatedAt": 1795579315161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-rj83uuv": {
+    "status": "done",
+    "updatedAt": 1795581752161,
+    "dealt": {
+     "#score": 100
+    },
+    "score": 2
+   },
+   "m-n1nbco5": {
+    "status": "done",
+    "updatedAt": 1795584189161,
+    "dealt": {
+     "#score": 75
+    },
+    "score": 3
+   },
+   "m-8qrg8oh": {
+    "status": "done",
+    "updatedAt": 1795586626161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-c03dvtj": {
+    "status": "done",
+    "updatedAt": 1795571063161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-zo7fygi": {
+    "status": "done",
+    "updatedAt": 1795573500161,
+    "dealt": {
+     "#score": 50
+    },
+    "score": 1
+   },
+   "m-3tv8tti": {
+    "status": "done",
+    "updatedAt": 1795575937161,
+    "answers": {
+     "q": 1
+    },
+    "first": {
+     "q": false
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-o57ayfd": {
+    "status": "doing",
+    "updatedAt": 1795578374161,
+    "output": "A long glass tunnel with shelves of tomatoes, beans and basil, and big windows for sunlight.",
+    "review": {
+     "verdict": "revise",
+     "text": "Lovely plants, Mia! Where does the water come from? Add it to your drawing and hand it in again.",
+     "at": 1795581139161
+    }
+   },
+   "m-husy3fv": {
+    "status": "done",
+    "updatedAt": 1795580811161
+   }
+  },
+  "s-rlzns3t": {
+   "m-lr2nei9": {
+    "status": "done",
+    "updatedAt": 1794978448161
+   },
+   "m-706fg3x": {
+    "status": "done",
+    "updatedAt": 1794980885161,
+    "answers": {
+     "q": 1
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-nnpkijh": {
+    "status": "done",
+    "updatedAt": 1794983322161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "dealt": {
+     "q": 0
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-yg6xo33": {
+    "status": "done",
+    "updatedAt": 1795140559161,
+    "answers": {
+     "q": [
+      0,
+      1,
+      3
+     ]
+    },
+    "first": {
+     "q": false
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-k2l2r2h": {
+    "status": "done",
+    "updatedAt": 1795142996161,
+    "answers": {
+     "q": [
+      "Start the engines",
+      "Close the hatch",
+      "Check the fuel",
+      "Lift off!"
+     ]
+    },
+    "first": {
+     "q": false
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-pvs61ja": {
+    "status": "done",
+    "updatedAt": 1795145433161,
+    "answers": {
+     "q": "oxygen"
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-1iizdkb": {
+    "status": "done",
+    "updatedAt": 1795147870161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-dgy5qek": {
+    "status": "done",
+    "updatedAt": 1795150307161,
+    "dealt": {
+     "#score": 100
+    },
+    "score": 3
+   },
+   "m-2ckwc6d": {
+    "status": "done",
+    "updatedAt": 1795152744161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-ubvofxs": {
+    "status": "done",
+    "updatedAt": 1795155181161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   }
+  },
+  "s-0gv4pys": {
+   "m-lr2nei9": {
+    "status": "done",
+    "updatedAt": 1794966818161
+   },
+   "m-706fg3x": {
+    "status": "done",
+    "updatedAt": 1794969255161,
+    "answers": {
+     "q": 3
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-nnpkijh": {
+    "status": "done",
+    "updatedAt": 1794971692161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "dealt": {
+     "q": 0
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-yg6xo33": {
+    "status": "done",
+    "updatedAt": 1795146929161,
+    "answers": {
+     "q": [
+      0,
+      1,
+      2,
+      4
+     ]
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-k2l2r2h": {
+    "status": "done",
+    "updatedAt": 1795149366161,
+    "answers": {
+     "q": [
+      "Close the hatch",
+      "Check the fuel",
+      "Start the engines",
+      "Lift off!"
+     ]
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-pvs61ja": {
+    "status": "done",
+    "updatedAt": 1795151803161,
+    "answers": {
+     "q": "oxygen"
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-1iizdkb": {
+    "status": "done",
+    "updatedAt": 1795154240161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-dgy5qek": {
+    "status": "done",
+    "updatedAt": 1795138677161,
+    "dealt": {
+     "#score": 67
+    },
+    "score": 2
+   },
+   "m-2ckwc6d": {
+    "status": "done",
+    "updatedAt": 1795141114161,
+    "answers": {
+     "q": 1
+    },
+    "first": {
+     "q": false
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-ubvofxs": {
+    "status": "done",
+    "updatedAt": 1795143551161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-lmd7krb": {
+    "status": "done",
+    "updatedAt": 1795577988161
+   },
+   "m-aem0uj4": {
+    "status": "done",
+    "updatedAt": 1795580425161,
+    "answers": {
+     "q": 1
+    },
+    "first": {
+     "q": false
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-rj83uuv": {
+    "status": "done",
+    "updatedAt": 1795582862161,
+    "dealt": {
+     "#score": 50
+    },
+    "score": 1
+   },
+   "m-n1nbco5": {
+    "status": "done",
+    "updatedAt": 1795585299161,
+    "dealt": {
+     "#score": 50
+    },
+    "score": 2
+   },
+   "m-8qrg8oh": {
+    "status": "done",
+    "updatedAt": 1795587736161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-c03dvtj": {
+    "status": "done",
+    "updatedAt": 1795572173161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   },
+   "m-zo7fygi": {
+    "status": "done",
+    "updatedAt": 1795574610161,
+    "dealt": {
+     "#score": 50
+    },
+    "score": 1
+   },
+   "m-3tv8tti": {
+    "status": "done",
+    "updatedAt": 1795577047161,
+    "answers": {
+     "q": 1
+    },
+    "first": {
+     "q": false
+    },
+    "results": {
+     "q": false
+    },
+    "score": 0
+   },
+   "m-kc97zt0": {
+    "status": "done",
+    "updatedAt": 1795579484161
+   },
+   "m-o57ayfd": {
+    "status": "done",
+    "updatedAt": 1795581921161,
+    "output": "Greenhouse made of ice blocks (ice lets light through and keeps the cold out).\n1. Light: the sun shining through the ice.\n2. Water: we melt a little of the wall when we need it!\n3. Plants: wheat for bread, peas, and sunflowers."
+   },
+   "m-husy3fv": {
+    "status": "done",
+    "updatedAt": 1795584358161
+   }
+  },
+  "s-fj99uev": {
+   "m-lr2nei9": {
+    "status": "done",
+    "updatedAt": 1794981995161
+   },
+   "m-706fg3x": {
+    "status": "done",
+    "updatedAt": 1794966432161,
+    "answers": {
+     "q": 0
+    },
+    "first": {
+     "q": true
+    },
+    "results": {
+     "q": true
+    },
+    "score": 1
+   }
+  }
+ },
+ "posts": [
+  {
+   "id": "p-2ut15dk",
+   "moduleId": "m-husy3fv",
+   "studentId": "s-vny9yoq",
+   "text": "The sea. Swimming on a hot day, and the sound of waves. 🌊",
+   "work": [],
+   "createdAt": 1795580377161,
+   "comments": [
+    {
+     "id": "c-zogsd7w",
+     "from": "s-yjd0k1q",
+     "text": "Same! Maybe the base can have a pool?",
+     "at": 1795582777161
+    }
+   ]
+  },
+  {
+   "id": "p-126kepr",
+   "moduleId": "m-husy3fv",
+   "studentId": "s-yjd0k1q",
+   "text": "My dog Biscuit. Can dogs go to Mars?",
+   "work": [],
+   "createdAt": 1795582814161,
+   "comments": [
+    {
+     "id": "c-nxvf3so",
+     "from": "s-0gv4pys",
+     "text": "Dogs can't fit in a spacesuit… yet 🐶",
+     "at": 1795585214161
+    }
+   ]
+  },
+  {
+   "id": "p-wvtjc9w",
+   "moduleId": "m-husy3fv",
+   "studentId": "s-0gv4pys",
+   "text": "Rain! I never thought I'd say that.",
+   "work": [],
+   "createdAt": 1795585251161
+  },
+  {
+   "id": "p-29552r7",
+   "moduleId": "m-husy3fv",
+   "studentId": "teacher",
+   "text": "Mine: fresh bread from the bakery on my street. What a list, crew!",
+   "work": [],
+   "createdAt": 1795587688161
+  }
+ ],
+ "toolLog": [],
+ "events": [
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-lr2nei9",
+   "text": "Finished “Your mission briefing”",
+   "id": "rxzg4n6o",
+   "at": 1794968869161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-706fg3x",
+   "text": "Finished “Pick your crew job”",
+   "id": "x4pukcah",
+   "at": 1794971306161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-nnpkijh",
+   "text": "Finished “How far is Mars?”",
+   "id": "uhgnyi6w",
+   "at": 1794973743161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-yg6xo33",
+   "text": "Finished “What goes on board?”",
+   "id": "46qdkgaf",
+   "at": 1795148980161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-k2l2r2h",
+   "text": "Finished “Countdown”",
+   "id": "eflpy0tv",
+   "at": 1795151417161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-pvs61ja",
+   "text": "Finished “One word”",
+   "id": "rzjw9lf0",
+   "at": 1795153854161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-1iizdkb",
+   "text": "Finished “Closest to the Sun”",
+   "id": "wo912awz",
+   "at": 1795156291161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-2ckwc6d",
+   "text": "Finished “The red planet”",
+   "id": "v1mvx5g5",
+   "at": 1795140728161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-ubvofxs",
+   "text": "Finished “Moons”",
+   "id": "qd7jpnav",
+   "at": 1795143165161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-44kf2df",
+   "text": "Finished “Bonus: the tallest volcano”",
+   "id": "8r05rx57",
+   "at": 1795145602161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-lmd7krb",
+   "text": "Finished “Three things to stay alive”",
+   "id": "r1phr7xr",
+   "at": 1795580039161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-aem0uj4",
+   "text": "Finished “Mars air”",
+   "id": "oxeiitwv",
+   "at": 1795582476161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-8qrg8oh",
+   "text": "Finished “A walk outside”",
+   "id": "4elzs96y",
+   "at": 1795584913161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-c03dvtj",
+   "text": "Finished “Where's the water?”",
+   "id": "9bhvg1ef",
+   "at": 1795587350161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-3tv8tti",
+   "text": "Finished “A drink, please”",
+   "id": "n6swcu0m",
+   "at": 1795571787161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-o57ayfd",
+   "text": "Finished “Design a Mars greenhouse”",
+   "id": "ceto50f5",
+   "at": 1795574224161
+  },
+  {
+   "kind": "post",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-husy3fv",
+   "text": "The sea. Swimming on a hot day, and the sound of waves. 🌊",
+   "id": "rxkfp9jp",
+   "at": 1795576661161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-vlw32mc",
+   "text": "Finished “Meet the rover”",
+   "id": "vd71imq5",
+   "at": 1795579098161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-vny9yoq",
+   "moduleId": "m-p9q3wn9",
+   "text": "Finished “Rock ahead!”",
+   "id": "upmo6frl",
+   "at": 1795581535161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-lr2nei9",
+   "text": "Finished “Your mission briefing”",
+   "id": "l8m1f5fd",
+   "at": 1794979172161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-706fg3x",
+   "text": "Finished “Pick your crew job”",
+   "id": "i1budrb8",
+   "at": 1794981609161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-nnpkijh",
+   "text": "Q1: chose “About 3 days”; answer is “About 7 months”",
+   "id": "og55kqme",
+   "at": 1794966046161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-nnpkijh",
+   "text": "Finished “How far is Mars?”",
+   "id": "bau0ctct",
+   "at": 1794968483161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-sf03u4w",
+   "text": "Finished “Space is BIG”",
+   "id": "86bdwzp2",
+   "at": 1794970920161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-yg6xo33",
+   "text": "Finished “What goes on board?”",
+   "id": "nznmdokz",
+   "at": 1795146157161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-k2l2r2h",
+   "text": "Finished “Countdown”",
+   "id": "m9amfy5x",
+   "at": 1795148594161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-pvs61ja",
+   "text": "Finished “One word”",
+   "id": "6mw8ylvc",
+   "at": 1795151031161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-1iizdkb",
+   "text": "Q1: chose “Mars”; answer is “Mercury”",
+   "id": "ptr6tjga",
+   "at": 1795153468161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-1iizdkb",
+   "text": "Finished “Closest to the Sun”",
+   "id": "grfjuaup",
+   "at": 1795155905161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-2ckwc6d",
+   "text": "Finished “The red planet”",
+   "id": "ztjcpd6s",
+   "at": 1795140342161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-ubvofxs",
+   "text": "Q1: chose “None”; answer is “Two”",
+   "id": "f6kod6o7",
+   "at": 1795142779161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-ubvofxs",
+   "text": "Finished “Moons”",
+   "id": "33j3jv3f",
+   "at": 1795145216161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-c7j45cl",
+   "moduleId": "m-lmd7krb",
+   "text": "Finished “Three things to stay alive”",
+   "id": "29379kpn",
+   "at": 1795579653161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-lr2nei9",
+   "text": "Finished “Your mission briefing”",
+   "id": "umd1z9zj",
+   "at": 1794977290161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-706fg3x",
+   "text": "Finished “Pick your crew job”",
+   "id": "kcuwspaf",
+   "at": 1794979727161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-nnpkijh",
+   "text": "Finished “How far is Mars?”",
+   "id": "u0vk6ext",
+   "at": 1794982164161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-yg6xo33",
+   "text": "Finished “What goes on board?”",
+   "id": "d9jk23nn",
+   "at": 1795139401161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-k2l2r2h",
+   "text": "Finished “Countdown”",
+   "id": "ngekwwr9",
+   "at": 1795141838161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-pvs61ja",
+   "text": "Finished “One word”",
+   "id": "yc8lh9fl",
+   "at": 1795144275161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-1iizdkb",
+   "text": "Finished “Closest to the Sun”",
+   "id": "n3wv56ty",
+   "at": 1795146712161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-2ckwc6d",
+   "text": "Finished “The red planet”",
+   "id": "7p577mtk",
+   "at": 1795149149161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-ubvofxs",
+   "text": "Q1: chose “Twelve”; answer is “Two”",
+   "id": "ordxfsse",
+   "at": 1795151586161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-ubvofxs",
+   "text": "Finished “Moons”",
+   "id": "qv2nvbje",
+   "at": 1795154023161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-lmd7krb",
+   "text": "Finished “Three things to stay alive”",
+   "id": "e9uafk07",
+   "at": 1795570460161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-aem0uj4",
+   "text": "Finished “Mars air”",
+   "id": "4vkfs2nv",
+   "at": 1795572897161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-8qrg8oh",
+   "text": "Finished “A walk outside”",
+   "id": "wni1j0t7",
+   "at": 1795575334161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-c03dvtj",
+   "text": "Finished “Where's the water?”",
+   "id": "5oecul1g",
+   "at": 1795577771161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-3tv8tti",
+   "text": "Q1: chose “Wait for it to rain”; answer is “Dig up ice, melt it and clean it”",
+   "id": "qjymtmkh",
+   "at": 1795580208161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-3tv8tti",
+   "text": "Finished “A drink, please”",
+   "id": "g8q3opld",
+   "at": 1795582645161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-o57ayfd",
+   "text": "Finished “Design a Mars greenhouse”",
+   "id": "gsy4bj24",
+   "at": 1795585082161
+  },
+  {
+   "kind": "post",
+   "studentId": "s-yjd0k1q",
+   "moduleId": "m-husy3fv",
+   "text": "My dog Biscuit. Can dogs go to Mars?",
+   "id": "p63q7517",
+   "at": 1795587519161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-lr2nei9",
+   "text": "Finished “Your mission briefing”",
+   "id": "jx2sims1",
+   "at": 1794967156161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-706fg3x",
+   "text": "Finished “Pick your crew job”",
+   "id": "0qxmndw3",
+   "at": 1794969593161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-nnpkijh",
+   "text": "Finished “How far is Mars?”",
+   "id": "fk7fv2g4",
+   "at": 1794972030161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-yg6xo33",
+   "text": "Q1: not quite (choose all that apply)",
+   "id": "jdf77tf0",
+   "at": 1795147267161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-yg6xo33",
+   "text": "Finished “What goes on board?”",
+   "id": "a3e47tks",
+   "at": 1795149704161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-k2l2r2h",
+   "text": "Q1: not quite (order)",
+   "id": "2wjzi0yc",
+   "at": 1795152141161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-k2l2r2h",
+   "text": "Finished “Countdown”",
+   "id": "mnxs936l",
+   "at": 1795154578161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-pvs61ja",
+   "text": "Finished “One word”",
+   "id": "xnyfmmik",
+   "at": 1795139015161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-1iizdkb",
+   "text": "Finished “Closest to the Sun”",
+   "id": "9fcqne1i",
+   "at": 1795141452161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-2ckwc6d",
+   "text": "Finished “The red planet”",
+   "id": "aqq0hltn",
+   "at": 1795143889161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-rlzns3t",
+   "moduleId": "m-ubvofxs",
+   "text": "Finished “Moons”",
+   "id": "y98rubp6",
+   "at": 1795146326161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-lr2nei9",
+   "text": "Finished “Your mission briefing”",
+   "id": "sftytws7",
+   "at": 1794975963161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-706fg3x",
+   "text": "Finished “Pick your crew job”",
+   "id": "0c2phpij",
+   "at": 1794978400161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-nnpkijh",
+   "text": "Finished “How far is Mars?”",
+   "id": "wilprm9p",
+   "at": 1794980837161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-yg6xo33",
+   "text": "Finished “What goes on board?”",
+   "id": "agc4h0sk",
+   "at": 1795156074161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-k2l2r2h",
+   "text": "Finished “Countdown”",
+   "id": "5t4jmxyp",
+   "at": 1795140511161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-pvs61ja",
+   "text": "Finished “One word”",
+   "id": "j5ntq2mw",
+   "at": 1795142948161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-1iizdkb",
+   "text": "Finished “Closest to the Sun”",
+   "id": "qfgr4eem",
+   "at": 1795145385161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-2ckwc6d",
+   "text": "Q1: chose “It's very hot”; answer is “Its dust has rust in it”",
+   "id": "vlkgqzou",
+   "at": 1795147822161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-2ckwc6d",
+   "text": "Finished “The red planet”",
+   "id": "996d51gi",
+   "at": 1795150259161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-ubvofxs",
+   "text": "Finished “Moons”",
+   "id": "wrrxf1oi",
+   "at": 1795152696161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-lmd7krb",
+   "text": "Finished “Three things to stay alive”",
+   "id": "5gg8nmk5",
+   "at": 1795587133161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-aem0uj4",
+   "text": "Q1: chose “Oxygen”; answer is “Carbon dioxide”",
+   "id": "1tsy6byu",
+   "at": 1795571570161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-aem0uj4",
+   "text": "Finished “Mars air”",
+   "id": "dk4jlvpy",
+   "at": 1795574007161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-8qrg8oh",
+   "text": "Finished “A walk outside”",
+   "id": "9bdgafrm",
+   "at": 1795576444161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-c03dvtj",
+   "text": "Finished “Where's the water?”",
+   "id": "e2hjukb1",
+   "at": 1795578881161
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-3tv8tti",
+   "text": "Q1: chose “Wait for it to rain”; answer is “Dig up ice, melt it and clean it”",
+   "id": "s9d08mj4",
+   "at": 1795581318161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-3tv8tti",
+   "text": "Finished “A drink, please”",
+   "id": "l5fbn9mn",
+   "at": 1795583755161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-kc97zt0",
+   "text": "Finished “Fix-it list”",
+   "id": "7hp5a5p0",
+   "at": 1795586192161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-o57ayfd",
+   "text": "Finished “Design a Mars greenhouse”",
+   "id": "l90sg50e",
+   "at": 1795570629161
+  },
+  {
+   "kind": "post",
+   "studentId": "s-0gv4pys",
+   "moduleId": "m-husy3fv",
+   "text": "Rain! I never thought I'd say that.",
+   "id": "4bg9gaeq",
+   "at": 1795573066161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-fj99uev",
+   "moduleId": "m-lr2nei9",
+   "text": "Finished “Your mission briefing”",
+   "id": "dwrwyqfs",
+   "at": 1794970703161
+  },
+  {
+   "kind": "done",
+   "studentId": "s-fj99uev",
+   "moduleId": "m-706fg3x",
+   "text": "Finished “Pick your crew job”",
+   "id": "cjpi3qo7",
+   "at": 1794973140161
+  }
+ ],
+ "choices": {
+  "s-vny9yoq": {
+   "elective:l-yfy7qg3": "yes"
+  },
+  "s-yjd0k1q": {
+   "elective:l-va3hp99": "yes"
+  }
+ },
+ "studio": {
+  "posts": [],
+  "feedback": []
+ },
+ "marks": [],
+ "live": {
+  "hands": {}
+ },
+ "uptake": {},
+ "nudges": [
+  {
+   "id": "n-8zttlo7",
+   "studentId": "s-fj99uev",
+   "text": "Hi Sam! Your crew needs you: try “How far is Mars?” next. 🚀",
+   "moduleId": "m-nnpkijh",
+   "at": 1795584739161
+  }
+ ],
+ "plans": {}
+}

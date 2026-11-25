@@ -1,0 +1,606 @@
+{
+  "format": "questhand-course",
+  "version": 1,
+  "title": "Mission to Mars",
+  "subtitle": "Year 6 Science · a three-week mission",
+  "electiveMin": 1,
+  "weeks": [
+    {
+      "title": "Week 1 · Launch training",
+      "lessons": [
+        {
+          "title": "Welcome aboard, cadet",
+          "goal": "Know where we're going, how far it is, and which job you'll do on the crew.",
+          "session": {
+            "minutes": 50,
+            "agenda": [
+              {
+                "label": "Mission briefing",
+                "minutes": 10
+              },
+              {
+                "label": "Pick your crew job",
+                "minutes": 10
+              },
+              {
+                "label": "How far is Mars?",
+                "minutes": 15
+              },
+              {
+                "label": "Crew huddle",
+                "minutes": 15
+              }
+            ]
+          },
+          "modules": [
+            {
+              "id": "c-brief",
+              "kind": "content",
+              "title": "Your mission briefing",
+              "minutes": 3,
+              "body": "Good morning, cadet. 🚀\n\nIn three weeks our crew leaves for **Mars**, the red planet. Before then you'll train: how far it is, what to pack, how to breathe and drink when there's no air or rain, and how to build a base.\n\nEvery card is one step of your training. Some cards only appear when you need them, so your board won't look exactly like your friend's.\n\nReady? Pick your crew job next.",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/Mars_Valles_Marineris.jpeg/960px-Mars_Valles_Marineris.jpeg",
+                  "name": "Mars, with the canyon Valles Marineris across the middle",
+                  "credit": "NASA / JPL / USGS"
+                },
+                {
+                  "kind": "link",
+                  "url": "https://science.nasa.gov/mars/",
+                  "name": "NASA: All about Mars"
+                }
+              ]
+            },
+            {
+              "id": "p-crew",
+              "kind": "choice",
+              "title": "Pick your crew job",
+              "poll": true,
+              "signup": {
+                "max": 3,
+                "names": true
+              },
+              "minutes": 1,
+              "body": "Every crew needs all four jobs. Up to three cadets per job, so pick fast!",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "Which job do you want on the crew?",
+                  "options": [
+                    "Pilot",
+                    "Engineer",
+                    "Botanist",
+                    "Medic"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "q-trip",
+              "kind": "choice",
+              "title": "How far is Mars?",
+              "minutes": 2,
+              "body": "Mars is our neighbour, but neighbours in space are a long way apart.",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "How long does the trip to Mars take?",
+                  "options": [
+                    "About 7 months",
+                    "About 3 days",
+                    "About 10 years"
+                  ],
+                  "answer": 0,
+                  "explain": "With today's rockets it takes about 7 months, when Earth and Mars are on the same side of the Sun.",
+                  "next": [
+                    null,
+                    "c-big",
+                    "c-big"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "c-big",
+              "kind": "content",
+              "title": "Space is BIG",
+              "minutes": 2,
+              "body": "Not quite! The Moon is 3 days away, but Mars is about **150 times further**.\n\nIf you drove a car to Mars at motorway speed without stopping, you'd arrive in about **100 years**. A rocket is much faster, but the trip still takes about **7 months**.\n\nPack some good books. 📚"
+            }
+          ]
+        },
+        {
+          "title": "Pack the rocket",
+          "goal": "Choose what the crew needs, and pass the fuel check.",
+          "modules": [
+            {
+              "id": "q-pack",
+              "kind": "choice",
+              "title": "What goes on board?",
+              "minutes": 2,
+              "body": "Every kilogram costs fuel, so only take what you need.",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "multi",
+                  "text": "Tick everything the crew needs.",
+                  "options": [
+                    "Oxygen",
+                    "Water",
+                    "Food",
+                    "Your bicycle",
+                    "A spare spacesuit"
+                  ],
+                  "answerSet": [
+                    0,
+                    1,
+                    2,
+                    4
+                  ],
+                  "explain": "The bicycle stays home: there are no roads on Mars (yet)."
+                }
+              ]
+            },
+            {
+              "id": "q-count",
+              "kind": "choice",
+              "title": "Countdown",
+              "minutes": 2,
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "order",
+                  "text": "Put the launch steps in order.",
+                  "options": [
+                    "Close the hatch",
+                    "Check the fuel",
+                    "Start the engines",
+                    "Lift off!"
+                  ]
+                }
+              ],
+              "attachments": [
+                {
+                  "kind": "image",
+                  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Space_Shuttle_Columbia_launching.jpg/960px-Space_Shuttle_Columbia_launching.jpg",
+                  "name": "A space shuttle lifting off",
+                  "credit": "NASA"
+                }
+              ]
+            },
+            {
+              "id": "q-gas",
+              "kind": "choice",
+              "title": "One word",
+              "minutes": 1,
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "short",
+                  "text": "Which gas do your lungs need? (one word)",
+                  "options": [],
+                  "accept": [
+                    "oxygen",
+                    "O2"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "g-fuel",
+              "kind": "group",
+              "title": "Fuel check",
+              "members": [
+                "q-f1",
+                "q-f2",
+                "q-f3"
+              ],
+              "bands": [
+                {
+                  "min": 0,
+                  "next": "c-refuel"
+                },
+                {
+                  "min": 67,
+                  "next": null
+                },
+                {
+                  "min": 100,
+                  "next": "c-bonus"
+                }
+              ]
+            },
+            {
+              "id": "q-f1",
+              "kind": "choice",
+              "title": "Closest to the Sun",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "Which planet is closest to the Sun?",
+                  "options": [
+                    "Mercury",
+                    "Mars",
+                    "Earth"
+                  ],
+                  "answer": 0
+                }
+              ]
+            },
+            {
+              "id": "q-f2",
+              "kind": "choice",
+              "title": "The red planet",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "Why does Mars look red?",
+                  "options": [
+                    "Its dust has rust in it",
+                    "It's very hot",
+                    "It's covered in lava"
+                  ],
+                  "answer": 0,
+                  "explain": "Mars dust is full of iron oxide: rust!"
+                }
+              ]
+            },
+            {
+              "id": "q-f3",
+              "kind": "choice",
+              "title": "Moons",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "How many moons does Mars have?",
+                  "options": [
+                    "Two",
+                    "None",
+                    "Twelve"
+                  ],
+                  "answer": 0,
+                  "explain": "Two small ones, Phobos and Deimos. Phobos is only about 22 km across."
+                }
+              ]
+            },
+            {
+              "id": "c-refuel",
+              "kind": "content",
+              "title": "Refuel: planet facts",
+              "minutes": 3,
+              "body": "Your tank's a bit low, cadet. Top up with these:\n\n- **Mercury** is the closest planet to the Sun. Earth is third, Mars is fourth.\n- Mars is red because its dust has **rust** (iron oxide) in it.\n- Mars has **two** small moons: Phobos and Deimos.\n\nThen you're cleared for the next lesson.",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5c/Phobos_colour_2008.jpg/960px-Phobos_colour_2008.jpg",
+                  "name": "Phobos, the bigger of Mars's two moons",
+                  "credit": "NASA / JPL-Caltech / University of Arizona"
+                }
+              ]
+            },
+            {
+              "id": "c-bonus",
+              "kind": "content",
+              "title": "Bonus: the tallest volcano",
+              "minutes": 2,
+              "body": "Full tank! 🌋 Here's a reward fact: Mars has **Olympus Mons**, the tallest volcano in the solar system. It's about **22 km** high, nearly three times taller than Mount Everest, and as wide as France.",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/00/Olympus_Mons_alt.jpg/960px-Olympus_Mons_alt.jpg",
+                  "name": "Olympus Mons from above",
+                  "credit": "NASA"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Week 2 · Life on Mars",
+      "lessons": [
+        {
+          "title": "Build the base",
+          "goal": "Work out how the crew gets air and water, then design a greenhouse for food.",
+          "modules": [
+            {
+              "id": "c-base",
+              "kind": "content",
+              "title": "Three things to stay alive",
+              "minutes": 3,
+              "body": "On Earth, air, water and food are easy. On Mars:\n\n- The **air** is thin and mostly carbon dioxide. We can't breathe it.\n- The **water** is frozen as ice, under the ground and at the poles.\n- **Food** has to be grown indoors, under lights, in a greenhouse.\n\nPass the base inspection, then design your greenhouse.",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7a/Jezero_crater_on_Mars%2C_sol_43_of_Perseverance_mission.png/960px-Jezero_crater_on_Mars%2C_sol_43_of_Perseverance_mission.png",
+                  "name": "Jezero crater, seen by the Perseverance rover",
+                  "credit": "NASA / JPL-Caltech"
+                }
+              ]
+            },
+            {
+              "id": "g-inspect",
+              "kind": "group",
+              "title": "Base inspection",
+              "members": [
+                "g-air",
+                "g-water"
+              ],
+              "bands": [
+                {
+                  "min": 0,
+                  "next": "c-fix"
+                },
+                {
+                  "min": 75,
+                  "next": null
+                }
+              ]
+            },
+            {
+              "id": "g-air",
+              "kind": "group",
+              "title": "Air",
+              "members": [
+                "q-a1",
+                "q-a2"
+              ]
+            },
+            {
+              "id": "q-a1",
+              "kind": "choice",
+              "title": "Mars air",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "What is the air on Mars mostly made of?",
+                  "options": [
+                    "Carbon dioxide",
+                    "Oxygen",
+                    "Helium"
+                  ],
+                  "answer": 0
+                }
+              ]
+            },
+            {
+              "id": "q-a2",
+              "kind": "choice",
+              "title": "A walk outside",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "Can you breathe outside on Mars?",
+                  "options": [
+                    "No: you need a spacesuit",
+                    "Yes, on sunny days"
+                  ],
+                  "answer": 0
+                }
+              ]
+            },
+            {
+              "id": "g-water",
+              "kind": "group",
+              "title": "Water",
+              "members": [
+                "q-w1",
+                "q-w2"
+              ]
+            },
+            {
+              "id": "q-w1",
+              "kind": "choice",
+              "title": "Where's the water?",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "Where is the water on Mars?",
+                  "options": [
+                    "Frozen as ice",
+                    "In big oceans",
+                    "Falling as rain"
+                  ],
+                  "answer": 0
+                }
+              ]
+            },
+            {
+              "id": "q-w2",
+              "kind": "choice",
+              "title": "A drink, please",
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "How could the crew get drinking water?",
+                  "options": [
+                    "Dig up ice, melt it and clean it",
+                    "Wait for it to rain"
+                  ],
+                  "answer": 0
+                }
+              ]
+            },
+            {
+              "id": "c-fix",
+              "kind": "content",
+              "title": "Fix-it list",
+              "minutes": 2,
+              "body": "The inspector found a few problems. 🔧\n\n- The air outside is mostly **carbon dioxide**: always wear your suit.\n- There's no rain on Mars. Water comes from **ice**, which we dig up, melt and clean.\n\nRead the first card again, then carry on to the greenhouse.",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/Martian_north_polar_cap.jpg/960px-Martian_north_polar_cap.jpg",
+                  "name": "The ice cap at Mars's north pole",
+                  "credit": "NASA / JPL / MSSS"
+                }
+              ]
+            },
+            {
+              "id": "a-greenhouse",
+              "kind": "answer",
+              "title": "Design a Mars greenhouse",
+              "minutes": 20,
+              "body": "Draw your greenhouse (on paper or with **Draw**), then add a photo or your drawing here.\n\nLabel:\n1. Where the light comes from\n2. Where the water comes from\n3. Three plants you'd grow, and why",
+              "criteria": "A labelled drawing with light, water and three plants.",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/ISS-44_VEGGIE_Red_Romaine_Lettuce.jpg/960px-ISS-44_VEGGIE_Red_Romaine_Lettuce.jpg",
+                  "name": "Lettuce grown on the International Space Station",
+                  "credit": "NASA"
+                }
+              ]
+            },
+            {
+              "id": "d-miss",
+              "kind": "discussion",
+              "title": "What would you miss from Earth?",
+              "minutes": 5,
+              "body": "Seven months there, seven months back. What would you miss most? Post one thing, then reply to a classmate.",
+              "wall": {
+                "posting": "students",
+                "comments": true,
+                "reactions": "likes",
+                "anonymous": false,
+                "approval": false,
+                "replies": 1
+              }
+            }
+          ]
+        },
+        {
+          "title": "Elective: Rover driving school",
+          "elective": true,
+          "goal": "Drive a rover safely across Mars.",
+          "modules": [
+            {
+              "id": "c-rover",
+              "kind": "content",
+              "title": "Meet the rover",
+              "minutes": 3,
+              "body": "A rover is a car for Mars, driven from Earth. Radio signals take **up to 20 minutes** to get there, so every turn arrives late. Drivers plan each move carefully, and the rover checks for rocks by itself.",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/PIA16239_High-Resolution_Self-Portrait_by_Curiosity_Rover_Arm_Camera.jpg/960px-PIA16239_High-Resolution_Self-Portrait_by_Curiosity_Rover_Arm_Camera.jpg",
+                  "name": "The Curiosity rover takes a selfie",
+                  "credit": "NASA / JPL-Caltech / MSSS"
+                },
+                {
+                  "kind": "link",
+                  "url": "https://science.nasa.gov/mission/mars-2020-perseverance/",
+                  "name": "NASA: the Perseverance rover"
+                }
+              ]
+            },
+            {
+              "id": "q-rock",
+              "kind": "choice",
+              "title": "Rock ahead!",
+              "minutes": 1,
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "Your rover sees a big rock 2 metres ahead. Your command takes 20 minutes to arrive. What should the rover do?",
+                  "options": [
+                    "Stop and steer around it by itself",
+                    "Wait for you and hope"
+                  ],
+                  "answer": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Elective: Space kitchen",
+          "elective": true,
+          "goal": "Invent a snack astronauts can eat without crumbs.",
+          "modules": [
+            {
+              "id": "c-crumbs",
+              "kind": "content",
+              "title": "Why crumbs are a problem",
+              "minutes": 2,
+              "body": "In a spaceship, crumbs don't fall. They float into eyes, noses and machines! That's why astronauts eat tortillas instead of bread.",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/ISS-50_Peggy_Whitson_with_a_%27space_cheeseburger%27.jpg/960px-ISS-50_Peggy_Whitson_with_a_%27space_cheeseburger%27.jpg",
+                  "name": "Astronaut Peggy Whitson with a “space cheeseburger”",
+                  "credit": "NASA"
+                }
+              ]
+            },
+            {
+              "id": "a-snack",
+              "kind": "answer",
+              "title": "Invent a space snack",
+              "minutes": 10,
+              "body": "Invent a snack for the trip. Give it a name, say what's in it, and how it stays crumb-free. A drawing or a recording is welcome."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Week 3 · Mission debrief",
+      "lessons": [
+        {
+          "title": "Mission debrief",
+          "goal": "Look back on the training and get ready to launch.",
+          "modules": [
+            {
+              "id": "w-log",
+              "kind": "worksheet",
+              "title": "Captain's log",
+              "writers": "each",
+              "minutes": 10,
+              "body": "**Day 1 on Mars**\n\nToday I woke up and …\n\nFor breakfast we …\n\nThe hardest part of the day was …"
+            },
+            {
+              "id": "p-ready",
+              "kind": "choice",
+              "title": "Ready for launch?",
+              "poll": true,
+              "minutes": 1,
+              "questions": [
+                {
+                  "id": "q",
+                  "kind": "choice",
+                  "text": "How ready do you feel to go to Mars?",
+                  "options": [
+                    "Pack my bags!",
+                    "Almost",
+                    "Not yet"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "a-report",
+              "kind": "answer",
+              "title": "Mission report",
+              "minutes": 10,
+              "body": "Write three things you learned in training, and one question you still have about Mars."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

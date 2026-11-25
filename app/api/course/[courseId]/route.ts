@@ -1240,7 +1240,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       course.peerMessages = body.on === false ? false : undefined;
       break;
     case "setMapLive":
-      // —— teacher —— The course map shows where students are (the default), or only the cards.
+      // —— teacher —— The course map shows students' paths (the default), or only the cards.
       course.mapLive = body.on === false ? false : undefined;
       break;
     case "readMessages":

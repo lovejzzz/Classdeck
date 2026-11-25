@@ -1,9 +1,12 @@
 import data from "./demo-seed.json";
 import type { ClassEvent, Course, Feedback, Mark, Nudge, Plan, Post, ProgressMap, StudioPost } from "./types";
 
-// The demo course: Questhand 101, a three-week course on using Questhand, with a small class part-way through it.
-// Its data is a real class run through the site (lib/demo-seed.json): six invited students on different paths, one
-// waiting to be let in, hand-ins with and without feedback, a revision asked for, a reminder, a discussion. Anyone can
+// The demo course: Mission to Mars, a three-week Year 6 science course that shows what Questhand does (answers that
+// deal follow-up cards, a card group that deals by score, a group of groups, a sign-up poll that makes crew groups,
+// electives, open answers with feedback, a discussion), with a class of six part-way through it. Its data is a real
+// class run through the site by scripts/make-demo.mjs from scripts/demo-course.json (lib/demo-seed.json): students on
+// different paths, one waiting to be let in, hand-ins with and without feedback, a revision asked for, a reminder,
+// a discussion. Anyone can
 // open it at /teach/demo and change anything; it goes back to this every night.
 //
 // Times in the file are from when it was made. Each one is moved forward by the same amount, so the class always looks

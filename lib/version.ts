@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.5",
+    date: "2026-11-25",
+    changes: [
+      "A new demo course: Mission to Mars. Three weeks of cadet training for Year 6 (how far Mars is, packing the rocket, air and water on Mars, a greenhouse), with NASA photos, and a class of six part-way through. It shows answers that deal follow-up cards, a fuel check that deals a bonus or a refuel card by score, a base inspection made of two groups, a sign-up poll that makes the crew’s groups, two electives, hand-ins with feedback and a revision asked for, a discussion, and a student waiting to be let in. Open it from the home page, no account needed.",
+      "The student marks on map cards are gone. The counts of how many students went down each answer stay (Settings → Course map → Show students’ paths).",
+    ],
+  },
+  {
     version: "0.2.4",
     date: "2026-11-25",
     changes: [

@@ -42,7 +42,6 @@ const TOP = 92; // room for each lesson's header
 // The two kinds of card you put down: Content, or a Question (it starts with choices; its form is set in the editor).
 const familyName = (k: CardKind) => FAMILIES.find((f) => f.start === k)!.name;
 const INK = "#4b56a8";
-const DAY = 86400000;
 
 export type Level = "far" | "mid" | "near";
 const levelOf = (z: number): Level => (z < 0.55 ? "far" : z >= 1.2 ? "near" : "mid");
@@ -64,7 +63,6 @@ const hasBody = (m: Module) => branchQs(m).length > 0 || otherQs(m).length > 0 |
 /** A card whose answers fill its face still shows its media, in a strip above them. */
 const mediaStrip = (m: Module) => m.type !== "group" && !!m.attachments?.length && hasBody(m);
 const letter = (i: number) => String.fromCharCode(65 + i);
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 /** The rows on a card at a zoom level: its head, (zoomed in) a preview, then each question's answers and the score bands. */
 function rowsOf(m: Module, level: Level, readOnly: boolean, members: Module[] = [], cards: Module[] = members, open = false): { h: number; ports: Map<string, number>; clip?: number; more?: boolean } {
@@ -338,7 +336,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
   students: { id: string; name: string }[];
   /** Keep a card group (named, with its cards) in My cards. */
   onSaveGroup?: (g: Module) => void;
-  /** Show where students are: who's on which card, and how many went down each answer (the course's setting). */
+  /** Show students' paths: how many went down each answer, and the wires moving (the course's setting). */
   live?: boolean;
   progress: ProgressMap;
   readOnly?: boolean;
@@ -476,7 +474,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     const runs = els.map((el, i) => el.animate([{ rotate: "-0.9deg" }, { rotate: "0.9deg" }], { duration: 260, iterations: Infinity, direction: "alternate", easing: "ease-in-out", delay: -(i % 5) * 70 }));
     return () => runs.forEach((a) => a.cancel());
   }, [jiggle, nodes.size]);
-  const [now] = useState(() => Date.now());
   // A card's video or picture, opened big from its thumbnail.
   const [viewing, setViewing] = useState<{ a: Attachment; title: string; from: DOMRect; open: boolean } | null>(null);
   const [born] = useState(() => new Map<string, { x: number; y: number }>());
@@ -489,22 +486,15 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
   const at = (id: string) => pos.get(id) ?? targets.get(id)!;
   const lessonIndex = (lid: string) => lessons.findIndex((l) => l.id === lid);
 
-  // How many students each answer or score band sent down its wire, and who is on which card right now.
+  // How many students each answer or score band sent down its wire.
   const took = (w: Wire) => students.filter((s) => picked(progress[s.id]?.[w.from]?.dealt?.[w.q], w)).length;
-  /** With Where students are on: how many went down an answer's (or score range's) wire, shown in that row. */
+  /** With students' paths on: how many went down an answer's (or score range's) wire, shown in that row. */
   const wentBadge = (from: string, q: string, option: number) => {
     if (!live) return null;
     const w = wires.find((x) => x.from === from && x.q === q && x.option === option);
     const n = w ? took(w) : 0;
     return n ? <span className="chip h-5 flex-none bg-[#4b56a8] px-1.5 text-[10.5px] text-white" title={`${n} student${n === 1 ? "" : "s"} went this way`}><Icon name="users" size={10} />{n}</span> : null;
   };
-  const onCard = useMemo(() => {
-    const out = new Map<string, { id: string; name: string; stuck: boolean }[]>();
-    for (const s of students)
-      for (const [mid, p] of Object.entries(progress[s.id] ?? {}))
-        if (p.status === "doing") (out.get(mid) ?? out.set(mid, []).get(mid)!).push({ id: s.id, name: s.name, stuck: now - (p.updatedAt ?? now) > 2 * DAY });
-    return out;
-  }, [students, progress, now]);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -1452,7 +1442,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
         </div>
       )}
       {/* The map's tools, as one small bar of icons (each says its name on hover). Grouping is done by dragging a box
-          around cards, or by holding a card; where students are is the course's setting. */}
+          around cards, or by holding a card; students' paths is the course's setting. */}
       <div className="pointer-events-none absolute bottom-3 left-3 z-20">
         <div className="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-line bg-white/95 p-0.5 shadow-[0_1px_2px_rgba(20,20,18,0.05),0_8px_20px_-12px_rgba(20,20,18,0.3)] backdrop-blur">
           <button onClick={() => zoomTo(zoom - 0.15)} className="btn btn-quiet press h-7 w-7 justify-center px-0" aria-label="Zoom out" data-tip="Zoom out">−</button>
@@ -1648,8 +1638,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
               const fromLesson = inbound.length ? lessons.find((l) => l.modules.some((x) => x.id === inbound[0].from)) : undefined;
               const fromElsewhere = !!fromLesson && fromLesson.id !== nd.lessonId;
               const targetable = drag ? canTarget(drag.port, m.id) : false;
-              const here = live ? onCard.get(m.id) ?? [] : [];
-              const stuck = here.filter((s) => s.stuck).length;
               const lessonCards = lessons.find((l) => l.id === nd.lessonId)?.modules ?? [];
               const scoring = isQuiz(m, lessonCards);
               const bands = scoring ? bandsOf(m) : [];
@@ -1674,7 +1662,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                     if ((e.shiftKey || picking) && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
                     onEdit(nd.lessonId, m.id);
                   }}
-                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? `isolate ${level !== "far" ? "tree-sleeve" : ""}` : ""} ${fresh === m.id ? "tree-fresh" : ""} ${moving?.into === m.id ? (whyInto(moving.id, m.id) ? "border-bad" : "tree-target border-[#4b56a8]") : isSel || picks.has(m.id) ? "tree-picked border-[#4b56a8]" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
+                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? `isolate ${level !== "far" ? "tree-sleeve" : ""}` : ""} ${fresh === m.id ? "tree-fresh" : ""} ${moving?.into === m.id ? (whyInto(moving.id, m.id) ? "border-bad" : "tree-target border-[#4b56a8]") : isSel || picks.has(m.id) ? "tree-picked border-[#4b56a8]" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : hot === m.id ? "border-line-strong" : "border-line"}`}
                   style={{ left: p.x, top: p.y, width: W, height: nd.h, animationDelay: `${Math.min(i, 14) * 25}ms` }}
                 >
                   {jiggle && onDelete && (
@@ -1700,17 +1688,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                     </span>
                   )}
                   {inbound.length > 0 && <span className={`absolute left-1/2 z-10 -translate-x-1/2 rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(255,255,255,0.6)] ${level === "far" ? "-top-[8px] h-3.5 w-3.5" : "-top-[7px] h-3 w-3"}`} style={{ background: colorOf(inbound[0]) }} />}
-                  {here.length > 0 && (
-                    // Where students are: who is on this card (orange: on it for over 2 days), said at once on hover.
-                    <span className="absolute -bottom-3 left-3 z-10 flex -space-x-1.5" aria-label={`${here.map((s) => s.name).join(", ")} ${here.length === 1 ? "is" : "are"} on this card`}
-                      onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
-                      {...tipOn(`${here.length <= 3 ? here.map((s) => s.name).join(", ") : `${here.slice(0, 2).map((s) => s.name).join(", ")} and ${here.length - 2} more`} ${here.length === 1 ? "is" : "are"} on this card${stuck ? ` · ${stuck === here.length ? (here.length === 1 ? "for" : "all for") : `${stuck} for`} over 2 days` : ""}`, "below")}>
-                      {here.slice(0, 4).map((s) => (
-                        <span key={s.id} className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-white text-[9.5px] font-semibold text-white ${s.stuck ? "bg-[#d08a4a]" : "bg-[#4b56a8]"}`}>{initials(s.name)}</span>
-                      ))}
-                      {here.length > 4 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[9.5px] font-semibold text-white">+{here.length - 4}</span>}
-                    </span>
-                  )}
                   <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none overflow-hidden rounded-t-[17px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
                     {/* Clipped by the head's corners (the card's inner radius), so it follows the border's curve. */}
                     <span className="tree-bar block h-[5px]" style={(m.type === "group" && nd.members?.length ? { background: `linear-gradient(90deg, ${nd.members.map((c) => suitOfCard(c).tint).join(", ")})` } : { "--bar": suit.tint }) as React.CSSProperties} />
