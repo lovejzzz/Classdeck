@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.1.93",
+    date: "2026-11-24",
+    changes: [
+      "A card group on the map is a sleeve with its cards fanned out of the top, like a hand of cards: a wider fan for more cards (up to seven shown, then +more). The cards rise out of the sleeve when the group is made, and spread a little when you point at it.",
+      "The group’s name is on its sleeve: a new group is called Group 1, Group 2… and its name is ready to type as soon as it’s made. The pencil renames it, and the star saves the group, with its name and cards, to My cards.",
+    ],
+  },
+  {
     version: "0.1.92",
     date: "2026-11-24",
     changes: [

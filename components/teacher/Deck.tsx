@@ -605,6 +605,7 @@ export function Deck({ course, onRefresh, progress = {}, studioPosts = [], choic
             todayId={course.currentLessonId}
             students={course.students}
             live={course.mapLive !== false}
+            onSaveGroup={readOnly ? undefined : (g) => saveToLibrary(g)}
             progress={progress}
             readOnly={readOnly}
             busy={editorOpen}

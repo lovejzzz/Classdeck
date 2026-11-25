@@ -34,6 +34,7 @@ const SEC = 28; // a question's (or the score's) title row
 const ROW = 30; // one answer or one score band
 const MEDIA = 112; // a question card's picture, video, recording or file, above its question
 const PAD = 10;
+const FAN = 70; // room above a card group for its cards, fanned out of its sleeve
 const HGAP = 64; // gap between cards side by side (room for the wires leaving their right edge)
 const VGAP = 84; // gap between a card and the cards it deals below it
 const REGION_GAP = 56; // gap between lessons
@@ -149,13 +150,15 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
     const byId = new Map(lesson.modules.map((m) => [m.id, m]));
     const membersOf = (id: string) => (byId.get(id)?.members ?? []).map((x) => byId.get(x)).filter((x): x is Module => !!x);
     const size = (id: string) => rowsOf(byId.get(id)!, level, readOnly, membersOf(id));
+    // A card group (not zoomed far out) has its cards fanned out above it: its sleeve sits that much lower.
+    const fanned = (id: string) => level !== "far" && byId.get(id)?.type === "group";
     // How wide each card's family is (the card, or what it deals side by side below it), and each card's depth.
     const span = new Map<string, number>();
     const depthOf = new Map<string, number>();
     const rowH: number[] = [];
     const measure = (id: string, d: number): number => {
       depthOf.set(id, d);
-      rowH[d] = Math.max(rowH[d] ?? 0, size(id).h);
+      rowH[d] = Math.max(rowH[d] ?? 0, size(id).h + (fanned(id) ? FAN : 0));
       const k = kids.get(id) ?? [];
       const below = k.reduce((n, c) => n + measure(c, d + 1), 0) + Math.max(0, k.length - 1) * HGAP;
       const s = Math.max(W, below);
@@ -171,7 +174,7 @@ function layout(lessons: Lesson[], wires: Wire[], level: Level, readOnly: boolea
       const s = span.get(id)!;
       const k = kids.get(id) ?? [];
       const below = k.reduce((n, c) => n + span.get(c)!, 0) + Math.max(0, k.length - 1) * HGAP;
-      nodes.set(id, { m: byId.get(id)!, lessonId: lesson.id, li, x: left + (s - W) / 2, y: rowTop(depthOf.get(id)!), h, ports, parent: parent.get(id), members: byId.get(id)!.type === "group" ? membersOf(id) : undefined });
+      nodes.set(id, { m: byId.get(id)!, lessonId: lesson.id, li, x: left + (s - W) / 2, y: rowTop(depthOf.get(id)!) + (fanned(id) ? FAN : 0), h, ports, parent: parent.get(id), members: byId.get(id)!.type === "group" ? membersOf(id) : undefined });
       let x = left + (s - below) / 2;
       for (const c of k) { place(c, x); x += span.get(c)! + HGAP; }
     };
@@ -288,7 +291,7 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new"; saved?: bo
  * lesson or into a later one). Zoomed out, cards shrink to their titles; zoomed in, they show what to do. Drag from a
  * port onto a card to deal it, or into empty space for a new card. Click a card to edit it in the panel.
  */
-export function CourseMap({ lessons, weekOf, todayId, students, live = true, progress, readOnly, busy, selected, onDeselect, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, footer, weekNames = {}, onDeleteMany }: {
+export function CourseMap({ lessons, weekOf, todayId, students, live = true, onSaveGroup, progress, readOnly, busy, selected, onDeselect, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, footer, weekNames = {}, onDeleteMany }: {
   /** Delete several picked cards at once (it asks first, and offers Undo). */
   onDeleteMany?: (ms: Module[]) => void;
   /** Lesson id → its week's full title, for the contents panel. */
@@ -308,6 +311,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
   weekOf: Record<string, string>;
   todayId?: string;
   students: { id: string; name: string }[];
+  /** Keep a card group (named, with its cards) in My cards. */
+  onSaveGroup?: (g: Module) => void;
   /** Show where students are: who's on which card, and how many went down each answer (the course's setting). */
   live?: boolean;
   progress: ProgressMap;
@@ -940,13 +945,21 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
       return;
     }
     const g = newGroup(l, [anchor.id, id]);
-    born.set(g.id, { x: ap.x, y: ap.y });
+    born.set(g.id, { x: ap.x, y: ap.y + FAN });
     setGather(g.id);
-    toast("Made a card group", { icon: "layers" });
+    // Its name is on its sleeve, ready to type.
+    setTimeout(() => setTyping({ id: g.id, field: "title", value: g.title }), 450);
+  }
+  /** "Group 1", "Group 2"…: the first name not used by a group in this lesson. */
+  function nextGroupName(l: Lesson) {
+    const used = new Set(l.modules.filter((m) => m.type === "group").map((m) => m.title));
+    let k = 1;
+    while (used.has(`Group ${k}`)) k++;
+    return `Group ${k}`;
   }
   /** A new card group of these cards (in this order), where the first of them was, saved. */
   function newGroup(l: Lesson, ordered: string[]): Module {
-    const g: Module = { ...makeCard("content", "Card group"), type: "group", kind: "group", suit: "question", members: ordered };
+    const g: Module = { ...makeCard("content", "Card group"), type: "group", kind: "group", suit: "question", members: ordered, title: nextGroupName(l) };
     const before = l.modules.slice(0, l.modules.findIndex((m) => m.id === ordered[0])).filter((m) => !ordered.includes(m.id));
     const after = l.modules.filter((m) => !ordered.includes(m.id) && !before.includes(m));
     onChange({ ...l, modules: [...before, g, ...ordered.map((id) => l.modules.find((m) => m.id === id)!), ...after] });
@@ -971,7 +984,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
     const first = at(ordered[0]);
     fly(ordered.slice(1).map((id) => ({ m: l.modules.find((m) => m.id === id)!, from: at(id), to: first })));
     const g = newGroup(l, ordered);
-    born.set(g.id, first);
+    born.set(g.id, { x: first.x, y: first.y + FAN });
     setPicks(new Set());
     setPicking(false);
     setFresh(g.id);
@@ -1006,6 +1019,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
       onChange={(e) => setTyping({ ...typing, value: e.target.value })}
       onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") commitTyping(); if (e.key === "Escape") setTyping(null); }}
       onBlur={commitTyping}
+      onFocus={(e) => e.target.select()}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       aria-label="Edit text"
@@ -1100,7 +1114,9 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
   }
   /** Press on a card's head and move: drag it along its row to reorder, to another lesson, or into the trash. A press without moving is a click (opens it). */
   function startMove(e: React.PointerEvent, id: string) {
-    if (readOnly || e.button !== 0 || typing) return;
+    if (readOnly || e.button !== 0) return;
+    // A name being typed (a new group's, say) is kept, and the drag goes ahead.
+    if (typing) commitTyping();
     const start = { x: e.clientX, y: e.clientY };
     let on = false;
     let last: ReturnType<typeof dropAt> = {};
@@ -1517,6 +1533,11 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
               );
             })}
 
+            {/* Card groups' fans, drawn before the cards so each group's sleeve covers the bottom of its cards. */}
+            {level !== "far" && [...nodes.values()].filter((nd) => nd.m.type === "group").map((nd) => {
+              const p = at(nd.m.id);
+              return <Fan key={`fan-${nd.m.id}`} members={nd.members ?? []} x={p.x} y={p.y} open={hot === nd.m.id} faded={moving?.id === nd.m.id} />;
+            })}
             {[...nodes.values()].map((nd, i) => {
               const { m } = nd;
               const p = at(m.id);
@@ -1552,7 +1573,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
                     if ((e.shiftKey || picking) && !readOnly) { setPicks((s) => { const n = new Set(s); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; }); return; }
                     onEdit(nd.lessonId, m.id);
                   }}
-                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? "isolate" : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "tree-picked border-[#4b56a8]" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
+                  className={`tree-node absolute flex cursor-pointer flex-col rounded-[18px] border bg-white ${moving?.id === m.id ? "border-dashed !border-[#4b56a8] opacity-35" : ""} ${m.type === "group" ? `isolate ${level !== "far" ? "tree-sleeve" : ""}` : ""} ${fresh === m.id ? "tree-fresh" : ""} ${isSel || picks.has(m.id) ? "tree-picked border-[#4b56a8]" : drag?.over === m.id && targetable ? "tree-target border-[#4b56a8]" : drag && !targetable && m.id !== drag.port.from ? "border-line opacity-45" : stuck >= 2 ? "border-[#d08a4a]" : hot === m.id ? "border-line-strong" : "border-line"}`}
                   style={{ left: p.x, top: p.y, width: W, height: nd.h, animationDelay: `${Math.min(i, 14) * 25}ms` }}
                 >
                   {jiggle && onDelete && (
@@ -1568,16 +1589,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
                       <Icon name="layers" size={12} />
                     </button>
                   )}
-                  {m.type === "group" && (
-                    // A card group looks like a small, slightly untidy stack of its cards (each edge in its card's colour).
-                    <>
-                      {(nd.members ?? []).slice(0, 2).map((c, k) => (
-                        <span key={c.id} aria-hidden="true" className={`tree-stack absolute inset-0 overflow-hidden rounded-[18px] border border-line bg-white ${k ? "-z-20" : "-z-10"} ${fresh === m.id ? "tree-stack-in" : ""}`}
-                          style={{ "--sx": `${k ? 11 : 6}px`, "--sy": `${k ? 10 : 5}px`, "--sr": `${k ? 2.6 : 1.3}deg`, transform: "translate(var(--sx), var(--sy)) rotate(var(--sr))" } as React.CSSProperties}>
-                          <span className="block h-[5px]" style={{ background: suitOfCard(c).tint, opacity: 0.55 }} />
-                        </span>
-                      ))}
-                    </>
+                  {m.type === "group" && level !== "far" && !readOnly && (
+                    // On the sleeve: rename it, and keep it (named, with its cards) in My cards.
+                    <span className="absolute right-2 top-[11px] z-10 flex items-center gap-0.5">
+                      <button onClick={(e) => { e.stopPropagation(); setTyping({ id: m.id, field: "title", value: m.title }); }} onPointerDown={(e) => e.stopPropagation()} aria-label={`Rename ${m.title}`} data-tip="Rename"
+                        className="press grid h-6 w-6 place-items-center rounded-md text-ink-3 hover:bg-black/[0.05] hover:text-ink"><Icon name="pencil" size={12} /></button>
+                      {onSaveGroup && <button onClick={(e) => { e.stopPropagation(); onSaveGroup(m); }} onPointerDown={(e) => e.stopPropagation()} aria-label={`Save ${m.title} to My cards`} data-tip="Save to My cards"
+                        className="press grid h-6 w-6 place-items-center rounded-md text-ink-3 hover:bg-black/[0.05] hover:text-ink"><Icon name="star" size={12} /></button>}
+                    </span>
                   )}
                   {inbound.length > 0 && <span className={`absolute left-1/2 z-10 -translate-x-1/2 rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(255,255,255,0.6)] ${level === "far" ? "-top-[8px] h-3.5 w-3.5" : "-top-[7px] h-3 w-3"}`} style={{ background: colorOf(inbound[0]) }} />}
                   {here.length > 0 && (
@@ -1590,14 +1609,14 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
                   )}
                   <Head onPointerDown={(e: React.PointerEvent) => startMove(e, m.id)} onContextMenu={(e: React.MouseEvent) => { if (!readOnly) e.preventDefault(); }} className={`tree-head block w-full flex-none select-none overflow-hidden rounded-t-[17px] text-left [-webkit-touch-callout:none] ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`} style={{ height: level === "far" ? FAR_H : HEAD }} aria-label={`Edit ${m.title}`} title={readOnly ? undefined : "Click to edit · double-click the title to rename · drag to another lesson"}>
                     {/* Clipped by the head's corners (the card's inner radius), so it follows the border's curve. */}
-                    <span className="tree-bar block h-[5px]" style={{ "--bar": suit.tint } as React.CSSProperties} />
+                    <span className="tree-bar block h-[5px]" style={(m.type === "group" && nd.members?.length ? { background: `linear-gradient(90deg, ${nd.members.map((c) => suitOfCard(c).tint).join(", ")})` } : { "--bar": suit.tint }) as React.CSSProperties} />
                     {level === "far" ? (
                       <span className="line-clamp-2 px-4 pt-3 text-[26px] font-semibold leading-[1.15] text-ink">{m.title || "Untitled card"}</span>
                     ) : (
                       <>
                         <span className="flex items-center gap-1.5 px-3.5 pt-2 text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: suit.tint }}>
-                          <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[6px]" style={{ background: `${suit.tint}16` }}><Icon name={faceMeta(m).icon} size={11} /></span><span className="flex-none whitespace-nowrap">{faceMeta(m).name}</span>
-                          <span className="truncate normal-case tracking-normal text-ink-3">
+                          <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[6px]" style={{ background: `${suit.tint}16` }}><Icon name={faceMeta(m).icon} size={11} /></span><span className="flex-none whitespace-nowrap">{m.type === "group" ? `${nd.members?.length ?? 0} cards` : faceMeta(m).name}</span>
+                          <span className={`truncate normal-case tracking-normal text-ink-3 ${m.type === "group" ? "pr-14" : ""}`}>
                             · {unfinished(m) ? <span className="text-[#a0561f]">{blankContent(m) ? "hidden until it has something in it" : "hidden until it has a question"}</span> : fromElsewhere ? `dealt in ${fromLesson?.title}` : inbound.length ? "dealt by an answer" : m.audience.kind === "student" ? someOf(m) : "everyone"}
                           </span>
                         </span>
@@ -1771,7 +1790,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, pro
             )}
             {gather && nodes.get(gather) && (() => {
               // The frame round the card being grouped, and the empty place beside it for the next card.
-              const g = nodes.get(gather)!, p = at(gather), h = Math.max(g.h, CARD_H);
+              const g = nodes.get(gather)!, p0 = at(gather), lift = g.m.type === "group" && level !== "far" ? FAN : 0;
+              const p = { x: p0.x, y: p0.y - lift }, h = Math.max(g.h + lift, CARD_H);
               const over = !!moving?.join;
               const bad = over && moving ? whyNoJoin(moving.id) : null;
               return (
@@ -2123,4 +2143,32 @@ function someOf(m: Module) {
   const g = groupsOf(m.audience).length, n = studentsOf(m.audience).length;
   const parts = [g ? `${g} group${g === 1 ? "" : "s"}` : "", n || !g ? `${n} student${n === 1 ? "" : "s"}` : ""].filter(Boolean);
   return parts.join(" and ");
+}
+
+/**
+ * A card group's cards, fanned out of the top of its sleeve like a hand of cards: a wider fan for more cards (up to
+ * seven shown). They rise out of the sleeve when it's made, and spread a little more on hover.
+ */
+function Fan({ members, x, y, open, faded }: { members: Module[]; x: number; y: number; open: boolean; faded: boolean }) {
+  const shown = members.slice(0, 7);
+  const n = shown.length;
+  const spread = Math.min(9 * (n - 1), 42);
+  return (
+    <span aria-hidden="true" className={`pointer-events-none absolute z-0 transition-opacity ${open ? "fan-open" : ""} ${faded ? "opacity-35" : ""}`} style={{ left: x, top: y - FAN + 4, width: W, height: FAN + 70 }}>
+      {shown.map((c, i) => {
+        const a = n === 1 ? 0 : -spread / 2 + (i * spread) / (n - 1);
+        const suit = suitOfCard(c);
+        return (
+          <span key={c.id} className="fan-card absolute left-1/2 top-0 block overflow-hidden rounded-[10px] border border-line bg-white shadow-[0_6px_14px_-8px_rgba(20,20,18,0.45)]"
+            style={{ width: 92, height: 128, marginLeft: -46, "--a": `${a}deg`, "--d": `${i * 55}ms`, zIndex: i } as React.CSSProperties}>
+            <span className="block h-[4px]" style={{ background: suit.tint }} />
+            <span className="block truncate px-2 pt-1 text-[7.5px] font-semibold uppercase tracking-[0.06em]" style={{ color: suit.tint }}>{faceMeta(c).name}</span>
+            <span className="block truncate px-2 text-[9.5px] font-semibold leading-tight text-ink">{c.title || "Untitled card"}</span>
+            <span className="mx-2 mt-1 block h-[46px] rounded-[6px]" style={{ background: suit.cover }} />
+          </span>
+        );
+      })}
+      {members.length > n && <span className="absolute -top-2 right-6 rounded-full bg-ink px-1.5 text-[10px] font-semibold text-white">+{members.length - n}</span>}
+    </span>
+  );
 }
