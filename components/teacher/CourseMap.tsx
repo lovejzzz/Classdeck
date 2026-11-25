@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, canBranch, DEFAULT_BANDS, mapSlot, picked, SCORE, sharedOnly, slotOf, targetsOf, wiresOf, type Wire, topOf, holdsGroups, leavesOf, cleanGroups } from "@/lib/branching";
+import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, snapBands, canBranch, DEFAULT_BANDS, mapSlot, picked, SCORE, sharedOnly, slotOf, targetsOf, wiresOf, type Wire, topOf, holdsGroups, leavesOf, cleanGroups } from "@/lib/branching";
 import { bandTone, pathColor, suitOfCard } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
@@ -1048,7 +1048,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                           ))}
                           {!bands.length && !readOnly && (
                             <div style={{ height: ROW }} className="px-3.5">
-                              <button onClick={() => setBands(g, DEFAULT_BANDS)} className="press flex h-6 items-center gap-1.5 rounded-md bg-[#eef0fb] px-2 text-[11.5px] font-medium text-[#4b56a8] hover:bg-[#e3e6f8]">
+                              <button onClick={() => setBands(g, snapBands(DEFAULT_BANDS, nQ))} className="press flex h-6 items-center gap-1.5 rounded-md bg-[#eef0fb] px-2 text-[11.5px] font-medium text-[#4b56a8] hover:bg-[#e3e6f8]">
                                 <Icon name="split" size={11} /> Branch by score
                               </button>
                             </div>
@@ -1966,7 +1966,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
             })()}
           </div>
         </div>
-        {nothing && (
+        {/* Not while the + Card menu is open: the hint would cover it. */}
+        {nothing && !menu && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
             <div className="max-w-sm rounded-2xl border border-line bg-white px-5 py-4 text-center text-[13px] text-ink-2 shadow-sm">
               This course has no cards yet. Use <b>+ Card</b> on a lesson to put one down. Give a Question card some choices, then drag each answer to the card it deals.

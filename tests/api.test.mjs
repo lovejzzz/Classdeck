@@ -634,7 +634,8 @@ async function main() {
     const mid = await view(jo);
     check("no deal before every card in the group is answered", !modulesOf(mid).some((m) => m.id === "m-lo" || m.id === "m-hi"));
     const last = await jo.c.op(tid, { op: "answer", studentId: jo.id, moduleId: "m-c3", qid: "m-c3-q", choice: 1 });
-    check("the last answer scores the group and deals by the total (1 of 3 → review)", last.dealt?.some((d) => d.id === "m-lo"), last);
+    check("the last answer scores the group and deals by the total (1 of 3 → review)", last.groupDealt?.some((d) => d.id === "m-lo"), last);
+    check("…said as the group's card, not this answer's", !last.dealt?.some((d) => d.id === "m-lo"), last);
     const jv = await view(jo);
     check("the deck shows its score", jv.weeks[0].lessons[0].decks[0].score === 33 && jv.weeks[0].lessons[0].decks[0].done === true, jv.weeks[0].lessons[0].decks[0]);
     for (const [m, a] of [["m-c1", 0], ["m-c2", 1], ["m-c3", 0]]) await kit.c.op(tid, { op: "answer", studentId: kit.id, moduleId: m, qid: `${m}-q`, choice: a });

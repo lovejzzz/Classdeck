@@ -1044,6 +1044,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
       (p.answers ??= {})[q.id] = given;
       // Card tree: the first answer decides which follow-up cards this student gets; later answers don't change it.
       let dealtNow: string[] = [];
+      // Cards a card group's score dealt when this answer finished the group (said as the group's, not this answer's).
+      let groupDealt: string[] = [];
       const answeredNow = q.kind === "multi" ? (given as number[]).length > 0 : q.kind === "short" || q.kind === "order" ? true : Number.isInteger(given);
       const firstTime = answeredNow && (p.first ??= {})[q.id] === undefined;
       // A quiz deals when it's submitted, not halfway through.
@@ -1051,6 +1053,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
         const before = treeOf(course, body.studentId).dealt;
         if (firstTime) p.first![q.id] = right;
         if (deals(q) && (p.dealt ??= {})[q.id] === undefined) p.dealt[q.id] = given;
+        const byAnswer = treeOf(course, body.studentId).dealt;
         // A card group scores once every Multiple choice card in it has a first answer; so does a group it's in.
         for (const gid of groupsAbove(found.mod.id, parentOf(found.lesson.modules))) {
           const group = found.lesson.modules.find((g) => g.id === gid);
@@ -1064,7 +1067,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
             gp.updatedAt = Date.now();
           }
         }
-        dealtNow = [...treeOf(course, body.studentId).dealt].filter((id) => !before.has(id));
+        dealtNow = [...byAnswer].filter((id) => !before.has(id));
+        groupDealt = [...treeOf(course, body.studentId).dealt].filter((id) => !byAnswer.has(id));
       }
       (p.results ??= {})[q.id] = right;
       if (p.status === "todo") p.status = "doing";
@@ -1087,7 +1091,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (instant) {
         p.score = set.filter((x) => p.results![x.id]).length;
         if (answered === total) p.status = "done";
-        extra = { correct: right, explain: right ? q.explain : undefined, dealt: titles(course, dealtNow) };
+        extra = { correct: right, explain: right ? q.explain : undefined, dealt: titles(course, dealtNow), groupDealt: titles(course, groupDealt) };
       }
       break;
     }

@@ -547,9 +547,10 @@ function Questions(p: DetailProps) {
     const q = set.find((x) => x.id === qid)!;
     setPending((x) => ({ ...x, [qid]: value }));
     const payload = q.kind === "short" ? { text: value } : q.kind === "multi" ? { multi: value } : q.kind === "order" ? { order: value } : { choice: value };
-    const r = await op<{ ok: boolean; error?: string; dealt?: { id: string; title: string; lesson?: string }[] }>(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...payload });
+    const r = await op<{ ok: boolean; error?: string; dealt?: { id: string; title: string; lesson?: string }[]; groupDealt?: { id: string; title: string; lesson?: string }[] }>(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid, ...payload });
     if (!r.ok) toast(r.error ?? "Couldn’t save that answer", { icon: "quiz", tone: "plain" });
-    announceDealt(r.dealt);
+    // Cards this answer dealt are said under it; cards the group's score dealt are said with the group's score.
+    announceDealt([...(r.dealt ?? []), ...(r.groupDealt ?? [])]);
     if (r.dealt?.length) setOpened((x) => ({ ...x, [qid]: r.dealt! }));
     await p.onChanged();
     setPending((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== qid)));
@@ -822,7 +823,7 @@ function Questions(p: DetailProps) {
                   <span className="text-bad">Not quite.</span> Your answer opened <CardLinks cards={opened[q.id]} /> to help. You can also have another go here.
                 </p>
               ) : (
-                <p className="rise mt-1.5 text-[12.5px] text-bad">Not quite. Have another go.</p>
+                <p className="rise mt-1.5 text-[12.5px] text-bad">{p.group ? "Not quite. Try again if you like: the group’s score counts your first answer." : "Not quite. Have another go."}</p>
               )
             )}
             {/* A vote, or a right answer, that dealt cards: say which, so they're easy to find. */}

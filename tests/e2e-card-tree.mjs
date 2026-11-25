@@ -68,6 +68,8 @@ await page.getByRole("button", { name: "Edit Source question" }).click();
 await page.getByRole("button", { name: "Delete", exact: true }).waitFor();
 await settle(600);
 await page.getByRole("button", { name: "Delete", exact: true }).click();
+// Point at the message so it stays (it pauses while pointed at) while the server is checked, however slow.
+await page.locator('[aria-live="polite"]').getByRole("button", { name: "Undo" }).first().hover();
 await settle();
 let now = await server();
 check("editor delete: the source and its Lesson 1 follow-up are gone", !now.l1.includes("m-src") && !now.l1.includes("m-x") && now.l1.includes("m-all1"), now);

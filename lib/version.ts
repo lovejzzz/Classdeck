@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.1",
+    date: "2026-11-25",
+    changes: [
+      "Fixes from making a course by hand, start to finish. A student who finished a card group no longer reads “Your answer opened …” under their last answer when it was the group’s score that opened the card; the group’s score says so instead. A wrong answer inside a group now says the group’s score counts the first answer.",
+      "Branch by score on a small card group starts with ranges its score can reach (for 2 questions: 0–99% and 100%), instead of showing an impossible range marked “never” until it saved.",
+      "In a course with no cards yet, its hint no longer covers the + Card menu.",
+    ],
+  },
+  {
     version: "0.2.0",
     date: "2026-11-24",
     changes: [
