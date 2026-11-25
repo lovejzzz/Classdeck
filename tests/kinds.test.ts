@@ -27,7 +27,7 @@ const oldPoll = withKind(card({ type: "practice", poll: true, questions: [{ id: 
 check("a poll card is a Choice card with no right answer", oldPoll.kind === "choice" && oldPoll.poll === true && oldPoll.questions?.[0].answer === undefined && oldPoll.questions?.[0].next?.[0] === "x");
 check("a poll looks like a poll", faceOf(oldPoll) === "poll" && isPoll(oldPoll));
 check("withKind leaves a current poll alone", withKind(oldPoll) === oldPoll);
-check("a rating card becomes a poll", isPoll(withKind(card({ type: "selfcheck" }))));
+check("a rating card becomes a poll", isPoll(withKind(card({ type: "selfcheck" as never }))));
 check("an unknown kind falls back to its type", withKind(card({ kind: "text" as never })).kind === "content");
 
 // The right-answer switch.
@@ -112,7 +112,7 @@ check("a poll that makes groups: Sign-up", faceOf(ch([{ id: "q", text: "Which?",
 // Feedback is for work handed in: an open answer or a worksheet, never a card that's only read.
 check("an open answer can be reviewed", reviewableCard(card({ kind: "answer", type: "submit" })));
 check("a worksheet each student fills in can be reviewed", reviewableCard(card({ kind: "worksheet", writers: "each" })));
-check("a Content card can't, not even an older Watch & listen one", !reviewableCard(card({ kind: "content" })) && !reviewableCard(card({ kind: "content", type: "explore" })));
+check("a Content card can't, not even an older Watch & listen one", !reviewableCard(card({ kind: "content" })) && !reviewableCard(card({ kind: "content", type: "explore" as never })));
 check("a quiz question and a discussion can't", !reviewableCard(card({ kind: "choice", type: "practice", questions: [{ id: "q", text: "A?", options: ["a", "b"], answer: 0 }] })) && !reviewableCard(card({ kind: "discussion", type: "wall" })));
 
 const failed = rows.filter(([, ok]) => !ok);

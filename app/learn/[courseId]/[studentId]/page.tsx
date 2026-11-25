@@ -815,7 +815,6 @@ export default function LearnPage() {
             weekTitle={openWeek?.title ?? ""}
             mine={mine}
             studio={state.studio}
-            plan={state.plans?.[studentId]}
           />
         </Lift>
       )}

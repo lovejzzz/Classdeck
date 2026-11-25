@@ -5,7 +5,7 @@
 // Each kind runs on one of the stored types underneath (read, submit, quiz, practice, wall, studio), which the rest of
 // the site already knows how to show and grade. Question cards are where card trees branch: each choice of a Choice
 // card (quiz question or poll), and each score range of a quiz or a card group, can deal a card.
-import type { Module, ModuleType, Question } from "./types";
+import type { Module, ModuleType, OldModuleType, Question } from "./types";
 import { isAsked } from "./grading";
 import { hasTable } from "./markdown";
 
@@ -76,9 +76,11 @@ export const isKind = (k: unknown): k is CardKind => KINDS.some((x) => x.id === 
 /** A card's kind: the one stored, or (for a card made without one, such as a template) the one its type points to. */
 export function kindOf(m: KindFields): CardKind {
   // Students only ever read a Content card: one they write in (from before Worksheet was an answer type) is a worksheet.
-  if ((m.kind === "content" || (!isKind(m.kind) && (m.type === "read" || m.type === "explore"))) && m.writers) return "worksheet";
+  // Old saved cards (and document imports) may still have a type from before the simplification.
+  const type = m.type as ModuleType | OldModuleType;
+  if ((m.kind === "content" || (!isKind(m.kind) && (type === "read" || type === "explore"))) && m.writers) return "worksheet";
   if (isKind(m.kind)) return m.kind;
-  switch (m.type) {
+  switch (type) {
     case "group":
       return "group";
     case "read":
@@ -98,7 +100,7 @@ export function kindOf(m: KindFields): CardKind {
 }
 
 /** Whether a card is a poll: a Choice card with no right answer. */
-export const isPoll = (m: KindFields) => kindOf(m) === "choice" && !!(m.poll || m.type === "selfcheck");
+export const isPoll = (m: KindFields) => kindOf(m) === "choice" && !!(m.poll || (m.type as string) === "selfcheck");
 
 /**
  * How a card looks: it follows what's in the card. A Content card that students write in is a worksheet (each their
@@ -171,7 +173,7 @@ export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
   if (k !== "discussion") next.wall = undefined;
   if (asPoll) {
     const q = (m.questions ?? []).find((x) => !x.kind || x.kind === "choice" || x.kind === "multi");
-    const fromRating = m.type === "selfcheck" && !q;
+    const fromRating = (m.type as string) === "selfcheck" && !q;
     const one: Question = q
       ? { id: q.id, text: q.text, options: q.options, next: q.next }
       : { id: qid(), text: fromRating ? "How confident do you feel about this?" : "", options: fromRating ? ["Not yet", "Getting there", "Confident", "Could teach it"] : ["", ""] };

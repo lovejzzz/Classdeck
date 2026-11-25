@@ -14,20 +14,16 @@ import { docKey } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { RichBodyEditor } from "../teacher/RichBodyEditor";
 import { DocNotes } from "./DocNotes";
-import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Plan, Post, Progress, Student } from "@/lib/types";
+import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
 import { ReadAloud } from "../ReadAloud";
-import { teacherLevels } from "../SkillRadar";
 import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
-import { SelfCheck } from "./SelfCheck";
 import { CardForm } from "./CardForm";
 import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, ReviewNote, UpdatesNote } from "./CardExtras";
 import { RichText } from "../RichText";
 import { isRich, plainText } from "@/lib/markdown";
-import { SpeechBuilder } from "./SpeechBuilder";
-import { SpeechFlow } from "./SpeechFlow";
 import { Studio } from "./Studio";
 import { WorkComposer } from "./WorkComposer";
 
@@ -51,7 +47,6 @@ export interface DetailProps {
   weekTitle: string;
   mine: Record<string, Progress>;
   studio: CourseState["studio"];
-  plan?: Plan;
   /** The card is one of a card group's: where it sits, and the group's next card to go to (none on the last). */
   group?: { title: string; index: number; total: number; next?: { title: string; go: () => void }; score?: number; opened?: string[]; part?: { title: string; score?: number; opened: string[] }; parts?: { title: string; score: number }[] };
 }
@@ -88,19 +83,11 @@ export function CardDetail(p: DetailProps) {
   const kind = kindOf(m);
   // Only a Q&A card has a box to write in. A Content card is to take in (it gets a plain Done button), and a Choice
   // card is done once it's answered.
-  const hasOutput = (!!meta.outputLabel && m.type !== "selfcheck" && kind === "answer") || personal;
+  const hasOutput = (!!meta.outputLabel && kind === "answer") || personal;
   const doneOnly = familyOf(kind) === "content" && !personal && !shared;
   // A vote or a multiple-choice answer is the whole response: no recording or file box under it.
   const showWork = WORK_TYPES.has(m.type) && !m.choice && kind !== "choice";
   const skills = (m.skills ?? []).map((id) => p.course.skills?.find((s) => s.id === id)?.name).filter(Boolean);
-  // The earliest other self-check with ratings, for showing progress.
-  const earlier = (() => {
-    if (m.type !== "selfcheck") return undefined;
-    for (const w of p.course.weeks) for (const l of w.lessons) for (const x of l.modules) {
-      if (x.id === m.id) return undefined;
-      if (x.type === "selfcheck" && p.mine[x.id]?.ratings && Object.keys(p.mine[x.id].ratings!).length) return { label: `${w.title.split(" · ")[0]} rating`, ratings: p.mine[x.id].ratings! };
-    }
-  })();
   const lessonWork: { from: string; a: Attachment }[] = p.lesson.modules.flatMap((x) => (x.id === m.id ? [] : (p.mine[x.id]?.work ?? []).map((a) => ({ from: x.title, a }))));
   const starred = !!p.progress?.starred;
   // When this card is one of several paths, the others, side by side.
@@ -365,35 +352,6 @@ export function CardDetail(p: DetailProps) {
           </div>
         )}
 
-        {m.type === "selfcheck" && !m.choice && p.course.skills && p.course.levels && (() => {
-          const check = (onDone: () => void) => (
-            <SelfCheck
-              courseId={p.courseId} studentId={p.studentId} moduleId={m.id} skills={p.course.skills!} levels={p.course.levels!}
-              ratings={p.progress?.ratings ?? {}} earlier={earlier} onChanged={p.onChanged} big={p.big} teacher={teacherLevels(p.mine)}
-              onDone={onDone}
-            />
-          );
-          return (
-            <div className="mt-7">
-              {check(() => save("done"))}
-            </div>
-          );
-        })()}
-
-        {m.type === "builder" && !m.choice && (
-          <div className="mt-7">
-            {(() => {
-              const Comp = m.flow ? SpeechFlow : SpeechBuilder;
-              return <Comp courseId={p.courseId} studentId={p.studentId} module={m} progress={p.progress} onChanged={p.onChanged} big={p.big}
-              onFinish={(text) => {
-                p.optimistic({ status: "done", output: text });
-                op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, status: "done", output: text }).then(p.onChanged);
-                p.onClose(true);
-                toast(`Finished “${m.title}”`);
-              }} />;
-            })()}
-          </div>
-        )}
 
         {m.type === "studio" && (
           <div className="mt-7">

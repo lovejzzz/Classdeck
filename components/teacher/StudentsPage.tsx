@@ -11,7 +11,7 @@ import type { ConnectorInfo } from "@/lib/connectors/types";
 import type { CourseState, Lesson } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { SkillRadar } from "../SkillRadar";
-import { FeedbackInbox, Journal } from "../student/Progress";
+import { FeedbackInbox } from "../student/Progress";
 import { Classroom } from "./Classroom";
 import { Settings } from "./Settings";
 
@@ -231,10 +231,6 @@ function StudentCourse({ state, row: r, courseId, onOpen, onMessage, now }: {
             )}
           </section>
 
-          <details className="group">
-            <summary className="cursor-pointer text-[13px] font-medium text-ink-2 hover:text-ink">Reflections</summary>
-            <div className="mt-3"><Journal state={state} studentId={sid} /></div>
-          </details>
           <details className="group">
             <summary className="cursor-pointer text-[13px] font-medium text-ink-2 hover:text-ink">Feedback received, and what they tried</summary>
             <div className="mt-3"><FeedbackInbox state={state} studentId={sid} readOnly /></div>

@@ -95,17 +95,18 @@ const WEEK = /^(week|unit|module|session|lesson|topic|day)\s*(\d+)\b[\s:.\-â€“â€
 // Sections that are notes for teachers, not something students do.
 const SKIP = /\b(personali[sz]ed|teacher notes?|facilitator|implementation|sources?|references?|based on|rationale|for teachers?)\b/i;
 
-function guessType(title: string, body: string): ModuleType {
+/** The card a part of a lesson plan becomes. "rating": a poll on how confident the student feels. */
+function guessType(title: string, body: string): ModuleType | "rating" {
   const t = `${title} ${body.slice(0, 160)}`.toLowerCase();
-  if (/self[- ]?(assess|check|rat)|starting point|rate yourself/.test(t)) return "selfcheck";
+  if (/self[- ]?(assess|check|rat)|starting point|rate yourself/.test(t)) return "rating";
   if (/collab studio|studio session|group session|peer review session|round[- ]robin/.test(t)) return "studio";
-  if (/reflect|commitment|journal|look back|revis/.test(title.toLowerCase())) return "reflect";
+  if (/reflect|commitment|journal|look back|revis/.test(title.toLowerCase())) return "submit";
   if (/\b(share|post|discuss)/.test(title.toLowerCase()) || /\bwall\b|discussion|share (your|with)|post (your|on|it)|giving good feedback|brainstorm/.test(t)) return "wall";
   if (/\bquiz\b|knowledge check|\btest\b/.test(t)) return "practice";
   if (/assignment|submit|hand in|final (presentation|project|paper)/.test(t)) return "submit";
   if (/practi[cs]e|record|rehears|try (again|it)|draft|write|outline|build/.test(t)) return "practice";
   if (/welcome|overview|introduction|read\b|course plan/.test(t)) return "read";
-  return "explore";
+  return "read";
 }
 
 function card(title: string, body: string, forceType?: ModuleType): Module {
@@ -119,11 +120,18 @@ function card(title: string, body: string, forceType?: ModuleType): Module {
     minutes: minutes && minutes <= 180 ? minutes : undefined,
     wall: { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false, replies: 2, byGroup: true, structured: true },
   };
+  // A self-check is a poll: how confident do they feel?
+  if (type === "rating") return {
+    id: uid("m-"), type: "practice", kind: "choice", poll: true, title: title.replace(/[.:]\s*$/, "").slice(0, 90), body: body.trim().slice(0, 4000),
+    audience: { kind: "all" }, tools: [],
+    minutes: minutes && minutes <= 180 ? minutes : undefined,
+    questions: [{ id: uid("q-"), text: "How confident do you feel about this?", options: ["Not yet", "Getting there", "Confident", "Could teach it"] }],
+  };
   return {
     id: uid("m-"), type, title: title.replace(/[.:]\s*$/, "").slice(0, 90), body: body.trim().slice(0, 4000),
     audience: { kind: "all" }, tools: [],
     minutes: minutes && minutes <= 180 ? minutes : undefined,
-    submitTo: type === "practice" || type === "reflect" || type === "submit" ? "personal" : undefined,
+    submitTo: type === "practice" || type === "submit" ? "personal" : undefined,
   };
 }
 

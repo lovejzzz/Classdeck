@@ -16,16 +16,15 @@ export interface Profile {
 
 export type ModuleType =
   | "read"
-  | "explore"
   | "practice"
   | "wall"
   | "submit"
   | "quiz"
-  | "reflect"
-  | "selfcheck"
   | "studio"
-  | "builder"
   | "group";
+/** Card types from before cards were simplified. Only old saved data or a document import can still hold them; they're
+ * turned into today's types when a card is saved or the data is loaded (lib/kinds.ts withKind). */
+export type OldModuleType = "explore" | "reflect" | "selfcheck" | "builder";
 
 /** 挂在模块上的一个工具：指向某个连接器的某个动作。 */
 export interface ToolRef {
@@ -624,8 +623,6 @@ export interface CourseState {
   uptake: Record<string, Record<string, number>>;
   /** Reminders from the teacher (students get their own). */
   nudges: Nudge[];
-  /** Learner plans (students get their own). */
-  plans: Record<string, Plan>;
   /** For students, votes are counts only (plus their own) and hands are their own. */
   /** Teacher views only: this teacher's role, and who owns the course. */
   me?: { role: "owner" | "editor" | "viewer"; owner?: { name: string; email: string; picture?: string }; mail?: boolean };

@@ -170,30 +170,3 @@ export function FeedbackInbox({ state, studentId, readOnly = false, onChanged }:
   );
 }
 
-/** All reflections and self-check notes, in course order: a journal of how the student sees their own progress. */
-export function Journal({ state, studentId }: { state: CourseState; studentId: string }) {
-  const { course } = state;
-  const mine = state.progress[studentId] ?? {};
-  const entries = course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.filter((m) => (m.type === "reflect" || m.type === "selfcheck") && (mine[m.id]?.output || mine[m.id]?.responses?.some(Boolean) || mine[m.id]?.ratings)).map((m) => ({ w, m, p: mine[m.id] }))));
-  if (!entries.length) return <p className="hatch flex h-24 items-center justify-center text-[13px] text-ink-3">Your reflections and self-ratings collect here, week by week.</p>;
-  const skills = course.skills ?? [];
-  return (
-    <ol className="relative space-y-4 border-l border-line pl-5">
-      {entries.map(({ w, m, p }) => (
-        <li key={m.id} className="relative">
-          <span className="absolute -left-[26px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-ink" />
-          <div className="text-[12px] text-ink-3">{w.title} · {new Date(p.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
-          <h4 className="text-[14px] font-medium">{m.title}</h4>
-          {m.prompts?.length && p.responses?.some(Boolean) ? (
-            <dl className="mt-1.5 space-y-1.5 text-[13.5px] leading-relaxed">
-              {m.prompts.map((q, i) => p.responses?.[i] && <div key={i}><dt className="text-[12.5px] text-ink-3">{q}</dt><dd>{p.responses[i]}</dd></div>)}
-            </dl>
-          ) : p.output && <p className="mt-1 whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{p.output}</p>}
-          {p.ratings && Object.keys(p.ratings).length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">{skills.map((s) => p.ratings![s.id] && <span key={s.id} className="chip h-5 text-[11px]">{s.name} · {p.ratings![s.id]}</span>)}</div>
-          )}
-        </li>
-      ))}
-    </ol>
-  );
-}

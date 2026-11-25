@@ -11,13 +11,12 @@ import { foldWeeks } from "@/lib/cardmodel";
 import { kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
 import { canBranch, cardsOf, cleanCourseWiring, deals, wiresOf, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
-import { prcaScore } from "@/lib/onboarding";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
 import { cleanAttachment, cleanCard } from "@/lib/cleancard";
 import { DEFAULT_GROUPING, DEMO_PREFIX, DEMO_STUDENTS, demoStudent, groupFor, isDemoStudent, nameGroups, nextDemoName, repliesNeeded, signupGroupId, signupGroupingId, syncSignup } from "@/lib/shared";
 
-import type { AnswerValue, Attachment, Course, ExternalUpdate, FormPart, Plan, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
+import type { AnswerValue, Attachment, Course, ExternalUpdate, FormPart, CourseState, Lesson, Module, Post, Progress, ProgressMap, Question, Student, Week } from "@/lib/types";
 
 /** A question as students receive it: no answer key, no accepted answers, no explanation. */
 // "order" questions go out alphabetised, so the correct order never reaches the browser.
@@ -27,7 +26,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 
 /** Operations a student performs on their own behalf (body.studentId). */
 const STUDENT_OPS = new Set([
-  "savePlan", "drill", "feel", "saveFlow", "chooseElective", "setProgress", "uptake", "saveSpeech", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
+  "feel", "chooseElective", "setProgress", "uptake", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
   "retakeQuiz", "rehearse", "fillForm", "studioPost", "feedback", "feedbackHelpful", "editPost",
   "messageTeacher", "readMyMessages", "docReply", "handInShared",
 ]);
@@ -194,7 +193,7 @@ function view(request: Request, courseId: string): Response {
         // Cards made for one student stay private; shared and path cards are shown without who they're for.
         weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience?.kind !== "student" && !unfinished(m)).map((m) => ({ ...m, bands: undefined, audience: m.audience?.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
       },
-      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], uptake: {}, nudges: [], plans: {},
+      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], uptake: {}, nudges: [],
     };
     return Response.json(view);
   }
@@ -282,7 +281,6 @@ function view(request: Request, courseId: string): Response {
     marks: as ? (d.marks[courseId] ?? []).filter((mk) => visibleWork(course, as).has(mk.attachmentId)) : (d.marks[courseId] ?? []),
     uptake: as ? { [as]: d.uptake[courseId]?.[as] ?? {} } : (d.uptake[courseId] ?? {}),
     nudges: (d.nudges[courseId] ?? []).filter((n) => !as || n.studentId === as),
-    plans: as ? (d.plans[courseId]?.[as] ? { [as]: d.plans[courseId][as] } : {}) : (d.plans[courseId] ?? {}),
   };
   if (!as) {
     const owner = course.ownerId ? d.users[course.ownerId] : undefined;
@@ -1115,45 +1113,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
       else delete mineUp[key];
       break;
     }
-    case "savePlan": {
-      const plans = (d.plans[courseId] ??= {});
-      const prev = plans[body.studentId];
-      const b = body.plan ?? {};
-      const str = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
-      const conf: Record<string, number> = {};
-      for (const [k, v] of Object.entries(b.confidence ?? {})) if (/^[a-z]{2,12}$/.test(k) && Number(v) >= 1 && Number(v) <= 5) conf[k] = Math.round(Number(v));
-      const plan: Plan = {
-        purposes: (Array.isArray(b.purposes) ? b.purposes : []).map((x: unknown) => str(x, 60)).filter(Boolean).slice(0, 8),
-        purposeNote: str(b.purposeNote, 400) || undefined,
-        goal: str(b.goal, 400) || undefined,
-        objectives: (Array.isArray(b.objectives) ? b.objectives : []).slice(0, 5).map((o: { id?: unknown; lo?: unknown; lm?: unknown; status?: unknown }) => ({
-          id: str(o.id, 20) || uid("lo-"), lo: str(o.lo, 300), lm: str(o.lm, 300),
-          status: o.status === "getting" || o.status === "achieved" || o.status === "notyet" ? o.status : undefined,
-        })).filter((o: { lo: string }) => o.lo),
-        confidence: conf,
-        confidenceStart: prev?.confidenceStart ?? (Object.keys(conf).length ? conf : undefined),
-        prca: prev?.prca,
-        focus: prev?.focus,
-        drills: prev?.drills,
-        updatedAt: Date.now(),
-      };
-      if (Array.isArray(b.prca) && b.prca.length === 6 && b.prca.every((x: unknown) => Number(x) >= 1 && Number(x) <= 5)) {
-        const answers = b.prca.map(Number);
-        plan.prca = [...(prev?.prca ?? []), { answers, score: prcaScore(answers).score, at: Date.now() }].slice(-6);
-      }
-      if (Array.isArray(b.focus)) plan.focus = { subskills: b.focus.map((x: unknown) => str(x, 60)).filter(Boolean).slice(0, 2), at: Date.now() };
-      plans[body.studentId] = plan;
-      break;
-    }
-    case "drill": {
-      const plans = (d.plans[courseId] ??= {});
-      const plan = (plans[body.studentId] ??= { purposes: [], objectives: [], confidence: {}, updatedAt: Date.now() });
-      const day = String(body.day ?? "").slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return fail("Which day?");
-      const feel = Number(body.feel) >= 1 && Number(body.feel) <= 4 ? Number(body.feel) : undefined;
-      plan.drills = [...(plan.drills ?? []).filter((x) => !(x.day === day && x.id === body.id)), { day, id: String(body.id).slice(0, 20), feel }].slice(-200);
-      break;
-    }
     case "feel": {
       const p = mine(body.studentId, body.moduleId);
       const n = (p.rehearsals ?? []).length;
@@ -1162,44 +1121,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const feel = [...(p.feel ?? [])];
       feel[n - 1] = v;
       p.feel = feel;
-      break;
-    }
-    case "saveFlow": {
-      const mod = findModule(course, body.moduleId)?.mod;
-      if (mod?.type !== "builder") return fail("That isn’t a speech card");
-      const f = body.flow ?? {};
-      const answers: Record<string, string> = {};
-      for (const [k, v] of Object.entries(f.answers ?? {})) if (/^[a-z]{2,12}$/.test(k)) answers[k] = String(v ?? "").slice(0, 800);
-      const p = mine(body.studentId, body.moduleId);
-      p.flow = {
-        path: f.path === "idea" || f.path === "story" ? f.path : undefined,
-        step: Number.isInteger(f.step) ? Math.max(0, Math.min(20, f.step)) : undefined,
-        answers,
-        tiles: Array.isArray(f.tiles) ? f.tiles.slice(0, 24).map((t: { id?: unknown; kind?: unknown; text?: unknown }) => ({ id: String(t.id ?? uid("t-")).slice(0, 20), kind: String(t.kind ?? "note").slice(0, 12), text: String(t.text ?? "").slice(0, 1200) })) : undefined,
-      };
-      if (p.status === "todo") p.status = "doing";
-      p.updatedAt = Date.now();
-      break;
-    }
-    case "saveSpeech": {
-      const mod = findModule(course, body.moduleId)?.mod;
-      if (mod?.type !== "builder") return fail("That isn’t a builder card");
-      const s = (v: unknown, n = 600) => String(v ?? "").slice(0, n);
-      const f = body.fields ?? {};
-      const fields = {
-        audience: s(f.audience, 200), purpose: s(f.purpose, 300), hook: s(f.hook), core: s(f.core, 300),
-        points: (Array.isArray(f.points) ? f.points : []).slice(0, 5).map((x: { point?: unknown; example?: unknown }) => ({ point: s(x?.point, 300), example: s(x?.example) })),
-        close: s(f.close),
-        structure: f.structure ? s(f.structure, 20) : undefined,
-        hookType: f.hookType ? s(f.hookType, 20) : undefined,
-        closeType: f.closeType ? s(f.closeType, 20) : undefined,
-      };
-      const p = mine(body.studentId, body.moduleId);
-      const prev = p.speech ?? { fields, versions: [] };
-      p.speech = { fields, versions: prev.versions };
-      if (body.version) p.speech.versions = [...prev.versions, { at: Date.now(), label: body.label ? s(body.label, 60) : undefined, fields }].slice(-20);
-      if (p.status === "todo") p.status = "doing";
-      p.updatedAt = Date.now();
       break;
     }
     case "nudge": {

@@ -21,7 +21,6 @@ import { MarkedMedia } from "../Marks";
 import { MathText } from "../MathText";
 import { AttachMenu } from "../AttachMenu";
 import { MediaView } from "../cards/Media";
-import { draftOf } from "../student/SpeechBuilder";
 import { Present } from "../Present";
 import { WallBoard } from "../WallBoard";
 import { RichText } from "../RichText";
@@ -310,12 +309,6 @@ export function Classroom({
                 {selProgress.rehearsals.map((x, i) => <span key={i} className={`rounded-full px-1.5 font-mono text-[11px] ${selModule.timer && Math.abs(x - selModule.timer) <= selModule.timer * 0.1 ? "bg-ok/10 text-ok" : "bg-lane text-ink-2"}`}>{fmtSec(x)}</span>)}
               </div>
             ) : null}
-            {selProgress?.speech && (
-              <div className="mt-3 rounded-lg bg-lane px-3.5 py-3 text-[13px] leading-relaxed">
-                <div className="mb-1 text-[12px] text-ink-3">Speech draft · {selProgress.speech.versions.length} saved version{selProgress.speech.versions.length === 1 ? "" : "s"}</div>
-                <p className="whitespace-pre-wrap">{draftOf(selProgress.speech.fields, true)}</p>
-              </div>
-            )}
             {selProgress?.highlights?.length ? (
               <div className="mt-3 space-y-1.5">
                 <div className="text-[12px] text-ink-3">Highlighted</div>

@@ -14,8 +14,8 @@ const COVER = {
 };
 
 export const SUITS: { id: Suit; name: string; tint: string; cover: string; rule: string; types: ModuleType[]; kinds: CardKind[] }[] = [
-  { id: "content", name: "Content", tint: "#3d68a6", cover: COVER.content, rule: "Words, pictures, videos, links and recordings to take in.", types: ["read", "explore"], kinds: PICKABLE.filter((k) => k.family === "content").map((k) => k.id) },
-  { id: "question", name: "Question", tint: "#a0561f", cover: COVER.question, rule: "A question, answered with choices (a quiz question or a poll), in students’ own words, or in a discussion.", types: ["quiz", "practice", "submit", "reflect", "builder", "selfcheck", "wall", "studio", "group"], kinds: PICKABLE.filter((k) => k.family === "question").map((k) => k.id) },
+  { id: "content", name: "Content", tint: "#3d68a6", cover: COVER.content, rule: "Words, pictures, videos, links and recordings to take in.", types: ["read"], kinds: PICKABLE.filter((k) => k.family === "content").map((k) => k.id) },
+  { id: "question", name: "Question", tint: "#a0561f", cover: COVER.question, rule: "A question, answered with choices (a quiz question or a poll), in students’ own words, or in a discussion.", types: ["quiz", "practice", "submit", "wall", "studio", "group"], kinds: PICKABLE.filter((k) => k.family === "question").map((k) => k.id) },
 ];
 
 export const suitOf = (t: ModuleType): (typeof SUITS)[number] => SUITS.find((s) => s.types.includes(t)) ?? SUITS[1];
@@ -75,13 +75,9 @@ const variant = (t: ModuleType, v: Omit<Meta, "tint" | "cover">): Meta => {
 /** Each variant: its name, a one-line hint for the editor, and the suit's colour. */
 export const TYPE_META: Record<ModuleType, Meta> = {
   read: variant("read", { label: "Read", name: "Read", hint: "Text, a handout, or a link", outputLabel: "Your thoughts (optional)", doneLabel: "Done" }),
-  explore: variant("explore", { label: "Watch", name: "Watch & listen", hint: "A video or recording with things to notice", outputLabel: "What you found", doneLabel: "Done" }),
   quiz: variant("quiz", { label: "Quiz", name: "Quiz", hint: "Quick questions to check understanding", doneLabel: "Submit" }),
   practice: variant("practice", { label: "Practice", name: "Practice", hint: "Steps to try, a timer, a recording", outputLabel: "Your practice notes", doneLabel: "Done" }),
-  builder: variant("builder", { label: "Build", name: "Builder", hint: "Build a piece step by step from a structure", doneLabel: "Done" }),
   submit: variant("submit", { label: "Hand in", name: "Hand in", hint: "A piece of work for the teacher", outputLabel: "Your work", doneLabel: "Hand in" }),
-  selfcheck: variant("selfcheck", { label: "Rate", name: "Rate yourself", hint: "Students rate their own skills", outputLabel: "Notes for yourself (optional)", doneLabel: "Save" }),
-  reflect: variant("reflect", { label: "Reflect", name: "Reflect", hint: "Look back: what worked, what's next", outputLabel: "Your reflection (only you and your teacher can see it)", doneLabel: "Save" }),
   studio: variant("studio", { label: "Studio", name: "Collab Studio", hint: "Small groups present and give feedback", doneLabel: "Done" }),
   wall: variant("wall", { label: "Wall", name: "Class wall", hint: "Everyone posts; the class responds", doneLabel: "Done" }),
   group: variant("group", { label: "Group", name: "Card group", hint: "Cards that go together; its score counts the questions with a right answer", doneLabel: "Done" }),
