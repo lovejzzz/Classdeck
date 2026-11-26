@@ -38,7 +38,7 @@ const EXAMPLE = `{
 }`;
 
 export default function ConnectorsPage() {
-  const { connectors, refresh } = useConnectors();
+  const { connectors, refresh, loaded } = useConnectors();
   const [testing, setTesting] = useState<string | null>(null);
   const [json, setJson] = useState(EXAMPLE);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +92,8 @@ export default function ConnectorsPage() {
           </button>
         ))}
       </div>
+      {/* While the list loads, room for it, so the form below doesn't jump down when it arrives. */}
+      {!loaded && <div className="mt-7 grid gap-3 md:grid-cols-2" aria-busy="true">{Array.from({ length: 8 }, (_, i) => <div key={i} className="skeleton h-36" />)}</div>}
       {CATEGORIES.filter((cat) => (shelf === "All" || shelf === cat) && connectors.some((c) => c.category === cat)).map((cat) => (
       <section key={cat} className="mt-7">
       <h2 className="mb-2.5 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{cat}</h2>
@@ -154,7 +156,8 @@ export default function ConnectorsPage() {
       </section>
       ))}
 
-      <section className="card mt-8 overflow-hidden">
+      {/* Under the list once it's in (shown before, it would be pushed down as the list arrives). */}
+      {loaded && <section className="card mt-8 overflow-hidden">
         <div className="p-5">
           <h2 className="text-[15px] font-medium">Connect a new API</h2>
           <p className="mt-1.5 max-w-3xl text-[13px] leading-relaxed text-ink-3">
@@ -177,7 +180,7 @@ export default function ConnectorsPage() {
           <button onClick={add} disabled={busy} className="btn btn-dark press"><Icon name="plus" size={13} /> {busy ? "Adding…" : "Add connector"}</button>
           {error && <span key={error} className="rise text-[13px] text-bad">{error}</span>}
         </div>
-      </section>
+      </section>}
       <SiteFooter />
     </main>
   );

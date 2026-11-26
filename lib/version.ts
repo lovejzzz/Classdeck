@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.90",
+    date: "2026-11-26",
+    changes: [
+      "Closing a video that’s playing no longer pops: its sound fades out over a moment before it stops (a card with a video, and a video opened large; a YouTube or Vimeo video too).",
+      "Less movement on screen: an open card stays still once it has opened (it kept redrawing itself while open), and a worksheet or video that loads after the card opens makes the card longer downwards instead of moving it. My work and Settings no longer jump as they load, and a video keeps its room before it loads.",
+      "A Vimeo video opened large now starts playing, and going to /teach takes a teacher to their courses.",
+    ],
+  },
+  {
     version: "0.2.89",
     date: "2026-11-26",
     changes: [

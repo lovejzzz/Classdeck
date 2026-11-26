@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFocusTrap } from "@/lib/a11y";
 import { clamp, lerp, onFrame, reducedMotion, Spring } from "@/lib/spring";
+import { quietly } from "@/lib/media";
 
 /**
  * Grows a panel out of a card's rectangle with a springy overshoot, and shrinks it back
@@ -46,6 +47,11 @@ export function Lift({
   const spring = useRef(new Spring(0, 170, 19));
   const target = useRef(from);
   const gone = useRef(false);
+  // Open and settled: nothing moves, so nothing is measured or written until it closes.
+  const still = useRef(false);
+  // Centred as it opens; once nearly open its top stays put, so content that arrives later (a worksheet's copy, a
+  // picture) makes it longer downwards instead of moving the whole panel up and down.
+  const pinned = useRef(false);
   useFocusTrap(panel, open);
 
   useLayoutEffect(() => {
@@ -62,6 +68,8 @@ export function Lift({
   }, [onBackdrop]);
 
   useEffect(() => {
+    // A video or sound playing in it fades out as it closes (stopped at once, it pops).
+    if (!open) quietly(panel.current);
     if (!open) target.current = landing() ?? from;
     spring.current.target = open ? 1 : 0;
     if (reducedMotion()) spring.current.snap(open ? 1 : 0);
@@ -69,9 +77,22 @@ export function Lift({
   }, [open]);
 
   useEffect(() => {
+    still.current = false;
     return onFrame((dt) => {
+      if (still.current) return;
       const s = spring.current;
       s.step(dt);
+      // Settled open: land exactly on it (a spring only ever gets closer, and the last few frames would be redrawn
+      // for nothing, for as long as the card is open).
+      const settled = open && Math.abs(s.v) < 0.002 && Math.abs(s.x - 1) < 0.002;
+      if (settled) s.snap(1);
+      if (open && !pinned.current && s.x > 0.9 && panel.current) {
+        const el = panel.current, box = el.parentElement;
+        const pad = box ? parseFloat(getComputedStyle(box).paddingTop) || 0 : 0;
+        el.style.marginTop = `${Math.max(0, el.offsetTop - pad)}px`;
+        el.style.marginBottom = "0px";
+        pinned.current = true;
+      }
       const el = panel.current;
       if (!el) return;
       // Measure the panel's resting box (without our transform) to map the card rect onto it.
@@ -100,6 +121,7 @@ export function Lift({
       }
       if (content.current) content.current.style.opacity = String(clamp((p - (source ? 0.3 : 0.45)) * 2.4, 0, 1));
       if (scrim.current) scrim.current.style.opacity = String(clamp(p, 0, 1));
+      if (settled) still.current = true;
       if (!open && p < 0.015 && Math.abs(s.v) < 0.5 && !gone.current) {
         gone.current = true;
         onGone();

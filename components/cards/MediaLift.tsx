@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { knowLength, videoEmbed } from "@/lib/media";
+import { knowLength, videoEmbed, withParam } from "@/lib/media";
 import type { Attachment } from "@/lib/types";
 import { Icon } from "../Icon";
 import { Lift } from "./Lift";
@@ -21,8 +21,7 @@ export function MediaLift({ a, title, from, open, onClose, onGone }: {
     window.addEventListener("keydown", k, true);
     return () => window.removeEventListener("keydown", k, true);
   }, [onClose]);
-  // Start where the teacher chose, and stop as it closes.
-  useEffect(() => { if (!open) video.current?.pause(); }, [open]);
+  // It fades out as it closes: Lift turns down whatever plays inside it.
   const embed = a.kind === "link" ? videoEmbed(a.url, a.start, a.end) : null;
   // On the page itself, not inside the map (a transformed parent would trap a fixed overlay inside it).
   return createPortal(
@@ -43,7 +42,7 @@ export function MediaLift({ a, title, from, open, onClose, onGone }: {
         )}
         {embed && (
           <div className="relative aspect-video">
-            <iframe src={`${embed.src}&autoplay=1`} title={a.name || `${embed.provider} video`} className="absolute inset-0 h-full w-full" allowFullScreen
+            <iframe src={withParam(embed.src, "autoplay=1")} title={a.name || `${embed.provider} video`} className="absolute inset-0 h-full w-full" allowFullScreen
               allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerPolicy="strict-origin-when-cross-origin" />
           </div>
         )}

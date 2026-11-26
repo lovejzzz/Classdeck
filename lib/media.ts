@@ -24,7 +24,8 @@ export function videoEmbed(url: string, start?: number, end?: number): { provide
       if (start === undefined && u.searchParams.get("t")) start = parseInt(u.searchParams.get("t")!, 10) || undefined;
     }
     if (id && /^[\w-]{6,20}$/.test(id)) {
-      const q = new URLSearchParams({ rel: "0", modestbranding: "1" });
+      // enablejsapi: so the page can turn it down before it closes (see quietly).
+      const q = new URLSearchParams({ rel: "0", modestbranding: "1", enablejsapi: "1" });
       if (start) q.set("start", String(start));
       if (end) q.set("end", String(end));
       return { provider: "YouTube", src: `https://www.youtube-nocookie.com/embed/${id}?${q}` };
@@ -35,6 +36,53 @@ export function videoEmbed(url: string, start?: number, end?: number): { provide
     }
   } catch {}
   return null;
+}
+
+/** A player address with one more setting, before any #fragment (a Vimeo start time is one): "?" or "&" as it needs. */
+export function withParam(src: string, param: string) {
+  const [base, hash] = src.split("#");
+  return `${base}${base.includes("?") ? "&" : "?"}${param}${hash !== undefined ? `#${hash}` : ""}`;
+}
+
+/**
+ * Fades a playing video or sound out, then pauses it. Stopping sound at once (pausing, or taking the player off the page)
+ * cuts the wave mid-swing, which is heard as a click or pop; a short fade doesn't. Where a browser won't set the volume
+ * (iPhone), it just pauses.
+ */
+export function fadeOut(el: HTMLMediaElement, ms = 160) {
+  if (el.paused || el.muted || el.volume === 0 || (el as HTMLMediaElement & { _fading?: boolean })._fading) { el.pause(); return; }
+  const f = el as HTMLMediaElement & { _fading?: boolean };
+  f._fading = true;
+  const from = el.volume, t0 = performance.now();
+  const step = (now: number) => {
+    const k = Math.min(1, (now - t0) / ms);
+    try { el.volume = from * (1 - k) * (1 - k); } catch {}
+    if (k < 1 && !el.paused) { requestAnimationFrame(step); return; }
+    el.pause();
+    try { el.volume = from; } catch {}
+    f._fading = false;
+  };
+  requestAnimationFrame(step);
+}
+
+/** Turns down every video and sound inside this element (an embedded YouTube or Vimeo player too) as it closes. */
+export function quietly(root: HTMLElement | null, ms = 160) {
+  if (!root) return;
+  root.querySelectorAll("video, audio").forEach((m) => fadeOut(m as HTMLMediaElement, ms));
+  root.querySelectorAll("iframe").forEach((f) => {
+    const w = f.contentWindow;
+    if (!w) return;
+    const yt = /youtube/.test(f.src), vimeo = /vimeo/.test(f.src);
+    if (!yt && !vimeo) return;
+    const send = (msg: object) => { try { w.postMessage(JSON.stringify(msg), "*"); } catch {} };
+    const steps = 6;
+    for (let i = 1; i <= steps; i++) setTimeout(() => {
+      const v = (1 - i / steps) ** 2;
+      if (yt) send({ event: "command", func: "setVolume", args: [Math.round(v * 100)] });
+      else send({ method: "setVolume", value: v });
+      if (i === steps) send(yt ? { event: "command", func: "pauseVideo", args: [] } : { method: "pause" });
+    }, (ms / steps) * i);
+  });
 }
 
 /**

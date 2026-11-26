@@ -36,7 +36,17 @@ export default function BoardPage() {
   const query = useQuery();
   if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}/board`} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
-  if (!state) return <div className="mx-auto w-full max-w-4xl px-4 py-10"><div className="skeleton h-64" /></div>;
+  // While it loads: the page's own shape (bar, name, progress, tabs), so nothing moves when it arrives.
+  if (!state) return (
+    <div className="flex-1" aria-busy="true">
+      <div className="h-12 border-b border-line" />
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <div className="flex items-center gap-4"><div className="skeleton h-12 w-12 rounded-full" /><div className="space-y-2"><div className="skeleton h-3 w-32" /><div className="skeleton h-7 w-56" /></div></div>
+        <div className="skeleton mt-6 h-36" />
+        <div className="skeleton mt-8 h-9 w-80" />
+      </div>
+    </div>
+  );
 
   const { course } = state;
   const student = course.students.find((s) => s.id === studentId);

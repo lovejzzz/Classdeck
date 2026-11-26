@@ -170,15 +170,17 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
 
 export function useConnectors() {
   const [list, setList] = useState<ConnectorInfo[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const refresh = useCallback(async () => {
     const res = await fetch("/api/connectors", { cache: "no-store" });
     setList((await res.json()).connectors);
+    setLoaded(true);
   }, []);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 取数据后才更新状态
     refresh();
   }, [refresh]);
-  return { connectors: list, refresh };
+  return { connectors: list, refresh, loaded };
 }
 
 export type InvokeReply = { ok: true; result: ToolResult } | { ok: false; error: string; code?: string };

@@ -148,10 +148,13 @@ function Segment({ a }: { a: Attachment }) {
 /** A video file that starts at the chosen segment and pauses at its end. */
 function SegmentVideo({ a }: { a: Attachment }) {
   const ref = useRef<HTMLVideoElement>(null);
+  // Room for the picture before the file says its size (16:9 until then), so the card doesn't grow as it loads.
+  const [ratio, setRatio] = useState("16 / 9");
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
     const onMeta = () => {
+      if (v.videoWidth && v.videoHeight) setRatio(`${v.videoWidth} / ${v.videoHeight}`);
       if (v.duration === Infinity) { knowLength(v); return; }
       if (a.start) v.currentTime = a.start;
     };
@@ -165,7 +168,7 @@ function SegmentVideo({ a }: { a: Attachment }) {
       v.removeEventListener("timeupdate", onTime);
     };
   }, [a.start, a.end]);
-  return <video ref={ref} src={a.url} controls playsInline preload="metadata" className="w-full rounded-xl border border-line bg-black" />;
+  return <video ref={ref} src={a.url} controls playsInline preload="metadata" style={{ aspectRatio: ratio }} className="max-h-[70vh] w-full rounded-xl border border-line bg-black" />;
 }
 
 export function MediaView({ a }: { a: Attachment }) {
