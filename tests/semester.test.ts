@@ -107,8 +107,9 @@ async function main() {
     card("m-chain", "content", "My food chain", { body: "## My food chain\n\n| Level | Living thing |\n| --- | --- |\n| Producer | |\n| Consumer | |", writers: "each" }),
     card("m-report", "content", "Team habitat report", { body: "## Our habitat\n\nWhat lives here:", writers: "group", grouping: "gs-m-team" }),
     { ...card("m-team-talk", "discussion", "Team talk"), grouping: "gs-m-team", wall: { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false, byGroup: true } as Module["wall"] },
-    { ...card("m-quiz", "choice", "Food web quiz"), type: "quiz", attempts: 2, bands: [{ min: 0, next: "m-web-help" }, { min: 67, next: null }],
-      questions: [q("q-w1", "Arrows in a food web point to…", ["the eater", "the eaten"], 0), q("q-w2", "A top predator has…", ["many predators", "no predators"], 1), q("q-w3", "Most energy is lost as…", ["heat", "light"], 0)] } as Module,
+    // Written as an older quiz card: saved, it becomes a card group of its three questions (m-quiz-q1…q3) with two tries.
+    { ...card("m-quiz", "choice", "Food web quiz"), type: "quiz" as Module["type"], attempts: 2, bands: [{ min: 0, next: "m-web-help" }, { min: 67, next: null }],
+      questions: [q("q-w1", "Arrows in a food web point to…", ["the eater", "the eaten"], 0), q("q-w2", "A top predator has…", ["many predators", "no predators"], 1), q("q-w3", "Most energy is lost as…", ["heat", "light"], 0)] } as unknown as Module,
     card("m-web-help", "content", "Food webs, again", { body: "Follow the energy." }),
   ];
   const w2b: Module[] = [
@@ -131,7 +132,8 @@ async function main() {
   check("all lessons saved", saved.ok, saved);
   check("electives on", (await op(T, { op: "setElective", lessonId: l3a.id, on: true, min: 1 })).ok && (await op(T, { op: "setElective", lessonId: l3b.id, on: true })).ok);
   c = await course();
-  check("every card kept", modulesOf(c).length === lessons.reduce((n, [, m]) => n + m.length, 0), modulesOf(c).length);
+  // Every card kept (the older quiz is now its card group and its three question cards: three more).
+  check("every card kept", modulesOf(c).length === lessons.reduce((n, [, m]) => n + m.length, 0) + 3, modulesOf(c).length);
   check("the sign-up poll's groups exist", c.groupings?.some((g) => g.id === "gs-m-team" && g.groups.length === 3), c.groupings);
   check("an answer can deal a card in a later lesson", modulesOf(c).find((m) => m.id === "m-challenge"));
 
@@ -312,21 +314,22 @@ async function main() {
   check("only the post's author can mark it helpful", (await op(S.Ben, { op: "comment", who: S.Ben.id, postId: tp.post?.id, helpful: replyId })).ok === false);
   check("Ana marks Ben's feedback helpful", (await op(S.Ana, { op: "comment", who: S.Ana.id, postId: tp.post?.id, helpful: replyId })).ok !== false
     && ((await board("Ben")).posts.find((p: J) => p.id === tp.post?.id)?.comments ?? []).some((c: J) => c.id === replyId && c.helpful));
-  // The quiz: two tries, the best score counts.
+  // The quiz (now a card group with two tries): each question once a try, the best try counts.
   const quizIds = ["q-w1", "q-w2", "q-w3"], right = [0, 1, 0];
+  const qg = (await teacherView()).course.weeks.flatMap((w: J) => w.lessons).flatMap((l: J) => l.modules).find((m: J) => m.id === "m-quiz");
+  check("the older quiz is a card group with two tries", qg?.type === "group" && qg.attempts === 2 && JSON.stringify(qg.members) === JSON.stringify(["m-quiz-q1", "m-quiz-q2", "m-quiz-q3"]), qg);
   for (const k of all) {
-    await op(S[k], { op: "startQuiz", studentId: S[k].id, moduleId: "m-quiz" });
-    for (let i = 0; i < 3; i++) await op(S[k], { op: "answer", studentId: S[k].id, moduleId: "m-quiz", qid: quizIds[i], choice: k === "Chloe" && i > 0 ? 1 - right[i] : right[i] });
-    const r = await op(S[k], { op: "submitQuiz", studentId: S[k].id, moduleId: "m-quiz" });
-    check(`${k} submits the quiz`, r.ok !== false && typeof r.score === "number", r);
+    let r: J = {};
+    for (let i = 0; i < 3; i++) r = await op(S[k], { op: "answer", studentId: S[k].id, moduleId: `m-quiz-q${i + 1}`, qid: quizIds[i], choice: k === "Chloe" && i > 0 ? 1 - right[i] : right[i] });
+    check(`${k} finishes the quiz`, r.ok !== false, r);
   }
   check("a low quiz score deals the help card", (await sees("Chloe")).has("m-web-help"));
-  check("Chloe retakes", (await op(S.Chloe, { op: "retakeQuiz", studentId: S.Chloe.id, moduleId: "m-quiz" })).ok !== false);
-  await op(S.Chloe, { op: "startQuiz", studentId: S.Chloe.id, moduleId: "m-quiz" });
-  for (let i = 0; i < 3; i++) await op(S.Chloe, { op: "answer", studentId: S.Chloe.id, moduleId: "m-quiz", qid: quizIds[i], choice: right[i] });
-  const re = await op(S.Chloe, { op: "submitQuiz", studentId: S.Chloe.id, moduleId: "m-quiz" });
-  check("a better second try", re.score === 3, re);
-  check("no third try", (await op(S.Chloe, { op: "retakeQuiz", studentId: S.Chloe.id, moduleId: "m-quiz" })).ok === false);
+  check("Chloe tries again", (await op(S.Chloe, { op: "retakeGroup", studentId: S.Chloe.id, moduleId: "m-quiz" })).ok !== false);
+  for (let i = 0; i < 3; i++) await op(S.Chloe, { op: "answer", studentId: S.Chloe.id, moduleId: `m-quiz-q${i + 1}`, qid: quizIds[i], choice: right[i] });
+  const deck = (await board("Chloe")).course.weeks.flatMap((w: J) => w.lessons).flatMap((l: J) => l.decks ?? []).find((d: J) => d.id === "m-quiz");
+  check("a better second try", deck?.score === 100 && deck?.best === 100 && deck?.attempt === 2, deck);
+  check("the help card from the first try stays", (await sees("Chloe")).has("m-web-help"));
+  check("no third try", (await op(S.Chloe, { op: "retakeGroup", studentId: S.Chloe.id, moduleId: "m-quiz" })).ok === false);
   // Other kinds of question.
   const multi = await op(S.Ben, { op: "answer", studentId: S.Ben.id, moduleId: "m-kinds", qid: "q-multi", multi: [0, 1] });
   check("several answers", multi.ok !== false, multi);

@@ -3,6 +3,9 @@ import { mixedOrder, wallProgress } from "../lib/grading";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, asKind, faceMeta, faceOf, familyOf, isPoll, kindOf, newCard, reviewableCard, unfinished, withKind } from "../lib/kinds";
 import type { Attachment, Lesson, Module } from "../lib/types";
 import { studentsOf, visibleModules } from "../lib/profile";
+import { quizzesToGroups } from "../lib/quizgroups";
+import { bestOf, dealtTo, groupScore, SCORE } from "../lib/branching";
+import type { Progress } from "../lib/types";
 
 const card = (extra: Partial<Module> = {}): Module => ({ id: "m", type: "read", title: "t", body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
 const att = (kind: Attachment["kind"], url: string): Attachment => ({ id: "a", kind, url });
@@ -36,7 +39,7 @@ check("switching a poll to one-is-right gives it an answer and keeps its wiring"
 const back = asKind(quizQ, "choice", true);
 check("and back to a poll drops the answer", back.poll === true && back.questions?.[0].answer === undefined);
 check("turning a poll into Content drops poll and questions", (() => { const c = asKind(oldPoll, "content"); return !c.poll && !c.questions && c.type === "read"; })());
-check("a quiz stays a quiz", kindOf(card({ type: "quiz" })) === "choice" && asKind(card({ type: "quiz", questions: [{ id: "q", text: "?", options: ["a", "b"], answer: 0 }] }), "choice").type === "quiz");
+check("an older quiz card is a Choice card on its own", kindOf(card({ type: "quiz" as never })) === "choice" && asKind(card({ type: "quiz" as never, questions: [{ id: "q", text: "?", options: ["a", "b"], answer: 0 }] }), "choice").type === "practice");
 
 // Adding a question to a card group.
 const g = card({ id: "g", kind: "group", type: "group", members: ["a", "b"] });
@@ -114,6 +117,39 @@ check("an open answer can be reviewed", reviewableCard(card({ kind: "answer", ty
 check("a worksheet each student fills in can be reviewed", reviewableCard(card({ kind: "worksheet", writers: "each" })));
 check("a Content card can't, not even an older Watch & listen one", !reviewableCard(card({ kind: "content" })) && !reviewableCard(card({ kind: "content", type: "explore" as never })));
 check("a quiz question and a discussion can't", !reviewableCard(card({ kind: "choice", type: "practice", questions: [{ id: "q", text: "A?", options: ["a", "b"], answer: 0 }] })) && !reviewableCard(card({ kind: "discussion", type: "wall" })));
+
+// Older quizzes become card groups (0.2.87), students' answers and scores with them.
+{
+  const qs = [1, 2, 3, 4].map((i) => ({ id: `z${i}`, text: `Z${i}?`, options: ["right", "wrong"], answer: 0, ...(i === 1 ? { next: ["help1", null] } : {}) }));
+  const quiz = card({ id: "qz", type: "quiz" as never, kind: "choice", title: "Old quiz", body: "Four questions.", attempts: 2, due: "2026-12-01", questions: qs,
+    bands: [{ min: 0, next: "low" }, { min: 75, next: "high" }], ...({ timeLimit: 10, shuffle: true } as object) });
+  const mods = [card({ id: "before" }), quiz, card({ id: "low", title: "Low" }), card({ id: "high", title: "High" }), card({ id: "help1", title: "Help" })];
+  const p = (x: object) => ({ updatedAt: 1, ...x }) as Progress;
+  const progress: Record<string, Record<string, Progress>> = {
+    // Handed in: 3 of 4 (75%).
+    done: { qz: p({ status: "done", answers: { z1: 0, z2: 0, z3: 0, z4: 1 }, results: { z1: true, z2: true, z3: true, z4: false }, score: 3, best: 3, attempt: 1, dealt: { z1: 0, [SCORE]: [75] } }) },
+    // Half-way through, not handed in.
+    mid: { qz: p({ status: "doing", answers: { z1: 1 }, results: { z1: false }, startedAt: 5 }) },
+    // Handed in twice: 25%, then 100%.
+    again: { qz: p({ status: "done", answers: { z1: 0, z2: 0, z3: 0, z4: 0 }, results: { z1: true, z2: true, z3: true, z4: true }, score: 4, best: 4, attempt: 2, dealt: { z1: 1, [SCORE]: [25, 100] } }) },
+  };
+  const out = quizzesToGroups(mods, progress);
+  const g = out.find((m) => m.id === "qz")!;
+  check("a quiz becomes a card group with its id, ranges, tries and due date", g.type === "group" && g.attempts === 2 && g.bands?.length === 2 && g.due === "2026-12-01" && g.members?.length === 4);
+  check("…its questions are Choice cards right after it, each keeping its wiring", out.map((m) => m.id).join() === "before,qz,qz-q1,qz-q2,qz-q3,qz-q4,low,high,help1"
+    && out.filter((m) => g.members!.includes(m.id)).every((m) => m.type === "practice" && m.questions?.length === 1) && out.find((m) => m.id === "qz-q1")!.questions![0].next?.[0] === "help1");
+  check("…and the timer and shuffle are gone", !("timeLimit" in g) && !("shuffle" in g));
+  const sc = (sid: string) => groupScore(g, out, progress[sid]);
+  check("a handed-in quiz is a finished group with the same score", sc("done").done && sc("done").pct === 75 && progress.done.qz.status === "done" && progress.done.qz.dealt?.[SCORE] === 75);
+  check("…its cards are the same (score and answer)", [...dealtTo(out, progress.done)].sort().join() === "help1,high");
+  check("a quiz half-way is a group half-way, answers kept", !sc("mid").done && progress.mid["qz-q1"]?.answers?.z1 === 1 && progress.mid.qz.status === "doing");
+  check("a quiz taken twice keeps the earlier try", JSON.stringify(progress.again.qz.tries) === "[25]" && progress.again.qz.attempt === 2 && bestOf(progress.again.qz) === 100);
+  check("…and both tries' cards", [...dealtTo(out, progress.again)].sort().join() === "high,low");
+  check("turning it again changes nothing", quizzesToGroups(out, progress) === out);
+  // A one-question quiz is a Choice card; an old quiz inside a card group stays one card too.
+  const one = quizzesToGroups([card({ id: "one", type: "quiz" as never, questions: [qs[0]] })]);
+  check("a one-question quiz becomes a Choice card", one.length === 1 && one[0].type === "practice");
+}
 
 const failed = rows.filter(([, ok]) => !ok);
 for (const [n] of failed) console.log("  ✗", n);

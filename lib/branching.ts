@@ -1,13 +1,13 @@
-// Card trees: answers (and quiz scores) deal follow-up cards.
+// Card trees: answers (and card groups' scores) deal follow-up cards.
 //
 // Two kinds of wire, both stored on the card that deals:
 //  - an answer: question.next[i] is the card (or the cards, a list) dealt to a student who picks option i;
-//  - a score band (quiz cards): module.bands[i] = { min, next }: a student whose score is at least `min` percent, and
+//  - a score band (card groups): module.bands[i] = { min, next }: a student whose score is at least `min` percent, and
 //    below the next band's min, gets `next`.
 // A card that some wire deals is a follow-up: it stays off every board until a student is dealt it. Targets can be in
 // the same lesson or any later lesson of the course. An answer is fixed the first time (their first answer to a question).
-// A quiz keeps every submitted score (progress.dealt): a better retake deals the card for its band too, and nothing dealt
-// earlier is taken away.
+// A card group with tries keeps the scores of earlier tries (progress.tries): a better try deals the card for its band
+// too, and nothing dealt earlier is taken away.
 import type { AnswerValue, Lesson, Module, Progress, Question, ScoreBand, Week } from "./types";
 import { isAsked } from "./grading";
 import { kindOf } from "./kinds";
@@ -27,8 +27,7 @@ export function sharedOnly(m: Module, cards: Module[] = []): boolean {
   return m.type === "group" && (m.members ?? []).some((id) => { const c = cards.find((x) => x.id === id); return !!c && c.type !== "group" && sharedOnly(c); });
 }
 
-/** progress.dealt key that holds a quiz's submitted scores, in percent: a number (one) or a list (every try). A card group's
- *  single score is a number. */
+/** progress.dealt key that holds a card group's score, in percent (of its current try; earlier tries are in progress.tries). */
 export const SCORE = "#score";
 
 /** What an answer deals: one card, several, or none. */
@@ -55,14 +54,14 @@ export function cardsOf(weeks: { lessons: Lesson[] }[]): { m: Module; lesson: Le
   return out;
 }
 
-/** The bands of a quiz card, lowest first, each with the score range it covers. */
+/** The bands of a card group, lowest first, each with the score range it covers. */
 export function bandsOf(m: Module): (ScoreBand & { max: number })[] {
   const b = [...(m.bands ?? [])].sort((x, y) => x.min - y.min);
   return b.map((x, i) => ({ ...x, max: i + 1 < b.length ? b[i + 1].min : 101 }));
 }
 
-/** Cards that can branch by score: a quiz, and a card group (its Multiple choice cards' score). */
-export const scored = (m: Pick<Module, "type">) => m.type === "quiz" || m.type === "group";
+/** Cards that can branch by score: a card group (its Multiple choice cards' score). */
+export const scored = (m: Pick<Module, "type">) => m.type === "group";
 
 export function wiresOf(scope: HasModules | Module[]): Wire[] {
   const modules = Array.isArray(scope) ? scope : scope.modules;
@@ -86,23 +85,36 @@ export const followUps = (scope: HasModules | Module[]) => new Set(wiresOf(scope
 /**
  * The answer that decides a student's follow-ups for a question: their first one, kept when they answered. A question
  * the teacher wired only after the student had answered has nothing kept: their answer counts, so a card added to it
- * later still reaches them (not on a quiz, which deals only once it's handed in).
+ * later still reaches them.
  */
-export const decidingAnswer = (p: Progress | undefined, qid: string, from?: Module) =>
-  p?.dealt?.[qid] ?? (qid !== SCORE && from?.type !== "quiz" ? p?.answers?.[qid] : undefined);
+export const decidingAnswer = (p: Progress | undefined, qid: string, _from?: Module) =>
+  p?.dealt?.[qid] ?? (qid !== SCORE ? p?.answers?.[qid] : undefined);
 
 /**
  * What decides a wire for this student. A card group's score is worked out from their answers as things are now, so
  * when the teacher fixes the right answer or adds a question (once it's answered), the cards the score deals follow.
- * Until a group is complete again, the score it was finished with stands. Quizzes keep the scores they were handed in with.
+ * Until a group is complete again, the score it was finished with stands. A group with tries also keeps the scores of
+ * its earlier tries: the cards they dealt stay, and a better try deals the card for its score too.
  */
 export function decides(prog: Record<string, Progress>, w: Wire, from: Module | undefined, cards: Module[]): AnswerValue | undefined {
   if (w.q === SCORE && from?.type === "group") {
     const now = groupScore(from, cards, prog);
-    if (now.done && now.pct !== undefined) return now.pct;
+    const cur = now.done && now.pct !== undefined ? now.pct : prog[w.from]?.dealt?.[SCORE];
+    const earlier = prog[w.from]?.tries ?? [];
+    const all = [...earlier, ...scoresIn(cur)];
+    return all.length > 1 ? all : all[0];
   }
   return decidingAnswer(prog[w.from], w.q, from);
 }
+
+/** A card group's best score so far, in percent: its tries and the one it's on (once finished). */
+export function bestOf(p: Progress | undefined): number | undefined {
+  const all = [...(p?.tries ?? []), ...scoresIn(p?.dealt?.[SCORE])];
+  return all.length ? Math.max(...all) : undefined;
+}
+
+/** The tries a card group gives (1 unless the teacher allows more): counted on the outermost group. */
+export const triesFor = (m: Module | undefined) => Math.max(1, Math.min(10, Math.round(m?.attempts ?? 1)));
 
 /** Whether this answer (or score) takes the student down this wire. */
 export const picked = (v: AnswerValue | undefined, w: Wire) =>
@@ -198,12 +210,12 @@ export function treeView(weeks: { lessons: Lesson[] }[], prog: Record<string, Pr
 
 /** Whether this question deals any card (so its first answer should be kept). */
 export const deals = (q: Question) => canBranch(q) && (q.next ?? []).some((s) => idsIn(s).length > 0);
-/** Whether this quiz deals cards by score. */
+/** Whether this card group deals cards by score. */
 export const dealsByScore = (m: Module) => scored(m) && (m.bands ?? []).some((b) => b.next);
 
 /**
  * Clean the wiring across a course: a target must be another card in the same or a later lesson, not a class-wide
- * activity, with no loops. Bands are kept in order, on quiz cards only. Anything else is dropped.
+ * activity, with no loops. Bands are kept in order, on card groups only. Anything else is dropped.
  */
 export function cleanCourseWiring(weeks: Week[]): void {
   cleanGroups(weeks);
@@ -288,18 +300,17 @@ export function branchBelow(scope: HasModules | Module[], id: string): string[] 
   return [...out];
 }
 
-/** Default score bands for a quiz: below 60%, 60–89%, 90% and up. */
+/** Default score bands for a card group: below 60%, 60–89%, 90% and up. */
 export const DEFAULT_BANDS: ScoreBand[] = [{ min: 0, next: null }, { min: 60, next: null }, { min: 90, next: null }];
 
 /** "0–59%", "60–89%", "90–100%". */
 export const bandLabel = (b: { min: number; max: number }) => (b.max > 100 ? (b.min >= 100 ? "100%" : `${b.min}–100%`) : b.min === b.max - 1 ? `${b.min}%` : `${b.min}–${b.max - 1}%`);
 
-/** How many questions count towards a score: a group's Choice cards with a right answer and words; a quiz's questions. */
+/** How many questions count towards a score: a group's Choice cards with a right answer and words. */
 export function scoreCount(m: Module, cards: Module[]): number {
   const asked = (c: Module) => (c.questions ?? []).filter(isAsked).length;
-  if (m.type === "quiz") return m.pick && m.pick > 0 ? Math.min(m.pick, asked(m)) : asked(m);
   if (m.type !== "group") return 0;
-  return leavesOf(m, cards).filter((c) => !c.poll && (c.type === "practice" || c.type === "quiz")).reduce((n, c) => n + asked(c), 0);
+  return leavesOf(m, cards).filter((c) => !c.poll && c.type === "practice").reduce((n, c) => n + asked(c), 0);
 }
 
 /** The scores a student can get with n questions, as a percent rounded the way scores are (2 of 3 is 67%). */
@@ -461,7 +472,7 @@ export function cleanGroups(weeks: { lessons: Lesson[] }[]): void {
 export function groupScore(group: Module, cards: Module[], prog: Record<string, Progress>): { done: boolean; right: number; total: number; pct?: number } {
   let right = 0, total = 0, done = true;
   for (const m of leavesOf(group, cards)) {
-    if (m.poll || !(m.type === "practice" || m.type === "quiz")) continue;
+    if (m.poll || m.type !== "practice") continue;
     for (const q of (m.questions ?? []).filter(isAsked)) {
       total++;
       const f = prog[m.id]?.first?.[q.id];
@@ -470,4 +481,12 @@ export function groupScore(group: Module, cards: Module[], prog: Record<string, 
     }
   }
   return { done: done && total > 0, right, total, pct: done && total ? Math.round((right * 100) / total) : undefined };
+}
+
+/** The card group with tries that a card is answered in (its outermost group, when that gives more than one try). */
+export function triedGroup(cardId: string, modules: Module[]): Module | undefined {
+  const parents = parentOf(modules);
+  if (!parents.has(cardId)) return undefined;
+  const g = modules.find((x) => x.id === topOf(cardId, parents));
+  return g && triesFor(g) > 1 ? g : undefined;
 }

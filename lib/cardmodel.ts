@@ -4,12 +4,6 @@ import type { Attachment, Module } from "./types";
 /** Settings a card may still carry from before the simplification, which still apply to students. */
 export function olderSettings(m: Module): string[] {
   const out: string[] = [];
-  if (m.type === "quiz") {
-    if (m.attempts && m.attempts !== 3) out.push(m.attempts === 1 ? "1 try" : `${m.attempts} tries`);
-    if (m.timeLimit) out.push(`${m.timeLimit}-minute limit`);
-    if (m.shuffle) out.push("shuffled");
-    if (m.pick) out.push(`${m.pick} questions drawn at random`);
-  }
   if (m.type === "wall" && m.wall) {
     if (m.wall.approval) out.push("posts approved first");
     if (m.wall.anonymous) out.push("names hidden");
@@ -21,7 +15,7 @@ export function olderSettings(m: Module): string[] {
 
 /** Clear those older settings back to the defaults. */
 export function clearOlder(m: Module): Partial<Module> {
-  return m.type === "quiz" ? { attempts: 3, timeLimit: undefined, shuffle: undefined, pick: undefined } : m.type === "wall" ? { wall: undefined } : {};
+  return m.type === "wall" ? { wall: undefined } : {};
 }
 
 /**

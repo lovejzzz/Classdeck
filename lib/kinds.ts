@@ -2,9 +2,9 @@
 //   Content cards (something to take in): words, a picture, a video or audio link, or a recording. Its face follows its media.
 //   Question cards (something to answer), in one of three forms: choices (a right answer, or a poll with none), an open
 //   answer, or a discussion.
-// Each kind runs on one of the stored types underneath (read, submit, quiz, practice, wall, studio), which the rest of
+// Each kind runs on one of the stored types underneath (read, submit, practice, wall, group), which the rest of
 // the site already knows how to show and grade. Question cards are where card trees branch: each choice of a Choice
-// card (quiz question or poll), and each score range of a quiz or a card group, can deal a card.
+// card (quiz question or poll), and each score range of a card group, can deal a card.
 import type { Module, ModuleType, OldModuleType, Question } from "./types";
 import { isAsked } from "./grading";
 import { hasTable } from "./markdown";
@@ -113,7 +113,7 @@ export function faceOf(m: KindFields): Face {
   if (k === "choice") {
     if (isPoll(m)) return m.signup ? "signup" : "poll";
     const qs = (m.questions ?? []).filter(isAsked);
-    if (qs.length > 1 || m.type === "quiz") return "quiz";
+    if (qs.length > 1) return "quiz";
     const q = qs[0] ?? m.questions?.[0];
     return q?.kind === "multi" ? "checkboxes" : q?.kind === "order" ? "order" : q?.kind === "short" ? "short" : "choice";
   }
@@ -142,15 +142,14 @@ export const faceMeta = (m: KindFields): { name: string; icon: string } => {
 };
 
 /**
- * The stored type a kind runs on, given the card's current type. A Multiple choice card answers right away (practice);
- * one that is already a quiz (several questions, a Submit button, tries, score ranges) stays a quiz. A discussion in
- * groups runs on the group studio; one for the whole class on the wall.
+ * The stored type a kind runs on. A Multiple choice card answers right away (practice); several questions with one
+ * score (and tries) are a card group of them. A discussion runs on the wall.
  */
 export function typeOfKind(k: CardKind, current?: ModuleType): ModuleType {
   if (k === "group") return "group";
   // A worksheet runs on a Content card's type: its copies, history and hand-in are kept on the card.
   if (familyOf(k) === "content" || k === "worksheet") return "read";
-  if (k === "choice") return current === "quiz" ? "quiz" : "practice"; // a poll answers right away too
+  if (k === "choice") return "practice"; // a poll answers right away too
   return k === "answer" ? "submit" : "wall";
 }
 
@@ -169,8 +168,9 @@ export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
   const studio = (m.type as string) === "studio" || m.submitTo === "studio";
   const asPoll = k === "choice" && (poll ?? wasPoll);
   const next: Module = { ...m, kind: k, type: typeOfKind(k, asPoll ? undefined : m.type), suit: familyOf(k) as Module["suit"] };
-  // Everything that belongs to one kind only (a quiz's settings stay only on a quiz).
-  if (next.type !== "quiz") { next.attempts = undefined; next.timeLimit = undefined; next.shuffle = undefined; next.pick = undefined; next.bands = undefined; }
+  // Tries and score ranges belong to card groups.
+  next.attempts = undefined; next.bands = undefined;
+  for (const k of ["timeLimit", "shuffle", "pick"]) delete (next as unknown as Record<string, unknown>)[k];
   next.poll = asPoll ? true : undefined;
   if (k !== "discussion") next.wall = undefined;
   else if (studio) next.wall = { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false, ...m.wall, byGroup: true, replies: m.wall?.replies ?? 2, structured: true };
@@ -184,7 +184,6 @@ export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
   } else if (k === "choice") {
     const qs = (m.questions ?? []).filter((q) => q.text?.trim() || q.options.some((o) => o.trim()));
     next.questions = qs.length ? qs.map((q) => (q.answer === undefined && !q.answerSet && !q.accept && (!q.kind || q.kind === "choice") ? { ...q, answer: 0 } : q)) : [{ id: qid(), text: "", options: ["", ""], answer: 0 }];
-    if (next.type === "quiz") next.attempts ??= 2;
   } else {
     next.questions = undefined;
   }
@@ -216,7 +215,7 @@ export function newCard(k: CardKind, title?: string, poll?: boolean): Module {
 
 /**
  * Add a new Choice card to a card group: it goes into the lesson right after the group's last card, at the end of the
- * group. Returns the changed lesson and the new card. A quick way to build a quiz one question at a time.
+ * group. Returns the changed lesson and the new card. A quick way to build a card group of questions one at a time.
  */
 export function addToGroup<L extends { modules: Module[] }>(lesson: L, groupId: string, given?: Module): { lesson: L; card: Module } {
   const g = lesson.modules.find((x) => x.id === groupId);

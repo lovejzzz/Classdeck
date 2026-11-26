@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.87",
+    date: "2026-11-25",
+    changes: [
+      "Card groups can give more than one try. In a group’s settings, Tries: One, 2 or 3. With tries, students answer each question once a try; when they finish, Try again starts the questions over (on the group’s last card, or next to the group on their board). Their best try counts in Grades, and its score deals cards; cards an earlier try dealt stay. The answers to questions they missed show after their last try, so the next try isn’t just copying.",
+      "Quizzes are now card groups. Each quiz became a card group of its questions, with its tries and score ranges, and students’ answers and scores moved with them. The timer is gone: a due date is how a course sets time. Questhand 101’s Final check is a card group with two tries.",
+      "Teachers see which try a student is on and their best score when they open one of the group’s cards in Students.",
+    ],
+  },
+  {
     version: "0.2.86",
     date: "2026-11-25",
     changes: [

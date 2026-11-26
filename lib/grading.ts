@@ -37,10 +37,6 @@ export function seededShuffle<T>(list: T[], seedText: string): T[] {
 }
 
 /**
- * The questions one student gets on one try, in the order they see them.
- * With `pick`, a random draw from the bank; with `shuffle`, mixed up. Same on client and server.
- */
-/**
  * Whether a question is really asked: it has words, or options. A card's only question may leave its words empty, and
  * then the card's title asks it.
  */
@@ -50,16 +46,6 @@ export function asked(m: Pick<Module, "questions">): Question[] {
   return (m.questions ?? []).filter(isAsked);
 }
 
-export function quizSet(m: Module, studentId: string, attempt = 1): Question[] {
-  const all = asked(m);
-  const key = `${studentId}:${m.id}:${attempt}`;
-  let set = all;
-  if (m.pick && m.pick < all.length) {
-    const chosen = new Set(seededShuffle(all.map((q) => q.id), `pick:${key}`).slice(0, m.pick));
-    set = all.filter((q) => chosen.has(q.id));
-  }
-  return m.shuffle ? seededShuffle(set, `order:${key}`) : set;
-}
 
 /** Display order of a question's options for one student. Indexes still refer to the original order. */
 export function optionOrder(q: Question, studentId: string, shuffle: boolean): number[] {
@@ -109,8 +95,8 @@ export function dueInfo(due: string | undefined, now: number): { label: string; 
 }
 
 /** A late card is one with a due date in the past that isn't done. */
-/** Finished, for counting and lateness. A quiz handed in once stays finished while the student tries again. */
-export const isFinished = (m: Module, p: Progress | undefined) => p?.status === "done" || (m.type === "quiz" && p?.best !== undefined);
+/** Finished, for counting and lateness. A card group finished once stays finished while the student tries it again. */
+export const isFinished = (m: Module, p: Progress | undefined) => p?.status === "done" || (m.type === "group" && !!p?.tries?.length);
 
 export const isLate = (m: Module, p: Progress | undefined, now: number) => !!m.due && !isFinished(m, p) && dueAt(m.due) < now;
 

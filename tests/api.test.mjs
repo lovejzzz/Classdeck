@@ -127,7 +127,7 @@ async function main() {
     const st = modulesOf(after).find((m) => m.id === `m-studio-${run}`);
     check("an older Collab Studio card becomes a discussion in groups: reply to 2, structured feedback", st?.type === "wall" && st.wall?.byGroup === true && st.wall?.replies === 2 && st.wall?.structured === true, st?.wall);
   }
-  check("each kind runs on its type (a quiz stays a quiz; a group peer review is a discussion)", modulesOf(after).map((m) => m.type).join() === "read,read,submit,quiz,submit,submit,practice,submit,wall,wall", modulesOf(after).map((m) => m.type));
+  check("each kind runs on its type (an older quiz with no questions is a Choice card; a group peer review is a discussion)", modulesOf(after).map((m) => m.type).join() === "read,read,submit,practice,submit,submit,practice,submit,wall,wall", modulesOf(after).map((m) => m.type));
   check("a rating card becomes a poll with choices and no right answer", (() => { const p = modulesOf(after).find((m) => m.poll); return p?.kind === "choice" && p.questions?.[0]?.options?.length === 4 && p.questions[0].answer === undefined; })());
   const add = await A.op(cid, { op: "addLesson", weekId: after.weeks[0].id, title: "Lesson 2" });
   check("add a lesson", add.ok !== false, add);
@@ -404,11 +404,10 @@ async function main() {
     check("no answer, no follow-ups", !(await ids(SC, "Cal Three")).some((x) => ["m-tx", "m-ty", "m-tz"].includes(x)));
     check("can't work on a card not dealt to you", /not on your board|isn’t on your board/.test((await SC.op(tid, { op: "setProgress", studentId: sid("Cal Three"), moduleId: "m-tx", status: "done" })).error ?? ""));
     check("can't answer a card not dealt to you", /isn’t on your board/.test((await SA.op(tid, { op: "answer", studentId: sid("Ana One"), moduleId: "m-ty", qid: "q2", choice: 1 })).error ?? ""));
-    // A quiz deals when it's submitted.
-    await SC.op(tid, { op: "answer", studentId: sid("Cal Three"), moduleId: "m-quiz", qid: "q3", choice: 0 });
-    check("a quiz doesn't deal mid-way", !(await ids(SC, "Cal Three")).includes("m-tq2"));
-    const sub = await SC.op(tid, { op: "submitQuiz", studentId: sid("Cal Three"), moduleId: "m-quiz" });
-    check("a quiz deals on submit", sub.dealt?.[0]?.id === "m-tq2" && (await ids(SC, "Cal Three")).includes("m-tq2"), sub);
+    // An older one-question quiz is saved as a Choice card: its answer deals right away.
+    check("an older one-question quiz becomes a Choice card", saved.modules.find((m) => m.id === "m-quiz")?.type === "practice", saved.modules.find((m) => m.id === "m-quiz"));
+    const sub = await SC.op(tid, { op: "answer", studentId: sid("Cal Three"), moduleId: "m-quiz", qid: "q3", choice: 0 });
+    check("its answer deals the card", sub.dealt?.[0]?.id === "m-tq2" && (await ids(SC, "Cal Three")).includes("m-tq2"), sub);
     // The server cleans bad wiring.
     const bad = structuredClone(saved);
     const bq = bad.modules.find((m) => m.id === "m-tq").questions[0];
@@ -451,11 +450,14 @@ async function main() {
     const S = { Dee: await as("Dee Low"), Eve: await as("Eve Mid"), Fay: await as("Fay Top") };
     const [L1, L2] = courseOf(await A.state(tid)).weeks[0].lessons;
     const card = (id, type, title, extra = {}) => ({ id, type, title, body: "", audience: { kind: "all" }, tools: [], attachments: [], ...extra });
-    const five = [1, 2, 3, 4, 5].map((i) => ({ id: `s${i}`, text: `Q${i}`, options: ["right", "wrong"], answer: 0 }));
-    const quiz = card("m-sq", "quiz", "Score quiz", { attempts: 2, questions: five, bands: [{ min: 0, next: "m-low" }, { min: 60, next: "m-mid" }, { min: 90, next: "m-top" }] });
+    const five = [1, 2, 3, 4, 5].map((i) => ({ id: `s${i}`, text: `Q${i}`, options: ["right", "wrong"], answer: 0, explain: `Why ${i}` }));
+    // A card group of five questions with two tries (a quiz, as it's made now).
+    const fiveCards = five.map((q, i) => card(`m-s${i + 1}`, "practice", `Question ${i + 1}`, { questions: [q] }));
+    const quiz = card("m-sq", "group", "Score quiz", { members: fiveCards.map((c) => c.id), attempts: 2, bands: [{ min: 0, next: "m-low" }, { min: 60, next: "m-mid" }, { min: 90, next: "m-top" }] });
+    // An older quiz card (with a question draw, which is gone): saved, it becomes a card group with its score ranges.
     const pickQ = card("m-pq", "quiz", "Pick quiz", { pick: 2, questions: [1, 2, 3, 4].map((i) => ({ id: `p${i}`, text: `P${i}`, options: ["right", "wrong"], answer: 0 })), bands: [{ min: 0, next: null }, { min: 100, next: "m-ptop" }] });
     const choose = card("m-ch", "practice", "Pick a path", { questions: [{ id: "c1", text: "Which?", options: ["Next lesson card", "Nothing"], answer: 0, next: ["m-l2x", null] }] });
-    const l1 = { ...L1, modules: [quiz, card("m-low", "read", "Low"), card("m-mid", "read", "Mid"), card("m-top", "read", "Top"), pickQ, card("m-ptop", "read", "Pick top"), choose] };
+    const l1 = { ...L1, modules: [quiz, ...fiveCards, card("m-low", "read", "Low"), card("m-mid", "read", "Mid"), card("m-top", "read", "Top"), pickQ, card("m-ptop", "read", "Pick top"), choose] };
     const l2 = { ...L2, modules: [card("m-l2a", "read", "Lesson 2 for all"), card("m-l2x", "practice", "Dealt from lesson 1"),
       card("m-back", "practice", "Backward", { questions: [{ id: "b1", text: "Back?", options: ["a", "b"], answer: 0, next: ["m-low", null] }] })] };
     await A.op(tid, { op: "saveLesson", lesson: l2 });
@@ -471,34 +473,53 @@ async function main() {
     check("score and cross-lesson follow-ups start hidden", !["m-low", "m-mid", "m-top", "m-l2x"].some((x) => before.includes(x)) && before.includes("m-l2a"), before);
     const take = async (who, rightCount) => {
       const c = S[who], id = sid(`${who} ${{ Dee: "Low", Eve: "Mid", Fay: "Top" }[who]}`);
-      for (const [i, q] of five.entries()) await c.op(tid, { op: "answer", studentId: id, moduleId: "m-sq", qid: q.id, choice: i < rightCount ? 0 : 1 });
-      return c.op(tid, { op: "submitQuiz", studentId: id, moduleId: "m-sq" });
+      let last;
+      for (const [i, q] of five.entries()) last = await c.op(tid, { op: "answer", studentId: id, moduleId: `m-s${i + 1}`, qid: q.id, choice: i < rightCount ? 0 : 1 });
+      return last;
     };
     const dee = await take("Dee", 2); // 40%
     const eve = await take("Eve", 3); // exactly 60%: the higher band
     await take("Fay", 5); // 100%
-    check("40% deals the low card", dee.dealt?.[0]?.id === "m-low" && (await ids("Dee")).includes("m-low"), dee);
+    check("40% deals the low card", dee.groupDealt?.[0]?.id === "m-low" && (await ids("Dee")).includes("m-low"), dee);
     const e = await ids("Eve");
-    check("a score on a threshold goes to the higher band", eve.dealt?.[0]?.id === "m-mid" && e.includes("m-mid") && !e.includes("m-low"), [eve, e]);
+    check("a score on a threshold goes to the higher band", eve.groupDealt?.[0]?.id === "m-mid" && e.includes("m-mid") && !e.includes("m-low"), [eve, e]);
     const f = await ids("Fay");
     check("100% deals the top card only", f.includes("m-top") && !f.includes("m-mid") && !f.includes("m-low"), f);
+    // With tries, each question is answered once a try.
+    const again = await S.Dee.op(tid, { op: "answer", studentId: sid("Dee Low"), moduleId: "m-s5", qid: "s5", choice: 0 });
+    check("with tries, a question can't be answered again in the same try", again.ok === false && /this try/.test(again.error ?? ""), again);
     // With a try left, a missed question's answer stays hidden (the next try would just copy it).
     const eveId = sid("Eve Mid");
-    const eveRev = (await S.Eve.state(`${tid}?as=${eveId}`)).progress[eveId]["m-sq"].reveal ?? {};
-    check("with a try left, only the right answers are revealed", ["s1", "s2", "s3"].every((q) => eveRev[q]) && !eveRev.s4 && !eveRev.s5, eveRev);
-    // A better retake deals the card for its band too, and keeps what was dealt before.
-    await S.Dee.op(tid, { op: "retakeQuiz", studentId: sid("Dee Low"), moduleId: "m-sq" });
+    const eveP = (await S.Eve.state(`${tid}?as=${eveId}`)).progress[eveId];
+    check("with a try left, only the right answers are explained", ["s1", "s2", "s3"].every((q, i) => eveP[`m-s${i + 1}`].reveal?.[q]?.explain) && !eveP["m-s4"].reveal?.s4 && !eveP["m-s5"].reveal?.s5, eveP);
+    check("with a try left, no answer key is sent", five.every((q, i) => eveP[`m-s${i + 1}`].reveal?.[q.id]?.answer === undefined));
+    // Another try: only once the group is done, and the cards from the first try stay.
+    check("can't try again before finishing", (await S.Dee.op(tid, { op: "retakeGroup", studentId: sid("Dee Low"), moduleId: "m-ch" })).ok === false);
+    const rt = await S.Dee.op(tid, { op: "retakeGroup", studentId: sid("Dee Low"), moduleId: "m-sq" });
+    check("try again starts try 2 at the first card", rt.ok !== false && rt.attempt === 2 && rt.first === "m-s1", rt);
+    const deeId = sid("Dee Low");
+    const mid = await S.Dee.state(`${tid}?as=${deeId}`);
+    check("a new try clears the answers and keeps the cards dealt", !mid.progress[deeId]["m-s1"].answers?.s1 && modulesOf(courseOf(mid)).some((m) => m.id === "m-low"), mid.progress[deeId]["m-s1"]);
+    check("Grades count the best try while the next one is under way", courseOf(mid).weeks[0].lessons[0].decks?.find((d) => d.id === "m-sq")?.best === 40);
     const dee2 = await take("Dee", 5);
     const d2 = await ids("Dee");
-    check("a better retake deals its band's card and keeps the earlier one", d2.includes("m-low") && d2.includes("m-top") && dee2.dealt?.[0]?.id === "m-top", [d2, dee2]);
-    const deeId = sid("Dee Low");
-    const deeRev = (await S.Dee.state(`${tid}?as=${deeId}`)).progress[deeId]["m-sq"].reveal ?? {};
-    check("after the last try every answer is revealed", five.every((q) => deeRev[q.id]?.answer === 0), deeRev);
-    // A drawn quiz scores against the questions this student got.
-    const pq = modulesOf(courseOf(await S.Fay.state(`${tid}?as=${sid("Fay Top")}`))).find((m) => m.id === "m-pq");
-    for (const q of pq.questions) await S.Fay.op(tid, { op: "answer", studentId: sid("Fay Top"), moduleId: "m-pq", qid: q.id, choice: 0 });
-    await S.Fay.op(tid, { op: "submitQuiz", studentId: sid("Fay Top"), moduleId: "m-pq" });
-    check("a drawn quiz routes by its own score (2 of 2 drawn = 100%)", (await ids("Fay")).includes("m-ptop"));
+    check("a better try deals its band's card and keeps the earlier one", d2.includes("m-low") && d2.includes("m-top") && dee2.groupDealt?.some((x) => x.id === "m-top"), [d2, dee2]);
+    check("no third try", (await S.Dee.op(tid, { op: "retakeGroup", studentId: deeId, moduleId: "m-sq" })).ok === false);
+    const deeP = (await S.Dee.state(`${tid}?as=${deeId}`));
+    check("after the last try every answer is shown", five.every((q, i) => deeP.progress[deeId][`m-s${i + 1}`].reveal?.[q.id]?.answer === 0), deeP.progress[deeId]["m-s1"]);
+    const deck = courseOf(deeP).weeks[0].lessons[0].decks?.find((d) => d.id === "m-sq");
+    check("the group shows try 2 of 2, best 100%", deck?.attempt === 2 && deck?.attempts === 2 && deck?.best === 100 && deck?.score === 100, deck);
+    // A worse try keeps the better try's card, and deals its own.
+    await S.Eve.op(tid, { op: "retakeGroup", studentId: eveId, moduleId: "m-sq" });
+    await take("Eve", 1);
+    const e2 = await ids("Eve");
+    check("a worse try keeps the earlier card", e2.includes("m-mid") && e2.includes("m-low"), e2);
+    // The older quiz came back as a card group of four Choice cards, with its score ranges.
+    const pg = courseOf(await A.state(tid)).weeks[0].lessons[0].modules;
+    const pgroup = pg.find((m) => m.id === "m-pq");
+    check("an older quiz is saved as a card group of its questions", pgroup?.type === "group" && pgroup.members?.length === 4 && pgroup.members.every((id) => pg.find((m) => m.id === id)?.type === "practice") && pgroup.bands?.length === 2, pgroup);
+    for (const [i, id] of (pgroup?.members ?? []).entries()) await S.Fay.op(tid, { op: "answer", studentId: sid("Fay Top"), moduleId: id, qid: `p${i + 1}`, choice: 0 });
+    check("its score deals its cards", (await ids("Fay")).includes("m-ptop"));
     // Across lessons.
     const r = await S.Eve.op(tid, { op: "answer", studentId: sid("Eve Mid"), moduleId: "m-ch", qid: "c1", choice: 0 });
     check("the deal names the later lesson", r.dealt?.[0]?.id === "m-l2x" && r.dealt[0].lesson === L2.title, r);

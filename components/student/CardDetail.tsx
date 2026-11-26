@@ -6,7 +6,7 @@ import { EarlierFeedback } from "../FeedbackHistory";
 import { op } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { useShortcuts } from "@/lib/shortcuts";
-import { dueInfo, optionOrder, quizSet } from "@/lib/grading";
+import { asked, dueInfo, optionOrder } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META, suitOfCard } from "@/lib/ui";
 import { faceMeta, familyOf, isPoll, kindOf, sharedDoc, writesOwn } from "@/lib/kinds";
@@ -46,7 +46,9 @@ export interface DetailProps {
   weekTitle: string;
   mine: Record<string, Progress>;
   /** The card is one of a card group's: where it sits, and the group's next card to go to (none on the last). */
-  group?: { title: string; index: number; total: number; next?: { title: string; go: () => void }; score?: number; opened?: string[]; part?: { title: string; score?: number; opened: string[] }; parts?: { title: string; score: number }[] };
+  group?: { title: string; index: number; total: number; next?: { title: string; go: () => void }; score?: number; opened?: string[]; part?: { title: string; score?: number; opened: string[] }; parts?: { title: string; score: number }[];
+    /** A group with tries: which try this is, how many, the best score so far, and how to start the next. */
+    tries?: { attempt: number; attempts: number; best?: number; retake?: () => void } };
 }
 
 /** What's on the card once it's lifted out of the hand. */
@@ -431,7 +433,7 @@ export function CardDetail(p: DetailProps) {
         {p.group && (
           // A card group's cards are answered one after another: say where this one is, and go on to the next.
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-line pt-4">
-            <span className="flex flex-1 items-center gap-1.5 text-[12.5px] text-ink-3"><Icon name="layers" size={13} />{p.group.title}{p.group.part && <> › {p.group.part.title}</>} · {p.group.index} of {p.group.total}</span>
+            <span className="flex flex-1 items-center gap-1.5 text-[12.5px] text-ink-3"><Icon name="layers" size={13} />{p.group.title}{p.group.part && <> › {p.group.part.title}</>} · {p.group.index} of {p.group.total}{p.group.tries && p.group.tries.attempts > 1 ? ` · try ${p.group.tries.attempt} of ${p.group.tries.attempts}` : ""}</span>
             {p.group.part?.score !== undefined && (p.group.next || p.group.score === undefined) && (
               // The last card of a group inside the group: that group's own score.
               <span className="basis-full text-[13px] text-ink-2 sm:order-first">
@@ -442,8 +444,15 @@ export function CardDetail(p: DetailProps) {
             {!p.group.next && p.group.score !== undefined && (
               <span className="basis-full text-[13px] text-ink-2 sm:order-first">
                 <span className="font-medium text-ink">Group score {p.group.score}%.</span>{" "}
+                {p.group.tries && p.group.tries.attempts > 1 && p.group.tries.best !== undefined && p.group.tries.best !== p.group.score ? <span className="text-ink-3">Your best is {p.group.tries.best}%, and that’s the one that counts. </span> : null}
                 {p.group.parts?.length ? <span className="text-ink-3">({p.group.parts.map((x) => `${x.title} ${x.score}%`).join(" · ")}) </span> : null}
                 {(() => { const all = [...new Set([...(p.group.part?.opened ?? []), ...(p.group.opened ?? [])])]; return all.length ? <>It opened {all.map((t, i) => <span key={t}>{i ? ", " : ""}“{t}”</span>)} on your board.</> : "Nothing extra to do: on to the next card."; })()}
+              </span>
+            )}
+            {!p.group.next && p.group.score !== undefined && p.group.tries?.retake && p.group.tries.attempt < p.group.tries.attempts && (
+              <span className="flex basis-full flex-wrap items-center gap-2 sm:order-first">
+                <button onClick={p.group.tries.retake} className="btn btn-ghost press h-8"><Icon name="reset" size={13} /> Try again ({p.group.tries.attempts - p.group.tries.attempt} left)</button>
+                <span className="text-[12.5px] text-ink-3">Your best try counts. The answers to the ones you missed show after your last try.</span>
               </span>
             )}
             {p.group.next ? (
@@ -471,33 +480,17 @@ export function CardDetail(p: DetailProps) {
 
 function Questions(p: DetailProps) {
   const { module: m, progress } = p;
-  const isQuiz = m.type === "quiz";
-  const submitted = isQuiz && progress?.status === "done";
-  const attempt = progress?.attempt ?? 1;
-  const set = quizSet(m, p.studentId, attempt);
+  const set = asked(m);
   const total = set.length;
+  // In a card group with tries, each question is answered once a try; the answers to missed ones show after the last.
+  const tried = (p.group?.tries?.attempts ?? 1) > 1;
   const [pending, setPending] = useState<Record<string, AnswerValue>>({});
   const [drafts, setDrafts] = useState<Record<string, AnswerValue>>({});
   // The cards each question's answer just opened (said on the card, so they're easy to find, even after a wrong answer).
   const [opened, setOpened] = useState<Record<string, { id: string; title: string }[]>>({});
-  // The cards a quiz's score just opened (said on the quiz, not only in a passing notice).
-  const [scoreOpened, setScoreOpened] = useState<{ id: string; title: string }[]>([]);
   const answers: Record<string, AnswerValue> = { ...(progress?.answers ?? {}), ...pending };
   const results = progress?.results ?? {};
   const reveal = progress?.reveal ?? {};
-  const tries = m.attempts ?? 1;
-  const timed = isQuiz && !!m.timeLimit;
-  const [startedAt, setStartedAt] = useState(progress?.startedAt);
-  const started = !timed || !!startedAt || submitted;
-  const [now, setNow] = useState(() => Date.now());
-  const left = timed && startedAt && !submitted ? Math.max(0, startedAt + m.timeLimit! * 60_000 - now) : null;
-  const autoSent = useRef(false);
-
-  useEffect(() => {
-    if (!timed || !startedAt || submitted) return;
-    const t = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(t);
-  }, [timed, startedAt, submitted]);
 
   /** Card tree: an answer dealt new cards onto this student's board. */
   function announceDealt(dealt?: { id: string; title: string; lesson?: string }[]) {
@@ -512,7 +505,6 @@ function Questions(p: DetailProps) {
   }
 
   async function answer(qid: string, value: AnswerValue) {
-    if (submitted) return;
     const q = set.find((x) => x.id === qid)!;
     setPending((x) => ({ ...x, [qid]: value }));
     const payload = q.kind === "short" ? { text: value } : q.kind === "multi" ? { multi: value } : q.kind === "order" ? { order: value } : { choice: value };
@@ -525,100 +517,21 @@ function Questions(p: DetailProps) {
     setPending((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== qid)));
   }
 
-  async function submit(auto = false) {
-    // A typed short answer that hasn't been sent yet counts too.
-    for (const q of set) {
-      const d = drafts[q.id];
-      if (q.kind === "short" && typeof d === "string" && d.trim() && d.trim() !== answers[q.id]) {
-        await op(p.courseId, { op: "answer", studentId: p.studentId, moduleId: m.id, qid: q.id, text: d.trim() });
-      }
-    }
-    const r = await op<{ ok?: boolean; score?: number; error?: string; dealt?: { id: string; title: string; lesson?: string }[] }>(p.courseId, { op: "submitQuiz", studentId: p.studentId, moduleId: m.id });
-    if (r.ok === false) {
-      p.onChanged();
-      if (r.error && !/signed out|reach the server|server had a problem/i.test(r.error)) toast(r.error, { icon: "x", tone: "plain" });
-      return;
-    }
-    p.optimistic({ status: "done" });
-    p.onChanged();
-    toast(`${auto ? "Time’s up. " : ""}Submitted. Score: ${r.score ?? 0}/${total}`, { icon: "quiz" });
-    announceDealt(r.dealt);
-    if (r.dealt?.length) setScoreOpened(r.dealt);
-  }
-
-  // When the clock runs out, hand in whatever is answered.
-  useEffect(() => {
-    if (left === 0 && !autoSent.current) {
-      autoSent.current = true;
-      submit(true);
-    }
-  });
-
-  async function start() {
-    const r = await op<{ ok: boolean; startedAt?: number }>(p.courseId, { op: "startQuiz", studentId: p.studentId, moduleId: m.id });
-    if (r.startedAt) {
-      setStartedAt(r.startedAt);
-      setNow(Date.now());
-      p.optimistic({ startedAt: r.startedAt, status: "doing" });
-    }
-  }
-
-  async function retake() {
-    const r = await op<{ ok: boolean; error?: string }>(p.courseId, { op: "retakeQuiz", studentId: p.studentId, moduleId: m.id });
-    if (!r.ok) return toast(r.error ?? "Couldn’t start again", { icon: "quiz", tone: "plain" });
-    setDrafts({});
-    setStartedAt(undefined);
-    autoSent.current = false;
-    p.optimistic({ status: "doing", answers: {}, results: {}, score: undefined, reveal: {}, attempt: attempt + 1, startedAt: undefined });
-    p.onChanged();
-    toast(`Try ${attempt + 1} of ${tries}. Your best score is kept.`, { icon: "reset" });
-  }
-
   const has = (v: AnswerValue | undefined) => v !== undefined && (Array.isArray(v) ? true : String(v).trim() !== "");
-  const answeredCount = set.filter((q) => has(answers[q.id])).length;
   const optBtn = (on: boolean, extra = "") => `press flex items-center gap-2.5 rounded-[10px] border px-3 text-left ${p.big ? "py-3.5 text-[16px]" : "py-2.5 text-[14px]"} ${extra || (on ? "border-ink bg-white" : "border-line bg-white hover:border-line-strong hover:bg-[#fafaf9]")}`;
-
-  if (!started) {
-    return (
-      <div className="rounded-xl border border-line p-5 text-center">
-        <Icon name="timer" size={22} className="mx-auto text-ink-2" />
-        <p className="mt-2 text-[15px] font-medium">This quiz is timed: {m.timeLimit} minute{m.timeLimit === 1 ? "" : "s"}</p>
-        <p className="mt-1 text-[13px] text-ink-3">{total} question{total === 1 ? "" : "s"}{tries > 1 ? ` · ${tries} tries, best score counts` : ""}. The clock starts when you press Start and doesn’t stop if you close the card.</p>
-        <button onClick={start} className="btn btn-dark press mt-4 h-9 px-5">Start</button>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      {(left !== null || (isQuiz && (tries > 1 || (progress?.best ?? 0) > 0 || m.pick))) && (
-        <div className="sticky -top-3 z-10 -mx-1 -mt-3 flex flex-wrap items-center gap-2 bg-white/95 px-1 pb-1.5 pt-[18px] text-[12.5px] text-ink-3 backdrop-blur sm:-top-8 sm:-mt-8 sm:pt-[38px]">
-          <Icon name="quiz" size={13} />
-          {tries > 1 && <span>Try {Math.min(attempt, tries)} of {tries}</span>}
-          {m.pick && m.questions && m.pick < m.questions.length && <span>· {total} drawn from {m.questions.length}</span>}
-          {progress?.best !== undefined && <span>· best score <span className="font-mono text-ink">{progress.best}/{total}</span></span>}
-          <span className="flex-1" />
-          {left !== null && (
-            <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-[13px] ${left < 60_000 ? "bg-bad/10 text-bad" : "bg-lane text-ink"}`} role="timer" aria-label="Time left">
-              <Icon name="timer" size={12} />{Math.floor(left / 60000)}:{String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}
-            </span>
-          )}
-        </div>
-      )}
-      {scoreOpened.length > 0 && (
-        <p className="rise flex items-start gap-1.5 rounded-xl bg-[#eef0fb] px-3.5 py-2.5 text-[13px] text-ink-2">
-          <Icon name="split" size={13} className="mt-[3px] flex-none text-[#4b56a8]" />
-          <span>Your score opened <CardLinks cards={scoreOpened} /> on your board.</span>
-        </p>
-      )}
       {set.map((q, qi) => {
         const picked = answers[q.id];
-        const showResult = (!isQuiz || submitted) && !(q.id in pending) && has(picked);
+        const showResult = !(q.id in pending) && has(picked);
         const right = results[q.id];
         const rv = reveal[q.id];
-        const locked = submitted || (!isQuiz && right === true);
+        // The right answer, shown after the last try of a group with tries.
+        const keyIn = !!rv && (rv.answer !== undefined || !!rv.answerSet || !!rv.order || !!rv.accept);
+        const locked = right === true || (tried && right !== undefined && !(q.id in pending));
         // Questions with a right answer are always mixed per student, so the answer isn’t always the first option. Polls keep the teacher’s order.
-        const order = optionOrder(q, p.studentId, !!m.shuffle || !isPoll(m));
+        const order = optionOrder(q, p.studentId, !isPoll(m));
         return (
           <fieldset key={q.id}>
             <legend className={`font-medium ${p.big ? "text-[18px]" : "text-[15px]"}`}>
@@ -634,10 +547,9 @@ function Questions(p: DetailProps) {
                 <form className="mt-2.5 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (draft.trim()) answer(q.id, draft.trim()); }}>
                   <input value={draft} disabled={locked}
                     onChange={(e) => setDrafts((d) => ({ ...d, [q.id]: e.target.value }))}
-                    onBlur={() => isQuiz && draft.trim() && draft.trim() !== picked && answer(q.id, draft.trim())}
                     placeholder="Type your answer" aria-label={`Answer to question ${qi + 1}`}
                     className={`field ${p.big ? "h-12 text-[16px]" : "h-10"} ${showResult ? (right ? "border-ok/50 bg-ok/[0.04]" : "border-bad/45") : ""}`} />
-                  {!isQuiz && right !== true && <button className="btn btn-ghost press h-10 flex-none" disabled={!draft.trim()}>Check</button>}
+                  {!locked && <button className="btn btn-ghost press h-10 flex-none" disabled={!draft.trim()}>Check</button>}
                   {showResult && <span className={`pop flex items-center ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={16} strokeWidth={2.2} /></span>}
                 </form>
               );
@@ -647,14 +559,13 @@ function Questions(p: DetailProps) {
               const toggle = (oi: number) => {
                 const next = cur.includes(oi) ? cur.filter((x) => x !== oi) : [...cur, oi];
                 setDrafts((d) => ({ ...d, [q.id]: next }));
-                if (isQuiz) answer(q.id, next);
               };
               return (
                 <div className="mt-2.5">
                   <div className="grid gap-2 sm:grid-cols-2">
                     {order.map((oi) => {
                       const on = cur.includes(oi);
-                      const tone = submitted && key.length ? (key.includes(oi) ? (on ? "border-ok/50 bg-ok/[0.06]" : "border-dashed border-ok/60 bg-white") : on ? "border-bad/45 bg-bad/[0.05]" : "") : "";
+                      const tone = keyIn && key.length ? (key.includes(oi) ? (on ? "border-ok/50 bg-ok/[0.06]" : "border-dashed border-ok/60 bg-white") : on ? "border-bad/45 bg-bad/[0.05]" : "") : "";
                       return (
                         <button key={oi} onClick={() => !locked && toggle(oi)} disabled={locked} aria-pressed={on} className={optBtn(on, tone)}>
                           <span className={`flex h-4 w-4 flex-none items-center justify-center rounded border ${on ? "border-ink bg-ink text-white" : "border-line-strong"}`}>{on && <Icon name="check" size={10} strokeWidth={3} />}</span>
@@ -663,13 +574,13 @@ function Questions(p: DetailProps) {
                       );
                     })}
                   </div>
-                  {!isQuiz && right !== true && (
+                  {!locked && (
                     <div className="mt-2 flex items-center gap-2">
                       <button onClick={() => answer(q.id, cur)} disabled={!cur.length} className="btn btn-ghost press h-8">Check</button>
                       {showResult && <span className={`pop flex items-center gap-1 text-[13px] ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={14} strokeWidth={2.2} />{right ? "Right" : ""}</span>}
                     </div>
                   )}
-                  {!isQuiz && right === true && <p className="pop mt-1.5 flex items-center gap-1 text-[13px] text-ok"><Icon name="check" size={14} strokeWidth={2.2} /> Right</p>}
+                  {locked && showResult && <p className={`pop mt-1.5 flex items-center gap-1 text-[13px] ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={14} strokeWidth={2.2} /> {right ? "Right" : "Not right"}</p>}
                 </div>
               );
             })() : q.kind === "order" ? (() => {
@@ -686,7 +597,7 @@ function Questions(p: DetailProps) {
                 <div className="mt-2.5">
                   <ol className="space-y-1.5">
                     {cur.map((t, i) => (
-                      <li key={t} className={`flex items-center gap-2 rounded-[10px] border bg-white px-2 py-1.5 transition-transform ${submitted && correct ? (correct[i] === t ? "border-ok/50" : "border-bad/45") : "border-line"} ${p.big ? "text-[16px]" : "text-[14px]"}`}>
+                      <li key={t} className={`flex items-center gap-2 rounded-[10px] border bg-white px-2 py-1.5 transition-transform ${correct ? (correct[i] === t ? "border-ok/50" : "border-bad/45") : "border-line"} ${p.big ? "text-[16px]" : "text-[14px]"}`}>
                         <span className="mono w-5 text-center">{i + 1}</span>
                         <span className="flex-1"><MathText text={t} /></span>
                         {!locked && (
@@ -700,12 +611,12 @@ function Questions(p: DetailProps) {
                   </ol>
                   {!locked && (
                     <div className="mt-2 flex items-center gap-2">
-                      <button onClick={() => answer(q.id, cur)} className="btn btn-ghost press h-8">{isQuiz ? (has(picked) ? "Update order" : "Lock in this order") : "Check"}</button>
-                      {isQuiz && has(picked) && <span className="text-[12.5px] text-ink-3">Saved</span>}
-                      {showResult && !isQuiz && <span className={`pop flex items-center gap-1 text-[13px] ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={14} strokeWidth={2.2} /></span>}
+                      <button onClick={() => answer(q.id, cur)} className="btn btn-ghost press h-8">Check</button>
+                      {showResult && <span className={`pop flex items-center gap-1 text-[13px] ${right ? "text-ok" : "text-bad"}`}><Icon name={right ? "check" : "x"} size={14} strokeWidth={2.2} /></span>}
                     </div>
                   )}
-                  {submitted && correct && !right && <p className="rise mt-1.5 text-[12.5px] text-ink-2">Correct order: {correct.join(" → ")}</p>}
+                  {locked && showResult && !right && <p className="pop mt-1.5 flex items-center gap-1 text-[13px] text-bad"><Icon name="x" size={14} strokeWidth={2.2} /> Not right</p>}
+                  {correct && !right && <p className="rise mt-1.5 text-[12.5px] text-ink-2">Correct order: {correct.join(" → ")}</p>}
                 </div>
               );
             })() : m.signupView ? (
@@ -735,7 +646,7 @@ function Questions(p: DetailProps) {
                   // A poll: pick (pick it again to clear it), then submit. Once in, the vote can't change.
                   const voted = m.poll && progress?.answers?.[q.id] !== undefined;
                   const isPicked = m.poll ? (voted ? progress!.answers![q.id] === oi : drafts[q.id] === oi) : picked === oi;
-                  const isKey = submitted && rv?.answer === oi && !isPicked;
+                  const isKey = keyIn && rv?.answer === oi && !isPicked;
                   let tone = "";
                   if (m.poll) tone = isPicked ? "border-[#4b56a8]/50 bg-[#eef0fb]" : voted ? "opacity-60" : "";
                   else if (isPicked && showResult) tone = right ? "border-ok/50 bg-ok/[0.06]" : "border-bad/45 bg-bad/[0.05] shake";
@@ -785,7 +696,10 @@ function Questions(p: DetailProps) {
               );
             })()}
 
-            {showResult && !right && !isQuiz && !m.poll && (!q.kind || q.kind === "choice" || q.kind === "short") && (
+            {showResult && !right && tried && !m.poll && !keyIn && (
+              <p className="rise mt-1.5 text-[12.5px] text-bad">Not quite. <span className="text-ink-3">The right answers show after your last try.</span>{opened[q.id] ? <> Your answer opened <CardLinks cards={opened[q.id]} />.</> : null}</p>
+            )}
+            {showResult && !right && !tried && !m.poll && (!q.kind || q.kind === "choice" || q.kind === "short") && (
               opened[q.id] ? (
                 <p className="rise mt-1.5 text-[12.5px] text-ink-2">
                   <span className="text-bad">Not quite.</span> Your answer opened <CardLinks cards={opened[q.id]} /> to help. You can also have another go here.
@@ -801,10 +715,10 @@ function Questions(p: DetailProps) {
                 <span>Your answer opened <CardLinks cards={opened[q.id]} /> on your board.</span>
               </p>
             )}
-            {submitted && q.kind === "short" && !right && rv?.accept && (
+            {keyIn && q.kind === "short" && !right && rv?.accept && (
               <p className="rise mt-1.5 text-[12.5px] text-ink-2">Accepted answer: <span className="font-medium text-ok">{rv.accept}</span></p>
             )}
-            {(showResult || submitted) && rv?.explain && (
+            {(showResult || keyIn) && rv?.explain && (
               <p className="rise mt-2 flex gap-2 rounded-lg bg-lane px-3 py-2 text-[13px] leading-relaxed text-ink-2">
                 <Icon name="sparkles" size={13} className="mt-[3px] flex-none text-ink-3" /><span><span className="font-medium text-ink">Why: </span><MathText text={rv.explain} /></span>
               </p>
@@ -812,12 +726,6 @@ function Questions(p: DetailProps) {
           </fieldset>
         );
       })}
-      {isQuiz && !submitted && (
-        <div className="flex items-center gap-3">
-          <button onClick={() => submit()} disabled={answeredCount < total} className="btn btn-dark press h-9 px-4">Submit</button>
-          <span className="mono text-[11.5px]">{answeredCount}/{total} answered</span>
-        </div>
-      )}
       {m.poll && (m.signupView ? m.signupView.mine !== undefined : set.every((q) => progress?.answers?.[q.id] !== undefined)) && (
         // All voted: the card is done (closing it ticks it too); Done just closes it.
         <div className="flex items-center gap-3">
@@ -825,18 +733,12 @@ function Questions(p: DetailProps) {
           <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> {m.signupView ? `You’re in ${m.questions?.[0]?.options[m.signupView.mine!] ?? "a group"}` : "Your vote is in"}</span>
         </div>
       )}
-      {!m.poll && (submitted || (!isQuiz && progress?.status === "done")) && (
+      {!m.poll && progress?.status === "done" && (
         <div className="pop flex flex-wrap items-center gap-3 text-[14px]">
           <span className="flex items-center gap-2">
             {(progress?.score ?? 0) >= total ? <StatusIcon status="done" size={15} /> : <Icon name="quiz" size={15} className="text-ink-3" />}
             Score <span className="font-mono">{progress?.score ?? 0} / {total}</span>
           </span>
-          {submitted && attempt < tries && (progress?.score ?? 0) < total && (
-            <>
-              <button onClick={retake} className="btn btn-ghost press h-8"><Icon name="reset" size={13} /> Try again ({tries - attempt} left)</button>
-              <span className="basis-full text-[12.5px] text-ink-3">The answers to the ones you missed show after your last try.</span>
-            </>
-          )}
         </div>
       )}
     </div>

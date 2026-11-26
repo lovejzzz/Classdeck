@@ -26,7 +26,7 @@ import { NeedsYou } from "@/components/student/NeedsYou";
 import { ElectiveRow, chooseElective } from "@/components/student/Electives";
 import { dueInfo } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
-import { setPreview, useConnectors, useCourse, useQuery } from "@/lib/client";
+import { op, setPreview, useConnectors, useCourse, useQuery } from "@/lib/client";
 import { PreviewBar } from "@/components/student/PreviewBar";
 import { toast } from "@/lib/toast";
 import { suitOfCard } from "@/lib/ui";
@@ -236,6 +236,14 @@ export default function LearnPage() {
   const synced = async () => {
     if (await refresh()) setLocal({});
   };
+  /** Another try at a card group with tries: its questions start over, from its first card. */
+  async function retakeGroup(groupId: string, title: string, lessonId?: string) {
+    const r = await op<{ ok?: boolean; error?: string; attempt?: number; first?: string }>(courseId, { op: "retakeGroup", studentId, moduleId: groupId });
+    if (r.ok === false) { toast(r.error ?? "Couldn’t start again", { icon: "reset", tone: "plain" }); return; }
+    await synced();
+    toast(`Try ${r.attempt} of “${title}”. Your best try counts.`, { icon: "reset" });
+    if (r.first && lessonId) setLift((l) => (l ? { ...l, id: r.first! } : l));
+  }
 
   function open(lessonId: string, id: string, el: HTMLElement) {
     setFresh((f) => (f.has(id) ? new Set([...f].filter((x) => x !== id)) : f));
@@ -381,7 +389,8 @@ export default function LearnPage() {
     const ptIds = pt ? pt.members.filter((id) => ids.includes(id)) : [];
     const part = pt ? { title: pt.title, score: pt.done && ptIds[ptIds.length - 1] === openModule.id ? pt.score : undefined, opened: openedBy(pt.paths) } : undefined;
     const parts = nm ? undefined : d.parts?.filter((x) => x.done && x.score !== undefined).map((x) => ({ title: x.title, score: x.score as number }));
-    return { title: d.title, index: i + 1, total: ids.length, next: nm ? { title: nm.title, go: () => setLift((l) => (l ? { ...l, id: nm.id } : l)) } : undefined, score: d.done ? d.score : undefined, opened, part, parts };
+    const tries = d.attempts && d.attempts > 1 ? { attempt: d.attempt ?? 1, attempts: d.attempts, best: d.best, retake: () => retakeGroup(d.id, d.title, openLesson.id) } : undefined;
+    return { title: d.title, index: i + 1, total: ids.length, next: nm ? { title: nm.title, go: () => setLift((l) => (l ? { ...l, id: nm.id } : l)) } : undefined, score: d.done ? d.score : undefined, opened, part, parts, tries };
   })();
   const openWeek = openLesson && course.weeks.find((w) => w.lessons.includes(openLesson));
 
@@ -435,6 +444,10 @@ export default function LearnPage() {
                     <span className="font-medium text-ink">{seg.deck.title}</span>
                     <span className="text-ink-3">{seg.cards.length} cards</span>
                     {seg.deck.done && seg.deck.score !== undefined && <span className="chip h-5 bg-white text-[11px] text-[#4b56a8]">Score {seg.deck.score}%</span>}
+                    {seg.deck.attempts && seg.deck.attempts > 1 && (seg.deck.attempt ?? 1) > 1 && <span className="text-ink-3">Try {seg.deck.attempt} of {seg.deck.attempts}{seg.deck.best !== undefined ? ` · best ${seg.deck.best}%` : ""}</span>}
+                    {seg.deck.done && seg.deck.attempts && (seg.deck.attempt ?? 1) < seg.deck.attempts && (
+                      <button onClick={() => retakeGroup(seg.deck!.id, seg.deck!.title)} className="press ml-auto flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] text-[#4b56a8] hover:bg-white"><Icon name="reset" size={11} /> Try again ({seg.deck.attempts - (seg.deck.attempt ?? 1)} left)</button>
+                    )}
                   </div>
                   {table}
                 </div>

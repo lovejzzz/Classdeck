@@ -19,11 +19,10 @@ export type ModuleType =
   | "practice"
   | "wall"
   | "submit"
-  | "quiz"
   | "group";
 /** Card types from before cards were simplified. Only old saved data or a document import can still hold them; they're
  * turned into today's types when a card is saved or the data is loaded (lib/kinds.ts withKind). */
-export type OldModuleType = "explore" | "reflect" | "selfcheck" | "builder" | "studio";
+export type OldModuleType = "explore" | "reflect" | "selfcheck" | "builder" | "studio" | "quiz";
 
 /** 挂在模块上的一个工具：指向某个连接器的某个动作。 */
 export interface ToolRef {
@@ -204,7 +203,7 @@ export interface DocNote {
 
 export type AnswerValue = number | string | number[] | string[];
 
-/** Card tree, quiz cards: students with a submitted score (any try) at least `min` percent (and below the next band) get `next`. */
+/** Card tree, card groups: students with a score (any try) at least `min` percent (and below the next band) get `next`. */
 export interface ScoreBand { min: number; next: string | null }
 
 export type Audience =
@@ -291,15 +290,10 @@ export interface Module {
   freeReview?: boolean;
   /** A form the teacher fills in for each student after the activity (e.g. a workshop). Answers reach the student's card. */
   form?: ActivityForm;
-  /** Quiz: how many tries a student gets (default 1). */
+  /** Card group: how many tries a student gets at its questions (default 1). With more than one, each question is
+   *  answered once per try, the answers to missed ones show after the last try, and the best try's score counts. */
   attempts?: number;
-  /** Quiz: minutes allowed per try. */
-  timeLimit?: number;
-  /** Mix up question and option order for each student. */
-  shuffle?: boolean;
-  /** Draw this many questions at random from the bank, per student and per try. */
-  pick?: number;
-  /** Card tree (quiz cards): deal a card by score band. Teacher only. */
+  /** Card tree (card groups): deal a card by score band. Teacher only. */
   bands?: ScoreBand[];
   /** Set only for students: this card was dealt to them by one of their answers or scores. */
   dealtFor?: boolean;
@@ -492,10 +486,10 @@ export interface Progress {
   rehearsals?: number[];
   /** How each timed rehearsal felt, 1 (rough) to 4 (strong), aligned with rehearsals. */
   feel?: number[];
-  /** Quiz with a time limit: when this try started. */
-  startedAt?: number;
-  /** Quiz: which try this is (1-based) and the best score so far. */
+  /** Card group with tries: which try this is (1-based), and the scores (percent) of the tries before it. */
   attempt?: number;
+  tries?: number[];
+  /** Older quizzes: the best score so far (read when they're turned into card groups). */
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
@@ -643,4 +637,4 @@ export interface ExternalUpdate {
 }
 
 /** A card group as a student sees it: its cards in order, and its score once it's done. */
-export type DeckView = { id: string; title: string; members: string[]; done?: boolean; score?: number; paths?: { to?: string; title?: string; type?: ModuleType; why?: string }[] };
+export type DeckView = { id: string; title: string; members: string[]; done?: boolean; score?: number; /** With tries: how many, which this is, and the best score so far. */ attempts?: number; attempt?: number; best?: number; paths?: { to?: string; title?: string; type?: ModuleType; why?: string }[] };

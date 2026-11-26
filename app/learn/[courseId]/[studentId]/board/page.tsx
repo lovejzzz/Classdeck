@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { bestOf, parentOf } from "@/lib/branching";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { MediaView } from "@/components/cards/Media";
@@ -15,7 +16,6 @@ import { suitOfCard } from "@/lib/ui";
 import { faceMeta, writesOwn } from "@/lib/kinds";
 import { RichText } from "@/components/RichText";
 import { recommend } from "@/lib/coach";
-import { quizSet } from "@/lib/grading";
 import type { Module, Progress } from "@/lib/types";
 
 /** A student's own board: everything they made, and the feedback they got. */
@@ -56,9 +56,10 @@ export default function BoardPage() {
   const suggestions = recommend(state, studentId, now).filter((r) => ["focus", "mismatch", "feedback", "reflect"].includes(r.kind) || (r.kind === "path" && r.id !== "electives"));
   const cardLink = (mid: string) => `/learn/${courseId}/${studentId}?card=${mid}${testing ? "&preview=1" : ""}`;
   const shown = tab;
-  // Quizzes handed in, by their best try.
-  const quizScores = all.filter((x) => x.m.type === "quiz" && x.m.questions?.length && mine[x.m.id]?.status === "done").map((x) => (mine[x.m.id].best ?? mine[x.m.id].score ?? 0) / Math.max(1, quizSet(x.m, studentId, mine[x.m.id].attempt ?? 1).length));
-  const quizAvg = quizScores.length ? Math.round((100 * quizScores.reduce((a, b) => a + b, 0)) / quizScores.length) : undefined;
+  // Card groups of questions finished, by their best try (a group inside another is counted in that one).
+  const quizScores = course.weeks.flatMap((w) => w.lessons).flatMap((l) => { const up = parentOf(l.modules); return l.modules.filter((g) => g.type === "group" && !up.has(g.id)); })
+    .map((g) => bestOf(mine[g.id])).filter((x): x is number => x !== undefined);
+  const quizAvg = quizScores.length ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length) : undefined;
   const reviewed = all.filter((x) => mine[x.m.id]?.review).length;
   const takes = all.reduce((n, x) => n + (mine[x.m.id]?.work?.filter((w) => w.kind === "audio" || w.kind === "video").length ?? 0), 0);
 
@@ -178,7 +179,6 @@ export default function BoardPage() {
                         <div className="flex items-center gap-2">
                           <span style={{ color: suitOfCard(m).tint }}><Icon name={faceMeta(m).icon} size={14} /></span>
                           <h3 className="flex-1 text-[14px] font-medium">{m.title}</h3>
-                          {m.type === "quiz" && m.questions?.length && p?.status === "done" && <span className="mono text-[12px] text-ink-2">{p.best ?? p.score ?? 0}/{m.questions.length}</span>}
                           {p?.starred && <Icon name="star" size={13} className="text-[#d39b1f]" />}
                           <StatusIcon status={p?.status ?? "todo"} size={13} />
                         </div>

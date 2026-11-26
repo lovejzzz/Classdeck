@@ -645,7 +645,7 @@
        "id": "m-q1tpl-by-score",
        "type": "read",
        "title": "Branch by score",
-       "body": "A card group (or a quiz) can deal cards by score. Its score ranges show under it on the Map, such as below 60%, 60 to 99%, and 100%. Drag a range's dot to the card it deals, just like an answer.\n\nScores go by the student's best try, so a better retake deals the card for its new range.",
+       "body": "A card group can deal cards by score. Its score ranges show under it on the Map, such as below 60%, 60 to 99%, and 100%. Drag a range's dot to the card it deals, just like an answer.\n\nScores go by the student's best try, so a better retake deals the card for its new range.",
        "audience": {
         "kind": "all"
        },
@@ -1454,15 +1454,15 @@
      "modules": [
       {
        "id": "m-q1tpl-final",
-       "type": "quiz",
+       "type": "group",
        "title": "Final check",
-       "body": "Five questions, two tries. Your score decides your last card.",
+       "body": "Five questions, two tries. Each question is answered once a try; your best try decides your last card.",
        "audience": {
         "kind": "all"
        },
        "tools": [],
        "attachments": [],
-       "kind": "choice",
+       "kind": "group",
        "suit": "question",
        "attempts": 2,
        "bands": [
@@ -1479,6 +1479,26 @@
          "next": "m-q1tpl-ready"
         }
        ],
+       "members": [
+        "m-q1tpl-final-q1",
+        "m-q1tpl-final-q2",
+        "m-q1tpl-final-q3",
+        "m-q1tpl-final-q4",
+        "m-q1tpl-final-q5"
+       ]
+      },
+      {
+       "id": "m-q1tpl-final-q1",
+       "type": "practice",
+       "title": "Dealt cards",
+       "body": "",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
        "questions": [
         {
          "id": "q-q1tpl-2-15",
@@ -1490,7 +1510,22 @@
          ],
          "answer": 1,
          "explain": "The answer deals it: only students who pick it get the card."
-        },
+        }
+       ]
+      },
+      {
+       "id": "m-q1tpl-final-q2",
+       "type": "practice",
+       "title": "More than one card",
+       "body": "",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
+       "questions": [
         {
          "id": "q-q1tpl-2-16",
          "text": "Can one answer deal more than one card?",
@@ -1500,7 +1535,22 @@
          ],
          "answer": 1,
          "explain": "Drag the same answer's dot onto another card and a second line appears."
-        },
+        }
+       ]
+      },
+      {
+       "id": "m-q1tpl-final-q3",
+       "type": "practice",
+       "title": "Student View",
+       "body": "",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
+       "questions": [
         {
          "id": "q-q1tpl-2-17",
          "text": "Where do you try the course as a student, with nothing graded?",
@@ -1510,7 +1560,22 @@
           "Student View"
          ],
          "answer": 2
-        },
+        }
+       ]
+      },
+      {
+       "id": "m-q1tpl-final-q4",
+       "type": "practice",
+       "title": "Work handed in",
+       "body": "",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
+       "questions": [
         {
          "id": "q-q1tpl-2-18",
          "text": "A student handed in work. Where is it waiting?",
@@ -1520,7 +1585,22 @@
           "Nowhere until they finish the course"
          ],
          "answer": 0
-        },
+        }
+       ]
+      },
+      {
+       "id": "m-q1tpl-final-q5",
+       "type": "practice",
+       "title": "Good feedback",
+       "body": "",
+       "audience": {
+        "kind": "all"
+       },
+       "tools": [],
+       "attachments": [],
+       "kind": "choice",
+       "suit": "question",
+       "questions": [
         {
          "id": "q-q1tpl-2-19",
          "text": "Good feedback has two parts:",

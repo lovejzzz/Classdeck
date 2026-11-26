@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChangedSince, EarlierFeedback } from "../FeedbackHistory";
 import { createPortal } from "react-dom";
 import { invokeTool, op } from "@/lib/client";
-import { answerText, dueAt, fmtSec, isLate, quizSet, wallProgress } from "@/lib/grading";
+import { answerText, asked, dueAt, fmtSec, isLate, wallProgress } from "@/lib/grading";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { awaitingFeedback, faceMeta, isPoll, kindOf, reviewableCard, sharedDoc, writesOwn } from "@/lib/kinds";
@@ -26,7 +26,7 @@ import { WallBoard } from "../WallBoard";
 import { RichText } from "../RichText";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
-import { groupScore, leavesOf, parentOf, treeView } from "@/lib/branching";
+import { bestOf, groupScore, leavesOf, parentOf, treeView, triedGroup, triesFor } from "@/lib/branching";
 
 /** The longest feedback note (the server keeps the same). */
 const FEEDBACK_MAX = 5000;
@@ -124,13 +124,16 @@ export function Classroom({
     });
   })();
   const firstVisible = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id))?.id;
-  // A quiz handed in (best try) or a card group finished, under half right.
+  // A card group finished (its best try), under half right.
   const inner = parentOf(lesson.modules);
   const lowCell = (sid: string) => lesson.modules.find((m) => {
     const pr = progress[sid]?.[m.id];
-    if (m.type === "quiz" && visible[sid].has(m.id) && pr?.status === "done" && m.questions?.length) return (pr.best ?? pr.score ?? 0) / Math.max(1, quizSet(m, sid, pr.attempt ?? 1).length) < 0.5;
     // A group inside a group is judged by the outer group's score, which holds the same answers.
-    if (m.type === "group" && !inner.has(m.id) && leavesOf(m, lesson.modules).some((c) => visible[sid].has(c.id))) { const g = groupScore(m, lesson.modules, progress[sid] ?? {}); return g.done && g.right / Math.max(1, g.total) < 0.5; }
+    if (m.type === "group" && !inner.has(m.id) && leavesOf(m, lesson.modules).some((c) => visible[sid].has(c.id))) {
+      const g = groupScore(m, lesson.modules, progress[sid] ?? {});
+      const best = Math.max(g.done ? g.pct ?? 0 : -1, bestOf(pr) ?? -1);
+      return best >= 0 && best < 50;
+    }
     return false;
   })?.id;
   const low = course.students.filter((st) => !!lowCell(st.id));
@@ -178,9 +181,8 @@ export function Classroom({
         if (!visible[st.id].has(m.id)) return "";
         const pr = progress[st.id]?.[m.id];
         const status = pr?.status ?? "todo";
-        // Quizzes show the best try, out of the questions this student actually got.
-        const best = m.type === "quiz" ? pr?.best ?? pr?.score : pr?.score;
-        return `${status === "done" ? "Done" : status === "doing" ? "In progress" : "Not started"}${m.questions && !isPoll(m) && best !== undefined ? ` (${best}/${quizSet(m, st.id, pr?.attempt ?? 1).length})` : ""}`;
+        const best = pr?.score;
+        return `${status === "done" ? "Done" : status === "doing" ? "In progress" : "Not started"}${m.questions && !isPoll(m) && best !== undefined ? ` (${best}/${asked(m).length})` : ""}`;
       }),
     ]);
     download(`${course.title} - ${lesson.title}.csv`, toCsv([head, ...rows]), "text/csv");
@@ -297,9 +299,14 @@ export function Classroom({
               // A shared doc is written in its live copy above; what's said here is about the copy handed in.
               !selModule.questions && kindOf(selModule) !== "content" && <p className="mt-3 text-[13px] text-ink-3">{sharedDoc(selModule) ? "Not handed in yet. Once it is, you can comment on any passage of the copy they hand in." : "Nothing written yet."}</p>
             )}
-            {selModule.questions && selProgress?.attempt && selProgress.attempt > 1 ? (
-              <p className="mt-3 text-[12.5px] text-ink-3">Try {selProgress.attempt} of {selModule.attempts ?? 1} · best score {selProgress.best ?? 0}/{quizSet(selModule, sel!.sid, selProgress.attempt ?? 1).length}</p>
-            ) : null}
+            {(() => {
+              // A card in a group with tries: which try the student is on, and their best score on the group.
+              const tg = triedGroup(selModule.id, lesson.modules);
+              const tp = tg ? progress[sel!.sid]?.[tg.id] : undefined;
+              if (!tg || !tp) return null;
+              const best = bestOf(tp);
+              return <p className="mt-3 text-[12.5px] text-ink-3">“{tg.title}”: try {tp.attempt ?? 1} of {triesFor(tg)}{best !== undefined ? ` · best ${best}%` : ""}. These are the answers of the try they’re on.</p>;
+            })()}
             {selModule.questions && (
               <ul className="mt-3 space-y-1.5 text-[13px]">
                 {selModule.questions.map((q, i) => {
@@ -458,9 +465,9 @@ export function Classroom({
                   const status = p?.status ?? "todo";
                   const tools = toolUse[s.id]?.[m.id];
                   const active = sel?.sid === s.id && sel.mid === m.id;
-                  const shown = m.type === "quiz" ? p?.best ?? p?.score : p?.score;
+                  const shown = p?.score;
                   // A poll has no right answer: no score.
-                  const scored = m.questions && !isPoll(m) && shown !== undefined && (status === "done" || p?.best !== undefined);
+                  const scored = m.questions && !isPoll(m) && shown !== undefined && status === "done";
                   const late = isLate(m, p, now);
                   const rv = p?.review;
                   return (
@@ -471,7 +478,7 @@ export function Classroom({
                         className={`press flex h-8 w-full items-center gap-1.5 rounded-lg px-2 transition-colors duration-500 ${active ? "bg-ink text-white" : late ? "bg-bad/[0.06] hover:bg-bad/[0.1]" : status === "done" ? "bg-ok/[0.07] hover:bg-ok/[0.12]" : status === "doing" ? "bg-warn/[0.07] hover:bg-warn/[0.12]" : "hover:bg-lane"}`}
                       >
                         <StatusIcon status={status} size={13} />
-                        {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{shown}/{quizSet(m, s.id, p.attempt ?? 1).length}</span>}
+                        {scored && <span className={`font-mono text-[11.5px] ${active ? "text-white" : "text-ink-2"}`}>{shown}/{asked(m).length}</span>}
                         <span className="flex-1" />
                         {late && <span className={`font-mono text-[10.5px] font-medium ${active ? "text-white" : "text-bad"}`}>late</span>}
                         {m.form && (m.form.by === "student" ? p?.form : p?.updates?.some((u) => u.id === `form:${m.id}`)) && <span title={m.form.by === "student" ? "They sent the form" : "You filled in the form"} className={active ? "text-white/80" : "text-[#3d6f91]"}><Icon name="text" size={11} /></span>}

@@ -54,10 +54,9 @@ const otherQs = (m: Module) => (m.questions ?? []).filter((q) => (!!m.signup || 
 /** Rows an unbranching question takes under its title: one per option to order, or the accepted answers. */
 const otherRows = (q: { kind?: string; options: string[] }, m?: Module) => (q.kind === "order" || m?.signup ? Math.max(1, q.options.filter((o) => o.trim()).length) : 1);
 const isRight = (q: { kind?: string; answer?: number; answerSet?: number[] }, i: number) => (q.kind === "multi" ? !!q.answerSet?.includes(i) : q.answer === i);
-/** Cards that branch by score: a quiz, and a card group. */
-/** A card with a score that can deal cards: a quiz, or a card group with question cards in it (`cards`: its lesson's). */
-const isQuiz = (m: Module, cards?: Module[]) => m.type === "quiz" || (m.type === "group" && (!cards || scoreCount(m, cards) > 0));
-const wantsQuestion = (m: Module) => kindOf(m) === "choice" && !branchQs(m).length && !otherQs(m).length && m.type !== "quiz";
+/** A card with a score that can deal cards: a card group with question cards in it (`cards`: its lesson's). */
+const isQuiz = (m: Module, cards?: Module[]) => m.type === "group" && (!cards || scoreCount(m, cards) > 0);
+const wantsQuestion = (m: Module) => kindOf(m) === "choice" && !branchQs(m).length && !otherQs(m).length;
 /** Whether a card's node has anything under its head: answers, score ranges, its group's cards, or that invitation. */
 const hasBody = (m: Module) => branchQs(m).length > 0 || otherQs(m).length > 0 || isQuiz(m) || wantsQuestion(m);
 /** A card whose answers fill its face still shows its media, in a strip above them. */
@@ -871,8 +870,6 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     // Two levels at most: a group with groups in it can't go inside another.
     if (m.type === "group" && holdsGroups(m, all.map((x) => x.m))) return `“${m.title}” already has groups in it, so it can’t go inside another group.`;
     if (wires.some((w) => w.to === m.id)) return `“${m.title}” is dealt by an answer. Group the cards first, then deal the group.`;
-    // A group's score counts its questions answered once; a quiz (with tries) has its own score.
-    if (m.type === "quiz") return `“${m.title}” is a quiz with its own score and tries, so it can’t join a card group.`;
     // Everyone answers every card in a group, or its score never comes.
     if (m.audience.kind === "student") return `“${m.title}” is only for some students, so it can’t join a card group everyone answers.`;
     return null;

@@ -116,7 +116,7 @@ export function moveAnswers(before: Module[], after: Module[], progress: Record<
   const keyOf = (q: NonNullable<Module["questions"]>[number]) => JSON.stringify([q.options, q.answer, q.answerSet, q.kind]);
   const marked = after.filter((m) => {
     const old = was.get(m.id);
-    return !m.poll && m.type !== "quiz" && !!m.questions?.some((q) => { const oq = old?.questions?.find((x) => x.id === q.id); return !!oq && keyOf(oq) !== keyOf(q); });
+    return !m.poll && !!m.questions?.some((q) => { const oq = old?.questions?.find((x) => x.id === q.id); return !!oq && keyOf(oq) !== keyOf(q); });
   });
   if (!marked.length) return;
   const parents = parentOf(after);

@@ -1,12 +1,12 @@
 // The grades: per student over the whole course (used by the Students tab's student view, and its CSV export).
 import { download, toCsv } from "./download";
-import { isFinished, isLate, quizSet } from "./grading";
+import { isFinished, isLate } from "./grading";
 import { visibleModules } from "./profile";
 import type { CourseState, Module } from "./types";
-import { groupScore, leavesOf, parentOf, treeView } from "./branching";
+import { bestOf, groupScore, leavesOf, parentOf, treeView, triesFor } from "./branching";
 import { awaitingFeedback, reviewableCard } from "./kinds";
 
-/** Per student over the whole course: cards done, late, quiz and card-group scores, reviews given, work waiting, skill levels. */
+/** Per student over the whole course: cards done, late, card-group scores, reviews given, work waiting, skill levels. */
 export function gradeRows(state: CourseState, now: number) {
   const { course, progress } = state;
   const all = course.weeks.flatMap((w) => w.lessons.map((l) => ({ w, l })));
@@ -26,20 +26,19 @@ export function gradeRows(state: CourseState, now: number) {
     }
     const done = cards.filter(({ m }) => isFinished(m, mine[m.id])).length;
     const late = cards.filter(({ m }) => isLate(m, mine[m.id], now)).length;
-    // A quiz counts once it's been handed in, by its best try, even while the student is on another try.
-    const quizzes = cards.filter(({ m }) => m.type === "quiz" && m.questions?.length && isFinished(m, mine[m.id]));
-    // A card group of questions counts too, once all its questions are answered, by its first answers.
+    // A card group of questions counts once all its questions are answered, by its best try (a group with tries
+    // counts while the student is on another try too).
     const shown = new Set(cards.map(({ m }) => m.id));
     // A group inside a group is listed under it, but only the outer group counts in the average: its score already holds those answers.
     const groups = all.flatMap(({ w, l }) => {
       const up = parentOf(l.modules);
       return l.modules.filter((g) => g.type === "group" && leavesOf(g, l.modules).some((c) => shown.has(c.id))).map((g) => ({ g, week: w.title, s: groupScore(g, l.modules, mine), inside: l.modules.find((x) => x.id === up.get(g.id))?.title }));
-    }).filter((x) => x.s.done);
-    // Each score, to list under the student: the quiz or card group, its week, right of total, and tries used.
-    const scored = [
-      ...quizzes.map(({ m, week }) => ({ id: m.id, title: m.title, week, right: mine[m.id].best ?? mine[m.id].score ?? 0, total: Math.max(1, quizSet(m, st.id, mine[m.id].attempt ?? 1).length), tries: mine[m.id].attempt ?? 1 })),
-      ...groups.map(({ g, week, s: x, inside }) => ({ id: g.id, title: g.title, week, right: x.right, total: x.total, tries: undefined as number | undefined, inside })),
-    ];
+    }).filter((x) => x.s.done || !!mine[x.g.id]?.tries?.length);
+    // Each score, to list under the student: the card group, its week, right of total (its best try), and tries used.
+    const scored = groups.map(({ g, week, s: x, inside }) => {
+      const best = Math.max(x.pct ?? 0, bestOf(mine[g.id]) ?? 0);
+      return { id: g.id, title: g.title, week, right: Math.round((best * x.total) / 100), total: Math.max(1, x.total), tries: triesFor(g) > 1 ? mine[g.id]?.attempt ?? 1 : undefined, inside };
+    });
     const scores = scored.filter((x) => !("inside" in x && x.inside)).map((x) => x.right / x.total);
     const quizPct = scores.length ? scores.reduce((t, x) => t + x, 0) / scores.length : undefined;
     const reviews = cards.filter(({ m }) => mine[m.id]?.review).map(({ m, week }) => ({ m, week, r: mine[m.id].review! })).sort((a, b) => b.r.at - a.r.at);

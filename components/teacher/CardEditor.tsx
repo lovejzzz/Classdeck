@@ -17,7 +17,7 @@ import { RichBodyEditor } from "./RichBodyEditor";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, newCard, type CardKind } from "@/lib/kinds";
 import type { Attachment, Course, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { GroupingPicker, SignupGroups } from "./Groupings";
-import { SCORE, sharedOnly, targetsOf, wiresOf } from "@/lib/branching";
+import { parentOf, SCORE, scoreCount, sharedOnly, targetsOf, triesFor, wiresOf } from "@/lib/branching";
 import { CardFace } from "../cards/CardFace";
 import { AudioPlayer } from "../cards/Media";
 import { MediaLift } from "../cards/MediaLift";
@@ -339,7 +339,6 @@ export function CardEditor({
               const putMember = (id: string, patch: Partial<Module>) => onChange({ ...lessonRef.current, modules: lessonRef.current.modules.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
               // A new card at the end of the group: a blank one of a kind, or a copy of a saved card (as + Card on the map).
               const put = (card: Module) => {
-                if (card.type === "quiz") { toast(`“${card.title}” is a quiz with its own score and tries, so it can’t join a card group.`, { icon: "layers", tone: "plain" }); return; }
                 const { lesson: next } = addToGroup(lessonRef.current, m.id, card);
                 onChange(next); setHandSel(card.id); setAdding(false);
                 toast(`Added “${card.title || "a card"}” to the group`, { icon: "plus" });
@@ -379,6 +378,21 @@ export function CardEditor({
             <p className="mt-2.5 text-[12px] text-ink-3">
               Students see these cards together. The group’s score counts its questions with a right answer (first answers); once they’re all answered, it can deal a card by score: set the ranges on the map. A group of fewer than two cards comes apart.
             </p>
+            {scoreCount(m, lesson.modules) > 0 && (parentOf(lesson.modules).has(m.id) ? (
+              <p className="mt-2 text-[12px] text-ink-3">Tries are set on the group this one is in.</p>
+            ) : (
+              <div className="mt-3 text-[12.5px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-ink-2">Tries</span>
+                  <Seg value={String(triesFor(m))} options={[["1", "One"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ attempts: v === "1" ? undefined : Number(v) })} />
+                </div>
+                <p className="mt-1.5 text-[12px] leading-snug text-ink-3">
+                  {triesFor(m) > 1
+                    ? `Students answer each question once a try. After a try they can start the group again, up to ${triesFor(m)} tries; their best try counts, and its score deals cards (cards an earlier try dealt stay). The answers to questions they missed show after their last try.`
+                    : "Students answer each question until they get it right; their first answers make the score."}
+                </p>
+              </div>
+            ))}
             <div className="mt-3 flex flex-wrap gap-2">
               {onTree && <button onClick={onTree} className="btn btn-ghost press h-8 px-3 text-[12.5px] text-[#4b56a8]"><Icon name="split" size={12} /> Branch by score on the map</button>}
               {/* Ungroup: the cards stay; in a group inside another, they stay in that outer group, in its place. */}
@@ -416,7 +430,7 @@ export function CardEditor({
                   {m.writers === "group" && course && <div className="mt-2"><GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} /></div>}
                 </div>
               )}
-              {kind === "choice" && m.type !== "quiz" && (
+              {kind === "choice" && (
                 <div className="mb-3 flex flex-wrap items-center gap-2 text-[12.5px]">
                   <span className="text-ink-2">Has a right answer</span>
                   <Seg value={isPoll(m) ? "poll" : "right"} options={[["right", "Yes"], ["poll", "No (a poll)"]]}

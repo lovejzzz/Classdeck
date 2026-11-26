@@ -4,6 +4,7 @@
 // unique within it (they're replaced on import, and every wire, group and sign-up poll follows them).
 // The format is written down in docs/course-file.md.
 import { cloneLesson } from "./clone";
+import { quizzesToGroups } from "./quizgroups";
 import { cleanCard } from "./cleancard";
 import { isKind, typeOfKind } from "./kinds";
 import { uid } from "./profile";
@@ -124,7 +125,8 @@ export function readCourseFile(raw: unknown): Read {
     title: w.title,
     lessons: w.lessons.map((l) => {
       const copy = cloneLesson(l, undefined, ids);
-      copy.modules = copy.modules.map((m) => {
+      // An older file's quizzes come in as card groups (lib/quizgroups.ts).
+      copy.modules = quizzesToGroups(copy.modules).map((m) => {
         const c = cleanCard(m);
         if (c.grouping && !(c.grouping.startsWith("gs-") && [...ids.values()].includes(c.grouping.slice(3)))) c.grouping = undefined;
         return c;

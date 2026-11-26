@@ -4,6 +4,7 @@ import { db } from "./store";
 import { randomCode } from "./uploads";
 import { DEFAULT_LEVELS } from "./skillsets";
 import { kindWeeks } from "./kinds";
+import { quizWeeks } from "./quizgroups";
 import { syncSignup } from "./shared";
 import type { Course, Lesson, Module, Week } from "./types";
 import starter from "./questhand101.json";
@@ -20,6 +21,7 @@ export function makeCourse(ownerId: string, title: string, weeks: Week[], extra:
   const codes = new Set(Object.values(d.courses).map((c) => c.joinCode));
   let code = "";
   do code = randomCode(6); while (codes.has(code));
+  quizWeeks(weeks);
   kindWeeks(weeks);
   const course: Course = {
     id,

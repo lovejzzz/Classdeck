@@ -39,6 +39,11 @@ async function main() {
   check("a card for named students goes to everyone, said in notes", some.ok && some.weeks[0].lessons[0].modules[0].audience.kind === "all" && some.notes.length === 1);
   const q101 = readCourseFile(JSON.parse(readFileSync(new URL("../lib/questhand101.json", import.meta.url), "utf8")));
   check("Questhand 101 reads as a course file", q101.ok && q101.cards > 20);
+  const fin = q101.ok ? q101.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules)).find((m) => m.title === "Final check") : undefined;
+  check("…its Final check is a card group with two tries", fin?.type === "group" && fin.attempts === 2 && fin.members?.length === 5);
+  const oldQuiz = readCourseFile({ weeks: [{ lessons: [{ modules: [{ id: "qz", type: "quiz", title: "Old", attempts: 3, timeLimit: 5, questions: [1, 2].map((i) => ({ id: `q${i}`, text: `Q${i}`, options: ["a", "b"], answer: 0 })) }] }] }] });
+  const om = oldQuiz.ok ? oldQuiz.weeks[0].lessons[0].modules : [];
+  check("an older file's quiz comes in as a card group of its questions", om.length === 3 && om[0].type === "group" && om[0].attempts === 3 && om[0].members?.every((id) => om.some((m) => m.id === id && m.type === "practice")) === true);
 
   let failed = 0;
   for (const [name, ok, extra] of rows) { if (!ok) failed++; console.log(`${ok ? "  ✓" : "  ✗"} ${name}${!ok && extra !== undefined ? ` — ${JSON.stringify(extra)}` : ""}`); }

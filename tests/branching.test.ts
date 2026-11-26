@@ -76,23 +76,27 @@ const course = () => [
   // Answered before the question was wired (nothing kept as dealt): the answer itself counts.
   const answeredOnly = { src: { status: "done", answers: { q: 1 } } } as unknown as Parameters<typeof dealtTo>[1];
   check("a card wired after the student answered still reaches them", dealtTo(all, answeredOnly).has("Y") && !dealtTo(all, answeredOnly).has("X"));
-  const quiz = card("qz", { type: "quiz", questions: [ask("a", [null, null])], bands: [{ min: 0, next: "lo" }, { min: 60, next: "mid" }, { min: 90, next: "hi" }] });
+  const quiz = card("qz", { type: "group", members: [], bands: [{ min: 0, next: "lo" }, { min: 60, next: "mid" }, { min: 90, next: "hi" }] });
   const pool = [quiz, card("lo"), card("mid"), card("hi")];
   const at = (pct: number) => [...dealtTo(pool, prog({ qz: { [SCORE]: pct } }))].join();
   check("59% is the low band", at(59) === "lo");
   check("60% (on the line) is the middle band", at(60) === "mid");
   check("89% is the middle band", at(89) === "mid");
   check("90% and 100% are the top band", at(90) === "hi" && at(100) === "hi");
-  const tries = [...dealtTo(pool, prog({ qz: { [SCORE]: [40, 95] } }))].sort().join();
-  check("every kept score deals its band (a better retake adds, never removes)", tries === "hi,lo");
-  check("an old single number still works", at(59) === "lo");
+  const withTries = prog({ qz: { [SCORE]: 95 } });
+  withTries.qz.tries = [40];
+  const tries = [...dealtTo(pool, withTries)].sort().join();
+  check("a group with tries: every try's score deals its band (a better try adds, never removes)", tries === "hi,lo");
+  const onTry2 = prog({ qz: {} });
+  onTry2.qz.tries = [40];
+  check("while the next try is under way, the earlier try's card stays", [...dealtTo(pool, onTry2)].join() === "lo");
 }
 
 // Cleaning: forward only, no loops, no class-wide targets, bands tidied.
 {
   const weeks: Week[] = [{ id: "w", title: "w", lessons: [
     lesson("L1", [card("a", { type: "practice", questions: [ask("q", ["b", "wall", "a"])] }), card("wall", { type: "wall" })]),
-    lesson("L2", [card("b", { type: "practice", questions: [ask("q", ["a", "c"])] }), card("c", { type: "quiz", questions: [ask("x", [null, null])], bands: [{ min: 50, next: "c" }, { min: 50, next: null }, { min: 120, next: "b" }] })]),
+    lesson("L2", [card("b", { type: "practice", questions: [ask("q", ["a", "c"])] }), card("c", { type: "group", members: ["c1", "c2"], bands: [{ min: 50, next: "c" }, { min: 50, next: null }, { min: 120, next: "b" }] }), card("c1", { type: "practice", questions: [ask("x", [null, null])] }), card("c2", { type: "practice", questions: [ask("y", [null, null])] })]),
   ] }];
   cleanCourseWiring(weeks);
   const [a, , b, c] = weeks[0].lessons.flatMap((l) => l.modules);

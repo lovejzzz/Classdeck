@@ -6,10 +6,11 @@ import { findLesson, groupByRef, uid, visibleModules, wallOf } from "@/lib/profi
 import { db, endPreview, inPreview, logEvent, reset, runPreview, save } from "@/lib/store";
 import { mentionsIn, plainText } from "@/lib/markdown";
 import { randomCode, safeUrl } from "@/lib/uploads";
-import { isCorrect, quizSet, asked, mixedOrder, wallProgress } from "@/lib/grading";
+import { isCorrect, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { foldWeeks } from "@/lib/cardmodel";
 import { kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
-import { canBranch, cardsOf, cleanCourseWiring, deals, wiresOf, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView } from "@/lib/branching";
+import { quizWeeks, quizzesToGroups } from "@/lib/quizgroups";
+import { bestOf, canBranch, cardsOf, cleanCourseWiring, deals, wiresOf, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView, triedGroup, triesFor } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
@@ -26,8 +27,8 @@ type Ctx = { params: Promise<{ courseId: string }> };
 
 /** Operations a student performs on their own behalf (body.studentId). */
 const STUDENT_OPS = new Set([
-  "feel", "chooseElective", "setProgress", "uptake", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
-  "retakeQuiz", "rehearse", "fillForm", "editPost",
+  "feel", "chooseElective", "setProgress", "uptake", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer",
+  "retakeGroup", "rehearse", "fillForm", "editPost",
   "messageTeacher", "readMyMessages", "docReply", "handInShared",
 ]);
 
@@ -106,6 +107,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
         decks: l.modules.filter((g) => g.type === "group" && visible.has(g.id) && !parentOf(l.modules).has(g.id)).map((g) => ({
           id: g.id, title: g.title, members: leavesOf(g, l.modules).map((c) => c.id).filter((id) => visible.has(id)),
           done: prog[g.id]?.status === "done" || undefined, score: typeof prog[g.id]?.dealt?.[SCORE] === "number" ? (prog[g.id]!.dealt![SCORE] as number) : undefined,
+          ...(triesFor(g) > 1 ? { attempts: triesFor(g), attempt: prog[g.id]?.attempt ?? 1, best: bestOf(prog[g.id]) } : {}),
           paths: paths.get(g.id),
           // Its groups inside, each with its own score once it's done (the cards that score opened, too).
           parts: (() => {
@@ -207,7 +209,6 @@ function view(request: Request, courseId: string): Response {
   }
   if (as ? !canBeStudent(session, course, as) : !canSeeTeacher(session, course)) return as ? unauthorized("student") : unauthorized("teacher", undefined, teacherAccessHint(session, course));
   if (as && !course.students.some((s) => s.id === as)) return Response.json({ error: "You’re not on this class list. Ask your teacher to add you." }, { status: 404 });
-  if (finishExpiredQuizzes(course)) save(courseId);
   const all = d.progress[courseId] ?? {};
   const choices = d.choices[courseId] ?? {};
   const toolUse: CourseState["toolUse"] = {};
@@ -220,22 +221,22 @@ function view(request: Request, courseId: string): Response {
   if (as) {
     const own: Record<string, Progress> = {};
     for (const [mid, p] of Object.entries(all[as] ?? {})) {
-      const mod = findModule(course, mid)?.mod;
-      const isQuiz = mod?.type === "quiz";
-      const view: Progress = isQuiz && p.status !== "done" ? { ...p, results: undefined, score: undefined } : { ...p };
-      // Explanations (and, after a quiz, the key) once they've been earned.
+      const found = findModule(course, mid);
+      const mod = found?.mod;
+      const view: Progress = { ...p };
+      // Explanations once they've been earned: for a question answered right. In a card group with tries, a missed
+      // question's answer (and its explanation) shows after the last try, so the next try isn't just copying.
       if (mod?.questions?.length) {
         const reveal: NonNullable<Progress["reveal"]> = {};
-        const inSet = new Set(quizSet(mod, as, p.attempt ?? 1).map((q) => q.id));
-        // While a quiz still has a try left, a missed question's answer (and its explanation) stays hidden, or the
-        // next try is just copying. Questions they got right can show their explanation.
-        const triesLeft = isQuiz && (mod.attempts ?? 1) > (p.attempt ?? 1);
+        const top = found ? triedGroup(mod.id, found.lesson.modules) : undefined;
+        const tp = top ? all[as]?.[top.id] : undefined;
+        const lastDone = !!top && tp?.status === "done" && (tp.attempt ?? 1) >= triesFor(top);
         for (const q of mod.questions) {
-          const earned = isQuiz ? p.status === "done" && inSet.has(q.id) && (!triesLeft || p.results?.[q.id] === true) : p.results?.[q.id] === true;
+          const earned = p.results?.[q.id] === true || (lastDone && p.first?.[q.id] !== undefined);
           if (!earned) continue;
           reveal[q.id] = {
             explain: q.explain || undefined,
-            ...(isQuiz ? {
+            ...(lastDone ? {
               answer: !q.kind || q.kind === "choice" ? q.answer : undefined,
               answerSet: q.kind === "multi" ? q.answerSet : undefined,
               order: q.kind === "order" ? q.options : undefined,
@@ -739,7 +740,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       }
       for (const next of list) {
         delete (next as { session?: unknown }).session;
-        next.modules = next.modules.map(cleanCard);
+        next.modules = quizzesToGroups(next.modules).map(cleanCard);
         if (next.date !== undefined && !(typeof next.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(next.date))) next.date = undefined;
         for (const w of course.weeks) {
           const i = w.lessons.findIndex((l) => l.id === next.id);
@@ -774,8 +775,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
     // —— student ——
     case "setProgress": {
       if (body.status !== undefined && !["todo", "doing", "done"].includes(body.status)) return fail("Unknown status");
-      // A quiz is finished only by submitting it, so its answers can't be revealed early or the try reset.
-      if (body.status !== undefined && findModule(course, body.moduleId)?.mod.type === "quiz") delete body.status;
       const p = mine(body.studentId, body.moduleId);
       if (body.status === "done" && p.status !== "done") {
         logEvent(courseId, { kind: "done", studentId: body.studentId, moduleId: body.moduleId, text: `Finished “${findModule(course, body.moduleId)?.mod.title ?? ""}”` });
@@ -924,13 +923,11 @@ async function change(request: Request, courseId: string, body: Record<string, a
       // A card or question that's gone (deleted while the student had it open): said, not taken as saved.
       if (!found || !q) return fail("This question was changed or removed by your teacher. Close the card and open it again.");
       const p = mine(body.studentId, body.moduleId);
-      if (p.status === "done" && found.mod.type === "quiz") break;
-      const set = quizSet(found.mod, body.studentId, p.attempt ?? 1);
+      const set = asked(found.mod);
       if (!set.some((x) => x.id === q.id)) return fail("That question isn’t in your set");
-      if (found.mod.type === "quiz" && found.mod.timeLimit) {
-        if (!p.startedAt) return fail("Start the quiz first");
-        if (Date.now() > p.startedAt + found.mod.timeLimit * 60_000 + 15_000) return fail("Time’s up for this try");
-      }
+      // In a card group with tries, each question is answered once a try.
+      const tried = triedGroup(found.mod.id, found.lesson.modules);
+      if (tried && !found.mod.poll && p.first?.[q.id] !== undefined) return fail("You’ve answered this one for this try");
       const given: AnswerValue =
         q.kind === "short" ? String(body.text ?? "").slice(0, 200)
         : q.kind === "multi" ? [...new Set((Array.isArray(body.multi) ? body.multi : []).map(Number).filter((i: number) => Number.isInteger(i) && i >= 0 && i < q.options.length))] as number[]
@@ -961,8 +958,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       let groupDealt: string[] = [];
       const answeredNow = q.kind === "multi" ? (given as number[]).length > 0 : q.kind === "short" || q.kind === "order" ? true : Number.isInteger(given);
       const firstTime = answeredNow && (p.first ??= {})[q.id] === undefined;
-      // A quiz deals when it's submitted, not halfway through.
-      if (found.mod.type !== "quiz" && answeredNow && (firstTime || (deals(q) && p.dealt?.[q.id] === undefined))) {
+      if (answeredNow && (firstTime || (deals(q) && p.dealt?.[q.id] === undefined))) {
         const before = dealtBefore;
         if (firstTime) p.first![q.id] = right;
         // Kept even if nothing is wired to it yet: cards the teacher adds to this answer later reach this student too.
@@ -975,6 +971,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
           const sc = groupScore(group, found.lesson.modules, d.progress[courseId]?.[body.studentId] ?? {});
           if (sc.done && gp.dealt?.[SCORE] === undefined) {
             (gp.dealt ??= {})[SCORE] = sc.pct!;
+            if (gp.attempt && gp.attempt > 1) logEvent(courseId, { kind: "done", studentId: body.studentId, moduleId: group.id, text: `Try ${gp.attempt} of “${group.title}”: ${sc.pct}%` });
             gp.score = sc.right;
             gp.status = "done";
             gp.updatedAt = Date.now();
@@ -993,8 +990,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       p.updatedAt = Date.now();
       const total = set.length;
       const answered = set.filter((x) => p.answers![x.id] !== undefined).length;
-      const instant = found.mod.type !== "quiz";
-      if (instant && !right && !found.mod.poll) {
+      if (!right && !found.mod.poll) {
         logEvent(courseId, {
           kind: "wrong", studentId: body.studentId, moduleId: body.moduleId,
           text: q.kind === "short"
@@ -1003,70 +999,43 @@ async function change(request: Request, courseId: string, body: Record<string, a
             : `Q${found.mod.questions!.indexOf(q) + 1}: chose “${q.options[given as number]}”; answer is “${q.options[q.answer ?? 0]}”`,
         });
       }
-      if (instant && answered === total && p.status !== "done") {
+      if (answered === total && p.status !== "done") {
         logEvent(courseId, { kind: "done", studentId: body.studentId, moduleId: body.moduleId, text: `Finished “${found.mod.title}”` });
       }
-      if (instant) {
-        p.score = set.filter((x) => p.results![x.id]).length;
-        if (answered === total) p.status = "done";
-        extra = { correct: right, explain: right ? q.explain : undefined, dealt: titles(course, dealtNow), groupDealt: titles(course, groupDealt) };
-      }
+      p.score = set.filter((x) => p.results![x.id]).length;
+      if (answered === total) p.status = "done";
+      extra = { correct: right, explain: right ? q.explain : undefined, dealt: titles(course, dealtNow), groupDealt: titles(course, groupDealt) };
       break;
     }
-    case "submitQuiz": {
-      const p = mine(body.studentId, body.moduleId);
-      const quiz = findModule(course, body.moduleId)?.mod;
-      const set = quiz ? quizSet(quiz, body.studentId, p.attempt ?? 1) : [];
-      p.score = set.filter((x) => p.results?.[x.id]).length;
-      // Card tree: the first submitted answers decide which follow-ups this student gets. Every submitted score is kept, so a
-      // better retake also deals the card for its band (what was dealt before stays).
-      let dealtNow: string[] = [];
-      if (quiz) {
-        const before = treeOf(course, body.studentId).dealt;
-        for (const q of set) {
-          const a = p.answers?.[q.id];
-          if (deals(q) && (p.dealt ??= {})[q.id] === undefined && (Array.isArray(a) ? a.length > 0 : Number.isInteger(a))) p.dealt[q.id] = a!;
-        }
-        // The score is a percent of the questions this student was given (so a random draw from a bank works too).
-        if (dealsByScore(quiz) && set.length) {
-          const pct = Math.round((p.score * 100) / set.length), had = scoresIn((p.dealt ??= {})[SCORE]);
-          if (!had.includes(pct)) p.dealt[SCORE] = [...had, pct];
-        }
-        dealtNow = [...treeOf(course, body.studentId).dealt].filter((id) => !before.has(id));
+    case "retakeGroup": {
+      // Another try at a card group with tries: its questions are answered again, and the best try's score counts.
+      // The cards earlier tries dealt stay; written work, votes and discussions in the group are kept as they are.
+      const found = findModule(course, body.moduleId);
+      const g = found?.mod;
+      if (!found || g?.type !== "group" || parentOf(found.lesson.modules).has(g.id) || triesFor(g) < 2) return fail("This group can’t be tried again");
+      const gp = mine(body.studentId, g.id);
+      if (gp.status !== "done" || typeof gp.dealt?.[SCORE] !== "number") return fail("Finish the group first");
+      if ((gp.attempt ?? 1) >= triesFor(g)) return fail("You’ve used all your tries on this group");
+      const attempt = (gp.attempt ?? 1) + 1;
+      const groups = [g, ...found.lesson.modules.filter((x) => x.type === "group" && groupsAbove(x.id, parentOf(found.lesson.modules)).includes(g.id))];
+      for (const x of groups) {
+        const xp = mine(body.studentId, x.id);
+        const cur = xp.dealt?.[SCORE];
+        if (typeof cur === "number") { xp.tries = [...(xp.tries ?? []), cur]; delete xp.dealt![SCORE]; }
+        xp.attempt = attempt;
+        xp.status = "doing";
+        xp.score = undefined;
+        xp.updatedAt = Date.now();
       }
-      if (p.status !== "done") {
-        logEvent(courseId, { kind: "quiz", studentId: body.studentId, moduleId: body.moduleId, text: `Submitted “${quiz?.title ?? ""}”: ${p.score}/${set.length}` });
+      for (const c of leavesOf(g, found.lesson.modules)) {
+        if (c.poll || c.type !== "practice" || !asked(c).length) continue;
+        const cp = d.progress[courseId]?.[body.studentId]?.[c.id];
+        if (!cp) continue;
+        // Answers go; the answers that dealt cards (cp.dealt) stay, so those cards stay too.
+        cp.answers = {}; cp.results = {}; cp.first = {}; cp.score = undefined; cp.status = "todo"; cp.updatedAt = Date.now();
       }
-      p.status = "done";
-      p.attempt ??= 1;
-      p.best = Math.max(p.best ?? 0, p.score);
-      p.updatedAt = Date.now();
-      extra = { score: p.score, dealt: titles(course, dealtNow) };
-      break;
-    }
-    case "startQuiz": {
-      const quiz = findModule(course, body.moduleId)?.mod;
-      if (!quiz || quiz.type !== "quiz") return fail("No such quiz");
-      const p = mine(body.studentId, body.moduleId);
-      if (p.status !== "done" && !p.startedAt) {
-        p.startedAt = Date.now();
-        p.status = "doing";
-      }
-      extra = { startedAt: p.startedAt };
-      break;
-    }
-    case "retakeQuiz": {
-      const quiz = findModule(course, body.moduleId)?.mod;
-      const p = mine(body.studentId, body.moduleId);
-      if (!quiz || quiz.type !== "quiz" || p.status !== "done") return fail("Nothing to retake");
-      if ((p.attempt ?? 1) >= (quiz.attempts ?? 1)) return fail("You’ve used all your tries on this quiz");
-      p.attempt = (p.attempt ?? 1) + 1;
-      p.answers = {};
-      p.results = {};
-      p.score = undefined;
-      p.startedAt = undefined;
-      p.status = "doing";
-      p.updatedAt = Date.now();
+      logEvent(courseId, { kind: "done", studentId: body.studentId, moduleId: g.id, text: `Started try ${attempt} of “${g.title}”` });
+      extra = { attempt, first: leavesOf(g, found.lesson.modules)[0]?.id };
       break;
     }
     case "rehearse": {
@@ -1454,6 +1423,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (!src?.lessons?.length) return fail("That week has no lessons");
       const copy = cloneWeek(src, String(src.title ?? `Week ${course.weeks.length}`).slice(0, 80));
       foldWeeks([copy]);
+      quizWeeks([copy]);
       kindWeeks([copy]);
       copy.lessons.forEach((l) => { l.modules = l.modules.map(cleanCard); });
       const at = typeof body.index === "number" ? body.index : course.weeks.length;
@@ -1466,6 +1436,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       if (!w || !body.lesson) return fail("No such week");
       const copy = cloneLesson(body.lesson as Lesson);
       foldWeeks([{ lessons: [copy] }]);
+      quizWeeks([{ lessons: [copy] }]);
       kindWeeks([{ lessons: [copy] }]);
       copy.modules = copy.modules.map(cleanCard);
       w.lessons.push(copy);
@@ -1501,37 +1472,14 @@ async function change(request: Request, courseId: string, body: Record<string, a
   return Response.json({ ok: true, ...extra });
 }
 
-/**
- * Hands in timed quizzes whose time ran out while the student was away (tab closed, phone locked),
- * scoring what they answered, the same way the browser does when it's open. Returns whether anything changed.
- */
-function finishExpiredQuizzes(course: Course): boolean {
-  const prog = db().progress[course.id] ?? {};
-  const now = Date.now();
-  let changed = false;
-  for (const lesson of course.weeks.flatMap((w) => w.lessons)) for (const quiz of lesson.modules) {
-    if (quiz.type !== "quiz" || !quiz.timeLimit) continue;
-    for (const [sid, row] of Object.entries(prog)) {
-      const p = row[quiz.id];
-      if (!p || p.status === "done" || !p.startedAt || now <= p.startedAt + quiz.timeLimit * 60_000 + 30_000) continue;
-      const set = quizSet(quiz, sid, p.attempt ?? 1);
-      p.score = set.filter((x) => p.results?.[x.id]).length;
-      p.status = "done";
-      p.attempt ??= 1;
-      p.best = Math.max(p.best ?? 0, p.score);
-      p.updatedAt = now;
-      logEvent(course.id, { kind: "quiz", studentId: sid, moduleId: quiz.id, text: `Time ran out on “${quiz.title}”: ${p.score}/${set.length}` });
-      changed = true;
-    }
-  }
-  return changed;
-}
-
 /** Whether a card is on this student's board: visible to them, and not in an elective they haven't chosen. */
 function onBoard(course: Course, studentId: string, moduleId: string): boolean {
   const found = findModule(course, moduleId);
   if (!found) return false;
   const chosen = db().choices[course.id]?.[studentId] ?? {};
   if (found.lesson.elective && !chosen[`elective:${found.lesson.id}`]) return false;
-  return visibleModules(found.lesson, studentId, chosen, treeOf(course, studentId), course).some((m) => m.id === moduleId);
+  const shown = new Set(visibleModules(found.lesson, studentId, chosen, treeOf(course, studentId), course).map((m) => m.id));
+  // A card group is on the board when its cards are (trying it again is done on the group).
+  if (found.mod.type === "group") return leavesOf(found.mod, found.lesson.modules).some((c) => shown.has(c.id));
+  return shown.has(moduleId);
 }
