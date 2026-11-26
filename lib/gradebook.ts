@@ -37,7 +37,7 @@ export function gradeRows(state: CourseState, now: number) {
     // Each score, to list under the student: the card group, its week, right of total (its best try), and tries used.
     const scored = groups.map(({ g, week, s: x, inside }) => {
       const best = Math.max(x.pct ?? 0, bestOf(mine[g.id]) ?? 0);
-      return { id: g.id, title: g.title, week, right: Math.round((best * x.total) / 100), total: Math.max(1, x.total), tries: triesFor(g) > 1 ? mine[g.id]?.attempt ?? 1 : undefined, inside };
+      return { id: g.id, title: g.title, week, right: Math.round((best * x.total) / 100), total: Math.max(1, x.total), tries: triesFor(g) > 1 ? Math.min(mine[g.id]?.attempt ?? 1, triesFor(g)) : undefined, inside };
     });
     const scores = scored.filter((x) => !("inside" in x && x.inside)).map((x) => x.right / x.total);
     const quizPct = scores.length ? scores.reduce((t, x) => t + x, 0) / scores.length : undefined;

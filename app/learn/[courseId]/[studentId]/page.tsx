@@ -445,7 +445,7 @@ export default function LearnPage() {
                     <span className="text-ink-3">{seg.cards.length} cards</span>
                     {seg.deck.done && seg.deck.score !== undefined && <span className="chip h-5 bg-white text-[11px] text-[#4b56a8]">Score {seg.deck.score}%</span>}
                     {seg.deck.attempts && seg.deck.attempts > 1 && (seg.deck.attempt ?? 1) > 1 && <span className="text-ink-3">Try {seg.deck.attempt} of {seg.deck.attempts}{seg.deck.best !== undefined ? ` · best ${seg.deck.best}%` : ""}</span>}
-                    {seg.deck.done && seg.deck.attempts && (seg.deck.attempt ?? 1) < seg.deck.attempts && (
+                    {seg.deck.done && seg.deck.score !== undefined && seg.deck.attempts && (seg.deck.attempt ?? 1) < seg.deck.attempts && (
                       <button onClick={() => retakeGroup(seg.deck!.id, seg.deck!.title)} className="press ml-auto flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] text-[#4b56a8] hover:bg-white"><Icon name="reset" size={11} /> Try again ({seg.deck.attempts - (seg.deck.attempt ?? 1)} left)</button>
                     )}
                   </div>

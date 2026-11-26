@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.88",
+    date: "2026-11-25",
+    changes: [
+      "Fixes for card groups with tries: a group with no questions (so no score) no longer offers tries; if a teacher lowers a group’s tries below the one a student is on, it shows as their last try; Try again shows only once a try has a score; and the answers to missed questions show only once the last try is scored.",
+    ],
+  },
+  {
     version: "0.2.87",
     date: "2026-11-25",
     changes: [

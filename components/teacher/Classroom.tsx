@@ -305,7 +305,7 @@ export function Classroom({
               const tp = tg ? progress[sel!.sid]?.[tg.id] : undefined;
               if (!tg || !tp) return null;
               const best = bestOf(tp);
-              return <p className="mt-3 text-[12.5px] text-ink-3">“{tg.title}”: try {tp.attempt ?? 1} of {triesFor(tg)}{best !== undefined ? ` · best ${best}%` : ""}. These are the answers of the try they’re on.</p>;
+              return <p className="mt-3 text-[12.5px] text-ink-3">“{tg.title}”: try {Math.min(tp.attempt ?? 1, triesFor(tg))} of {triesFor(tg)}{best !== undefined ? ` · best ${best}%` : ""}. These are the answers of the try they’re on.</p>;
             })()}
             {selModule.questions && (
               <ul className="mt-3 space-y-1.5 text-[13px]">

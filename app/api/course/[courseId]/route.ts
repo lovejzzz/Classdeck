@@ -10,7 +10,7 @@ import { isCorrect, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { foldWeeks } from "@/lib/cardmodel";
 import { kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
 import { quizWeeks, quizzesToGroups } from "@/lib/quizgroups";
-import { bestOf, canBranch, cardsOf, cleanCourseWiring, deals, wiresOf, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoresIn, treeView, triedGroup, triesFor } from "@/lib/branching";
+import { bestOf, canBranch, cardsOf, cleanCourseWiring, deals, wiresOf, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoreCount, scoresIn, treeView, triedGroup, triesFor } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
@@ -107,7 +107,8 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
         decks: l.modules.filter((g) => g.type === "group" && visible.has(g.id) && !parentOf(l.modules).has(g.id)).map((g) => ({
           id: g.id, title: g.title, members: leavesOf(g, l.modules).map((c) => c.id).filter((id) => visible.has(id)),
           done: prog[g.id]?.status === "done" || undefined, score: typeof prog[g.id]?.dealt?.[SCORE] === "number" ? (prog[g.id]!.dealt![SCORE] as number) : undefined,
-          ...(triesFor(g) > 1 ? { attempts: triesFor(g), attempt: prog[g.id]?.attempt ?? 1, best: bestOf(prog[g.id]) } : {}),
+          // Tries need a score (questions); a try the teacher has since taken away shows as the last one.
+          ...(triesFor(g) > 1 && scoreCount(g, l.modules) > 0 ? { attempts: triesFor(g), attempt: Math.min(prog[g.id]?.attempt ?? 1, triesFor(g)), best: bestOf(prog[g.id]) } : {}),
           paths: paths.get(g.id),
           // Its groups inside, each with its own score once it's done (the cards that score opened, too).
           parts: (() => {
@@ -230,7 +231,7 @@ function view(request: Request, courseId: string): Response {
         const reveal: NonNullable<Progress["reveal"]> = {};
         const top = found ? triedGroup(mod.id, found.lesson.modules) : undefined;
         const tp = top ? all[as]?.[top.id] : undefined;
-        const lastDone = !!top && tp?.status === "done" && (tp.attempt ?? 1) >= triesFor(top);
+        const lastDone = !!top && typeof tp?.dealt?.[SCORE] === "number" && (tp.attempt ?? 1) >= triesFor(top);
         for (const q of mod.questions) {
           const earned = p.results?.[q.id] === true || (lastDone && p.first?.[q.id] !== undefined);
           if (!earned) continue;
