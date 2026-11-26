@@ -33,6 +33,8 @@ export interface User {
   /** How they first came to Questhand: to teach (made an account themselves) or to learn (from an invitation or a
    *  class code). Their course list puts that side first. */
   firstRole?: "teacher" | "student";
+  /** Their AI for feedback (Settings → AI): which service, which model, and the key, encrypted (lib/aifeedback). */
+  ai?: { provider: import("./aimeta").AiProvider; model: string; key: string; tail: string };
   createdAt: number;
 }
 

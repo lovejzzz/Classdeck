@@ -1,3 +1,4 @@
+import { meetingOf } from "./media";
 import { hash } from "./cards";
 import type { AnswerValue, Module, Progress, Question } from "./types";
 
@@ -92,6 +93,22 @@ export function dueInfo(due: string | undefined, now: number): { label: string; 
   const date = new Date(end);
   const label = days < 7 ? `Due ${date.toLocaleDateString("en-US", { weekday: "short" })}` : `Due ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
   return { label, tone: days <= 2 ? "soon" : "later" };
+}
+
+/** A card's date as students see it: a due date, or, on a card with a meeting link, when the meeting is (with its time). */
+export function dueOf(m: Pick<Module, "due" | "dueTime" | "attachments">, now: number): { label: string; tone: "late" | "soon" | "later" } | undefined {
+  const service = (m.attachments ?? []).map((a) => (a.kind === "link" ? meetingOf(a.url) : undefined)).find(Boolean);
+  if (!service || !m.due || !/^\d{4}-\d{2}-\d{2}$/.test(m.due)) return dueInfo(m.due, now);
+  const [y, mo, d] = m.due.split("-").map(Number);
+  const [h, mi] = (m.dueTime ?? "").split(":").map(Number);
+  const at = new Date(y, mo - 1, d, m.dueTime ? h : 23, m.dueTime ? mi : 59).getTime();
+  const time = m.dueTime ? ` ${new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : "";
+  const days = Math.floor((new Date(y, mo - 1, d).getTime() - new Date(now).setHours(0, 0, 0, 0)) / DAY);
+  if (at < now - 2 * 3600 * 1000) return { label: `Met ${new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, tone: "later" };
+  if (days <= 0) return { label: `Meeting today${time}`, tone: "soon" };
+  if (days === 1) return { label: `Meeting tomorrow${time}`, tone: "soon" };
+  const date = new Date(at).toLocaleDateString("en-US", days < 7 ? { weekday: "short" } : { month: "short", day: "numeric" });
+  return { label: `Meeting ${date}${time}`, tone: days <= 2 ? "soon" : "later" };
 }
 
 /** A late card is one with a due date in the past that isn't done. */

@@ -8,6 +8,7 @@ import { useConnectors } from "@/lib/client";
 import { CATEGORIES } from "@/lib/connectors/types";
 import { toast } from "@/lib/toast";
 import { SiteFooter } from "@/components/SiteFooter";
+import { AiSettings } from "@/components/teacher/AiSettings";
 
 const EXAMPLE = `{
   "id": "holidays",
@@ -79,6 +80,7 @@ export default function ConnectorsPage() {
         <Icon name="back" size={13} /> Your courses
       </Link>
       <h1 className="rise mt-4 text-[24px] font-semibold tracking-tight">Settings</h1>
+      <div className="rise mt-6"><AiSettings /></div>
       <h2 className="rise mt-6 text-[17px] font-medium">Connectors</h2>
       <p className="rise mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-2">
         A connector turns an outside API into a tool students can use on a card. Requests go out from the server, so keys never reach a student’s browser, and students can only use the tools a teacher put on a card.

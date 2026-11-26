@@ -1,12 +1,14 @@
 "use client";
 
+import { meetingOf } from "@/lib/media";
+
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/Icon";
 import { addDays, lessonDates, localDay } from "@/lib/dates";
 import type { Course } from "@/lib/types";
 
-type Item = { date: string; kind: "lesson" | "due"; title: string; lesson: string; lessonId: string; moduleId?: string; planned?: boolean };
+type Item = { date: string; kind: "lesson" | "due"; title: string; lesson: string; lessonId: string; moduleId?: string; planned?: boolean; meeting?: boolean; time?: string };
 type Cal = { id: string; title: string; items: Item[] };
 
 /** Colours for courses when all of them show at once (this course is always the first). */
@@ -19,7 +21,7 @@ function itemsOf(course: Course): Item[] {
   for (const w of course.weeks) for (const l of w.lessons) {
     const ld = dates.get(l.id);
     if (ld) out.push({ date: ld.date, kind: "lesson", title: l.title, lesson: l.title, lessonId: l.id, planned: !ld.own || undefined });
-    for (const m of l.modules) if (m.due) out.push({ date: m.due, kind: "due", title: m.title, lesson: l.title, lessonId: l.id, moduleId: m.id });
+    for (const m of l.modules) if (m.due) out.push({ date: m.due, kind: "due", title: m.title, lesson: l.title, lessonId: l.id, moduleId: m.id, meeting: (m.attachments ?? []).some((a) => a.kind === "link" && !!meetingOf(a.url)) || undefined, time: m.dueTime });
   }
   return out;
 }
@@ -134,9 +136,9 @@ export function DueCalendar({ course, moduleId, cardTitle, due, onPick, onClose 
                       {many && <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: tint(cal.id) }} />}{item.title}
                     </span>
                   ) : (
-                    <span key={k} className={`flex items-center gap-1 truncate rounded px-1 text-[11px] leading-[1.45] ${mineCard ? "bg-ink font-medium text-white" : "text-ink-2"}`} title={`${many ? `${cal.title} · ` : ""}${item.title} due${item.lesson ? ` (${item.lesson})` : ""}`}>
-                      {many && !mineCard ? <span className="inline-block h-1.5 w-1.5 flex-none rounded-full" style={{ background: tint(cal.id) }} /> : <Icon name="clock" size={10} className="flex-none" />}
-                      <span className="truncate">{item.title}</span>
+                    <span key={k} className={`flex items-center gap-1 truncate rounded px-1 text-[11px] leading-[1.45] ${mineCard ? "bg-ink font-medium text-white" : "text-ink-2"}`} title={`${many ? `${cal.title} · ` : ""}${item.title} ${item.meeting ? `meeting${item.time ? ` at ${item.time}` : ""}` : "due"}${item.lesson ? ` (${item.lesson})` : ""}`}>
+                      {many && !mineCard ? <span className="inline-block h-1.5 w-1.5 flex-none rounded-full" style={{ background: tint(cal.id) }} /> : <Icon name={item.meeting ? "video" : "clock"} size={10} className="flex-none" />}
+                      <span className="truncate">{item.time ? <span className="font-mono">{item.time} </span> : null}{item.title}</span>
                     </span>
                   );
                 })}

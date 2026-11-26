@@ -316,6 +316,28 @@ export function KindArt({ id, face, tint, cover }: { id: string; face: Face; tin
       );
       break;
     }
+    case "meeting": {
+      // A video call: four faces on a screen, the speaker's tile lit.
+      const lit = Math.floor(r() * 4);
+      art = (
+        <g>
+          <rect x="22" y="14" width="96" height="66" rx="8" fill="#fff" stroke={mid} />
+          {[0, 1, 2, 3].map((i) => {
+            const x = 28 + (i % 2) * 44, y = 20 + Math.floor(i / 2) * 28;
+            return (
+              <g key={i}>
+                <rect x={x} y={y} width="40" height="24" rx="4" fill={i === lit ? tint : soft} opacity={i === lit ? 0.85 : 1} />
+                <circle cx={x + 20} cy={y + 10} r="4.5" fill="#fff" opacity="0.9" />
+                <path d={`M${x + 12} ${y + 22} a8 6 0 0 1 16 0z`} fill="#fff" opacity="0.9" />
+              </g>
+            );
+          })}
+          <rect x="54" y="84" width="32" height="10" rx="5" fill={tint} />
+          <circle cx="62" cy="89" r="2" fill="#fff" /><circle cx="70" cy="89" r="2" fill="#fff" /><circle cx="78" cy="89" r="2" fill="#fff" />
+        </g>
+      );
+      break;
+    }
     case "group": {
       art = (
         <g>

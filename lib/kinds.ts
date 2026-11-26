@@ -8,6 +8,7 @@
 import type { Module, ModuleType, OldModuleType, Question } from "./types";
 import { isAsked } from "./grading";
 import { hasTable } from "./markdown";
+import { meetingOf } from "./media";
 
 export type Family = "content" | "question";
 /**
@@ -18,7 +19,7 @@ export type Family = "content" | "question";
 export type CardKind = "content" | "answer" | "choice" | "worksheet" | "discussion" | "group";
 /** How a card looks: its picture and name. A Content card looks like its media; a Question card like how it's answered. */
 export type Face =
-  | "text" | "table" | "image" | "video" | "link" | "recording" | "file" | "worksheet" | "doc"
+  | "text" | "table" | "image" | "video" | "link" | "meeting" | "recording" | "file" | "worksheet" | "doc"
   | "answer" | "choice" | "checkboxes" | "order" | "short" | "quiz" | "poll" | "signup" | "discussion" | "group";
 
 /** The two kinds of card a teacher puts down, and what each starts as. */
@@ -50,6 +51,7 @@ export const FACES: Record<Face, { name: string; icon: string }> = {
   image: { name: "Image", icon: "image" },
   video: { name: "Video", icon: "video" },
   link: { name: "Link", icon: "link" },
+  meeting: { name: "Meeting", icon: "video" },
   recording: { name: "Recording", icon: "mic" },
   file: { name: "File", icon: "file" },
   worksheet: { name: "Worksheet", icon: "practice" },
@@ -125,6 +127,7 @@ export function faceOf(m: KindFields): Face {
   if (isRecording(a)) return "recording";
   if (a.kind === "video" || (a.kind === "link" && VIDEO_LINK.test(a.url))) return "video";
   if (a.kind === "file") return "file";
+  if (a.kind === "link" && meetingOf(a.url)) return "meeting";
   if (a.kind === "audio" || a.kind === "link") return "link";
   return "text";
 }

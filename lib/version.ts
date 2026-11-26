@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.94",
+    date: "2026-11-26",
+    changes: [
+      "AI feedback with your own AI account: in Settings, pick Gemini (the only one that watches a student’s video: posture, gestures, eye contact, pace), Claude or ChatGPT, paste your API key (the i next to it opens the page to get one), and choose a model from the newest your key can use. The key is stored encrypted and never shown again.",
+      "On any question card, Access has Allow AI feedback. Students then get feedback as soon as they hand in, answer, or post, on the card itself and marked as from an AI; you see it too. It reads their writing, answers, posts and the transcripts of their recordings, and with Gemini it watches their video.",
+      "Recording a video on a card whose AI watches video, a student can tick Look closely at my gestures: the AI then watches four frames a second instead of one.",
+      "A card with a Zoom, Meet, Teams, Webex or Whereby link becomes a Meeting card: its date is the meeting’s, with a time; students see “Meeting tomorrow 3:30 PM” on the card, and the course calendar shows it with its time.",
+    ],
+  },
+  {
     version: "0.2.93",
     date: "2026-11-26",
     changes: [

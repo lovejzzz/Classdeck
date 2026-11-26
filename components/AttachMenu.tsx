@@ -17,7 +17,9 @@ type Mode = "audio" | "video" | "screen" | "photo" | "draw" | "link";
  * Everyone gets Link, Upload, Draw and Record (a choice of audio, video, the screen or a photo); students see Record
  * first, since that's what they hand in.
  */
-export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pdf,.doc,.docx,.ppt,.pptx,.key,.txt,.csv", compact = false, teacher = false }: {
+export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pdf,.doc,.docx,.ppt,.pptx,.key,.txt,.csv", compact = false, teacher = false, aiWatches = false }: {
+  /** The card's AI watches videos: recording a video offers a closer look at gestures. */
+  aiWatches?: boolean;
   onAdd: (a: Omit<Attachment, "id">) => Promise<void> | void;
   label?: string;
   accept?: string;
@@ -42,13 +44,13 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
     return () => window.removeEventListener("pointerdown", off);
   }, [more]);
 
-  async function upload(f: File, name?: string, transcript?: string, duration?: number) {
+  async function upload(f: File, name?: string, transcript?: string, duration?: number, fps?: number) {
     setBusy(true);
     setProgress(0);
     const r = await uploadFile(f, setProgress);
     setBusy(false);
     if (!r.ok) return toast(r.error, { icon: "x", tone: "bad" });
-    await onAdd({ kind: r.kind, url: r.url, name: name ?? r.name, size: r.size, transcript, duration });
+    await onAdd({ kind: r.kind, url: r.url, name: name ?? r.name, size: r.size, transcript, duration, fps });
     setMode(null);
   }
 
@@ -64,8 +66,8 @@ export function AttachMenu({ onAdd, label, accept = "audio/*,video/*,image/*,.pd
   if (mode === "audio" || mode === "video" || mode === "screen") {
     return (
       <div>
-        <MediaCapture video={mode !== "audio"} screen={mode === "screen"} label={label}
-          onKeep={(f, transcript, duration) => upload(f, `${mode === "screen" ? "Screen recording" : mode === "video" ? "Video" : "Recording"} · ${stamp()}`, transcript, duration)} onCancel={() => setMode(null)} />
+        <MediaCapture video={mode !== "audio"} screen={mode === "screen"} label={label} closer={aiWatches && mode === "video"}
+          onKeep={(f, transcript, duration, fps) => upload(f, `${mode === "screen" ? "Screen recording" : mode === "video" ? "Video" : "Recording"} · ${stamp()}`, transcript, duration, fps)} onCancel={() => setMode(null)} />
         {busy && <p className="mt-2 text-[12.5px] text-ink-3" role="status">Saving…{progress > 0 && progress < 1 ? ` ${Math.round(progress * 100)}%` : ""}</p>}
       </div>
     );

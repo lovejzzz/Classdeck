@@ -1,4 +1,5 @@
 import { certificates } from "@/lib/certificate";
+import { startAiFeedback } from "@/lib/aifeedback";
 import { mergeLesson, moveAnswers, type LessonBase } from "@/lib/merge";
 import { publicOrigin } from "@/lib/origin";
 import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
@@ -9,7 +10,7 @@ import { mentionsIn, plainText } from "@/lib/markdown";
 import { randomCode, safeUrl } from "@/lib/uploads";
 import { isCorrect, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { foldWeeks } from "@/lib/cardmodel";
-import { kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
+import { familyOf, kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
 import { quizWeeks, quizzesToGroups } from "@/lib/quizgroups";
 import { canBranch, countedOf, averaged, cardsOf, cleanCourseWiring, deals, wiresOf, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoreCount, scoresIn, treeView, triedGroup, triesFor } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
@@ -82,6 +83,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
   // (A group with groups in it: when any of their cards is.)
   for (const w of course.weeks) for (const l of w.lessons) for (const g of l.modules) if (g.type === "group" && leavesOf(g, l.modules).some((c) => visible.has(c.id))) visible.add(g.id);
   const prog = db().progress[course.id]?.[studentId] ?? {};
+  const owner = course.ownerId ? db().users[course.ownerId] : undefined;
   const paths = pathsFor(course.weeks, prog, tree, visible);
   return {
     ...course,
@@ -129,6 +131,9 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
           ...m,
           bands: undefined,
           dealtFor: tree.dealt.has(m.id) || undefined,
+          // AI feedback is on only while the teacher has AI connected; students learn whether it watches video.
+          aiFeedback: (m.aiFeedback && !!owner?.ai) || undefined,
+          aiWatches: (m.aiFeedback && owner?.ai?.provider === "gemini") || undefined,
           tally: m.poll ? tallyOf(course, m) : undefined,
           // A discussion that asks for replies: how many this student needs (fewer in a small group).
           repliesNeeded: m.type === "wall" && m.wall?.replies ? repliesNeeded(course, m, studentId) : undefined,
@@ -814,6 +819,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
       // When it was handed in (each time, revisions too), so work handed in after its due date shows as late.
       if (body.status) { if (body.status === "done" && p.status !== "done") p.handedAt = Date.now(); p.status = body.status; if (body.status === "done") p.reopened = undefined; }
       if (typeof body.output === "string") p.output = body.output.slice(0, 8000);
+      // Handed in on a card with AI feedback on: the AI starts looking at it.
+      if (body.status === "done" && mod && familyOf(kindOf(mod)) === "question") startAiFeedback(course, mod, body.studentId, p);
       if (p.status === "todo") p.status = "doing";
       p.updatedAt = Date.now();
       break;
@@ -1015,6 +1022,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
       }
       p.score = set.filter((x) => p.results![x.id]).length;
       if (answered === total) p.status = "done";
+      if (answered === total && !found.mod.poll) startAiFeedback(course, found.mod, body.studentId, p);
       extra = { correct: right, explain: right ? q.explain : undefined, dealt: titles(course, dealtNow), groupDealt: titles(course, groupDealt) };
       break;
     }
@@ -1295,6 +1303,7 @@ async function change(request: Request, courseId: string, body: Record<string, a
         // With peer replies required, posting starts the card; replying to enough classmates finishes it.
         p.status = wallProgress(d.posts[courseId], body.moduleId, body.studentId, repliesNeeded(course, found.mod, body.studentId)).done ? "done" : "doing";
         p.updatedAt = Date.now();
+        startAiFeedback(course, found.mod, body.studentId, p);
       }
       extra = { post: { ...post, mine: true } };
       break;

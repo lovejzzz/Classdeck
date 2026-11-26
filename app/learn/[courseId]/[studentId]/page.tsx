@@ -24,7 +24,7 @@ import { MarksContext } from "@/components/Marks";
 import { SignInNeeded } from "@/components/SignInNeeded";
 import { NeedsYou } from "@/components/student/NeedsYou";
 import { ElectiveRow, chooseElective } from "@/components/student/Electives";
-import { dueInfo } from "@/lib/grading";
+import { dueOf } from "@/lib/grading";
 import { CARD_SIZE } from "@/lib/cards";
 import { op, setPreview, useConnectors, useCourse, useQuery } from "@/lib/client";
 import { PreviewBar } from "@/components/student/PreviewBar";
@@ -260,7 +260,7 @@ export default function LearnPage() {
     return {
       id: m.id,
       label: `${m.title}, ${status === "done" ? "done" : locked ? "locked" : status === "doing" ? "in progress" : "not started"}`,
-      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal || m.dealtFor} big={big && !narrow} due={dueInfo(m.due, now)} badge={revising(m.id) ? "Revise" : (fresh.has(m.id) && status !== "done") || (inbox.newCards.has(m.id) && status === "todo") ? "New" : m.dealtFor && status !== "done" ? "For you" : undefined} />,
+      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal || m.dealtFor} big={big && !narrow} due={dueOf(m, now)} badge={revising(m.id) ? "Revise" : (fresh.has(m.id) && status !== "done") || (inbox.newCards.has(m.id) && status === "todo") ? "New" : m.dealtFor && status !== "done" ? "For you" : undefined} />,
       back: <CardBack locked={locked} />,
       faceDown: locked,
       locked,
@@ -327,12 +327,12 @@ export default function LearnPage() {
     }
     // Then anything overdue, in any lesson (earliest first).
     for (const l of lessons) {
-      const late = playable(l).find((x) => x.due && dueInfo(x.due, now)?.tone === "late");
+      const late = playable(l).find((x) => x.due && dueOf(x, now)?.tone === "late");
       if (late) return { lesson: l, m: late };
     }
     const today = playable(current);
     // Then what's late, then what's already started, then today's next card.
-    const m = today.find((x) => x.due && dueInfo(x.due, now)?.tone === "late") ?? today.find((x) => statusOf(x.id) === "doing") ?? today[0];
+    const m = today.find((x) => x.due && dueOf(x, now)?.tone === "late") ?? today.find((x) => statusOf(x.id) === "doing") ?? today[0];
     if (m) return { lesson: current, m };
     // Today's done: catch up on earlier lessons before getting ahead.
     const at = lessons.indexOf(current);
@@ -344,7 +344,7 @@ export default function LearnPage() {
 
   const nothingYet = lessons.every((l) => l.modules.length === 0);
   // Why this is the card to play now.
-  const nextReason = !upNext ? "" : revising(upNext.m.id) ? "Your teacher asked for a revision" : dueInfo(upNext.m.due, now)?.tone === "late" ? "Overdue" : statusOf(upNext.m.id) === "doing" ? "Pick up where you left off" : upNext.lesson.id === current.id ? "Up next" : lessons.indexOf(upNext.lesson) < lessons.indexOf(current) ? "Catch up" : currentWeek.lessons.includes(upNext.lesson) ? "Next lesson" : "Get ahead";
+  const nextReason = !upNext ? "" : revising(upNext.m.id) ? "Your teacher asked for a revision" : dueOf(upNext.m, now)?.tone === "late" ? "Overdue" : statusOf(upNext.m.id) === "doing" ? "Pick up where you left off" : upNext.lesson.id === current.id ? "Up next" : lessons.indexOf(upNext.lesson) < lessons.indexOf(current) ? "Catch up" : currentWeek.lessons.includes(upNext.lesson) ? "Next lesson" : "Get ahead";
   function goHome(k: "today" | "all") {
     setHome(k);
     window.scrollTo({ top: 0 });
@@ -622,7 +622,7 @@ export default function LearnPage() {
                         hidden={lift?.id === upNext.m.id && lift.el === heroRef.current}
                         onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)}
                       >
-                        <CardFace m={upNext.m} big={!narrow} status={statusOf(upNext.m.id)} index={upNext.lesson.modules.indexOf(upNext.m)} total={upNext.lesson.modules.length} personal={upNext.m.personal} due={dueInfo(upNext.m.due, now)} badge={revising(upNext.m.id) ? "Revise" : undefined} />
+                        <CardFace m={upNext.m} big={!narrow} status={statusOf(upNext.m.id)} index={upNext.lesson.modules.indexOf(upNext.m)} total={upNext.lesson.modules.length} personal={upNext.m.personal} due={dueOf(upNext.m, now)} badge={revising(upNext.m.id) ? "Revise" : undefined} />
                       </TiltCard>
                     ) : (
                       <div className={`pop flex h-[252px] w-[180px] flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed p-4 text-center ${nothingYet ? "border-line-strong" : "border-ok/50 bg-ok/[0.04]"}`}>
@@ -634,7 +634,7 @@ export default function LearnPage() {
                     {upNext ? (
                       <>
                         <div className="text-[12px] font-medium uppercase tracking-[0.1em] text-ink-3">
-                          <span className={revising(upNext.m.id) || dueInfo(upNext.m.due, now)?.tone === "late" ? "text-warn" : ""}>{nextReason}</span> · {upNext.lesson.title}
+                          <span className={revising(upNext.m.id) || dueOf(upNext.m, now)?.tone === "late" ? "text-warn" : ""}>{nextReason}</span> · {upNext.lesson.title}
                         </div>
                         <h1 className={`mt-2 font-semibold leading-[1.15] tracking-tight ${big ? "text-[40px]" : "text-[30px] sm:text-[36px]"}`}>{upNext.m.title}</h1>
                         {revising(upNext.m.id) && mine[upNext.m.id]?.review?.text ? (

@@ -6,7 +6,7 @@ import { EarlierFeedback } from "../FeedbackHistory";
 import { op } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { useShortcuts } from "@/lib/shortcuts";
-import { asked, dueInfo, optionOrder } from "@/lib/grading";
+import { asked, dueOf, optionOrder } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META, suitOfCard } from "@/lib/ui";
 import { faceMeta, familyOf, isPoll, kindOf, sharedDoc, writesOwn } from "@/lib/kinds";
@@ -20,6 +20,7 @@ import { Icon, StatusIcon } from "../Icon";
 import { ReadAloud } from "../ReadAloud";
 import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
+import { AiNote } from "../AiNote";
 import { CardForm } from "./CardForm";
 import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, ReviewNote, UpdatesNote } from "./CardExtras";
 import { RichText } from "../RichText";
@@ -78,7 +79,7 @@ export function CardDetail(p: DetailProps) {
   const [finishing, setFinishing] = useState(false);
   const mustWatch = (m.playlist ?? []).filter((x) => !x.optional);
   const [now] = useState(() => Date.now());
-  const due = p.progress?.status === "done" ? undefined : dueInfo(m.due, now);
+  const due = p.progress?.status === "done" ? undefined : dueOf(m, now);
   const review = p.progress?.review;
   const kind = kindOf(m);
   // Only a Q&A card has a box to write in. A Content card is to take in (it gets a plain Done button), and a Choice
@@ -252,6 +253,9 @@ export function CardDetail(p: DetailProps) {
         )}
 
         {review && !m.choice && <ReviewNote review={review} big={p.big} skills={p.course.skills} levels={p.course.levels} />}
+        {p.progress?.ai ? <AiNote ai={p.progress.ai} /> : m.aiFeedback && (
+          <p className="mt-5 flex items-center gap-1.5 text-[12.5px] text-[#4b56a8]"><Icon name="sparkles" size={12} /> When you hand in, AI gives you feedback right away{m.aiWatches ? ", watching your video too" : ""}.</p>
+        )}
         {!m.choice && <EarlierFeedback earlier={p.progress?.earlier} />}
         {p.progress?.updates?.length ? <UpdatesNote updates={p.progress.updates} big={p.big} skills={p.course.skills} levels={p.course.levels} /> : null}
 
@@ -406,7 +410,7 @@ export function CardDetail(p: DetailProps) {
               {(p.progress?.work?.length ?? 0) > 0 ? "Your files" : "Add a recording, file, or link"}
               {m.submitTo === "personal" ? " · saved to your personal board" : ""}
             </div>
-            <WorkComposer courseId={p.courseId} studentId={p.studentId} moduleId={m.id} work={p.progress?.work ?? []} onChanged={p.onChanged} />
+            <WorkComposer courseId={p.courseId} studentId={p.studentId} moduleId={m.id} work={p.progress?.work ?? []} onChanged={p.onChanged} aiWatches={m.aiWatches} />
           </div>
         )}
 

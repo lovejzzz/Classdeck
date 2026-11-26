@@ -12,9 +12,11 @@ import { AttachMenu } from "../AttachMenu";
  * Each take keeps its own label, so two comparable attempts sit side by side.
  */
 export function WorkComposer({
-  courseId, studentId, moduleId, work, onChanged, hint,
+  courseId, studentId, moduleId, work, onChanged, hint, aiWatches,
 }: {
   courseId: string; studentId: string; moduleId: string; work: Attachment[]; onChanged: () => void; hint?: string;
+  /** The card's AI watches videos: a video can ask it to look closely at gestures. */
+  aiWatches?: boolean;
 }) {
   async function add(a: Omit<Attachment, "id">) {
     const r = await op<{ ok: boolean; error?: string }>(courseId, { op: "addWork", studentId, moduleId, attachment: a });
@@ -54,7 +56,7 @@ export function WorkComposer({
       )}
 
       <div className={work.length ? "mt-3" : ""}>
-        <AttachMenu label={hint} onAdd={add} />
+        <AttachMenu label={hint} onAdd={add} aiWatches={aiWatches} />
       </div>
     </div>
   );

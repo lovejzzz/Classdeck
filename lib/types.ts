@@ -50,6 +50,8 @@ export interface Attachment {
   transcript?: string;
   /** Length of a recording in seconds, when known. */
   duration?: number;
+  /** A video the student asked AI to look at closely (gestures): frames per second it samples (1 when unset). */
+  fps?: number;
 }
 
 /** How a wall card behaves: who posts, how people respond, and moderation. */
@@ -272,6 +274,12 @@ export interface Module {
   picked?: boolean;
   /** Due date, YYYY-MM-DD. */
   due?: string;
+  /** A meeting card (a Zoom/Meet/Teams link on it): the meeting's time on its due date, "HH:MM". */
+  dueTime?: string;
+  /** Question cards: AI (the teacher's own, set up in Settings → AI) gives students feedback once they hand in. */
+  aiFeedback?: boolean;
+  /** Sent to students only: the card's AI watches videos (the teacher's AI is Gemini), so a closer look can be asked for. */
+  aiWatches?: boolean;
   /** A curated sequence of videos (e.g. LinkedIn Learning clips), with optional extras. */
   playlist?: { id: string; title: string; url: string; section?: string; optional?: boolean }[];
   /** Steps students tick off; all must be ticked before the card is done. */
@@ -503,6 +511,8 @@ export interface Progress {
   best?: number;
   /** The teacher's feedback on this work. */
   review?: Review;
+  /** AI feedback on the latest hand-in (cards with AI feedback on): working on it, the feedback, or why it failed. */
+  ai?: { state: "working" | "done" | "error"; at: number; model?: string; text?: string; error?: string; watched?: boolean };
   /** When the work was last handed in (a revision too). */
   handedAt?: number;
   /** Feedback from earlier rounds (newest first): a revision asked, then the work looked at again. */

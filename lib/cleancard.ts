@@ -17,6 +17,7 @@ export function cleanAttachment(a: Attachment): Attachment | null {
     start: sec(a.start), end: sec(a.end), credit: a.credit ? String(a.credit).slice(0, 200) : undefined,
     transcript: a.transcript && (a.kind === "audio" || a.kind === "video") ? String(a.transcript).slice(0, 20000) : undefined,
     duration: Number(a.duration) > 0 && Number(a.duration) < 36000 ? Math.round(Number(a.duration)) : undefined,
+    fps: a.kind === "video" && Number(a.fps) > 1 ? Math.min(10, Math.round(Number(a.fps))) : undefined,
   };
 }
 
@@ -54,6 +55,9 @@ export function cleanCard(raw: Module): Module {
   if (!m.audience || typeof m.audience !== "object" || !["all", "branch", "student"].includes(m.audience.kind)) m.audience = { kind: "all" };
   if (!Array.isArray(m.tools)) m.tools = [];
   m.form = cleanForm(m.form);
+  if (m.dueTime !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(m.dueTime))) m.dueTime = undefined;
+  if (!m.due) m.dueTime = undefined;
+  m.aiFeedback = m.aiFeedback === true || undefined;
   if (m.suit !== undefined && !["learn", "do", "share"].includes(m.suit)) m.suit = undefined;
   return m;
 }

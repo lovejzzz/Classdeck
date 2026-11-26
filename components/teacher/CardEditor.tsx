@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 import { CARD_SIZE, formatSize, heroOf, hostOf } from "@/lib/cards";
 import { LookPanel, LookTrigger } from "./CardLookMenu";
 import { audienceStudents, groupByRef, groupsOf, studentsOf, uid } from "@/lib/profile";
-import { fmtTime, parseTime, videoEmbed } from "@/lib/media";
+import { fmtTime, meetingOf, parseTime, videoEmbed } from "@/lib/media";
+import { useAiSetup } from "./AiSettings";
+import { providerMeta } from "@/lib/aimeta";
 import { DueCalendar } from "./DueCalendar";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
@@ -195,6 +197,9 @@ export function CardEditor({
   const [showReach, setShowReach] = useState(false);
   const [calendar, setCalendar] = useState(false);
   const kind = kindOf(m);
+  const ai = useAiSetup();
+  // A card with a meeting link on it: its due date is the meeting, with a time.
+  const meeting = (m.attachments ?? []).map((x) => (x.kind === "link" ? meetingOf(x.url) : undefined)).find(Boolean);
   const older = olderSettings(m);
   // The answers (or score ranges) that deal this card, or the card group it's in: who gets it is set on the map.
   const everyCard = allCards ?? lesson.modules;
@@ -593,10 +598,10 @@ export function CardEditor({
             )}
             <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3 text-[12.5px]">
               <span className="mr-1 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name="clock" size={12} /></span>
-              <span className="mr-0.5 text-ink-2">Due</span>
+              <span className="mr-0.5 text-ink-2">{meeting ? `${meeting} meeting` : "Due"}</span>
               {/* No due date is the default: picked until a date is set. */}
-              <button onClick={() => set({ due: undefined })} aria-pressed={!m.due}
-                className={`press inline-flex h-7 items-center whitespace-nowrap rounded-full border px-2.5 text-[12px] ${!m.due ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>No due date</button>
+              <button onClick={() => set({ due: undefined, dueTime: undefined })} aria-pressed={!m.due}
+                className={`press inline-flex h-7 items-center whitespace-nowrap rounded-full border px-2.5 text-[12px] ${!m.due ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>{meeting ? "No date yet" : "No due date"}</button>
               {/* A date, typed or picked; the calendar button opens the whole course's calendar to pick it from. */}
               <span className={`inline-flex h-8 items-center overflow-hidden rounded-[10px] border bg-white ${m.due ? "border-ink" : "border-line"}`}>
                 <input type="date" value={m.due ?? ""} onChange={(e) => set({ due: e.target.value || undefined })} aria-label="Due date" className="h-full w-[112px] bg-transparent pl-2 text-[12.5px] outline-none [&::-webkit-calendar-picker-indicator]:hidden" />
@@ -605,8 +610,30 @@ export function CardEditor({
                     className="press grid h-full w-8 place-items-center border-l border-line text-ink-2 hover:bg-lane hover:text-ink"><Icon name="calendar" size={13} /></button>
                 )}
               </span>
+              {/* A meeting has a time too: it shows on students' cards and in the calendar. */}
+              {meeting && m.due && (
+                <input type="time" value={m.dueTime ?? ""} onChange={(e) => set({ dueTime: e.target.value || undefined })} aria-label="Meeting time"
+                  className={`field h-8 w-[104px] py-0 text-[12.5px] ${m.dueTime ? "!border-ink" : ""}`} />
+              )}
+              {meeting && <span className="basis-full pl-[34px] text-[11.5px] text-ink-3">This card has a {meeting} link, so its date is the meeting’s: students see when to join, and it’s in the calendar.</span>}
               {calendar && course && <DueCalendar course={course} moduleId={m.id} cardTitle={m.title} due={m.due} onPick={(day) => set({ due: day })} onClose={() => setCalendar(false)} />}
             </div>
+            {familyOf(kind) === "question" && (
+              <div className="mt-3 flex items-start gap-2.5 border-t border-line pt-3 text-[12.5px]">
+                <span className="mt-[1px] flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name="sparkles" size={12} /></span>
+                <span className="min-w-0 flex-1 pt-[3px]">
+                  <label className="flex cursor-pointer items-center gap-2 text-ink">
+                    <input type="checkbox" checked={!!m.aiFeedback} disabled={!ai && !m.aiFeedback} onChange={(e) => set({ aiFeedback: e.target.checked || undefined })} className="h-4 w-4 accent-[#1b1b1a]" />
+                    Allow AI feedback
+                  </label>
+                  <span className="mt-0.5 block text-[11.5px] text-ink-3">
+                    {ai === undefined ? "" : ai ? <>When a student hands in, {providerMeta(ai.provider).name} ({ai.model}) gives them feedback right away{providerMeta(ai.provider).watchesVideo ? ", watching their video too" : ", from their writing and the transcripts of their recordings"}.</>
+                      : <>Connect your AI first in <a href="/settings#ai" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">Settings → AI feedback</a>.</>}
+                    {m.aiFeedback && ai === null && <span className="text-[#a0561f]"> Without an AI connected, students get no AI feedback on this card.</span>}
+                  </span>
+                </span>
+              </div>
+            )}
           </Panel>
 
 

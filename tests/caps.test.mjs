@@ -139,6 +139,25 @@ async function main() {
   await A.op(cid, { op: "setCertificate", on: false });
   check("turning it off removes it", !courseOf(await S.state(`${cid}?as=${sid}`)).certificate, null);
 
+  // AI feedback is per card, and needs the teacher's own AI; a meeting card keeps its time.
+  const L = courseOf(await A.state(cid)).weeks[1].lessons[0];
+  const sess = L.modules.find((m) => m.title.startsWith("Collab session"));
+  const jour = L.modules.find((m) => m.title === "Learning Journal");
+  const mods = L.modules.map((m) => m.id === jour.id ? { ...m, aiFeedback: true } : m.id === sess.id ? { ...m, due: "2026-12-01", dueTime: "15:30", attachments: [{ id: "a1", kind: "link", url: "https://us02web.zoom.us/j/123" }] } : m);
+  await A.op(cid, { op: "saveLesson", lesson: { ...L, modules: mods } });
+  const L2 = courseOf(await A.state(cid)).weeks[1].lessons[0];
+  check("the card keeps Allow AI feedback", L2.modules.find((m) => m.id === jour.id).aiFeedback === true, null);
+  check("a meeting card keeps its date and time", L2.modules.find((m) => m.id === sess.id).dueTime === "15:30", L2.modules.find((m) => m.id === sess.id));
+  await A.op(cid, { op: "saveLesson", lesson: { ...L2, modules: L2.modules.map((m) => m.id === sess.id ? { ...m, dueTime: "25:99" } : m) } });
+  check("a time that isn't one is dropped", !courseOf(await A.state(cid)).weeks[1].lessons[0].modules.find((m) => m.id === sess.id).dueTime, null);
+  const sj = modulesOf(courseOf(await S.state(`${cid}?as=${sid}`))).find((m) => m.id === jour.id);
+  check("students aren't told about AI the teacher hasn't connected", sj && !sj.aiFeedback && !sj.aiWatches, sj && { ai: sj.aiFeedback, w: sj.aiWatches });
+  const noKey = await A.post("/api/ai", { provider: "openai" });
+  check("saving AI with no key asks for one", noKey.ok === false && /key/i.test(noKey.error), noKey);
+  const other = await S.get("/api/ai");
+  check("another account sees only its own AI setup (none)", other.ai === null || other.status === 401, other);
+  check("the teacher has no AI set up yet", (await A.get("/api/ai")).ai === null, null);
+
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);
   process.exit(failures.length ? 1 : 0);
