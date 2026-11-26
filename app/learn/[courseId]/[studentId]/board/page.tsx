@@ -57,9 +57,9 @@ export default function BoardPage() {
     const p = mine[m.id];
     return !!p && (p.status === "done" || !!p.output || !!p.work?.length || state.posts.some((x) => x.moduleId === m.id && x.studentId === studentId));
   };
-  const done = all.filter((x) => mine[x.m.id]?.status === "done").length;
+  const done = all.filter((x) => !x.m.optional && mine[x.m.id]?.status === "done").length;
   // Cards that count: an unchosen elective's aren't the student's, and an unpicked set of paths counts once.
-  const total = course.weeks.flatMap((w) => w.lessons).filter((l) => !l.elective || l.chosen).reduce((n, l) => n + l.modules.filter((m, i) => !m.choice || l.modules.findIndex((x) => x.choice?.slot === m.choice!.slot) === i).length, 0);
+  const total = course.weeks.flatMap((w) => w.lessons).filter((l) => !l.elective || l.chosen).reduce((n, l) => n + l.modules.filter((m, i) => !m.optional && (!m.choice || l.modules.findIndex((x) => x.choice?.slot === m.choice!.slot) === i)).length, 0);
   const pickedLesson = picked ? course.weeks.flatMap((w) => w.lessons).find((l) => l.id === picked) : undefined;
   const starred = all.filter((x) => mine[x.m.id]?.starred);
   // What's due and to revise is on the cards page; here, the suggestions about how to get better.
@@ -119,7 +119,7 @@ export default function BoardPage() {
             <span><span className="font-mono text-ink">{done}</span> of {total} cards done</span>
             {quizAvg !== undefined && <span>Quiz average <span className="font-mono text-ink">{quizAvg}%</span></span>}
             {reviewed > 0 && <span><span className="font-mono text-ink">{reviewed}</span> teacher feedback</span>}
-            {takes > 0 && <span><span className="font-mono text-ink">{takes}</span> recordings</span>}
+            {takes > 0 && <span><span className="font-mono text-ink">{takes}</span> recording{takes === 1 ? "" : "s"}</span>}
           </div>
           <CourseRoute course={course} mine={mine} picked={picked} onPick={(id) => { setPicked(id); if (id) { setTab("work"); history.replaceState(null, "", "#work"); } }} />
         </section>

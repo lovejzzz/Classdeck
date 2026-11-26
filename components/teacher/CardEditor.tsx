@@ -618,6 +618,17 @@ export function CardEditor({
               {meeting && <span className="basis-full pl-[34px] text-[11.5px] text-ink-3">This card has a {meeting} link, so its date is the meeting’s: students see when to join, and it’s in the calendar.</span>}
               {calendar && course && <DueCalendar course={course} moduleId={m.id} cardTitle={m.title} due={m.due} onPick={(day) => set({ due: day })} onClose={() => setCalendar(false)} />}
             </div>
+            {/* Optional: for students who want it; it doesn't count toward finishing. */}
+            <div className="mt-3 flex items-start gap-2.5 border-t border-line pt-3 text-[12.5px]">
+              <span className="mt-[1px] flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name="layers" size={12} /></span>
+              <span className="min-w-0 flex-1 pt-[3px]">
+                <label className="flex cursor-pointer items-center gap-2 text-ink">
+                  <input type="checkbox" checked={!!m.optional} onChange={(e) => set({ optional: e.target.checked || undefined })} className="h-4 w-4 accent-[#1b1b1a]" />
+                  Optional
+                </label>
+                <span className="mt-0.5 block text-[11.5px] text-ink-3">Students see it marked Optional. It doesn’t count toward finishing the lesson, catching up, or the certificate.</span>
+              </span>
+            </div>
             {familyOf(kind) === "question" && (
               <div className="mt-3 flex items-start gap-2.5 border-t border-line pt-3 text-[12.5px]">
                 <span className="mt-[1px] flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name="sparkles" size={12} /></span>

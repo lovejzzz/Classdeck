@@ -58,6 +58,7 @@ export function cleanCard(raw: Module): Module {
   if (m.dueTime !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(m.dueTime))) m.dueTime = undefined;
   if (!m.due) m.dueTime = undefined;
   m.aiFeedback = m.aiFeedback === true || undefined;
+  m.optional = m.optional === true || undefined;
   if (m.suit !== undefined && !["learn", "do", "share"].includes(m.suit)) m.suit = undefined;
   return m;
 }

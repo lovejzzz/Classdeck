@@ -278,6 +278,9 @@ export interface Module {
   dueTime?: string;
   /** Question cards: AI (the teacher's own, set up in Settings → AI) gives students feedback once they hand in. */
   aiFeedback?: boolean;
+  /** Optional: there for students who want it, but it doesn't count toward finishing (lesson progress, catching up,
+   *  the certificate). */
+  optional?: boolean;
   /** Sent to students only: the card's AI watches videos (the teacher's AI is Gemini), so a closer look can be asked for. */
   aiWatches?: boolean;
   /** A curated sequence of videos (e.g. LinkedIn Learning clips), with optional extras. */

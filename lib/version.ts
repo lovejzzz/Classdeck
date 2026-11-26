@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.98",
+    date: "2026-11-26",
+    changes: [
+      "Optional cards: any card can be marked Optional (in its Access). Students see it marked so, and it doesn’t count toward finishing a lesson, catching up, or the certificate; the map says “optional” too. The CaPS Flow templates mark their optional cards (Revise your speech, More growth areas, Camera setup, Finish up).",
+      "A meeting that has happened is no longer late work: past Collab sessions don’t mark students late or overdue, or sit in their list to catch up. A meeting coming up shows as “Meeting today 3:00 PM” rather than “due soon”.",
+      "In Student View, clicking a card on the student’s board opens it (it used to open only the cards page).",
+      "The board says “1 recording”, not “1 recordings”.",
+    ],
+  },
+  {
     version: "0.2.97",
     date: "2026-11-26",
     changes: [

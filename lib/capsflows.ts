@@ -79,7 +79,7 @@ export function capsFlow1(): CourseFile {
       ] }] },
       ...[2, 3, 4, 5, 6].map(flow1Practice),
       { title: "Week 7 · Next steps", lessons: [{ title: "Plan next steps and celebrate", goal: "Plan how to keep improving, and celebrate your progress.", modules: [
-        content("f1w7-finish", "Finish up (optional)", "Complete anything you haven’t finished yet.", 10),
+        { ...content("f1w7-finish", "Finish up", "Complete anything you haven’t finished yet.", 10), optional: true },
         content("f1w7-keep", "Keep learning", "The best ways to keep practising after CaPS, and how to keep using the tools you’ve learned.", 10),
         group("f1w7-debrief", "Debrief", "Tell us what worked and what didn’t, so we can improve CaPS.", ["f1w7-rate", "f1w7-worked", "f1w7-ideas"]),
         poll("f1w7-rate", "How useful was CaPS?", "How useful was CaPS for you?", ["Very useful", "Somewhat useful", "Not very useful"]),
@@ -110,7 +110,7 @@ const selfAssess = (id: string, t: Topic) => poll(id, "Self-assessment", `How co
 const journal = (id: string, practice: boolean) => practice
   ? answer(id, "Practice Journal", "Your takeaways from this week’s practice, and how you’d rate your recording against the video’s checklist.", 10)
   : answer(id, "Learning Journal", "Key takeaways, your strengths, the areas you want to improve, and questions to bring to the Collab session.", 10);
-const revise = (id: string) => content(id, "Revise your speech (optional)", "Go back to your Speech Starter in Week 0 and improve your draft with what you’ve learned. Be ready to share it in the Collab session.", 15);
+const revise = (id: string) => ({ ...content(id, "Revise your speech", "Go back to your Speech Starter in Week 0 and improve your draft with what you’ve learned. Be ready to share it in the Collab session.", 15), optional: true });
 
 function flow2Week(t: Topic, pickedEarlier: boolean): Week {
   const p = `f2w${t.n}`;
@@ -119,10 +119,10 @@ function flow2Week(t: Topic, pickedEarlier: boolean): Week {
     : `Watch the LinkedIn Learning video on ${f.toLowerCase()} (add the link). Jot Learning Journal notes as you go.`, 10));
   const modules: Card[] = [];
   if (!pickedEarlier) modules.push(selfAssess(`${p}-self`, t), chooseFocus(`${p}-focus`, t));
-  modules.push(...videos, content(`${p}-more`, "More growth areas (optional)", `Every Week ${t.n} video, for the areas you didn’t pick: ${t.focus.join(", ")}.`, 10));
+  modules.push(...videos, ({ ...content(`${p}-more`, "More growth areas", `Every Week ${t.n} video, for the areas you didn’t pick: ${t.focus.join(", ")}.`, 10), optional: true }));
   if (t.tag === "learn") {
     modules.push(journal(`${p}-journal`, false), revise(`${p}-revise`));
-    if (t.n === 2) modules.push(answer(`${p}-camera`, "Camera setup (optional)", "Record a few seconds of yourself with your camera and lighting set up for a virtual presentation or interview.", 5));
+    if (t.n === 2) modules.push(({ ...answer(`${p}-camera`, "Camera setup", "Record a few seconds of yourself with your camera and lighting set up for a virtual presentation or interview.", 5), optional: true }));
     modules.push(session(`${p}-session`, `Collab session ${t.n}: discuss and learn`, ["Icebreaker: build community and prime the topic", "Discuss and learn: facilitator-led, with suggested materials and activities", "Before leaving: preview next week and name one thing to work on"]));
   } else {
     if (t.n === 6) modules.push(answer(`${p}-visuals`, "Create visuals", "Build slides for your speech and upload them.", 30));
@@ -152,7 +152,7 @@ export function capsFlow2(): CourseFile {
       ] }] },
       ...TOPICS.map((t) => flow2Week(t, t.n === 1)),
       { title: "Week 7 · Wrap-up", lessons: [{ title: "Wrap-up", goal: "Plan how to keep improving, reflect on CaPS, and celebrate your progress.", modules: [
-        content("f2w7-finish", "Finish up (optional)", "Complete anything left over.", 10),
+        { ...content("f2w7-finish", "Finish up", "Complete anything left over.", 10), optional: true },
         content("f2w7-keep", "Keep learning", "Ways to keep practising, and how to keep using the CaPS tools.", 10),
         group("f2w7-debrief", "Debrief", "What worked, what didn’t, and how to improve CaPS.", ["f2w7-rate", "f2w7-worked", "f2w7-ideas"]),
         poll("f2w7-rate", "How useful was CaPS?", "How useful was CaPS for you?", ["Very useful", "Somewhat useful", "Not very useful"]),

@@ -1,5 +1,6 @@
 "use client";
 
+import { isMeeting } from "@/lib/grading";
 import { useEffect, useRef, useState } from "react";
 import { todoList, type Todo } from "@/lib/coach";
 import { suitOfCard } from "@/lib/ui";
@@ -7,10 +8,11 @@ import { faceMeta } from "@/lib/kinds";
 import type { CourseState } from "@/lib/types";
 import { Icon } from "../Icon";
 
-type Kind = "revise" | "late" | "soon" | "behind" | "electives";
+type Kind = "revise" | "late" | "meeting" | "soon" | "behind" | "electives";
 const LOOK: Record<Kind, { icon: string; cls: string }> = {
   revise: { icon: "reset", cls: "bg-warn/10 text-warn hover:bg-warn/15" },
   late: { icon: "clock", cls: "bg-bad/10 text-bad hover:bg-bad/15" },
+  meeting: { icon: "video", cls: "bg-[#eef0fb] text-[#4b56a8] hover:bg-[#e3e6f8]" },
   soon: { icon: "clock", cls: "bg-warn/10 text-warn hover:bg-warn/15" },
   behind: { icon: "layers", cls: "bg-lane text-ink-2 hover:bg-black/[0.06]" },
   electives: { icon: "split", cls: "bg-[#eef0fb] text-[#4b56a8] hover:bg-[#e3e6f8]" },
@@ -43,10 +45,14 @@ export function NeedsYou({ state, studentId, onOpen, onElectives, heading, skip 
   const groups: { kind: Kind; label: string; items: Todo[] }[] = [];
   const revise = todos.filter((t) => t.revise);
   const overdue = todos.filter((t) => !t.revise && late(t));
-  const soon = todos.filter((t) => !t.revise && t.due?.tone === "soon");
+  // Meetings coming up get their own chip: they're a time to join, not work due.
+  const soonAll = todos.filter((t) => !t.revise && t.due?.tone === "soon");
+  const meetings = soonAll.filter((t) => isMeeting(t.m));
+  const soon = soonAll.filter((t) => !isMeeting(t.m));
   const behind = todos.filter((t) => !t.revise && !late(t) && !t.lesson.elective && order.indexOf(t.lesson) < cur);
   if (revise.length) groups.push({ kind: "revise", label: `${revise.length} to revise`, items: revise });
   if (overdue.length) groups.push({ kind: "late", label: `${overdue.length} overdue`, items: overdue });
+  if (meetings.length) groups.push({ kind: "meeting", label: meetings.length === 1 ? meetings[0].due!.label : `${meetings.length} meetings soon`, items: meetings });
   if (soon.length) groups.push({ kind: "soon", label: `${soon.length} due soon`, items: soon });
   if (behind.length) groups.push({ kind: "behind", label: `${behind.length} to catch up`, items: behind });
   const electives = order.filter((l) => l.elective);

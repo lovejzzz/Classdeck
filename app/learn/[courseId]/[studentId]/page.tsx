@@ -119,13 +119,16 @@ export default function LearnPage() {
   const linkUsed = useRef(false);
   useEffect(() => {
     const id = linkedCard;
-    if (!id || !course || isPreview || linkUsed.current) return;
+    // In Student View too (a teacher clicking a card on the student's board): there the address doesn't follow the
+    // open card, so the link is cleared once it's used.
+    if (!id || !course || linkUsed.current) return;
     linkUsed.current = true;
     const lesson = course.weeks.flatMap((w) => w.lessons).find((l) => l.modules.some((m) => m.id === id));
     if (!lesson) { router.replace(window.location.pathname, { scroll: false }); return; }
     const w = window.innerWidth, h = window.innerHeight;
     // Once the board has drawn, so the card rises over it.
     setTimeout(() => setLift({ id, lessonId: lesson.id, from: new DOMRect(w / 2 - 90, h / 2 - 126, 180, 252), open: true, completed: false }), 0);
+    if (isPreview) router.replace(`${window.location.pathname}?preview=1`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course, isPreview]);
 
@@ -260,7 +263,7 @@ export default function LearnPage() {
     return {
       id: m.id,
       label: `${m.title}, ${status === "done" ? "done" : locked ? "locked" : status === "doing" ? "in progress" : "not started"}`,
-      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal || m.dealtFor} big={big && !narrow} due={dueOf(m, now)} badge={revising(m.id) ? "Revise" : (fresh.has(m.id) && status !== "done") || (inbox.newCards.has(m.id) && status === "todo") ? "New" : m.dealtFor && status !== "done" ? "For you" : undefined} />,
+      front: <CardFace m={m} status={status} index={i} total={l.modules.length} personal={m.personal || m.dealtFor} big={big && !narrow} due={dueOf(m, now)} badge={revising(m.id) ? "Revise" : (fresh.has(m.id) && status !== "done") || (inbox.newCards.has(m.id) && status === "todo") ? "New" : m.dealtFor && status !== "done" ? "For you" : m.optional && status !== "done" ? "Optional" : undefined} />,
       back: <CardBack locked={locked} />,
       faceDown: locked,
       locked,
@@ -295,7 +298,8 @@ export default function LearnPage() {
   const inHand = byOrder(current.modules.filter((m) => statusOf(m.id) !== "done"));
   const done = current.modules.filter((m) => statusOf(m.id) === "done").sort((a, b) => (mine[a.id]?.updatedAt ?? 0) - (mine[b.id]?.updatedAt ?? 0));
   // Cards that count toward progress: an unpicked set of paths counts once, as the first version.
-  const countable = (l: Lesson) => l.modules.filter((m, i) => !m.choice || l.modules.findIndex((x) => x.choice?.slot === m.choice!.slot) === i);
+  // Optional cards don't count toward a lesson's progress.
+  const countable = (l: Lesson) => l.modules.filter((m, i) => !m.optional && (!m.choice || l.modules.findIndex((x) => x.choice?.slot === m.choice!.slot) === i));
   const doneCount = (l: Lesson) => countable(l).filter((m) => statusOf(m.id) === "done").length;
 
   // The next card to play: something already started, else the first open card today, else the next week's first.

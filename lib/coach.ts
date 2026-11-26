@@ -1,4 +1,4 @@
-import { dueInfo, isLate } from "./grading";
+import { dueInfo, dueOf, isLate, isMeeting } from "./grading";
 import type { Course, CourseState, Lesson, Module, Progress } from "./types";
 
 // Rule-based coaching: what a student should do next, what's on their list, and every piece of
@@ -68,7 +68,11 @@ export function todoList(course: Course, mine: Record<string, Progress>, now: nu
       }
       const p = mine[m.id];
       if (p?.status === "done") continue;
-      const t: Todo = { m, lesson: l, week: w.title, due: dueInfo(m.due, now), revise: p?.review?.verdict === "revise", status: p?.status ?? "todo" };
+      // An optional card is never something left to do (unless the teacher asked for a revision of it).
+      if (m.optional && p?.review?.verdict !== "revise") continue;
+      const t: Todo = { m, lesson: l, week: w.title, due: dueOf(m, now), revise: p?.review?.verdict === "revise", status: p?.status ?? "todo" };
+      // A meeting that has happened is nothing left to do (it can't be caught up on).
+      if (isMeeting(m) && t.due?.label.startsWith("Met ")) continue;
       if (near || t.revise || t.due?.tone === "late" || t.due?.tone === "soon") out.push(t);
     }
   });
@@ -205,7 +209,10 @@ export function recommend(state: CourseState, studentId: string, now: number): R
   if (untried.length >= 2) recs.push({ id: "fb", kind: "feedback", title: `${untried.length} pieces of feedback to try`, text: `Latest from ${untried[0].from}: “${(untried[0].next ?? untried[0].text).slice(0, 90)}”` });
 
   const soon = todos.filter((t) => t.due?.tone === "soon" && !t.revise);
-  if (soon.length) recs.push({ id: "soon", kind: "soon", title: `“${soon[0].m.title}” is ${soon[0].due!.label.toLowerCase()}`, text: soon.length > 1 ? `And ${soon.length - 1} more due in the next two days.` : "Plan time for it today.", moduleId: soon[0].m.id, lessonId: soon[0].lesson.id });
+  // A meeting coming up says when to join; work due soon says when it's due.
+  if (soon.length) recs.push(isMeeting(soon[0].m)
+    ? { id: "soon", kind: "soon", title: `“${soon[0].m.title}”: ${soon[0].due!.label.replace(/^Meeting /, "").toLowerCase()}`, text: "Join from the card when it starts.", moduleId: soon[0].m.id, lessonId: soon[0].lesson.id }
+    : { id: "soon", kind: "soon", title: `“${soon[0].m.title}” is ${soon[0].due!.label.toLowerCase()}`, text: soon.length > 1 ? `And ${soon.length - 1} more due in the next two days.` : "Plan time for it today.", moduleId: soon[0].m.id, lessonId: soon[0].lesson.id });
 
   return recs.slice(0, 5);
 }

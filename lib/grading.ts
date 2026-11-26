@@ -95,6 +95,9 @@ export function dueInfo(due: string | undefined, now: number): { label: string; 
   return { label, tone: days <= 2 ? "soon" : "later" };
 }
 
+/** A card with a meeting link (Zoom, Meet, Teams…): its date is when the meeting is, not a deadline. */
+export const isMeeting = (m: Pick<Module, "attachments">) => (m.attachments ?? []).some((a) => a.kind === "link" && !!meetingOf(a.url));
+
 /** A card's date as students see it: a due date, or, on a card with a meeting link, when the meeting is (with its time). */
 export function dueOf(m: Pick<Module, "due" | "dueTime" | "attachments">, now: number): { label: string; tone: "late" | "soon" | "later" } | undefined {
   const service = (m.attachments ?? []).map((a) => (a.kind === "link" ? meetingOf(a.url) : undefined)).find(Boolean);
@@ -115,7 +118,8 @@ export function dueOf(m: Pick<Module, "due" | "dueTime" | "attachments">, now: n
 /** Finished, for counting and lateness. A card group finished once stays finished while the student tries it again. */
 export const isFinished = (m: Module, p: Progress | undefined) => p?.status === "done" || (m.type === "group" && !!p?.tries?.length);
 
-export const isLate = (m: Module, p: Progress | undefined, now: number) => !!m.due && !isFinished(m, p) && dueAt(m.due) < now;
+// A meeting that has happened isn't late work: its date was when to join, not a deadline.
+export const isLate = (m: Module, p: Progress | undefined, now: number) => !!m.due && !isMeeting(m) && !isFinished(m, p) && dueAt(m.due) < now;
 
 /** A date `n` days from now as YYYY-MM-DD (local). */
 export function isoDay(n: number, from = Date.now()): string {

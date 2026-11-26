@@ -33,7 +33,8 @@ export function CourseRoute({ course, mine, picked, onPick }: {
   }, []);
   const step = (d: number) => box.current?.scrollBy({ left: d * ((box.current.firstElementChild as HTMLElement | null)?.offsetWidth ?? 0), behavior: "smooth" });
 
-  const countable = (l: Lesson) => l.modules.filter((m, i) => !m.choice || l.modules.findIndex((x) => x.choice?.slot === m.choice!.slot) === i);
+  // Optional cards don't count toward a lesson's progress.
+  const countable = (l: Lesson) => l.modules.filter((m, i) => !m.optional && (!m.choice || l.modules.findIndex((x) => x.choice?.slot === m.choice!.slot) === i));
   const stats = (l: Lesson) => {
     const ms = countable(l);
     const done = ms.filter((m) => mine[m.id]?.status === "done").length;

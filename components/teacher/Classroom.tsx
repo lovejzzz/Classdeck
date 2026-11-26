@@ -72,8 +72,9 @@ export function Classroom({
   // Attention cards showing every name, not only the first MANY.
   const [allOf, setAllOf] = useState<Set<string>>(new Set());
   // A student's cards for this lesson; while they haven't picked a path, the versions count once.
-  const statusIn = (sid: string) => {
-    const mine = visibleModules(lesson, sid, state.choices[sid], treeView(course.weeks, progress[sid]), course);
+  // A student's cards in this lesson, with their progress (`counted`: leave out optional cards, for "cards done").
+  const statusIn = (sid: string, counted = false) => {
+    const mine = visibleModules(lesson, sid, state.choices[sid], treeView(course.weeks, progress[sid]), course).filter((m) => !counted || !m.optional);
     const seen = new Set<string>();
     return mine
       .filter((m) => !m.choice || (!seen.has(m.choice.slot) && (seen.add(m.choice.slot), true)))
@@ -152,7 +153,7 @@ export function Classroom({
   ];
   const totals = real.reduce(
     (acc, st) => {
-      const ps = statusIn(st.id);
+      const ps = statusIn(st.id, true);
       acc.cards += ps.length;
       acc.done += ps.filter((p) => p?.status === "done").length;
       return acc;

@@ -24,8 +24,10 @@ export function gradeRows(state: CourseState, now: number) {
         cards.push({ m, week: w.title, lessonId: l.id });
       }
     }
-    const done = cards.filter(({ m }) => isFinished(m, mine[m.id])).length;
-    const late = cards.filter(({ m }) => isLate(m, mine[m.id], now)).length;
+    // Optional cards don't count toward finishing (or the certificate).
+    const counted = cards.filter(({ m }) => !m.optional);
+    const done = counted.filter(({ m }) => isFinished(m, mine[m.id])).length;
+    const late = counted.filter(({ m }) => isLate(m, mine[m.id], now)).length;
     // A card group of questions counts once all its questions are answered, by its best try (a group with tries
     // counts while the student is on another try too).
     const shown = new Set(cards.map(({ m }) => m.id));
@@ -57,7 +59,7 @@ export function gradeRows(state: CourseState, now: number) {
     // Self-ratings from any card (a rating poll, a form), latest wins: the same picture the student's own suggestions use.
     const rated = cards.filter(({ m }) => mine[m.id]?.ratings).sort((a, b) => mine[a.m.id].updatedAt - mine[b.m.id].updatedAt);
     for (const { m } of rated) Object.assign(self, mine[m.id].ratings);
-    return { st, total: cards.length, done, late, quizPct, scored, reviews, waiting, toReview, teacher, self };
+    return { st, total: counted.length, done, late, quizPct, scored, reviews, waiting, toReview, teacher, self };
   });
 }
 export type GradeRow = ReturnType<typeof gradeRows>[number];
