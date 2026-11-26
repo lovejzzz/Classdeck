@@ -1,11 +1,20 @@
-import { getSession, isAdmin, unauthorized } from "@/lib/auth";
+import { getSession, isAdmin, teacherOf, unauthorized } from "@/lib/auth";
+import { aiOf, courseAi } from "@/lib/aifeedback";
 import { builtinIds, allConnectors, describe } from "@/lib/connectors/registry";
 import { validateManifest } from "@/lib/connectors/declarative";
 import { ConnectorError } from "@/lib/connectors/types";
 import { db, save } from "@/lib/store";
 
-export async function GET() {
-  return Response.json({ connectors: allConnectors().map(describe) });
+/**
+ * Every connector, and whether it's ready. AI tools are ready with the teacher's own AI (theirs, or for a course, its
+ * owner's: `?courseId=`). `canAdd`: this person may add their own API (the site owner).
+ */
+export async function GET(request: Request) {
+  const session = getSession(request);
+  const courseId = new URL(request.url).searchParams.get("courseId");
+  const course = courseId ? db().courses[courseId] : undefined;
+  const aiReady = !!aiOf(teacherOf(session)) || (!!course && !!courseAi(course));
+  return Response.json({ connectors: allConnectors().map((c) => describe(c, aiReady)), canAdd: isAdmin(session) });
 }
 
 /** 添加一个自定义的声明式连接器。 */

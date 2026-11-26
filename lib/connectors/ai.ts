@@ -2,7 +2,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import Anthropic from "@anthropic-ai/sdk";
-import { ConnectorError, type Connector } from "./types";
+import { ConnectorError, type Connector, type InvokeContext } from "./types";
+import { AiError, ask } from "../aifeedback";
 
 const MODEL = process.env.LMS_AI_MODEL || "claude-opus-5-5";
 // 这些模型支持服务器端的拒答回退：主模型拒答时由 API 自动换一个模型重试。
@@ -45,7 +46,15 @@ Test understanding, not recall of exact wording. Make wrong options plausible mi
 const cardContext = (ctx: { moduleTitle?: string; moduleBody?: string; moduleCriteria?: string }) =>
   ctx.moduleTitle ? `Card: “${ctx.moduleTitle}”\n${ctx.moduleBody ?? ""}${ctx.moduleCriteria ? `\nDone when: ${ctx.moduleCriteria}` : ""}\n\n` : "";
 
-export async function complete(system: string, user: string): Promise<string> {
+export async function complete(system: string, user: string, use?: InvokeContext["ai"]): Promise<string> {
+  // The teacher's own AI (Settings → Tools for cards), when they've connected one.
+  if (use) {
+    try {
+      return (await ask(use.provider, use.key, use.model, system, user)) || "The AI didn't answer. Please try again.";
+    } catch (e) {
+      throw new ConnectorError("upstream", e instanceof AiError ? e.message : "The AI didn't answer. Please try again.");
+    }
+  }
   let client: Anthropic;
   try {
     client = new Anthropic();
@@ -80,12 +89,14 @@ export async function complete(system: string, user: string): Promise<string> {
 export const ai: Connector = {
   id: "ai",
   name: "AI tutor",
+  usesAi: true,
   description: "Hints instead of answers, feedback on drafts, practice questions, and simpler explanations, all aware of the card a student is on. Teachers can draft quiz questions and summarize walls.",
   icon: "🧑‍🏫",
   kind: "builtin",
   category: "AI",
   host: "api.anthropic.com",
-  requiresEnv: ["ANTHROPIC_API_KEY"],
+  // Ready with the teacher's own AI (Settings), or a key on the server.
+  requiresEnv: ["your AI key (Settings)"],
   actions: [
     {
       id: "ask",
@@ -115,7 +126,7 @@ export const ai: Connector = {
     },
     {
       id: "summarize",
-      title: "Summarize a wall",
+      title: "Summarize a discussion",
       teacherOnly: true,
       inputs: [{ name: "text", label: "Posts", type: "textarea" }],
     },
@@ -129,32 +140,32 @@ export const ai: Connector = {
       const q = (input.question ?? "").trim();
       if (!q) throw new ConnectorError("bad_input", "Write your question first");
       const context = ctx.moduleTitle ? `The student is working on the card “${ctx.moduleTitle}”.\nCard content:\n${ctx.moduleBody ?? ""}\n\n` : "";
-      return { render: "text", text: await complete(TUTOR, `${context}Student's question: ${q}`) };
+      return { render: "text", text: await complete(TUTOR, `${context}Student's question: ${q}`, ctx.ai) };
     }
     if (action === "feedback") {
       const draft = (input.draft ?? "").trim();
       if (draft.length < 20) throw new ConnectorError("bad_input", "Paste a little more of your draft first");
-      return { render: "text", text: await complete(COACH, `${cardContext(ctx)}Student's draft:\n${draft}`) };
+      return { render: "text", text: await complete(COACH, `${cardContext(ctx)}Student's draft:\n${draft}`, ctx.ai) };
     }
     if (action === "quizme") {
       const topic = (input.topic ?? "").trim();
       if (!topic && !ctx.moduleTitle) throw new ConnectorError("bad_input", "Enter a topic");
-      return { render: "text", text: await complete(QUIZZER, `${cardContext(ctx)}${topic ? `Student's topic: ${topic}` : "Use the card's content."}`) };
+      return { render: "text", text: await complete(QUIZZER, `${cardContext(ctx)}${topic ? `Student's topic: ${topic}` : "Use the card's content."}`, ctx.ai) };
     }
     if (action === "simplify") {
       const text = (input.text ?? "").trim();
       if (!text) throw new ConnectorError("bad_input", "Paste the text to simplify");
-      return { render: "text", text: await complete(SIMPLIFIER, text) };
+      return { render: "text", text: await complete(SIMPLIFIER, text, ctx.ai) };
     }
     if (action === "draftquiz") {
       const text = (input.text ?? "").trim();
       if (!text) throw new ConnectorError("bad_input", "Paste the text or describe the topic");
-      return { render: "text", text: await complete(QUESTION_WRITER, text) };
+      return { render: "text", text: await complete(QUESTION_WRITER, text, ctx.ai) };
     }
     if (action === "summarize") {
       const text = (input.text ?? "").trim();
       if (!text) throw new ConnectorError("bad_input", "The wall is empty");
-      return { render: "text", text: await complete(SUMMARIZER, text) };
+      return { render: "text", text: await complete(SUMMARIZER, text, ctx.ai) };
     }
     throw new ConnectorError("bad_input", "Unknown action");
   },

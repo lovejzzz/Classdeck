@@ -11,6 +11,8 @@ import { noteOf, rankModels } from "../lib/aimeta";
 import { probe } from "../lib/aifeedback";
 import { startSession } from "../lib/auth";
 import { GET as aiGet, POST as aiPost } from "../app/api/ai/route";
+import { GET as toolsGet } from "../app/api/connectors/route";
+import { ai as tutor } from "../lib/connectors/ai";
 import { UPLOAD_DIR } from "../lib/uploads";
 import type { Module, Progress } from "../lib/types";
 
@@ -182,6 +184,19 @@ async function main() {
   check("cards now use Gemini with its own key", d.users["u-set"].ai?.provider === "gemini" && openKey(d.users["u-set"].ai!.key) === "AIza-gemini-key-1234567890", d.users["u-set"].ai?.provider);
   r = await (await aiGet(req())).json();
   check("reading the setup shows both saved keys", Object.keys(r.ai.providers).sort().join() === "gemini,openai", r.ai);
+
+  // The AI tutor's tools run on the teacher's own AI, and show as ready once it's connected.
+  reply = (url) => url.includes(":generateContent") ? json({ candidates: [{ content: { parts: [{ text: "Try thinking about what the plant needs." }] } }] }) : services(url);
+  const out = await tutor.invoke("ask", { question: "Why do plants need light?" }, { ai: { provider: "gemini", key: "AIza-x", model: "gemini-3.8-flash" }, moduleTitle: "Plants" });
+  check("the tutor answers with the teacher's AI", out.render === "text" && /plant needs/.test((out as { text: string }).text), out);
+  check("using the teacher's key", calls.some((c) => c.url.includes(":generateContent") && (c.init?.headers as Record<string, string>)["x-goog-api-key"] === "AIza-x"), null);
+  const tools = await (await toolsGet(req())).json();
+  const aiTool = tools.connectors.find((c: { id: string }) => c.id === "ai");
+  check("with an AI connected, the AI tools are ready", aiTool?.configured === true && aiTool.usesAi === true, aiTool);
+  d.users["u-none"] = { id: "u-none", email: "none@example.test", name: "None", hash: "", salt: "", createdAt: Date.now() };
+  const noneCookie = startSession({ kind: "teacher", userId: "u-none" } as never).split(";")[0];
+  const noneTools = await (await toolsGet(new Request("http://x/api/connectors", { headers: { cookie: noneCookie } }))).json();
+  check("without one, they wait for a key", !!process.env.ANTHROPIC_API_KEY || noneTools.connectors.find((c: { id: string }) => c.id === "ai")?.configured === false, null);
 
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);

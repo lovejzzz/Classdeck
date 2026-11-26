@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   // The Google client id is public: it's what the "Sign in with Google" button needs.
   const google = process.env.GOOGLE_CLIENT_ID || null;
   // An account (it can teach some courses and be a student in others). "teacher" is its kind for older pages.
-  if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email, picture: t.picture ?? null, firstRole: t.firstRole ?? null, google });
+  if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email, picture: t.picture ?? null, firstRole: t.firstRole ?? null, google, signIn: { password: !!t.hash, google: !!t.google }, since: t.createdAt });
   if (s?.kind === "student" && s.courseId) {
     const c = db().courses[s.courseId];
     const st = c?.students.find((x) => x.id === s.studentId) ?? c?.waiting?.find((x) => x.id === s.studentId);
@@ -160,6 +160,16 @@ export async function POST(request: Request) {
     }
     case "logout":
       return Response.json({ ok: true }, { headers: { "Set-Cookie": endSession(request) } });
+    case "setName": {
+      // The account's own name (shown to co-teachers and on courses they make). Names in a class are set per class.
+      const t = teacherOf(getSession(request));
+      if (!t) return fail("Sign in first", 401);
+      const name = String(body.name ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+      if (!name) return fail("Your name can’t be empty");
+      db().users[t.id].name = name;
+      save();
+      return Response.json({ ok: true, name });
+    }
     case "setPicture": {
       // A photo of their own: a picture this account uploaded (or none, to go back to Google's, or the initial).
       const t = teacherOf(getSession(request));

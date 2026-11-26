@@ -5,6 +5,7 @@ import { ConnectorError } from "@/lib/connectors/types";
 import { findLesson, visibleModules } from "@/lib/profile";
 import { db, logEvent, save } from "@/lib/store";
 import { treeView } from "@/lib/branching";
+import { aiOf, courseAi } from "@/lib/aifeedback";
 
 // 网关：浏览器永远不直接访问外部 API。所有调用都从这里走，在这里做四件事：
 //   1. 这门课启用了这个连接器吗？
@@ -75,7 +76,9 @@ export async function POST(request: Request) {
       ctx = { moduleTitle: mod.title, moduleBody: mod.body, moduleCriteria: mod.criteria };
     }
 
-    const result = await connector.invoke(action, input, ctx);
+    // AI tools run on the teacher's own AI: their own when they use it themselves, the course owner's for students.
+    const ai = (!studentId ? aiOf(teacherOf(session)) : null) ?? courseAi(course);
+    const result = await connector.invoke(action, input, { ...ctx, ...(ai ? { ai } : {}) });
 
     if (studentId) {
       const log = (db().toolLog[courseId] ??= []);

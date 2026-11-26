@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.97",
+    date: "2026-11-26",
+    changes: [
+      "Settings has two tabs. Tools for cards starts with AI: connect your own AI once and it shows everything that key turns on (AI feedback when students hand in, video analysis with Gemini, and the AI tutor’s tools: ask the tutor, feedback on a draft, quiz me, explain it simpler, and for you, draft quiz questions and summarize a discussion). Below it, the other tools are one compact row each, by category; open a row to try it.",
+      "The AI tutor’s tools now run on the teacher’s own AI (the course owner’s for students), so they work as soon as an AI is connected, with no key needed on the server.",
+      "Adding your own API is folded away at the bottom, and only the site owner sees it.",
+      "Your account: your photo, name (change it there), email, how you sign in, and Sign out.",
+    ],
+  },
+  {
     version: "0.2.96",
     date: "2026-11-26",
     changes: [

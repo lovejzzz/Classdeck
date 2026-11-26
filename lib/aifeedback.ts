@@ -111,7 +111,7 @@ export async function probe(provider: AiProvider, key: string, model: string): P
 
 type Video = { bytes: Buffer; mime: string; fps: number };
 
-async function ask(provider: AiProvider, key: string, model: string, system: string, text: string, video?: Video): Promise<string> {
+export async function ask(provider: AiProvider, key: string, model: string, system: string, text: string, video?: Video): Promise<string> {
   if (provider === "anthropic") {
     const client = new Anthropic({ apiKey: key });
     try {
@@ -201,12 +201,18 @@ async function videoBytes(a: Attachment): Promise<Buffer | null> {
 }
 
 /** Whether a card gives AI feedback right now: switched on for the card, and the course's owner has set up AI. */
-export function aiFor(course: Course, m: Module): { provider: AiProvider; key: string; model: string } | null {
-  if (!m.aiFeedback) return null;
-  const owner = course.ownerId ? db().users[course.ownerId] : undefined;
-  const ai = owner?.ai;
+export type AiUse = { provider: AiProvider; key: string; model: string };
+/** The AI a person has in use (Settings → Tools for cards), with its key opened, or null. */
+export function aiOf(user: { ai?: { provider: AiProvider; key: string; model: string } } | undefined): AiUse | null {
+  const ai = user?.ai;
   const key = ai ? openKey(ai.key) : null;
   return ai && key ? { provider: ai.provider, key, model: ai.model } : null;
+}
+/** The AI a course uses: its owner's. */
+export const courseAi = (course: Course): AiUse | null => aiOf(course.ownerId ? db().users[course.ownerId] : undefined);
+
+export function aiFor(course: Course, m: Module): AiUse | null {
+  return m.aiFeedback ? courseAi(course) : null;
 }
 
 /**

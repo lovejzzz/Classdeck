@@ -24,7 +24,8 @@ export function getConnector(id: string) {
   return allConnectors().find((c) => c.id === id);
 }
 
-export function describe(c: Connector): ConnectorInfo {
+/** How a connector looks to a browser. `aiReady`: the person (or the course's owner) has connected their own AI. */
+export function describe(c: Connector, aiReady = false): ConnectorInfo {
   return {
     id: c.id,
     name: c.name,
@@ -33,8 +34,9 @@ export function describe(c: Connector): ConnectorInfo {
     kind: c.kind,
     category: c.category,
     host: c.host,
-    configured: c.configured(),
+    configured: c.configured() || (!!c.usesAi && aiReady),
     requiresEnv: c.requiresEnv ?? [],
+    usesAi: c.usesAi,
     actions: c.actions,
   };
 }

@@ -60,7 +60,7 @@ export default function TeachPage() {
   // Back from Student View: this is the teacher again, not the student they were testing as.
   if (typeof window !== "undefined") setPreview(null);
   const { state, error, refresh, needAuth, authDetail } = useCourse(courseId, undefined, 3000);
-  const { connectors } = useConnectors();
+  const { connectors } = useConnectors(courseId);
   // A note left by the page that made this course (what a course file made), said once the course is on screen.
   const loaded = !!state;
   useEffect(() => {

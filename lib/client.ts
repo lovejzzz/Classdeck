@@ -168,19 +168,23 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
   return { state, error, refresh, needAuth, authDetail };
 }
 
-export function useConnectors() {
+export function useConnectors(courseId?: string) {
   const [list, setList] = useState<ConnectorInfo[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // Whether this person may add their own API (the site owner).
+  const [canAdd, setCanAdd] = useState(false);
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/connectors", { cache: "no-store" });
-    setList((await res.json()).connectors);
+    const res = await fetch(`/api/connectors${courseId ? `?courseId=${encodeURIComponent(courseId)}` : ""}`, { cache: "no-store" });
+    const j = await res.json();
+    setList(j.connectors);
+    setCanAdd(!!j.canAdd);
     setLoaded(true);
-  }, []);
+  }, [courseId]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 取数据后才更新状态
     refresh();
   }, [refresh]);
-  return { connectors: list, refresh, loaded };
+  return { connectors: list, refresh, loaded, canAdd };
 }
 
 export type InvokeReply = { ok: true; result: ToolResult } | { ok: false; error: string; code?: string };

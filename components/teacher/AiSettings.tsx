@@ -29,7 +29,7 @@ function StatusLine({ status, busy, model }: { status?: AiStatus; busy: boolean;
  * its key (checked and saved as soon as it's pasted), pick a model (saved as soon as it's picked). The light says
  * whether the key has credit.
  */
-export function AiSettings() {
+export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: what a connected AI unlocks on cards. */ aiTools?: { id: string; title: string; teacherOnly?: boolean }[] }) {
   const [setup, setSetup] = useState<AiSetup | null | undefined>(undefined);
   const [teacher, setTeacher] = useState(true);
   const [provider, setProvider] = useState<AiProvider>("gemini");
@@ -101,10 +101,10 @@ export function AiSettings() {
     <section id="ai" className="card p-6">
       <div className="flex items-center gap-2">
         <Icon name="sparkles" size={16} />
-        <h2 className="flex-1 text-[16px] font-semibold">AI feedback</h2>
+        <h2 className="flex-1 text-[16px] font-semibold">AI</h2>
         {setup?.active && <span className="chip h-6 bg-ok/10 text-[11.5px] text-ok">In use · {providerMeta(setup.active).name}</span>}
       </div>
-      <p className="mt-1 text-[13px] text-ink-3">Connect your own AI account. Then, on any question card, turn on <span className="font-medium text-ink-2">Allow AI feedback</span> (in the card’s Access) and students get feedback from it as soon as they hand in. You pay the AI service for what it uses.</p>
+      <p className="mt-1 text-[13px] text-ink-3">Connect your own AI account once and every AI tool works on your cards, in all your courses. You pay the AI service for what it uses.</p>
 
       <div className="mt-4 grid gap-2.5 md:grid-cols-3" role="radiogroup" aria-label="AI service">
         {AI_PROVIDERS.map((p) => {
@@ -162,6 +162,23 @@ export function AiSettings() {
           )}
         </label>
       )}
+
+      {/* What the key unlocks: on (green) once an AI is in use, waiting (grey) until then. */}
+      <div className="mt-5 rounded-xl bg-[#fafaf9] px-4 py-3.5">
+        <div className="mb-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{setup?.active ? "Your AI powers" : "Connecting an AI turns on"}</div>
+        <ul className="grid gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2">
+          {[
+            { id: "fb", title: "AI feedback when students hand in", hint: "Turn it on per card, in the card’s Access" },
+            ...(setup?.active === "gemini" || (!setup?.active && provider === "gemini") ? [{ id: "video", title: "Video analysis of students’ recordings", hint: "With Gemini" }] : []),
+            ...aiTools.map((a) => ({ id: a.id, title: a.title, hint: a.teacherOnly ? "For you, in the card editor" : "A tool students use on a card" })),
+          ].map((x) => (
+            <li key={x.id} className="flex items-start gap-2">
+              <span className={`mt-[3px] grid h-4 w-4 flex-none place-items-center rounded-full ${setup?.active ? "bg-ok text-white" : "bg-line text-ink-3"}`}><Icon name={setup?.active ? "check" : "lock"} size={9} /></span>
+              <span><span className={setup?.active ? "text-ink" : "text-ink-2"}>{x.title}</span> <span className="text-[12px] text-ink-3">· {x.hint}</span></span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="mt-4 space-y-1">
         {error && <p className="flex items-center gap-2 text-[12.5px] text-bad" role="alert"><span className="h-2 w-2 flex-none rounded-full bg-bad" />{error}</p>}

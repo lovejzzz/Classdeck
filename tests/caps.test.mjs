@@ -158,6 +158,13 @@ async function main() {
   check("another account sees only its own AI setup (none)", other.ai?.active === null || other.status === 401, other);
   check("the teacher has no AI set up yet", (await A.get("/api/ai")).ai?.active === null, null);
 
+  // Your account: a new name is saved; an empty one isn't.
+  const nm = await A.post("/api/auth", { action: "setName", name: "  Ms   Rivera " });
+  check("a teacher changes their name", nm.ok && nm.name === "Ms Rivera" && (await A.get("/api/auth")).name === "Ms Rivera", nm);
+  check("an empty name is refused", (await A.post("/api/auth", { action: "setName", name: "  " })).ok === false, null);
+  const me = await A.get("/api/auth");
+  check("the account says how it signs in", me.signIn?.password === true && typeof me.since === "number", me.signIn);
+
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);
   process.exit(failures.length ? 1 : 0);

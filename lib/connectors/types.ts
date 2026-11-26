@@ -36,6 +36,8 @@ export type ToolResult =
   | { render: "gallery"; items: { title: string; image: string; url?: string; credit?: string }[] };
 
 export interface InvokeContext {
+  /** The AI to use (the teacher's own, from Settings): AI tools use it instead of the server's key. */
+  ai?: { provider: import("../aimeta").AiProvider; key: string; model: string };
   moduleTitle?: string;
   moduleBody?: string;
   moduleCriteria?: string;
@@ -50,6 +52,8 @@ export interface Connector {
   category: Category;
   /** 需要的服务器环境变量。缺少时显示为“未配置”。 */
   requiresEnv?: string[];
+  /** Runs on AI: ready once the teacher has connected their own AI in Settings (or the server has a key). */
+  usesAi?: boolean;
   host?: string;
   actions: ActionSpec[];
   configured(): boolean;
@@ -102,5 +106,6 @@ export interface ConnectorInfo {
   host?: string;
   configured: boolean;
   requiresEnv: string[];
+  usesAi?: boolean;
   actions: ActionSpec[];
 }

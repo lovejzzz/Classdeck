@@ -81,7 +81,7 @@ export default function LearnPage() {
   const testing = useSearchParams().has("preview");
   if (typeof window !== "undefined") setPreview(testing ? studentId : null);
   const { state, error, refresh, needAuth } = useCourse(courseId, studentId);
-  const { connectors } = useConnectors();
+  const { connectors } = useConnectors(courseId);
   const query = useQuery();
   const narrow = useNarrow();
   const router = useRouter();
