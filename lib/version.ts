@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.92",
+    date: "2026-11-26",
+    changes: [
+      "Two new ways to start a course, from the CaPS V4 program flows, Weeks 0 to 7. Flow 1: an intro survey, a one-minute personal pitch, then each week students pick a track (elevator pitch, presentation, interviewing) that deals its Virtual Speech practice card. Flow 2: an intro survey and a Speech Starter worksheet, then a set topic each week; students tick the focus areas they want, and each tick deals its video (Week 0’s picks deal Week 1’s). Every week ends with the Collab session’s agenda and link, peer feedback in parts, and one thing to work on.",
+      "The New course window scrolls when its choices don’t fit.",
+    ],
+  },
+  {
     version: "0.2.91",
     date: "2026-11-26",
     changes: [

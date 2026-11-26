@@ -7,6 +7,7 @@ import { r2Ready, remove } from "@/lib/blob";
 import { db, listCourses, removeCourse, save } from "@/lib/store";
 import { UPLOAD_DIR } from "@/lib/uploads";
 import { standardWeek } from "@/lib/templates";
+import { capsFlow1, capsFlow2 } from "@/lib/capsflows";
 import { makeCourse } from "@/lib/newcourse";
 import { cleanCourseWiring, treeView } from "@/lib/branching";
 import { visibleModules } from "@/lib/profile";
@@ -85,6 +86,8 @@ export async function POST(request: Request) {
     save();
     return Response.json({ ok: true, id: c.id });
   }
+  // A CaPS V4 program flow: built as a course file, so it goes in the same way (ids made fresh, links kept).
+  if (body.start === "caps1" || body.start === "caps2") body.file = body.start === "caps1" ? capsFlow1() : capsFlow2();
   // From a course file: its weeks, lessons and cards, wired as they were (a name typed here wins over the file's).
   if (body.file !== undefined) {
     const f = readCourseFile(body.file);

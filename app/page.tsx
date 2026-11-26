@@ -229,7 +229,7 @@ function NewCourse({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
-  const [start, setStart] = useState<"blank" | "template" | "file">("blank");
+  const [start, setStart] = useState<"blank" | "template" | "caps1" | "caps2" | "file">("blank");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // A course file picked to make the course from: its contents, and a line saying what's in it.
@@ -268,13 +268,13 @@ function NewCourse({ onClose }: { onClose: () => void }) {
     else { setBusy(false); setError(r.error ?? "That didn’t work"); }
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/25 p-4 pt-[12vh]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form role="dialog" aria-modal="true" aria-label="New course" onSubmit={create} className="pop w-full max-w-md space-y-3 rounded-2xl bg-white p-6 shadow-[0_30px_80px_-24px_rgba(20,20,18,0.45)]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/25 p-4 pt-[8vh]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <form role="dialog" aria-modal="true" aria-label="New course" onSubmit={create} className="pop max-h-[84vh] w-full max-w-md space-y-3 overflow-y-auto rounded-2xl bg-white p-6 shadow-[0_30px_80px_-24px_rgba(20,20,18,0.45)]">
         <h2 className="text-[20px] font-medium tracking-tight">New course</h2>
         <Clearable><input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course name" aria-label="Course name" className="field h-11 text-[14px]" /></Clearable>
         <Clearable><input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Subtitle (optional), e.g. Spring 2027 · Tuesdays" aria-label="Subtitle" className="field" /></Clearable>
         <div className="grid gap-1.5">
-          {([["blank", "Start blank", "One empty week."], ["template", "Standard weeks", "Three weeks with a ready-made rhythm: goal, example, quick check, task, discussion, reflection."], ["file", "From a course file", "A Questhand course file (.json): its weeks, lessons and cards, wired as they were."]] as const).map(([k, label, hint]) => (
+          {([["blank", "Start blank", "One empty week."], ["template", "Standard weeks", "Three weeks with a ready-made rhythm: goal, example, quick check, task, discussion, reflection."], ["caps1", "CaPS Flow 1: three tracks", "Weeks 0–7. A personal pitch in Week 1, then each week students pick a track (pitch, presentation, interviewing) to practise in Virtual Speech before the Collab session."], ["caps2", "CaPS Flow 2: sequenced", "Weeks 0–7. A Speech Starter, then a set topic each week: students pick focus areas that deal their videos, practise on camera, and bring their best take to the Collab session."], ["file", "From a course file", "A Questhand course file (.json): its weeks, lessons and cards, wired as they were."]] as const).map(([k, label, hint]) => (
             <label key={k} className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 text-[13px] transition-colors ${start === k ? "border-ink" : "border-line hover:border-line-strong"}`}>
               <input type="radio" name="start" checked={start === k} onChange={() => setStart(k)} className="mt-0.5 accent-[#1b1b1a]" />
               <span><span className="font-medium">{label}</span><span className="block text-[12px] text-ink-3">{hint}</span></span>
