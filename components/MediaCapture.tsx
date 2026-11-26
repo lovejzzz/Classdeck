@@ -214,7 +214,7 @@ export function MediaCapture({ video, screen = false, onKeep, onCancel, label, c
             {closer && (
               <label className="flex cursor-pointer items-start gap-2 rounded-lg bg-white px-3 py-2 text-[12.5px] text-ink-2">
                 <input type="checkbox" checked={close} onChange={(e) => setClose(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#1b1b1a]" />
-                <span><span className="font-medium text-ink">Look closely at my gestures</span><span className="block text-[11.5px] text-ink-3">The AI watches more frames a second, so it catches quick hand movements. Its feedback takes a little longer.</span></span>
+                <span><span className="font-medium text-ink">Look closely at my gestures</span><span className="block text-[11.5px] text-ink-3">The AI analyzes more frames a second, so it catches quick hand movements. Its feedback takes a little longer.</span></span>
               </label>
             )}
             <div className="flex flex-wrap gap-2">

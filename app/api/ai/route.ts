@@ -2,7 +2,7 @@
 // never comes back to the browser (only its last four characters).
 import { getSession, teacherOf, unauthorized } from "@/lib/auth";
 import { AiError, listModels, openKey, sealKey } from "@/lib/aifeedback";
-import { isProvider, type AiSetup } from "@/lib/aimeta";
+import { isProvider, rankModels, type AiSetup } from "@/lib/aimeta";
 import { save } from "@/lib/store";
 
 const setupOf = (ai?: { provider: AiSetup["provider"]; model: string; tail: string }): AiSetup | null => (ai ? { provider: ai.provider, model: ai.model, keyTail: ai.tail } : null);
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: e instanceof AiError ? e.message : "Couldn’t check that key" }, { status: 400 });
   }
   if (body.action === "models") return Response.json({ ok: true, models });
-  const model = typeof body.model === "string" && models.some((m) => m.id === body.model) ? body.model : models[0]?.id;
+  const model = typeof body.model === "string" && models.some((m) => m.id === body.model) ? body.model : rankModels(body.provider, models).top[0]?.id ?? models[0]?.id;
   if (!model) return Response.json({ ok: false, error: "That key has no models to use" }, { status: 400 });
   t.ai = { provider: body.provider, model, key: sealKey(key), tail: key.slice(-4) };
   save();

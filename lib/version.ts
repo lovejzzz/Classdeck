@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.95",
+    date: "2026-11-26",
+    changes: [
+      "Choosing an AI model is simpler: the list starts with the most used ones (for Gemini, the newest Flash, Pro and Flash Lite; for Claude, Sonnet, Opus and Haiku; for ChatGPT, the main model and its mini), each saying what it’s good for, and the rest follow below. Models made for other jobs (computer use, robotics, transcription) are left out.",
+      "Each AI service’s strengths are short labels now, and the one that can analyze students’ videos says “Analyzes video” (it read “Watches video”, which sounded like a video to watch).",
+    ],
+  },
+  {
     version: "0.2.94",
     date: "2026-11-26",
     changes: [

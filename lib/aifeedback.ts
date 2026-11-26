@@ -72,7 +72,7 @@ export async function listModels(provider: AiProvider, key: string): Promise<{ i
   if (!r.ok) throw new AiError(why(r.status, "Google"));
   const j = (await r.json()) as { models?: { name: string; displayName?: string; supportedGenerationMethods?: string[] }[] };
   return (j.models ?? [])
-    .filter((m) => m.name.includes("gemini") && m.supportedGenerationMethods?.includes("generateContent") && !/(embedding|tts|image|audio|live)/.test(m.name))
+    .filter((m) => m.name.includes("gemini") && m.supportedGenerationMethods?.includes("generateContent") && !/(embedding|tts|image|audio|live|transcribe|robotics|computer-use|gemma|aqa)/.test(m.name))
     .map((m) => ({ id: m.name.replace(/^models\//, ""), name: m.displayName || m.name }))
     .reverse();
 }

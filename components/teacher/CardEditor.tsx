@@ -627,7 +627,7 @@ export function CardEditor({
                     Allow AI feedback
                   </label>
                   <span className="mt-0.5 block text-[11.5px] text-ink-3">
-                    {ai === undefined ? "" : ai ? <>When a student hands in, {providerMeta(ai.provider).name} ({ai.model}) gives them feedback right away{providerMeta(ai.provider).watchesVideo ? ", watching their video too" : ", from their writing and the transcripts of their recordings"}.</>
+                    {ai === undefined ? "" : ai ? <>When a student hands in, {providerMeta(ai.provider).name} ({ai.model}) gives them feedback right away{providerMeta(ai.provider).watchesVideo ? ", analyzing their video too" : ", from their writing and the transcripts of their recordings"}.</>
                       : <>Connect your AI first in <a href="/settings#ai" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">Settings → AI feedback</a>.</>}
                     {m.aiFeedback && ai === null && <span className="text-[#a0561f]"> Without an AI connected, students get no AI feedback on this card.</span>}
                   </span>

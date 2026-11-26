@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "../Icon";
-import { AI_PROVIDERS, providerMeta, type AiProvider, type AiSetup } from "@/lib/aimeta";
+import { AI_PROVIDERS, providerMeta, rankModels, type AiProvider, type AiSetup } from "@/lib/aimeta";
 import { toast } from "@/lib/toast";
 
 /** The teacher's own AI for feedback: the service is chosen with what each is good at, then their key and a model. */
@@ -39,7 +39,7 @@ export function AiSettings() {
     setBusy("models");
     const r = await call("models");
     setBusy(null);
-    if (r?.models) { setModels(r.models); if (!r.models.some((m) => m.id === model)) setModel(r.models[0]?.id ?? ""); }
+    if (r?.models) { setModels(r.models); if (!r.models.some((m) => m.id === model)) setModel(rankModels(provider, r.models).top[0]?.id ?? r.models[0]?.id ?? ""); }
   }
   async function saveIt() {
     setBusy("save");
@@ -57,6 +57,9 @@ export function AiSettings() {
 
   if (!teacher) return null;
   const meta = providerMeta(provider);
+  const ranked = rankModels(provider, models);
+  const picked = [...ranked.top, ...ranked.more].find((m) => m.id === model);
+  const watchAll = models.length > 0 && [...ranked.top, ...ranked.more].every((m) => m.video);
   const savedHere = setup?.provider === provider;
   return (
     <section id="ai" className="card p-6">
@@ -75,9 +78,15 @@ export function AiSettings() {
               <span className="text-[14px] font-semibold">{p.name}</span>
               <span className="text-[12px] text-ink-3">{p.company}</span>
               <span className="flex-1" />
-              {p.watchesVideo && <span className="chip h-5 bg-[#eef0fb] text-[10.5px] text-[#4b56a8]"><Icon name="video" size={10} /> Watches video</span>}
             </span>
-            <span className="mt-1.5 text-[12px] leading-relaxed text-ink-2">{p.strengths}</span>
+            {/* What it's good at, as labels: green for strengths, amber for a caution. */}
+            <span className="mt-2.5 flex flex-wrap gap-1.5">
+              {p.labels.map((l) => (
+                <span key={l.text} className={`inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11.5px] ${l.tone === "good" ? (l.text === "Analyzes video" ? "bg-[#4b56a8] font-medium text-white" : "bg-ok/10 text-[#256e44]") : l.tone === "note" ? "bg-[#fbf3dd] text-[#8f630b]" : "bg-lane text-ink-2"}`}>
+                  {l.text === "Analyzes video" && <Icon name="video" size={11} />}{l.text}
+                </span>
+              ))}
+            </span>
           </button>
         ))}
       </div>
@@ -101,8 +110,27 @@ export function AiSettings() {
         <span className="mb-1 block text-[12.5px] font-medium text-ink-2">Model <span className="font-normal text-ink-3">(the newest your key can use, from {meta.company})</span></span>
         <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!models.length} className="field h-9 w-full py-0 text-[13px]">
           {!models.length && <option value="">{savedHere ? setup!.model : "Check your key to see the models"}</option>}
-          {models.map((m) => <option key={m.id} value={m.id}>{m.name}{m.name !== m.id ? ` (${m.id})` : ""}</option>)}
+          {ranked.top.length > 0 && (
+            <optgroup label={`Most used${watchAll ? " · all analyze video" : ""}`}>
+              {ranked.top.map((m) => <option key={m.id} value={m.id}>{m.name}{m.note ? ` — ${m.note.replace(/^Most used: /, "").replace(/^./, (c) => c.toLowerCase())}` : ""}{m.video && !watchAll ? " · analyzes video" : ""}</option>)}
+            </optgroup>
+          )}
+          {ranked.more.length > 0 && (
+            <optgroup label={`Other models (${ranked.more.length})${watchAll ? " · all analyze video" : ""}`}>
+              {ranked.more.map((m) => <option key={m.id} value={m.id}>{m.name}{m.video && !watchAll ? " · analyzes video" : ""}</option>)}
+            </optgroup>
+          )}
         </select>
+        {/* What the picked model is good for, and whether it can analyze students' videos. */}
+        {picked && (
+          <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-ink-3">
+            {picked.note && <span>{picked.note}.</span>}
+            {picked.video
+              ? <span className="inline-flex items-center gap-1 text-[#4b56a8]"><Icon name="video" size={11} /> Analyzes students’ videos</span>
+              : <span>Reads writing and the transcripts of recordings; can’t analyze video.</span>}
+            {!picked.note && <span>A less common model: the ones under Most used suit feedback best.</span>}
+          </span>
+        )}
       </label>
 
       {error && <p className="mt-2 text-[12.5px] text-bad" role="alert">{error}</p>}

@@ -7,6 +7,7 @@ import { db } from "../lib/store";
 import { makeCourse } from "../lib/newcourse";
 import { aiFor, listModels, openKey, sealKey, startAiFeedback } from "../lib/aifeedback";
 import { cleanCard } from "../lib/cleancard";
+import { rankModels } from "../lib/aimeta";
 import { UPLOAD_DIR } from "../lib/uploads";
 import type { Module, Progress } from "../lib/types";
 
@@ -124,6 +125,22 @@ async function main() {
   startAiFeedback(course, quiz, "s1", pq);
   await until(() => calls.length > 0);
   check("a quiz answer is read, with whether it was right", String(calls[0]?.init?.body).includes("Your CV (not right)"), calls[0]?.init?.body);
+
+  // The model list: the most used first (newest Flash, Pro, Flash Lite), special-purpose ones left out, video marked.
+  const names = ["gemini-2.5-computer-use-preview-10-2025", "gemini-robotics-er-2-preview", "gemini-4-neon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.9-flash-preview", "gemini-3.5-transcribe", "gemini-omni-1.2-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash-lite", "gemini-3.5-pro", "gemini-3.7-pro-preview", "gemini-3.5-flash"];
+  reply = () => json({ models: names.map((n) => ({ name: `models/${n}`, displayName: n, supportedGenerationMethods: ["generateContent"] })) });
+  const listed = await listModels("gemini", "AIza-x");
+  check("tools for other jobs aren't offered", !listed.some((m) => /computer-use|robotics|transcribe/.test(m.id)), listed.map((m) => m.id));
+  const ranked = rankModels("gemini", listed);
+  check("most used: the newest stable Flash, Pro and Flash Lite", ranked.top.map((m) => m.id).join() === "gemini-3.8-flash,gemini-3.5-pro,gemini-3.6-flash-lite", ranked.top.map((m) => m.id));
+  check("each most-used model says what it's for", ranked.top.every((m) => m.note), ranked.top);
+  check("the rest follow, stable before previews", ranked.more.length === listed.length - 3 && !ranked.more.some((m) => ranked.top.includes(m)), ranked.more.map((m) => m.id));
+  check("Gemini models watch video", [...ranked.top, ...ranked.more].every((m) => m.video));
+  const cl = rankModels("anthropic", [{ id: "claude-haiku-5-5", name: "Haiku 5.5" }, { id: "claude-sonnet-5", name: "Sonnet 5" }, { id: "claude-sonnet-5-5", name: "Sonnet 5.5" }, { id: "claude-opus-5-5", name: "Opus 5.5" }, { id: "claude-fable-5-2", name: "Fable 5.2" }]);
+  check("Claude: Sonnet, Opus, Haiku first, newest of each", cl.top.map((m) => m.id).join() === "claude-sonnet-5-5,claude-opus-5-5,claude-haiku-5-5", cl.top.map((m) => m.id));
+  check("Claude doesn't watch video", [...cl.top, ...cl.more].every((m) => !m.video));
+  const op = rankModels("openai", [{ id: "gpt-5", name: "gpt-5" }, { id: "gpt-6", name: "gpt-6" }, { id: "gpt-6-mini", name: "gpt-6-mini" }, { id: "o4", name: "o4" }]);
+  check("ChatGPT: newest main model, then its mini", op.top.map((m) => m.id).join() === "gpt-6,gpt-6-mini", op.top.map((m) => m.id));
 
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);
