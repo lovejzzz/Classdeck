@@ -11,7 +11,6 @@ export const AI_PROVIDERS: { id: AiProvider; name: string; company: string; keyU
     labels: [
       { text: "Analyzes video", tone: "good" }, { text: "Posture & gestures", tone: "good" }, { text: "Eye contact", tone: "good" },
       { text: "Pace & filler words", tone: "good" }, { text: "Writing", tone: "plain" }, { text: "≈ 4–11¢ per 3-min video", tone: "plain" },
-      { text: "Use a paid key (free tier data trains Google)", tone: "note" },
     ],
     keyHint: "Starts with AIza",
   },
@@ -36,10 +35,14 @@ export const AI_PROVIDERS: { id: AiProvider; name: string; company: string; keyU
 export const providerMeta = (p: AiProvider) => AI_PROVIDERS.find((x) => x.id === p)!;
 export const isProvider = (p: unknown): p is AiProvider => AI_PROVIDERS.some((x) => x.id === p);
 
-/** What a teacher's AI setup looks like to the browser: never the key itself, only its last characters. */
-export type AiSetup = { provider: AiProvider; model: string; keyTail: string };
+/** Whether a saved key works: ready (it answered), no credit left, not accepted, or another problem. */
+export type AiStatus = { state: "ready" | "no_credit" | "bad_key" | "error"; at: number; message?: string };
 
-export type AiModel = { id: string; name: string };
+/** What a teacher's AI setup looks like to the browser: never a key itself, only its last characters. */
+export type AiSetup = { active: AiProvider | null; providers: Partial<Record<AiProvider, { keyTail: string; model?: string; status?: AiStatus }>> };
+
+/** A model as the service lists it: its id and name, and (when the service says) a description and release date. */
+export type AiModel = { id: string; name: string; description?: string; created?: number };
 /** A model as the Settings list shows it: whether it can analyze video, and (the most used ones) what it's good for. */
 export type RankedModel = AiModel & { video: boolean; note?: string };
 
@@ -54,32 +57,41 @@ function newest(models: AiModel[], re: RegExp): AiModel | undefined {
     .sort((a, b) => Number(preview(a.m.id)) - Number(preview(b.m.id)) || ver(b.v) - ver(a.v))[0]?.m;
 }
 
+/** What a model family is for, when the service doesn't describe its models itself (any version of the family). */
+const FAMILY: Record<AiProvider, [RegExp, string][]> = {
+  gemini: [[/flash-lite/, "Cheapest; shorter feedback"], [/flash/, "Fast and low-cost, good for most feedback"], [/pro/, "Most thorough; costs more"]],
+  anthropic: [[/sonnet/, "Careful and quick, good for most feedback"], [/opus/, "Most capable; costs more"], [/haiku/, "Fastest and cheapest"], [/fable/, "Newest family; most capable"]],
+  openai: [[/-nano/, "Cheapest"], [/-mini/, "Faster and cheaper"], [/^o\d/, "Thinks longer before answering; slower"], [/^gpt-\d/, "The main model"]],
+};
+const MONTH = (t: number) => new Date(t).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+
+/** A model's note: the service's own description (Gemini lists one for each model), or what its family is for; and when it came out. */
+export function noteOf(provider: AiProvider, m: AiModel): string | undefined {
+  const own = m.description?.replace(/\s+/g, " ").trim().split(/(?<=\.)\s/)[0]?.replace(/\.$/, "");
+  const fam = FAMILY[provider].find(([re]) => re.test(m.id))?.[1];
+  const text = own && own.length > 12 ? (own.length > 120 ? `${own.slice(0, 117)}…` : own) : fam;
+  return [text, m.created ? `released ${MONTH(m.created)}` : ""].filter(Boolean).join(" · ") || undefined;
+}
+
 /**
- * The models to offer, most used first: the newest of each provider's main models, each with a word on what it's for;
- * then every other model (stable ones before previews). Gemini models analyze video; Claude and ChatGPT read only.
+ * The models to offer, most used first: the newest stable release of each provider's main models; then every other
+ * model (stable ones before previews). Each has a note, from the service when it gives one. Gemini models analyze
+ * video; Claude and ChatGPT read only.
  */
 export function rankModels(provider: AiProvider, models: AiModel[]): { top: RankedModel[]; more: RankedModel[] } {
   const video = provider === "gemini";
-  const picks: [RegExp, string][] =
-    provider === "gemini" ? [
-      [/^gemini-(\d+(?:\.\d+)?)-flash(?:-preview[\w-]*)?$/, "Most used: fast and low-cost, good for most feedback"],
-      [/^gemini-(\d+(?:\.\d+)?)-pro(?:-preview[\w-]*)?$/, "Most thorough; costs more"],
-      [/^gemini-(\d+(?:\.\d+)?)-flash-lite(?:-preview[\w-]*)?$/, "Cheapest; shorter feedback"],
-    ] : provider === "anthropic" ? [
-      [/^claude-sonnet-(\d+(?:-\d+)?)(?:-\d{8})?$/, "Most used: careful and quick"],
-      [/^claude-opus-(\d+(?:-\d+)?)(?:-\d{8})?$/, "Most capable; costs more"],
-      [/^claude-haiku-(\d+(?:-\d+)?)(?:-\d{8})?$/, "Fastest and cheapest"],
-    ] : [
-      [/^gpt-(\d+(?:\.\d+)?)$/, "Most used: the main model"],
-      [/^gpt-(\d+(?:\.\d+)?)-mini$/, "Faster and cheaper"],
-    ];
+  const picks: RegExp[] =
+    provider === "gemini" ? [/^gemini-(\d+(?:\.\d+)?)-flash(?:-preview[\w-]*)?$/, /^gemini-(\d+(?:\.\d+)?)-pro(?:-preview[\w-]*)?$/, /^gemini-(\d+(?:\.\d+)?)-flash-lite(?:-preview[\w-]*)?$/]
+    : provider === "anthropic" ? [/^claude-sonnet-(\d+(?:-\d+)?)(?:-\d{8})?$/, /^claude-opus-(\d+(?:-\d+)?)(?:-\d{8})?$/, /^claude-haiku-(\d+(?:-\d+)?)(?:-\d{8})?$/]
+    : [/^gpt-(\d+(?:\.\d+)?)$/, /^gpt-(\d+(?:\.\d+)?)-mini$/];
+  const ranked = (m: AiModel): RankedModel => ({ ...m, video, note: noteOf(provider, m) });
   const top: RankedModel[] = [];
-  for (const [re, note] of picks) {
+  for (const re of picks) {
     const m = newest(models, re);
-    if (m && !top.some((x) => x.id === m.id)) top.push({ ...m, video, note });
+    if (m && !top.some((x) => x.id === m.id)) top.push(ranked(m));
   }
   const more = models.filter((m) => !top.some((x) => x.id === m.id))
-    .sort((a, b) => Number(preview(a.id)) - Number(preview(b.id)))
-    .map((m) => ({ ...m, video }));
+    .sort((a, b) => Number(preview(a.id)) - Number(preview(b.id)) || (b.created ?? 0) - (a.created ?? 0))
+    .map(ranked);
   return { top, more };
 }

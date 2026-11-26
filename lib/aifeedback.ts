@@ -7,7 +7,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { presignGet, r2Ready } from "./blob";
 import { db, save } from "./store";
 import { UPLOAD_DIR, TYPES } from "./uploads";
-import type { AiProvider } from "./aimeta";
+import type { AiModel, AiProvider, AiStatus } from "./aimeta";
 import type { Attachment, Course, Module, Progress } from "./types";
 
 // ——— Keys at rest: encrypted with the server's own secret (AI_KEY_SECRET, or a file made once in .data). ———
@@ -45,12 +45,12 @@ const why = (status: number, provider: string) =>
 
 // ——— The models each service offers this key, newest first. ———
 
-export async function listModels(provider: AiProvider, key: string): Promise<{ id: string; name: string }[]> {
+export async function listModels(provider: AiProvider, key: string): Promise<AiModel[]> {
   if (provider === "anthropic") {
     const client = new Anthropic({ apiKey: key });
-    const out: { id: string; name: string }[] = [];
+    const out: AiModel[] = [];
     try {
-      for await (const m of client.models.list({ limit: 100 })) out.push({ id: m.id, name: m.display_name || m.id });
+      for await (const m of client.models.list({ limit: 100 })) out.push({ id: m.id, name: m.display_name || m.id, created: Date.parse(m.created_at) || undefined });
     } catch (e) {
       if (e instanceof Anthropic.APIError) throw new AiError(why(e.status ?? 0, "Anthropic"));
       throw new AiError("Couldn’t reach Anthropic.");
@@ -65,16 +65,46 @@ export async function listModels(provider: AiProvider, key: string): Promise<{ i
     return (j.data ?? [])
       .filter((m) => /^(gpt-|o\d|chatgpt-)/.test(m.id) && !/(audio|realtime|image|tts|transcribe|search|embedding|instruct|moderation)/.test(m.id))
       .sort((a, b) => b.created - a.created)
-      .map((m) => ({ id: m.id, name: m.id }));
+      .map((m) => ({ id: m.id, name: m.id, created: m.created * 1000 }));
   }
   const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": key } }).catch(() => null);
   if (!r) throw new AiError("Couldn’t reach Google.");
   if (!r.ok) throw new AiError(why(r.status, "Google"));
-  const j = (await r.json()) as { models?: { name: string; displayName?: string; supportedGenerationMethods?: string[] }[] };
+  const j = (await r.json()) as { models?: { name: string; displayName?: string; description?: string; supportedGenerationMethods?: string[] }[] };
   return (j.models ?? [])
     .filter((m) => m.name.includes("gemini") && m.supportedGenerationMethods?.includes("generateContent") && !/(embedding|tts|image|audio|live|transcribe|robotics|computer-use|gemma|aqa)/.test(m.name))
-    .map((m) => ({ id: m.name.replace(/^models\//, ""), name: m.displayName || m.name }))
+    .map((m) => ({ id: m.name.replace(/^models\//, ""), name: m.displayName || m.name, description: m.description?.slice(0, 400) }))
     .reverse();
+}
+
+/**
+ * Does this key have credit? One tiny request (a single word back, a fraction of a cent): ready, out of credit, or
+ * not accepted. Services don't tell anyone a key's balance, so this is the only way to know before students hand in.
+ */
+export async function probe(provider: AiProvider, key: string, model: string): Promise<AiStatus> {
+  const at = Date.now();
+  const credit = /credit|billing|quota|insufficient|exceeded|payment|balance/i;
+  try {
+    if (provider === "anthropic") {
+      await new Anthropic({ apiKey: key }).messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "Hi" }] });
+      return { state: "ready", at };
+    }
+    const r = provider === "openai"
+      ? await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model, messages: [{ role: "user", content: "Hi" }], max_completion_tokens: 16 }) })
+      : await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: "POST", headers: { "x-goog-api-key": key, "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Hi" }] }], generationConfig: { maxOutputTokens: 1 } }) });
+    if (r.ok) return { state: "ready", at };
+    const text = await r.text().catch(() => "");
+    if (r.status === 401 || r.status === 403) return { state: "bad_key", at };
+    if (r.status === 429 || r.status === 402 || credit.test(text)) return { state: "no_credit", at };
+    return { state: "error", at, message: `${r.status}` };
+  } catch (e) {
+    if (e instanceof Anthropic.APIError) {
+      if (e.status === 401 || e.status === 403) return { state: "bad_key", at };
+      if (e.status === 429 || e.status === 402 || credit.test(e.message)) return { state: "no_credit", at };
+      return { state: "error", at, message: `${e.status ?? ""}` };
+    }
+    return { state: "error", at, message: "unreachable" };
+  }
 }
 
 // ——— One request: instructions, the student's words, and (Gemini) their video. ———

@@ -34,7 +34,12 @@ export interface User {
    *  class code). Their course list puts that side first. */
   firstRole?: "teacher" | "student";
   /** Their AI for feedback (Settings → AI): which service, which model, and the key, encrypted (lib/aifeedback). */
-  ai?: { provider: import("./aimeta").AiProvider; model: string; key: string; tail: string };
+  ai?: {
+    /** The service in use now, its model and key (encrypted): what cards with AI feedback use. */
+    provider: import("./aimeta").AiProvider; model: string; key: string; tail: string;
+    /** Every service they've saved a key for, so switching back and forth never loses one; and whether it has credit. */
+    saved?: Partial<Record<import("./aimeta").AiProvider, { key: string; tail: string; model?: string; status?: import("./aimeta").AiStatus }>>;
+  };
   createdAt: number;
 }
 

@@ -155,8 +155,8 @@ async function main() {
   const noKey = await A.post("/api/ai", { provider: "openai" });
   check("saving AI with no key asks for one", noKey.ok === false && /key/i.test(noKey.error), noKey);
   const other = await S.get("/api/ai");
-  check("another account sees only its own AI setup (none)", other.ai === null || other.status === 401, other);
-  check("the teacher has no AI set up yet", (await A.get("/api/ai")).ai === null, null);
+  check("another account sees only its own AI setup (none)", other.ai?.active === null || other.status === 401, other);
+  check("the teacher has no AI set up yet", (await A.get("/api/ai")).ai?.active === null, null);
 
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);

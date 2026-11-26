@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.96",
+    date: "2026-11-26",
+    changes: [
+      "Setting up AI feedback has no buttons to press: a pasted key is checked and saved straight away, and picking a model saves it. A light under it says Saved and whether the key has credit (green), or has none left or isn’t accepted (red).",
+      "Each AI service keeps its own saved key: clicking between Gemini, Claude and ChatGPT no longer clears a key, and the one you pick is the one in use.",
+      "Every model in the list has a note, in the service’s own words when it describes its models (Gemini does), so new models are described as soon as they appear; otherwise what its family is for and when it came out.",
+      "Removed the paid-key label, and “Can analyze students’ videos” is plain text, not a blue label that looked clickable.",
+    ],
+  },
+  {
     version: "0.2.95",
     date: "2026-11-26",
     changes: [

@@ -7,7 +7,10 @@ import { db } from "../lib/store";
 import { makeCourse } from "../lib/newcourse";
 import { aiFor, listModels, openKey, sealKey, startAiFeedback } from "../lib/aifeedback";
 import { cleanCard } from "../lib/cleancard";
-import { rankModels } from "../lib/aimeta";
+import { noteOf, rankModels } from "../lib/aimeta";
+import { probe } from "../lib/aifeedback";
+import { startSession } from "../lib/auth";
+import { GET as aiGet, POST as aiPost } from "../app/api/ai/route";
 import { UPLOAD_DIR } from "../lib/uploads";
 import type { Module, Progress } from "../lib/types";
 
@@ -128,12 +131,12 @@ async function main() {
 
   // The model list: the most used first (newest Flash, Pro, Flash Lite), special-purpose ones left out, video marked.
   const names = ["gemini-2.5-computer-use-preview-10-2025", "gemini-robotics-er-2-preview", "gemini-4-neon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.9-flash-preview", "gemini-3.5-transcribe", "gemini-omni-1.2-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash-lite", "gemini-3.5-pro", "gemini-3.7-pro-preview", "gemini-3.5-flash"];
-  reply = () => json({ models: names.map((n) => ({ name: `models/${n}`, displayName: n, supportedGenerationMethods: ["generateContent"] })) });
+  reply = () => json({ models: names.map((n) => ({ name: `models/${n}`, displayName: n, description: /gemini-4/.test(n) ? `The ${n} model, for agents and long tasks.` : undefined, supportedGenerationMethods: ["generateContent"] })) });
   const listed = await listModels("gemini", "AIza-x");
   check("tools for other jobs aren't offered", !listed.some((m) => /computer-use|robotics|transcribe/.test(m.id)), listed.map((m) => m.id));
   const ranked = rankModels("gemini", listed);
   check("most used: the newest stable Flash, Pro and Flash Lite", ranked.top.map((m) => m.id).join() === "gemini-3.8-flash,gemini-3.5-pro,gemini-3.6-flash-lite", ranked.top.map((m) => m.id));
-  check("each most-used model says what it's for", ranked.top.every((m) => m.note), ranked.top);
+  check("every model says what it's for", [...ranked.top, ...ranked.more].every((m) => m.note), [...ranked.top, ...ranked.more].filter((m) => !m.note).map((m) => m.id));
   check("the rest follow, stable before previews", ranked.more.length === listed.length - 3 && !ranked.more.some((m) => ranked.top.includes(m)), ranked.more.map((m) => m.id));
   check("Gemini models watch video", [...ranked.top, ...ranked.more].every((m) => m.video));
   const cl = rankModels("anthropic", [{ id: "claude-haiku-5-5", name: "Haiku 5.5" }, { id: "claude-sonnet-5", name: "Sonnet 5" }, { id: "claude-sonnet-5-5", name: "Sonnet 5.5" }, { id: "claude-opus-5-5", name: "Opus 5.5" }, { id: "claude-fable-5-2", name: "Fable 5.2" }]);
@@ -141,6 +144,44 @@ async function main() {
   check("Claude doesn't watch video", [...cl.top, ...cl.more].every((m) => !m.video));
   const op = rankModels("openai", [{ id: "gpt-5", name: "gpt-5" }, { id: "gpt-6", name: "gpt-6" }, { id: "gpt-6-mini", name: "gpt-6-mini" }, { id: "o4", name: "o4" }]);
   check("ChatGPT: newest main model, then its mini", op.top.map((m) => m.id).join() === "gpt-6,gpt-6-mini", op.top.map((m) => m.id));
+
+  // Notes come from the service when it describes its models (Gemini does), so new models are described too.
+  check("a model's own description is its note", noteOf("gemini", { id: "gemini-4-neon", name: "Gemini 4 Neon", description: "Our newest frontier model for agents. More text." }) === "Our newest frontier model for agents", noteOf("gemini", { id: "gemini-4-neon", name: "x", description: "Our newest frontier model for agents. More text." }));
+  check("otherwise what its family is for, and when it came out", /Most capable.*released/.test(noteOf("anthropic", { id: "claude-opus-9", name: "Opus 9", created: Date.UTC(2027, 2, 1) }) ?? ""), noteOf("anthropic", { id: "claude-opus-9", name: "Opus 9", created: Date.UTC(2027, 2, 1) }));
+
+  // Does the key have credit? One tiny request says.
+  reply = () => json({ choices: [{ message: { content: "Hi" } }] });
+  check("a key that answers is ready", (await probe("openai", "sk", "gpt-6")).state === "ready");
+  reply = () => new Response(JSON.stringify({ error: { code: "insufficient_quota", message: "You exceeded your current quota" } }), { status: 429 });
+  check("a key without credit says so", (await probe("openai", "sk", "gpt-6")).state === "no_credit");
+  reply = () => new Response(JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED" } }), { status: 429 });
+  check("a Gemini key over its quota says so", (await probe("gemini", "AIza", "gemini-a")).state === "no_credit");
+  reply = () => new Response("{}", { status: 403 });
+  check("a refused key says so too", (await probe("gemini", "AIza", "gemini-a")).state === "bad_key");
+
+  // Settings → AI: each service keeps its own key; switching back and forth never clears one.
+  d.users["u-set"] = { id: "u-set", email: "set@example.test", name: "Set", hash: "", salt: "", createdAt: Date.now() };
+  const cookie = startSession({ kind: "teacher", userId: "u-set" } as never).split(";")[0];
+  const req = (body?: object) => new Request("http://x/api/ai", { method: body ? "POST" : "GET", headers: { cookie, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  const services = (url: string) =>
+    url.includes("generativelanguage") && url.includes("/models?") ? json({ models: [{ name: "models/gemini-3.8-flash", displayName: "Gemini 3.8 Flash", description: "Fast. Good.", supportedGenerationMethods: ["generateContent"] }, { name: "models/gemini-3.5-pro", displayName: "Gemini 3.5 Pro", supportedGenerationMethods: ["generateContent"] }] })
+    : url.includes("api.openai.com/v1/models") ? json({ data: [{ id: "gpt-6", created: 9 }, { id: "gpt-6-mini", created: 9 }] })
+    : url.includes(":generateContent") ? json({ candidates: [{ content: { parts: [{ text: "Hi" }] } }] })
+    : url.includes("chat/completions") ? new Response(JSON.stringify({ error: { code: "insufficient_quota" } }), { status: 429 })
+    : new Response("{}", { status: 404 });
+  reply = (url) => services(url);
+  let r = await (await aiPost(req({ provider: "gemini", key: "AIza-gemini-key-1234567890" }))).json();
+  check("pasting a key saves it, picks the most used model, and checks credit", r.ok && r.ai.active === "gemini" && r.ai.providers.gemini.model === "gemini-3.8-flash" && r.ai.providers.gemini.status.state === "ready" && r.ai.providers.gemini.keyTail === "7890", r);
+  check("the key itself never comes back", !JSON.stringify(r).includes("AIza-gemini-key"), null);
+  r = await (await aiPost(req({ provider: "gemini", model: "gemini-3.5-pro" }))).json();
+  check("picking a model saves it", r.ok && r.ai.providers.gemini.model === "gemini-3.5-pro", r.ai);
+  r = await (await aiPost(req({ provider: "openai", key: "sk-openai-key-abcdefghijkl" }))).json();
+  check("a second service keeps its own key; out of credit is said", r.ok && r.ai.active === "openai" && r.ai.providers.openai.status.state === "no_credit" && r.ai.providers.gemini?.keyTail === "7890", r.ai);
+  r = await (await aiPost(req({ provider: "gemini", use: true }))).json();
+  check("switching back: the Gemini key and model are still there, and in use", r.ok && r.ai.active === "gemini" && r.ai.providers.gemini.model === "gemini-3.5-pro" && r.ai.providers.openai?.keyTail === "ijkl", r.ai);
+  check("cards now use Gemini with its own key", d.users["u-set"].ai?.provider === "gemini" && openKey(d.users["u-set"].ai!.key) === "AIza-gemini-key-1234567890", d.users["u-set"].ai?.provider);
+  r = await (await aiGet(req())).json();
+  check("reading the setup shows both saved keys", Object.keys(r.ai.providers).sort().join() === "gemini,openai", r.ai);
 
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);
