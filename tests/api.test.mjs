@@ -123,7 +123,11 @@ async function main() {
   // Older types become the four kinds: Content; Q&A, Choice (a poll is a Choice card with no right answer), Discussion.
   const kinds = ["content", "content", "answer", "choice", "answer", "answer", "choice", "answer", "discussion", "discussion"];
   check("older types come back as kinds", modulesOf(after).map((m) => m.kind).join() === kinds.join(), modulesOf(after).map((m) => m.kind));
-  check("each kind runs on its type (a quiz stays a quiz, a group discussion stays a studio)", modulesOf(after).map((m) => m.type).join() === "read,read,submit,quiz,submit,submit,practice,submit,studio,wall", modulesOf(after).map((m) => m.type));
+  {
+    const st = modulesOf(after).find((m) => m.id === `m-studio-${run}`);
+    check("an older Collab Studio card becomes a discussion in groups: reply to 2, structured feedback", st?.type === "wall" && st.wall?.byGroup === true && st.wall?.replies === 2 && st.wall?.structured === true, st?.wall);
+  }
+  check("each kind runs on its type (a quiz stays a quiz; a group peer review is a discussion)", modulesOf(after).map((m) => m.type).join() === "read,read,submit,quiz,submit,submit,practice,submit,wall,wall", modulesOf(after).map((m) => m.type));
   check("a rating card becomes a poll with choices and no right answer", (() => { const p = modulesOf(after).find((m) => m.poll); return p?.kind === "choice" && p.questions?.[0]?.options?.length === 4 && p.questions[0].answer === undefined; })());
   const add = await A.op(cid, { op: "addLesson", weekId: after.weeks[0].id, title: "Lesson 2" });
   check("add a lesson", add.ok !== false, add);

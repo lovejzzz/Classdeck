@@ -467,12 +467,11 @@ export function CardEditor({
                 <div className="space-y-2.5 text-[12.5px]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-ink-2">Who discusses</span>
-                    {/* One kind of discussion: a feed for the whole class, or one feed per group. (Older group discussions,
-                        "Collab Studio", become a feed per group when changed here.) */}
-                    <Seg value={m.type === "studio" || m.wall?.byGroup ? "groups" : "class"} options={[["class", "The whole class"], ["groups", "Each group"]]}
-                      onPick={(v) => set(asKind({ ...m, type: "wall", submitTo: undefined, wall: { ...wallDefaults, ...m.wall, byGroup: v === "groups" || undefined, ...(m.type === "studio" ? { replies: m.wall?.replies ?? 2, structured: true } : {}) } }, "discussion"))} />
+                    {/* One kind of discussion: a feed for the whole class, or one feed per group. */}
+                    <Seg value={m.wall?.byGroup ? "groups" : "class"} options={[["class", "The whole class"], ["groups", "Each group"]]}
+                      onPick={(v) => set(asKind({ ...m, type: "wall", submitTo: undefined, wall: { ...wallDefaults, ...m.wall, byGroup: v === "groups" || undefined } }, "discussion"))} />
                   </div>
-                  {(m.type === "studio" || m.wall?.byGroup) && course && <GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} />}
+                  {m.wall?.byGroup && course && <GroupingPicker course={course} value={m.grouping} onPick={(id) => set({ grouping: id })} onChanged={() => onCourseChanged?.()} />}
                   {m.wall?.byGroup && <p className="-mt-1 text-ink-3">Each group has its own feed; students see their group’s posts and yours. You see every group’s.</p>}
                   {m.type === "wall" && (
                     <>
@@ -500,7 +499,6 @@ export function CardEditor({
                       <p className="-mt-1 text-ink-3">With two or more topics, students pick one for each post, and everyone can filter the discussion by topic.</p>
                     </>
                   )}
-                  {m.type === "studio" && <p className="text-ink-3">This is an older group peer review (Collab Studio). It still works as it is. To make it a discussion that works the same way, pick Each group above, then Each student replies to 2 and Structured feedback.</p>}
                 </div>
               )}
             </div>

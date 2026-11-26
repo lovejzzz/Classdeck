@@ -43,13 +43,9 @@ export default function BoardPage() {
   if (!student) return <p className="p-10 text-center text-ink-2">There’s no student with that name in this class.</p>;
   const mine: Record<string, Progress> = state.progress[studentId] ?? {};
   const all = course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.map((m) => ({ w, l, m }))));
-  const posts = state.studio.posts.filter((p) => p.studentId === studentId);
-  const fbFor = (postId: string) => state.studio.feedback.filter((f) => f.postId === postId);
-  const given = state.studio.feedback.filter((f) => f.fromId === studentId).length;
-  const name = (id: string) => course.students.find((s) => s.id === id)?.name ?? "Peer";
   const hasContent = (m: Module) => {
     const p = mine[m.id];
-    return !!p && (p.status === "done" || !!p.output || !!p.work?.length || posts.some((x) => x.moduleId === m.id));
+    return !!p && (p.status === "done" || !!p.output || !!p.work?.length || state.posts.some((x) => x.moduleId === m.id && x.studentId === studentId));
   };
   const done = all.filter((x) => mine[x.m.id]?.status === "done").length;
   // Cards that count: an unchosen elective's aren't the student's, and an unpicked set of paths counts once.
@@ -94,7 +90,6 @@ export default function BoardPage() {
             {quizAvg !== undefined && <span>Quiz average <span className="font-mono text-ink">{quizAvg}%</span></span>}
             {reviewed > 0 && <span><span className="font-mono text-ink">{reviewed}</span> teacher feedback</span>}
             {takes > 0 && <span><span className="font-mono text-ink">{takes}</span> recordings</span>}
-            {given > 0 && <span><span className="font-mono text-ink">{given}</span> feedback given</span>}
           </div>
           <CourseRoute course={course} mine={mine} picked={picked} onPick={(id) => { setPicked(id); if (id) { setTab("work"); history.replaceState(null, "", "#work"); } }} />
         </section>
@@ -176,7 +171,6 @@ export default function BoardPage() {
                 <div className="space-y-2.5">
                   {items.map((m) => {
                     const p = mine[m.id];
-                    const post = posts.find((x) => x.moduleId === m.id);
                     // What this student posted on a class discussion (a wall), shown like their other work.
                     const wallPosts = state.posts.filter((x) => x.moduleId === m.id && x.studentId === studentId);
                     return (
@@ -209,18 +203,6 @@ export default function BoardPage() {
                             {wp.work?.length ? <div className="mt-2 space-y-2">{wp.work.map((a) => <MediaView key={a.id} a={a} />)}</div> : null}
                           </div>
                         ))}
-                        {post && (
-                          <div className="mt-3 rounded-lg bg-[#fbf3ee] p-3">
-                            <div className="text-[12.5px] font-medium">Posted to your group · {ago(post.updatedAt)}</div>
-                            {post.question && <p className="mt-1 text-[13px] text-ink-2">Asked: {post.question}</p>}
-                            {fbFor(post.id).map((f) => (
-                              <div key={f.id} className="mt-2 flex gap-2 text-[13px]">
-                                <Avatar name={name(f.fromId)} size={18} />
-                                <p className="leading-relaxed"><span className="text-ink-3">{name(f.fromId)}:</span> {f.observed} <span className="text-ink-3">Try next:</span> {f.next}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </article>
                     );
                   })}

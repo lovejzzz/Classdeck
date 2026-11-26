@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.86",
+    date: "2026-11-25",
+    changes: [
+      "Fewer kinds of card underneath, the same cards on the surface. Older cards from before the simplification are now always one of today’s: a Collab Studio peer review becomes a discussion in groups where each student replies to two groupmates with structured feedback; a self-rating becomes a poll on how confident they feel; a reflection becomes an open answer; a Watch & listen card becomes a Content card. A lesson plan imported from a document makes today’s cards too.",
+      "Parts of the site that only those older cards used are gone: the speech builder, the self-rating panel, the teacher’s Reflections journal, the Collab Studio lists and its peer-feedback export.",
+    ],
+  },
+  {
     version: "0.2.85",
     date: "2026-11-25",
     changes: [

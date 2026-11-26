@@ -27,7 +27,7 @@ type Ctx = { params: Promise<{ courseId: string }> };
 /** Operations a student performs on their own behalf (body.studentId). */
 const STUDENT_OPS = new Set([
   "feel", "chooseElective", "setProgress", "uptake", "chooseBranch", "addWork", "renameWork", "removeWork", "rate", "star", "answer", "submitQuiz", "startQuiz",
-  "retakeQuiz", "rehearse", "fillForm", "studioPost", "feedback", "feedbackHelpful", "editPost",
+  "retakeQuiz", "rehearse", "fillForm", "editPost",
   "messageTeacher", "readMyMessages", "docReply", "handInShared",
 ]);
 
@@ -45,8 +45,6 @@ function renumberLessons(course: Course) {
   }
 }
 
-/** Each student gives feedback to at least this many peers per studio card. */
-const FEEDBACK_GOAL = 2;
 
 /** The cards just dealt to a student, for the "new card" message, with the lesson each is in. */
 const titles = (course: Course, ids: string[]) => ids.map((id) => findModule(course, id)).filter((x): x is { lesson: Lesson; mod: Module } => !!x).map((x) => ({ id: x.mod.id, title: x.mod.title, lessonId: x.lesson.id, lesson: x.lesson.title }));
@@ -72,7 +70,7 @@ function findModule(course: Course, moduleId: string): { lesson: Lesson; mod: Mo
 }
 
 
-/** What a student receives: only their cards, no answer keys, no version labels, only their group's studio. */
+/** What a student receives: only their cards, no answer keys, no version labels, their own work. */
 function forStudent(course: Course, studentId: string, chosen: Record<string, string>): Course {
   const all = db().choices[course.id] ?? {};
   const taken = (lessonId: string) => Object.entries(all).filter(([sid, c]) => sid !== studentId && c[`elective:${lessonId}`]).length;
@@ -193,7 +191,7 @@ function view(request: Request, courseId: string): Response {
         // Cards made for one student stay private; shared and path cards are shown without who they're for.
         weeks: course.weeks.map((w) => ({ ...w, lessons: w.lessons.map((l) => ({ ...l, branches: {}, modules: l.modules.filter((m) => m.audience?.kind !== "student" && !unfinished(m)).map((m) => ({ ...m, bands: undefined, audience: m.audience?.kind === "branch" ? m.audience : { kind: "all" as const }, questions: asked(m).length ? asked(m).map(publicQuestion) : undefined })) })) })),
       },
-      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, studio: { posts: [], feedback: [] }, marks: [], uptake: {}, nudges: [],
+      progress: {}, posts: [], toolUse: {}, events: [], choices: {}, marks: [], uptake: {}, nudges: [],
     };
     return Response.json(view);
   }
@@ -212,7 +210,6 @@ function view(request: Request, courseId: string): Response {
   if (finishExpiredQuizzes(course)) save(courseId);
   const all = d.progress[courseId] ?? {};
   const choices = d.choices[courseId] ?? {};
-  const studio = d.studio[courseId] ?? { posts: [], feedback: [] };
   const toolUse: CourseState["toolUse"] = {};
   for (const e of d.toolLog[courseId] ?? []) {
     if (as && e.studentId !== as) continue;
@@ -220,7 +217,6 @@ function view(request: Request, courseId: string): Response {
     row[e.moduleId] = (row[e.moduleId] ?? 0) + 1;
   }
   let progress: ProgressMap = all;
-  let studioView = studio;
   if (as) {
     const own: Record<string, Progress> = {};
     for (const [mid, p] of Object.entries(all[as] ?? {})) {
@@ -252,10 +248,6 @@ function view(request: Request, courseId: string): Response {
       own[mid] = view;
     }
     progress = { [as]: own };
-    // Posts from whoever is in your group on that card now (each card can use its own grouping), so regrouping moves who you see.
-    const posts = studio.posts.filter((p) => p.studentId === as || !!groupFor(course, findModule(course, p.moduleId)?.mod, as)?.studentIds.includes(p.studentId));
-    const ids = new Set(posts.map((p) => p.id));
-    studioView = { posts, feedback: studio.feedback.filter((f) => ids.has(f.postId)) };
   }
   const allPosts = d.posts[courseId] ?? [];
   // Students don't see others' posts that await approval, or who wrote an anonymous post.
@@ -277,7 +269,6 @@ function view(request: Request, courseId: string): Response {
     toolUse,
     events: as ? [] : (d.events[courseId] ?? []).slice(-80),
     choices: as ? { [as]: choices[as] ?? {} } : choices,
-    studio: studioView,
     marks: as ? (d.marks[courseId] ?? []).filter((mk) => visibleWork(course, as).has(mk.attachmentId)) : (d.marks[courseId] ?? []),
     uptake: as ? { [as]: d.uptake[courseId]?.[as] ?? {} } : (d.uptake[courseId] ?? {}),
     nudges: (d.nudges[courseId] ?? []).filter((n) => !as || n.studentId === as),
@@ -291,12 +282,11 @@ function view(request: Request, courseId: string): Response {
   return Response.json(state, { headers });
 }
 
-/** Recordings a student may see and comment on: their own work, and posts in their studio group. */
+/** Recordings a student may see and comment on: their own work. */
 function visibleWork(course: Course, studentId: string): Set<string> {
   const d = db();
   const ids = new Set<string>();
   for (const p of Object.values(d.progress[course.id]?.[studentId] ?? {})) for (const w of p.work ?? []) ids.add(w.id);
-  for (const p of d.studio[course.id]?.posts ?? []) if (p.studentId === studentId || groupFor(course, findModule(course, p.moduleId)?.mod, studentId)?.studentIds.includes(p.studentId)) for (const w of p.work) ids.add(w.id);
   return ids;
 }
 
@@ -374,7 +364,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
   // A student only acts on cards that are on their own board.
   if (actor && actor !== "teacher" && typeof body.moduleId === "string" && body.moduleId && !canTeach(session, course) && !onBoard(course, actor, body.moduleId)) return fail("That card isn’t on your board");
   const prog = (d.progress[courseId] ??= {});
-  const studio = (d.studio[courseId] ??= { posts: [], feedback: [] });
   const mine = (sid: string, mid: string): Progress => {
     if (!isStudent(sid) || !findModule(course, mid)) throw new Error("Unknown student or card");
     const row = Object.hasOwn(prog, sid) ? prog[sid] : (prog[sid] = {});
@@ -398,24 +387,8 @@ async function change(request: Request, courseId: string, body: Record<string, a
     delete d.progress[courseId]?.[sid];
     delete d.choices[courseId]?.[sid];
     if (d.posts[courseId]) d.posts[courseId] = d.posts[courseId].filter((x) => x.studentId !== sid);
-    const st = d.studio[courseId];
-    if (st) { st.posts = st.posts.filter((x) => x.studentId !== sid); st.feedback = st.feedback.filter((x) => x.fromId !== sid); }
   }
 
-  /** A studio card is done once you've posted and given feedback to enough peers. */
-  function studioStatus(studentId: string, moduleId: string) {
-    const posted = studio.posts.some((p) => p.studentId === studentId && p.moduleId === moduleId);
-    const peers = (groupFor(course, findModule(course, moduleId)?.mod, studentId)?.studentIds.length ?? 1) - 1;
-    const postIds = new Set(studio.posts.filter((p) => p.moduleId === moduleId && p.studentId !== studentId).map((p) => p.id));
-    const given = new Set(studio.feedback.filter((f) => f.fromId === studentId && postIds.has(f.postId)).map((f) => f.postId)).size;
-    const p = mine(studentId, moduleId);
-    const was = p.status;
-    p.status = posted && given >= Math.min(FEEDBACK_GOAL, Math.max(peers, 0)) ? "done" : posted || given ? "doing" : p.status;
-    p.updatedAt = Date.now();
-    if (was !== "done" && p.status === "done") {
-      logEvent(courseId, { kind: "done", studentId, moduleId, text: `Finished “${findModule(course, moduleId)?.mod.title ?? ""}”` });
-    }
-  }
 
   try {
   // Managing who else can see or edit the course is for its owner alone.
@@ -1335,13 +1308,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const kind = body.kind === "vote" ? "votes" : "likes";
       const who = String(body.who ?? "");
       if (!who) return fail("Who is reacting?");
-      if (body.target === "studio") {
-        const sp = studio.posts.find((p) => p.id === body.id);
-        if (!sp) return fail("That post is gone");
-        const list = (sp.likes ??= []);
-        sp.likes = list.includes(who) ? list.filter((x) => x !== who) : [...list, who];
-        break;
-      }
       const post = (d.posts[courseId] ?? []).find((p) => p.id === body.id);
       if (!post) return fail("That post is gone");
       const w = wallOf(findModule(course, post.moduleId)?.mod ?? {});
@@ -1504,58 +1470,6 @@ async function change(request: Request, courseId: string, body: Record<string, a
       copy.modules = copy.modules.map(cleanCard);
       w.lessons.push(copy);
       extra = { lessonId: copy.id };
-      break;
-    }
-    case "studioPost": {
-      const group = groupFor(course, findModule(course, body.moduleId)?.mod, body.studentId);
-      if (!group) return fail("You aren’t in a group for this card yet. Ask your teacher.");
-      const f = body.post ?? {};
-      const str = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
-      const work = (Array.isArray(f.work) ? f.work : []).map(cleanAttachment).filter((a: Attachment | null): a is Attachment => !!a).slice(0, 6);
-      if (!str(f.text, 4000) && work.length === 0) return fail("Add your work: a recording, file, link, or some text");
-      const existing = studio.posts.find((p) => p.studentId === body.studentId && p.moduleId === body.moduleId);
-      const fields = {
-        title: str(f.title, 140), audience: str(f.audience, 200), purpose: str(f.purpose, 300),
-        skill: str(f.skill, 40), question: str(f.question, 300), text: str(f.text, 4000), work,
-        rubric: Array.isArray(f.rubric) ? f.rubric.map((x: unknown) => str(x, 60)).filter(Boolean).slice(0, 3) : undefined,
-      };
-      if (existing) Object.assign(existing, fields, { updatedAt: Date.now(), groupId: group.id });
-      else {
-        studio.posts.push({ id: uid("sp-"), moduleId: body.moduleId, studentId: body.studentId, groupId: group.id, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
-        logEvent(courseId, { kind: "studio", studentId: body.studentId, moduleId: body.moduleId, text: `Posted “${fields.title}” to ${group.name}` });
-      }
-      studioStatus(body.studentId, body.moduleId);
-      break;
-    }
-    case "feedback": {
-      const post = studio.posts.find((p) => p.id === body.postId);
-      if (!post) return fail("That post is gone");
-      if (post.studentId === body.studentId) return fail("Give feedback to your peers, not yourself");
-      if (!groupFor(course, findModule(course, post.moduleId)?.mod, body.studentId)?.studentIds.includes(post.studentId)) return fail("You can only give feedback in your own group");
-      const str = (v: unknown) => String(v ?? "").trim().slice(0, 1000);
-      const fb = { observed: str(body.observed), effect: str(body.effect), next: str(body.next) };
-      if (!fb.observed || !fb.next) return fail("Describe what you observed and one thing to try next");
-      const level = Number(body.level);
-      const rubric: Record<string, { level?: number; note?: string }> = {};
-      for (const c of post.rubric ?? []) {
-        const r = body.rubric?.[c];
-        if (!r) continue;
-        const lv = Number(r.level);
-        rubric[c] = { level: lv >= 1 && lv <= 4 ? lv : undefined, note: String(r.note ?? "").trim().slice(0, 400) || undefined };
-        if (!rubric[c].level && !rubric[c].note) delete rubric[c];
-      }
-      studio.feedback.push({ id: uid("fb-"), postId: post.id, fromId: body.studentId, ...fb, level: level >= 1 && level <= 4 ? level : undefined, rubric: Object.keys(rubric).length ? rubric : undefined, createdAt: Date.now() });
-      const to = course.students.find((s) => s.id === post.studentId)?.name ?? "a peer";
-      logEvent(courseId, { kind: "feedback", studentId: body.studentId, moduleId: post.moduleId, text: `Gave feedback to ${to}: “${fb.next.slice(0, 60)}”` });
-      studioStatus(body.studentId, post.moduleId);
-      break;
-    }
-    case "feedbackHelpful": {
-      const fb = studio.feedback.find((f) => f.id === body.id);
-      const post = fb && studio.posts.find((p) => p.id === fb.postId);
-      if (!fb || !post) return fail("That feedback is gone");
-      if (post.studentId !== body.studentId) return fail("Only the person who got this feedback can mark it");
-      fb.helpful = !fb.helpful || undefined;
       break;
     }
     default:

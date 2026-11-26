@@ -146,12 +146,12 @@ export const faceMeta = (m: KindFields): { name: string; icon: string } => {
  * one that is already a quiz (several questions, a Submit button, tries, score ranges) stays a quiz. A discussion in
  * groups runs on the group studio; one for the whole class on the wall.
  */
-export function typeOfKind(k: CardKind, current?: ModuleType, inGroups = current === "studio"): ModuleType {
+export function typeOfKind(k: CardKind, current?: ModuleType): ModuleType {
   if (k === "group") return "group";
   // A worksheet runs on a Content card's type: its copies, history and hand-in are kept on the card.
   if (familyOf(k) === "content" || k === "worksheet") return "read";
   if (k === "choice") return current === "quiz" ? "quiz" : "practice"; // a poll answers right away too
-  return k === "answer" ? "submit" : inGroups ? "studio" : "wall";
+  return k === "answer" ? "submit" : "wall";
 }
 
 const qid = () => `q-${Math.random().toString(36).slice(2, 9)}`;
@@ -164,13 +164,16 @@ const qid = () => `q-${Math.random().toString(36).slice(2, 9)}`;
 export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
   if (k === "group" || m.type === "group") return m.type === "group" ? { ...m, kind: "group", suit: "question" } : m;
   const wasPoll = isPoll(m);
-  const inGroups = m.type === "studio" || (k === "discussion" && m.submitTo === "studio");
+  // An older group peer review (Collab Studio, or a hand-in shared to it) becomes a discussion in groups where each student
+  // replies to two groupmates with structured feedback: what Collab Studio was.
+  const studio = (m.type as string) === "studio" || m.submitTo === "studio";
   const asPoll = k === "choice" && (poll ?? wasPoll);
-  const next: Module = { ...m, kind: k, type: typeOfKind(k, asPoll ? undefined : m.type, inGroups), suit: familyOf(k) as Module["suit"] };
+  const next: Module = { ...m, kind: k, type: typeOfKind(k, asPoll ? undefined : m.type), suit: familyOf(k) as Module["suit"] };
   // Everything that belongs to one kind only (a quiz's settings stay only on a quiz).
   if (next.type !== "quiz") { next.attempts = undefined; next.timeLimit = undefined; next.shuffle = undefined; next.pick = undefined; next.bands = undefined; }
   next.poll = asPoll ? true : undefined;
   if (k !== "discussion") next.wall = undefined;
+  else if (studio) next.wall = { posting: "students", comments: true, reactions: "likes", anonymous: false, approval: false, ...m.wall, byGroup: true, replies: m.wall?.replies ?? 2, structured: true };
   if (asPoll) {
     const q = (m.questions ?? []).find((x) => !x.kind || x.kind === "choice" || x.kind === "multi");
     const fromRating = (m.type as string) === "selfcheck" && !q;
@@ -186,8 +189,7 @@ export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
     next.questions = undefined;
   }
   next.writers = k === "worksheet" ? m.writers ?? "each" : undefined;
-  if (k === "answer") next.submitTo = undefined;
-  if (k === "discussion" && !inGroups) next.submitTo = undefined;
+  if (k === "answer" || k === "discussion" || next.submitTo === "studio") next.submitTo = undefined;
   return next;
 }
 
@@ -195,7 +197,7 @@ export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
 export function withKind(m: Module): Module {
   // A poll keeps no right answer, and only one question.
   const cleanPoll = !m.poll || (m.type === "practice" && (m.questions?.length ?? 0) <= 1 && !m.questions?.some((q) => q.answer !== undefined));
-  if (isKind(m.kind) && m.kind === kindOf(m) && cleanPoll && m.type === typeOfKind(m.kind, m.type)) return m;
+  if (isKind(m.kind) && m.kind === kindOf(m) && cleanPoll && m.type === typeOfKind(m.kind, m.type) && m.submitTo !== "studio") return m;
   return asKind(m, kindOf(m));
 }
 

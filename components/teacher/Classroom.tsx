@@ -50,13 +50,8 @@ export function Classroom({
 }) {
   const { course, progress, toolUse } = state;
   const visible = Object.fromEntries(course.students.map((s) => [s.id, new Set(visibleModules(lesson, s.id, state.choices[s.id], treeView(course.weeks, progress[s.id]), course).map((m) => m.id))]));
-  const studioIds = new Set(lesson.modules.filter((m) => m.type === "studio").map((m) => m.id));
   // The cards students do: a card group is a frame around its cards, not a card of its own.
   const cards = lesson.modules.filter((m) => m.type !== "group");
-  const lessonPosts = state.studio.posts.filter((p) => studioIds.has(p.moduleId));
-  // Same rule as the server: peers' posts given feedback (each post counted once), against a goal of 2,
-  // or fewer in a small group.
-  const feedbackGiven = (sid: string) => new Set(state.studio.feedback.filter((f) => f.fromId === sid && lessonPosts.some((p) => p.id === f.postId && p.studentId !== sid)).map((f) => f.postId)).size;
   /** A student's group on a card, for feedback to the group: its name and members, and whether they wrote one worksheet. */
   const groupOnCard = (m: Module, sid: string) => {
     const shared = kindOf(m) === "worksheet" && m.writers === "group";
@@ -65,12 +60,8 @@ export function Classroom({
     if (!g || g.id === "all" || g.studentIds.length < 2) return undefined;
     return { name: g.name, members: g.studentIds.map((id) => course.students.find((x) => x.id === id)?.name).filter((x): x is string => !!x), shared };
   };
-  // The same group the server uses: the studio card's own groups (its grouping), so a small group's goal is smaller.
-  const studioCard = lesson.modules.find((m) => m.type === "studio");
-  const feedbackGoal = (sid: string) => Math.min(2, Math.max(0, (groupFor(course, studioCard, sid)?.studentIds.length ?? 1) - 1));
-  const helpfulGiven = (sid: string) => state.studio.feedback.filter((f) => f.fromId === sid && f.helpful && lessonPosts.some((p) => p.id === f.postId)).length;
   // A student's group is worth showing only once the course has a discussion run in groups (or several groups).
-  const usesGroups = course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => m.type === "studio"))) || (course.groups?.length ?? 0) > 1;
+  const usesGroups = course.weeks.some((w) => w.lessons.some((l) => l.modules.some((m) => !!m.wall?.byGroup))) || (course.groups?.length ?? 0) > 1;
   const groupName = (sid: string) => (usesGroups ? course.groups?.find((g) => g.studentIds.includes(sid))?.name ?? "" : "");
 
   // —— who needs attention in this lesson ——
@@ -103,16 +94,14 @@ export function Classroom({
   const unpicked = (lesson.choiceSlots ?? []).length
     ? course.students.filter((st) => !notStarted.includes(st) && (lesson.choiceSlots ?? []).some((slot) => !state.choices[st.id]?.[slot]))
     : [];
-  const studioId = lesson.modules.find((m) => m.type === "studio")?.id;
-  // Peer review on a discussion (it asks each student to reply to classmates): the same two lists as Collab Studio's.
+  // Peer review on a discussion (it asks each student to reply to classmates): who's waiting for replies, who owes them.
   const peerWalls = lesson.modules.filter((m) => m.type === "wall" && (m.wall?.replies ?? 0) > 0);
   const wallPosts = (state.posts ?? []).filter((p) => peerWalls.some((m) => m.id === p.moduleId) && p.studentId !== "teacher");
   const fromClassmate = (p: (typeof wallPosts)[number]) => (p.comments ?? []).some((c) => c.from !== p.studentId && c.from !== "teacher");
   const wallWaiting = (sid: string) => wallPosts.find((p) => p.studentId === sid && !fromClassmate(p))?.moduleId;
   const wallOwing = (sid: string) => peerWalls.find((m) => wallPosts.some((p) => p.moduleId === m.id && p.studentId === sid) && !wallProgress(wallPosts, m.id, sid, repliesNeeded(course, m, sid)).done)?.id;
-  const studioWaiting = new Set(lessonPosts.filter((p) => !state.studio.feedback.some((f) => f.postId === p.id)).map((p) => p.studentId));
-  const waiting = course.students.filter((st) => studioWaiting.has(st.id) || !!wallWaiting(st.id));
-  const owing = course.students.filter((st) => (lessonPosts.some((p) => p.studentId === st.id) && feedbackGiven(st.id) < feedbackGoal(st.id)) || !!wallOwing(st.id));
+  const waiting = course.students.filter((st) => !!wallWaiting(st.id));
+  const owing = course.students.filter((st) => !!wallOwing(st.id));
   const lateCard = (sid: string) => lesson.modules.find((m) => visible[sid].has(m.id) && isLate(m, progress[sid]?.[m.id], now))?.id;
   // A student who hasn't joined the class yet (invited by email, no account linked) isn't overdue: they're not in yet.
   const overdue = course.students.filter((st) => joined(st) && !!lateCard(st.id));
@@ -152,8 +141,8 @@ export function Classroom({
     { key: "start", icon: "clock", tint: "var(--color-ink-2)", title: "Haven’t started", hint: "No card opened in this lesson yet.", who: notStarted, cell: firstVisible },
     { key: "invited", icon: "user", tint: "var(--color-ink-3)", title: "Haven’t joined yet", hint: "Invited by email; they haven’t signed in to the class. Send the invitation again from Invite students.", who: notJoined, cell: () => undefined },
     { key: "stall", icon: "timer", tint: "var(--color-warn)", title: "Stalled", hint: "Started, but nothing new for 2+ days.", who: stalled, cell: (sid) => lesson.modules.find((m) => progress[sid]?.[m.id]?.status === "doing")?.id },
-    { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted for peer review, no classmate has replied yet.", who: waiting, cell: (sid) => (studioWaiting.has(sid) ? studioId : wallWaiting(sid)) },
-    { key: "owe", icon: "studio", tint: "#367195", title: "Owe feedback", hint: "Posted, but replied to fewer classmates than the card asks (fewer in a small group).", who: owing, cell: (sid) => wallOwing(sid) ?? studioId },
+    { key: "wait", icon: "message", tint: "#ae502f", title: "Waiting for feedback", hint: "Posted for peer review, no classmate has replied yet.", who: waiting, cell: wallWaiting },
+    { key: "owe", icon: "studio", tint: "#367195", title: "Owe feedback", hint: "Posted, but replied to fewer classmates than the card asks (fewer in a small group).", who: owing, cell: wallOwing },
     ...(unpicked.length ? [{ key: "path", icon: "split", tint: "#4b56a8", title: "Haven’t picked a path", hint: "Working, but no Guided/Stretch choice yet.", who: unpicked, cell: firstVisible }] : []),
   ];
   const totals = real.reduce(
@@ -165,8 +154,6 @@ export function Classroom({
     },
     { cards: 0, done: 0 },
   );
-  const posted = new Set(lessonPosts.map((p) => p.studentId)).size;
-  const feedbackTotal = state.studio.feedback.filter((f) => lessonPosts.some((p) => p.id === f.postId)).length;
 
   function exportAll() {
     const all = course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.map((m) => ({ w, l, m }))));
@@ -181,20 +168,9 @@ export function Classroom({
     download(`${course.title} - all weeks.csv`, toCsv([head, ...rows]), "text/csv");
   }
 
-  function exportFeedback() {
-    const name = (id: string) => course.students.find((x) => x.id === id)?.name ?? id;
-    const title = (mid: string) => course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules)).find((m) => m.id === mid)?.title ?? "";
-    const rows: (string | number)[][] = [["Card", "Post by", "Post title", "Feedback from", "Observed", "Effect", "Try next", "Level", "Given at"]];
-    for (const f of state.studio.feedback) {
-      const p = state.studio.posts.find((x) => x.id === f.postId);
-      if (!p) continue;
-      rows.push([title(p.moduleId), name(p.studentId), p.title, name(f.fromId), f.observed, f.effect, f.next, f.level ?? "", new Date(f.createdAt).toISOString()]);
-    }
-    download(`${course.title} - peer feedback.csv`, toCsv(rows), "text/csv");
-  }
 
   function exportCsv() {
-    const head = ["Student", "Group", ...cards.map((m) => m.title), ...(studioIds.size ? ["Feedback given"] : [])];
+    const head = ["Student", "Group", ...cards.map((m) => m.title)];
     const rows = course.students.map((st) => [
       st.name,
       groupName(st.id),
@@ -206,7 +182,6 @@ export function Classroom({
         const best = m.type === "quiz" ? pr?.best ?? pr?.score : pr?.score;
         return `${status === "done" ? "Done" : status === "doing" ? "In progress" : "Not started"}${m.questions && !isPoll(m) && best !== undefined ? ` (${best}/${quizSet(m, st.id, pr?.attempt ?? 1).length})` : ""}`;
       }),
-      ...(studioIds.size ? [feedbackGiven(st.id)] : []),
     ]);
     download(`${course.title} - ${lesson.title}.csv`, toCsv([head, ...rows]), "text/csv");
   }
@@ -273,21 +248,6 @@ export function Classroom({
               <div className="mt-3 flex flex-wrap gap-1.5">{course.skills?.map((sk) => selProgress.ratings![sk.id] && <span key={sk.id} className="chip">{sk.name} · {selProgress.ratings![sk.id]}</span>)}</div>
             )}
             {selProgress?.work?.length ? <div className="mt-3 space-y-4">{selProgress.work.map((a) => <div key={a.id}><div className="mb-1 text-[12px] text-ink-3">{a.name}</div><MarkedMedia a={a} /></div>)}</div> : null}
-            {state.studio.posts.filter((p) => p.moduleId === selModule.id && p.studentId === selStudent.id).map((p) => (
-              <div key={p.id} className="mt-3 rounded-lg bg-[#fbf3ee] p-3 text-[13px]">
-                <div className="font-medium">{p.title}</div>
-                {p.question && <div className="text-ink-2">Asked: {p.question}</div>}
-                {p.work.map((a) => <div key={a.id} className="mt-2"><MarkedMedia a={a} /></div>)}
-                <div className="mt-2 text-[12px] text-ink-3">{state.studio.feedback.filter((f) => f.postId === p.id).length} feedback received</div>
-                {state.studio.feedback.filter((f) => f.postId === p.id).map((f) => (
-                  <div key={f.id} className="mt-2 rounded-md bg-white px-2.5 py-2 text-[12.5px] leading-snug">
-                    <div className="flex items-center gap-1.5 text-ink-3">{course.students.find((x) => x.id === f.fromId)?.name}{f.helpful && <span className="flex items-center gap-0.5 text-ok"><Icon name="check" size={11} />helpful</span>}</div>
-                    <div><span className="text-ink-3">Observed:</span> {f.observed}</div>
-                    <div><span className="text-ink-3">Try next:</span> {f.next}</div>
-                  </div>
-                ))}
-              </div>
-            ))}
             {!readOnly && selProgress?.status !== "done" && <RemindButton courseId={courseId} ids={[selStudent.id]} names={selStudent.name} moduleId={selModule.id} text={`Reminder: “${selModule.title}”${selModule.due ? " is due soon" : ""}. Open it when you can.`} />}
             {selModule.due && (
               <p className={`mt-2 text-[12.5px] ${isLate(selModule, selProgress ?? undefined, now) ? "text-bad" : "text-ink-3"}`}>
@@ -398,7 +358,6 @@ export function Classroom({
         <ExportMenu items={[
           ["This lesson (CSV)", exportCsv],
           ["All weeks (CSV)", exportAll],
-          ["All peer feedback (CSV)", exportFeedback],
           ...extraExports,
         ]} />
       </div>
@@ -407,7 +366,6 @@ export function Classroom({
         {[
           ["Cards done", `${totals.cards ? Math.round((totals.done / totals.cards) * 100) : 0}%`, `${totals.done} of ${totals.cards}`],
           ["Started", `${real.length - notStarted.filter((st) => real.includes(st)).length}/${real.length}`, "students"],
-          ...(studioIds.size ? [["Posted to Studio", `${posted}/${course.students.length}`, "students"], ["Feedback given", `${feedbackTotal}`, `goal ${course.students.reduce((n, st) => n + feedbackGoal(st.id), 0)}`]] : []),
         ].map(([k, v, sub], i) => (
           <div key={k} className="rise card px-4 py-3" style={{ "--i": i } as React.CSSProperties}>
             <div className="text-[12px] text-ink-3">{k}</div>
@@ -481,13 +439,6 @@ export function Classroom({
                   </th>
                 );
               })}
-              {studioIds.size > 0 && (
-                <th className="min-w-[6rem] border-b border-line px-2 py-3 text-left font-normal">
-                  <div style={{ color: "#367195" }}><Icon name="message" size={13} /></div>
-                  <div className="mt-1.5 text-[12.5px] font-medium text-ink">Feedback given</div>
-                  <div className="mono mt-1 text-[11px]">goal up to 2</div>
-                </th>
-              )}
             </tr>
           </thead>
           <tbody>
@@ -530,14 +481,6 @@ export function Classroom({
                     </td>
                   );
                 })}
-                {studioIds.size > 0 && (
-                  <td className="border-b border-line/70 px-2 py-1.5 group-last:border-b-0">
-                    <span className={`flex h-8 items-center gap-1.5 rounded-lg px-2 font-mono text-[12px] ${feedbackGiven(s.id) >= feedbackGoal(s.id) ? "bg-ok/[0.07] text-ok" : "text-ink-2"}`} title="Given · marked helpful by the receiver">
-                      {feedbackGiven(s.id)}/{feedbackGoal(s.id)}
-                      {helpfulGiven(s.id) > 0 && <span className="text-[11px] text-ink-3">· {helpfulGiven(s.id)} helpful</span>}
-                    </span>
-                  </td>
-                )}
               </tr>
             ))}
           </tbody>

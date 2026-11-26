@@ -46,7 +46,6 @@ export function makeCourse(ownerId: string, title: string, weeks: Week[], extra:
   d.toolLog[id] = [];
   d.events[id] = [];
   d.choices[id] = {};
-  d.studio[id] = { posts: [], feedback: [] };
   return course;
 }
 

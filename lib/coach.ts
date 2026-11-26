@@ -93,14 +93,8 @@ export function feedbackFor(state: CourseState, studentId: string): FeedbackItem
       if (text || u.next) items.push({ key: `u:${mid}:${u.id}`, from: u.source, kind: "teacher", text: text || "New links on this card.", next: u.next, where: title(mid), moduleId: mid, at: u.at });
     }
   }
-  const myPosts = state.studio.posts.filter((p) => p.studentId === studentId);
-  for (const f of state.studio.feedback) {
-    const post = myPosts.find((p) => p.id === f.postId);
-    if (post) items.push({ key: `f:${f.id}`, from: name(f.fromId), kind: "peer", text: f.observed + (f.effect ? ` ${f.effect}` : ""), next: f.next, where: title(post.moduleId), moduleId: post.moduleId, at: f.createdAt });
-  }
   const myWork = new Map<string, string>();
   for (const [mid, p] of Object.entries(mine)) for (const w of p.work ?? []) myWork.set(w.id, mid);
-  for (const p of myPosts) for (const w of p.work) myWork.set(w.id, p.moduleId);
   for (const mk of state.marks ?? []) {
     if (mk.from === studentId || !myWork.has(mk.attachmentId)) continue;
     const t = `${Math.floor(mk.sec / 60)}:${String(Math.floor(mk.sec % 60)).padStart(2, "0")}`;

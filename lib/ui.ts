@@ -15,7 +15,7 @@ const COVER = {
 
 export const SUITS: { id: Suit; name: string; tint: string; cover: string; rule: string; types: ModuleType[]; kinds: CardKind[] }[] = [
   { id: "content", name: "Content", tint: "#3d68a6", cover: COVER.content, rule: "Words, pictures, videos, links and recordings to take in.", types: ["read"], kinds: PICKABLE.filter((k) => k.family === "content").map((k) => k.id) },
-  { id: "question", name: "Question", tint: "#a0561f", cover: COVER.question, rule: "A question, answered with choices (a quiz question or a poll), in students’ own words, or in a discussion.", types: ["quiz", "practice", "submit", "wall", "studio", "group"], kinds: PICKABLE.filter((k) => k.family === "question").map((k) => k.id) },
+  { id: "question", name: "Question", tint: "#a0561f", cover: COVER.question, rule: "A question, answered with choices (a quiz question or a poll), in students’ own words, or in a discussion.", types: ["quiz", "practice", "submit", "wall", "group"], kinds: PICKABLE.filter((k) => k.family === "question").map((k) => k.id) },
 ];
 
 export const suitOf = (t: ModuleType): (typeof SUITS)[number] => SUITS.find((s) => s.types.includes(t)) ?? SUITS[1];
@@ -78,7 +78,6 @@ export const TYPE_META: Record<ModuleType, Meta> = {
   quiz: variant("quiz", { label: "Quiz", name: "Quiz", hint: "Quick questions to check understanding", doneLabel: "Submit" }),
   practice: variant("practice", { label: "Practice", name: "Practice", hint: "Steps to try, a timer, a recording", outputLabel: "Your practice notes", doneLabel: "Done" }),
   submit: variant("submit", { label: "Hand in", name: "Hand in", hint: "A piece of work for the teacher", outputLabel: "Your work", doneLabel: "Hand in" }),
-  studio: variant("studio", { label: "Studio", name: "Collab Studio", hint: "Small groups present and give feedback", doneLabel: "Done" }),
   wall: variant("wall", { label: "Wall", name: "Class wall", hint: "Everyone posts; the class responds", doneLabel: "Done" }),
   group: variant("group", { label: "Group", name: "Card group", hint: "Cards that go together; its score counts the questions with a right answer", doneLabel: "Done" }),
 };

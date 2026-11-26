@@ -20,11 +20,10 @@ export type ModuleType =
   | "wall"
   | "submit"
   | "quiz"
-  | "studio"
   | "group";
 /** Card types from before cards were simplified. Only old saved data or a document import can still hold them; they're
  * turned into today's types when a card is saved or the data is loaded (lib/kinds.ts withKind). */
-export type OldModuleType = "explore" | "reflect" | "selfcheck" | "builder";
+export type OldModuleType = "explore" | "reflect" | "selfcheck" | "builder" | "studio";
 
 /** 挂在模块上的一个工具：指向某个连接器的某个动作。 */
 export interface ToolRef {
@@ -616,7 +615,6 @@ export interface CourseState {
   events: ClassEvent[]; // 只有老师端拿到
   /** Paths students picked: student → slot → variant. */
   choices: Record<string, Record<string, string>>;
-  studio: { posts: StudioPost[]; feedback: Feedback[] };
   /** Timestamped notes on recordings this viewer can see. */
   marks: Mark[];
   /** Feedback a student marked as tried: student → feedback key → when. */

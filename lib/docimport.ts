@@ -95,11 +95,11 @@ const WEEK = /^(week|unit|module|session|lesson|topic|day)\s*(\d+)\b[\s:.\-â€“â€
 // Sections that are notes for teachers, not something students do.
 const SKIP = /\b(personali[sz]ed|teacher notes?|facilitator|implementation|sources?|references?|based on|rationale|for teachers?)\b/i;
 
-/** The card a part of a lesson plan becomes. "rating": a poll on how confident the student feels. */
-function guessType(title: string, body: string): ModuleType | "rating" {
+/** The card a part of a lesson plan becomes. "rating": a poll on how confident the student feels; "peer": peer review in groups. */
+function guessType(title: string, body: string): ModuleType | "rating" | "peer" {
   const t = `${title} ${body.slice(0, 160)}`.toLowerCase();
   if (/self[- ]?(assess|check|rat)|starting point|rate yourself/.test(t)) return "rating";
-  if (/collab studio|studio session|group session|peer review session|round[- ]robin/.test(t)) return "studio";
+  if (/collab studio|studio session|group session|peer review session|round[- ]robin/.test(t)) return "peer";
   if (/reflect|commitment|journal|look back|revis/.test(title.toLowerCase())) return "submit";
   if (/\b(share|post|discuss)/.test(title.toLowerCase()) || /\bwall\b|discussion|share (your|with)|post (your|on|it)|giving good feedback|brainstorm/.test(t)) return "wall";
   if (/\bquiz\b|knowledge check|\btest\b/.test(t)) return "practice";
@@ -114,7 +114,7 @@ function card(title: string, body: string, forceType?: ModuleType): Module {
   const type = forceType ?? guessType(title, body);
   // A peer-review session (what Collab Studio was) is a discussion in groups: each student posts their work and gives
   // structured feedback to two groupmates.
-  if (type === "studio") return {
+  if (type === "peer") return {
     id: uid("m-"), type: "wall", kind: "discussion", title: title.replace(/[.:]\s*$/, "").slice(0, 90), body: body.trim().slice(0, 4000),
     audience: { kind: "all" }, tools: [],
     minutes: minutes && minutes <= 180 ? minutes : undefined,

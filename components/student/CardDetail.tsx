@@ -14,7 +14,7 @@ import { docKey } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { RichBodyEditor } from "../teacher/RichBodyEditor";
 import { DocNotes } from "./DocNotes";
-import type { AnswerValue, Attachment, Course, CourseState, Lesson, Module, Post, Progress, Student } from "@/lib/types";
+import type { AnswerValue, Attachment, Course, Lesson, Module, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
 import { ReadAloud } from "../ReadAloud";
@@ -24,7 +24,6 @@ import { CardForm } from "./CardForm";
 import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, ReviewNote, UpdatesNote } from "./CardExtras";
 import { RichText } from "../RichText";
 import { isRich, plainText } from "@/lib/markdown";
-import { Studio } from "./Studio";
 import { WorkComposer } from "./WorkComposer";
 
 const WORK_TYPES = new Set(["explore", "practice", "submit", "reflect", "selfcheck"]);
@@ -46,7 +45,6 @@ export interface DetailProps {
   lesson: Lesson;
   weekTitle: string;
   mine: Record<string, Progress>;
-  studio: CourseState["studio"];
   /** The card is one of a card group's: where it sits, and the group's next card to go to (none on the last). */
   group?: { title: string; index: number; total: number; next?: { title: string; go: () => void }; score?: number; opened?: string[]; part?: { title: string; score?: number; opened: string[] }; parts?: { title: string; score: number }[] };
 }
@@ -88,7 +86,6 @@ export function CardDetail(p: DetailProps) {
   // A vote or a multiple-choice answer is the whole response: no recording or file box under it.
   const showWork = WORK_TYPES.has(m.type) && !m.choice && kind !== "choice";
   const skills = (m.skills ?? []).map((id) => p.course.skills?.find((s) => s.id === id)?.name).filter(Boolean);
-  const lessonWork: { from: string; a: Attachment }[] = p.lesson.modules.flatMap((x) => (x.id === m.id ? [] : (p.mine[x.id]?.work ?? []).map((a) => ({ from: x.title, a }))));
   const starred = !!p.progress?.starred;
   // When this card is one of several paths, the others, side by side.
   const paths = m.choice ? p.lesson.modules.filter((x) => x.choice?.slot === m.choice!.slot) : [];
@@ -247,7 +244,7 @@ export function CardDetail(p: DetailProps) {
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {due && <span className={`chip font-medium ${due.tone === "late" ? "bg-bad/10 text-bad" : due.tone === "soon" ? "bg-warn/10 text-warn" : ""}`}><Icon name="clock" size={12} />{due.label}</span>}
             {m.minutes && <span className="chip"><Icon name="clock" size={12} />{m.minutes} min</span>}
-            {m.submitTo && <span className="chip"><Icon name={m.submitTo === "studio" ? "studio" : "board"} size={12} />{m.submitTo === "studio" ? "Hand in to Collab Studio" : "Keep on your personal board"}</span>}
+            {m.submitTo === "personal" && <span className="chip"><Icon name="board" size={12} />Keep on your personal board</span>}
             {skills.map((s) => <span key={s} className="chip bg-[#eef3f7] text-[#3d6f91]">{s}</span>)}
           </div>
         )}
@@ -353,14 +350,6 @@ export function CardDetail(p: DetailProps) {
         )}
 
 
-        {m.type === "studio" && (
-          <div className="mt-7">
-            <Studio
-              courseId={p.courseId} studentId={p.studentId} module={m} course={p.course} lessonTitle={p.lesson.title} weekTitle={p.weekTitle}
-              posts={p.studio.posts} feedback={p.studio.feedback} progress={p.progress} lessonWork={lessonWork} onChanged={p.onChanged}
-            />
-          </div>
-        )}
 
         {/* Groups made by a sign-up poll the student hasn't answered yet: they pick a group first, so what they write
             goes in their group's copy (not one of their own, left behind when they join). */}

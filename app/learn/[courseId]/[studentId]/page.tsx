@@ -333,24 +333,6 @@ export default function LearnPage() {
       if (first) return { lesson: l, m: first };
     }
   })();
-  // A nudge toward this week's Collab Studio when peers are waiting on you.
-  const studioNudge = (() => {
-    const sm = current.modules.find((m) => m.type === "studio");
-    if (!sm || statusOf(sm.id) === "done") return undefined;
-    const others = state.studio.posts.filter((p) => p.moduleId === sm.id && p.studentId !== studentId);
-    const mine = state.studio.posts.some((p) => p.moduleId === sm.id && p.studentId === studentId);
-    const given = new Set(state.studio.feedback.filter((f) => f.fromId === studentId && others.some((p) => p.id === f.postId)).map((f) => f.postId)).size;
-    const names = others.map((p) => course.students.find((x) => x.id === p.studentId)?.name ?? "A peer");
-    if (!others.length && !mine) return undefined;
-    const goal = Math.min(2, others.length || 2);
-    const who = names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} and ${names[1]}` : `${names[0]} and ${names.length - 1} others`;
-    const text = !mine
-      ? `${who} posted in Collab Studio. Add your work and reply.`
-      : given < goal && others.length
-        ? `${who} posted. Give feedback (${given}/${goal}).`
-        : "Your post is up. Waiting for your group.";
-    return { id: sm.id, text, peers: names };
-  })();
 
   const nothingYet = lessons.every((l) => l.modules.length === 0);
   // Why this is the card to play now.
@@ -668,16 +650,6 @@ export default function LearnPage() {
                       <NeedsYou heading={upNext ? "Also needs you" : "Needs you"} skip={upNext?.m.id} state={state} studentId={studentId} onElectives={toElectives}
                         onOpen={(lessonId, mid) => reveal(mid, (el) => open(lessonId, mid, el), heroRef.current)} />
                     </div>
-                    {studioNudge && (
-                      <button
-                        onClick={() => reveal(studioNudge.id, (el) => open(current.id, studioNudge.id, el))}
-                        className="pop press mt-4 flex max-w-md items-center gap-3 rounded-xl border border-[#ae502f]/25 bg-[#fbf3ee] px-3.5 py-2.5 text-left hover:border-[#ae502f]/50"
-                      >
-                        <span className="flex -space-x-1.5">{studioNudge.peers.slice(0, 3).map((n) => <span key={n} className="rounded-full ring-2 ring-[#fbf3ee]"><Avatar name={n} size={22} /></span>)}</span>
-                        <span className="min-w-0 flex-1 text-[13px]">{studioNudge.text}</span>
-                        <Icon name="arrow" size={14} className="text-[#ae502f]" />
-                      </button>
-                    )}
                   </div>
                 </div>
                 <div className="mt-10 border-t border-line" />
@@ -814,7 +786,6 @@ export default function LearnPage() {
             lesson={openLesson!}
             weekTitle={openWeek?.title ?? ""}
             mine={mine}
-            studio={state.studio}
           />
         </Lift>
       )}
