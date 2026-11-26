@@ -291,8 +291,11 @@ export interface Module {
   /** A form the teacher fills in for each student after the activity (e.g. a workshop). Answers reach the student's card. */
   form?: ActivityForm;
   /** Card group: how many tries a student gets at its questions (default 1). With more than one, each question is
-   *  answered once per try, the answers to missed ones show after the last try, and the best try's score counts. */
+   *  answered once per try, the answers to missed ones show after the last try, and the best try's score counts
+   *  (or, with scoring "average", the average of the tries taken). */
   attempts?: number;
+  /** Card group with tries: which score counts in Grades. Unset: the best try. */
+  scoring?: "average";
   /** Card tree (card groups): deal a card by score band. Teacher only. */
   bands?: ScoreBand[];
   /** Set only for students: this card was dealt to them by one of their answers or scores. */
@@ -637,4 +640,4 @@ export interface ExternalUpdate {
 }
 
 /** A card group as a student sees it: its cards in order, and its score once it's done. */
-export type DeckView = { id: string; title: string; members: string[]; done?: boolean; score?: number; /** With tries: how many, which this is, and the best score so far. */ attempts?: number; attempt?: number; best?: number; paths?: { to?: string; title?: string; type?: ModuleType; why?: string }[] };
+export type DeckView = { id: string; title: string; members: string[]; done?: boolean; score?: number; /** With tries: how many, which this is, the score that counts so far (the best, or the average), and which. */ attempts?: number; attempt?: number; counted?: number; average?: boolean; paths?: { to?: string; title?: string; type?: ModuleType; why?: string }[] };

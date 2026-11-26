@@ -113,6 +113,16 @@ export function bestOf(p: Progress | undefined): number | undefined {
   return all.length ? Math.max(...all) : undefined;
 }
 
+/** Whether a card group counts the average of its tries (not the best). */
+export const averaged = (g: Module | undefined) => g?.scoring === "average" && triesFor(g) > 1;
+
+/** The score of a card group that counts, in percent: its best try, or the average of the tries taken (finished ones). */
+export function countedOf(p: Progress | undefined, g: Module | undefined): number | undefined {
+  const all = [...(p?.tries ?? []), ...scoresIn(p?.dealt?.[SCORE])];
+  if (!all.length) return undefined;
+  return averaged(g) ? Math.round(all.reduce((a, b) => a + b, 0) / all.length) : Math.max(...all);
+}
+
 /** The tries a card group gives (1 unless the teacher allows more): counted on the outermost group. */
 export const triesFor = (m: Module | undefined) => Math.max(1, Math.min(10, Math.round(m?.attempts ?? 1)));
 

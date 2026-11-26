@@ -26,7 +26,7 @@ import { WallBoard } from "../WallBoard";
 import { RichText } from "../RichText";
 import { Avatar, Icon, StatusIcon } from "../Icon";
 import { FormAnswers, FormFill, FormTable } from "./ActivityForm";
-import { bestOf, groupScore, leavesOf, parentOf, treeView, triedGroup, triesFor } from "@/lib/branching";
+import { averaged, countedOf, groupScore, leavesOf, parentOf, treeView, triedGroup, triesFor } from "@/lib/branching";
 
 /** The longest feedback note (the server keeps the same). */
 const FEEDBACK_MAX = 5000;
@@ -131,7 +131,8 @@ export function Classroom({
     // A group inside a group is judged by the outer group's score, which holds the same answers.
     if (m.type === "group" && !inner.has(m.id) && leavesOf(m, lesson.modules).some((c) => visible[sid].has(c.id))) {
       const g = groupScore(m, lesson.modules, progress[sid] ?? {});
-      const best = Math.max(g.done ? g.pct ?? 0 : -1, bestOf(pr) ?? -1);
+      const c = countedOf(pr, m);
+      const best = averaged(m) ? c ?? (g.done ? g.pct ?? 0 : -1) : Math.max(g.done ? g.pct ?? 0 : -1, c ?? -1);
       return best >= 0 && best < 50;
     }
     return false;
@@ -300,12 +301,12 @@ export function Classroom({
               !selModule.questions && kindOf(selModule) !== "content" && <p className="mt-3 text-[13px] text-ink-3">{sharedDoc(selModule) ? "Not handed in yet. Once it is, you can comment on any passage of the copy they hand in." : "Nothing written yet."}</p>
             )}
             {(() => {
-              // A card in a group with tries: which try the student is on, and their best score on the group.
+              // A card in a group with tries: which try the student is on, and the score that counts (best or average).
               const tg = triedGroup(selModule.id, lesson.modules);
               const tp = tg ? progress[sel!.sid]?.[tg.id] : undefined;
               if (!tg || !tp) return null;
-              const best = bestOf(tp);
-              return <p className="mt-3 text-[12.5px] text-ink-3">“{tg.title}”: try {Math.min(tp.attempt ?? 1, triesFor(tg))} of {triesFor(tg)}{best !== undefined ? ` · best ${best}%` : ""}. These are the answers of the try they’re on.</p>;
+              const counted = countedOf(tp, tg);
+              return <p className="mt-3 text-[12.5px] text-ink-3">“{tg.title}”: try {Math.min(tp.attempt ?? 1, triesFor(tg))} of {triesFor(tg)}{counted !== undefined ? ` · ${averaged(tg) ? "average" : "best"} ${counted}%` : ""}. These are the answers of the try they’re on.</p>;
             })()}
             {selModule.questions && (
               <ul className="mt-3 space-y-1.5 text-[13px]">

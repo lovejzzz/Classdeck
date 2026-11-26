@@ -169,7 +169,7 @@ export function asKind(m: Module, k: CardKind, poll?: boolean): Module {
   const asPoll = k === "choice" && (poll ?? wasPoll);
   const next: Module = { ...m, kind: k, type: typeOfKind(k, asPoll ? undefined : m.type), suit: familyOf(k) as Module["suit"] };
   // Tries and score ranges belong to card groups.
-  next.attempts = undefined; next.bands = undefined;
+  next.attempts = undefined; next.scoring = undefined; next.bands = undefined;
   for (const k of ["timeLimit", "shuffle", "pick"]) delete (next as unknown as Record<string, unknown>)[k];
   next.poll = asPoll ? true : undefined;
   if (k !== "discussion") next.wall = undefined;

@@ -385,10 +385,16 @@ export function CardEditor({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-ink-2">Tries</span>
                   <Seg value={String(triesFor(m))} options={[["1", "One"], ["2", "2"], ["3", "3"]]} onPick={(v) => set({ attempts: v === "1" ? undefined : Number(v) })} />
+                  {triesFor(m) > 1 && (
+                    <>
+                      <span className="ml-2 text-ink-2">Counts</span>
+                      <Seg value={m.scoring === "average" ? "average" : "best"} options={[["best", "Best try"], ["average", "Average"]]} onPick={(v) => set({ scoring: v === "average" ? "average" : undefined })} />
+                    </>
+                  )}
                 </div>
                 <p className="mt-1.5 text-[12px] leading-snug text-ink-3">
                   {triesFor(m) > 1
-                    ? `Students answer each question once a try. After a try they can start the group again, up to ${triesFor(m)} tries; their best try counts, and its score deals cards (cards an earlier try dealt stay). The answers to questions they missed show after their last try.`
+                    ? `Students answer each question once a try. After a try they can start the group again, up to ${triesFor(m)} tries; ${m.scoring === "average" ? "the average of the tries they take counts in Grades" : "their best try counts in Grades"}, and each try’s score deals cards (cards an earlier try dealt stay). The answers to questions they missed show after their last try.`
                     : "Students answer each question until they get it right; their first answers make the score."}
                 </p>
               </div>

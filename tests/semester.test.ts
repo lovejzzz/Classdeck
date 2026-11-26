@@ -327,7 +327,7 @@ async function main() {
   check("Chloe tries again", (await op(S.Chloe, { op: "retakeGroup", studentId: S.Chloe.id, moduleId: "m-quiz" })).ok !== false);
   for (let i = 0; i < 3; i++) await op(S.Chloe, { op: "answer", studentId: S.Chloe.id, moduleId: `m-quiz-q${i + 1}`, qid: quizIds[i], choice: right[i] });
   const deck = (await board("Chloe")).course.weeks.flatMap((w: J) => w.lessons).flatMap((l: J) => l.decks ?? []).find((d: J) => d.id === "m-quiz");
-  check("a better second try", deck?.score === 100 && deck?.best === 100 && deck?.attempt === 2, deck);
+  check("a better second try", deck?.score === 100 && deck?.counted === 100 && deck?.attempt === 2, deck);
   check("the help card from the first try stays", (await sees("Chloe")).has("m-web-help"));
   check("no third try", (await op(S.Chloe, { op: "retakeGroup", studentId: S.Chloe.id, moduleId: "m-quiz" })).ok === false);
   // Other kinds of question.

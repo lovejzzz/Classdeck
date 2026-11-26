@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.89",
+    date: "2026-11-26",
+    changes: [
+      "A card group with tries can count the average of the tries a student takes, not only the best: in the group’s settings, next to Tries, Counts: Best try or Average. Grades, the student’s board and the teacher’s view of the student show the score that counts, and students are told which it is (with Average, another try can lower it too).",
+    ],
+  },
+  {
     version: "0.2.88",
     date: "2026-11-25",
     changes: [

@@ -48,7 +48,7 @@ export interface DetailProps {
   /** The card is one of a card group's: where it sits, and the group's next card to go to (none on the last). */
   group?: { title: string; index: number; total: number; next?: { title: string; go: () => void }; score?: number; opened?: string[]; part?: { title: string; score?: number; opened: string[] }; parts?: { title: string; score: number }[];
     /** A group with tries: which try this is, how many, the best score so far, and how to start the next. */
-    tries?: { attempt: number; attempts: number; best?: number; retake?: () => void } };
+    tries?: { attempt: number; attempts: number; counted?: number; average?: boolean; retake?: () => void } };
 }
 
 /** What's on the card once it's lifted out of the hand. */
@@ -444,7 +444,7 @@ export function CardDetail(p: DetailProps) {
             {!p.group.next && p.group.score !== undefined && (
               <span className="basis-full text-[13px] text-ink-2 sm:order-first">
                 <span className="font-medium text-ink">Group score {p.group.score}%.</span>{" "}
-                {p.group.tries && p.group.tries.attempts > 1 && p.group.tries.best !== undefined && p.group.tries.best !== p.group.score ? <span className="text-ink-3">Your best is {p.group.tries.best}%, and that’s the one that counts. </span> : null}
+                {p.group.tries && p.group.tries.attempts > 1 && p.group.tries.counted !== undefined && (p.group.tries.average ? p.group.tries.attempt > 1 : p.group.tries.counted !== p.group.score) ? <span className="text-ink-3">{p.group.tries.average ? `The average of your tries is ${p.group.tries.counted}%, and that’s what counts. ` : `Your best is ${p.group.tries.counted}%, and that’s the one that counts. `}</span> : null}
                 {p.group.parts?.length ? <span className="text-ink-3">({p.group.parts.map((x) => `${x.title} ${x.score}%`).join(" · ")}) </span> : null}
                 {(() => { const all = [...new Set([...(p.group.part?.opened ?? []), ...(p.group.opened ?? [])])]; return all.length ? <>It opened {all.map((t, i) => <span key={t}>{i ? ", " : ""}“{t}”</span>)} on your board.</> : "Nothing extra to do: on to the next card."; })()}
               </span>
@@ -452,7 +452,7 @@ export function CardDetail(p: DetailProps) {
             {!p.group.next && p.group.score !== undefined && p.group.tries?.retake && p.group.tries.attempt < p.group.tries.attempts && (
               <span className="flex basis-full flex-wrap items-center gap-2 sm:order-first">
                 <button onClick={p.group.tries.retake} className="btn btn-ghost press h-8"><Icon name="reset" size={13} /> Try again ({p.group.tries.attempts - p.group.tries.attempt} left)</button>
-                <span className="text-[12.5px] text-ink-3">Your best try counts. The answers to the ones you missed show after your last try.</span>
+                <span className="text-[12.5px] text-ink-3">{p.group.tries.average ? "The average of your tries counts, so another try can raise it or lower it." : "Your best try counts."} The answers to the ones you missed show after your last try.</span>
               </span>
             )}
             {p.group.next ? (

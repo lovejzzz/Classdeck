@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { bestOf, parentOf } from "@/lib/branching";
+import { countedOf, parentOf } from "@/lib/branching";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { MediaView } from "@/components/cards/Media";
@@ -56,9 +56,9 @@ export default function BoardPage() {
   const suggestions = recommend(state, studentId, now).filter((r) => ["focus", "mismatch", "feedback", "reflect"].includes(r.kind) || (r.kind === "path" && r.id !== "electives"));
   const cardLink = (mid: string) => `/learn/${courseId}/${studentId}?card=${mid}${testing ? "&preview=1" : ""}`;
   const shown = tab;
-  // Card groups of questions finished, by their best try (a group inside another is counted in that one).
+  // Card groups of questions finished, by the score that counts (best try, or average) (a group inside another is counted in that one).
   const quizScores = course.weeks.flatMap((w) => w.lessons).flatMap((l) => { const up = parentOf(l.modules); return l.modules.filter((g) => g.type === "group" && !up.has(g.id)); })
-    .map((g) => bestOf(mine[g.id])).filter((x): x is number => x !== undefined);
+    .map((g) => countedOf(mine[g.id], g)).filter((x): x is number => x !== undefined);
   const quizAvg = quizScores.length ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length) : undefined;
   const reviewed = all.filter((x) => mine[x.m.id]?.review).length;
   const takes = all.reduce((n, x) => n + (mine[x.m.id]?.work?.filter((w) => w.kind === "audio" || w.kind === "video").length ?? 0), 0);

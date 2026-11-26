@@ -98,6 +98,8 @@ async function main() {
     qc("q3", 3), qc("q4", 4), qc("q5", 5),
     card("notes", "group", "Notes", { members: ["n1", "n2"], attempts: 2 }),
     card("n1", "read", "Read this"), card("n2", "submit", "Hand this in"),
+    card("avg", "group", "Averaged", { members: ["a1", "a2"], attempts: 3, scoring: "average" }),
+    qc("a1", 6), qc("a2", 7),
   ];
   const r0 = await A.op(tid, { op: "saveLesson", lesson: { ...L1, modules } });
   check("lesson saved", r0.ok !== false, r0);
@@ -140,7 +142,7 @@ async function main() {
     check("the written card is still waiting on the revision", p.w1?.status === "doing" && p.w1?.reopened === true, p.w1);
     check("the earlier try's card stays", modulesOf(c).some((m) => m.id === "r-low"));
     const d = deck(c, "g1");
-    check("try 2 of 3, best 50%", d?.attempt === 2 && d?.attempts === 3 && d?.best === 50 && d?.score === undefined, d);
+    check("try 2 of 3, best 50%", d?.attempt === 2 && d?.attempts === 3 && d?.counted === 50 && d?.score === undefined, d);
   }
 
   // Others can't press it for her; inner groups have no Try again of their own.
@@ -175,7 +177,7 @@ async function main() {
   {
     const { c } = await look("Ann");
     check("a 100% try deals its card and keeps the earlier one", ["r-low", "r-top"].every((x) => modulesOf(c).some((m) => m.id === x)));
-    check("best is 100", deck(c, "g1")?.best === 100, deck(c, "g1"));
+    check("best is 100", deck(c, "g1")?.counted === 100, deck(c, "g1"));
   }
   // Lowered below the try she's on: shown as her last try.
   await setTries("g1", 2);
@@ -211,6 +213,26 @@ async function main() {
     const again = await ans("Ann", "q3", 0);
     const twice = await ans("Ann", "q3", 1);
     check("inside the inner group, once a try too", again.ok !== false && twice.ok === false, [again, twice]);
+  }
+
+  // A group whose tries count by their average.
+  {
+    const saved = courseOf(await A.state(tid)).weeks[0].lessons[0].modules.find((m) => m.id === "avg");
+    check("the average setting is kept", saved?.scoring === "average", saved);
+    await ans("Ben", "a1", 1); await ans("Ben", "a2", 1);
+    let d = deck((await look("Ben")).c, "avg");
+    check("one try: its score counts", d?.counted === 0 && d?.average === true, d);
+    await retake("Ben", "avg"); await ans("Ben", "a1", 0); await ans("Ben", "a2", 0);
+    d = deck((await look("Ben")).c, "avg");
+    check("two tries, 0% and 100%: 50% counts", d?.counted === 50 && d?.score === 100, d);
+    await retake("Ben", "avg");
+    d = deck((await look("Ben")).c, "avg");
+    check("while the next try is under way, the finished ones count", d?.counted === 50 && d?.attempt === 3, d);
+    await ans("Ben", "a1", 0); await ans("Ben", "a2", 1);
+    d = deck((await look("Ben")).c, "avg");
+    check("three tries, 0, 100 and 50: 50% counts", d?.counted === 50, d);
+    const o = deck((await look("Ann")).c, "outer");
+    check("a group without the setting still counts the best", o?.average === undefined && o?.counted === 67, o);
   }
 
   // A copy of the lesson keeps the tries, on the copied cards.

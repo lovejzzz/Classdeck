@@ -500,7 +500,7 @@ async function main() {
     const deeId = sid("Dee Low");
     const mid = await S.Dee.state(`${tid}?as=${deeId}`);
     check("a new try clears the answers and keeps the cards dealt", !mid.progress[deeId]["m-s1"].answers?.s1 && modulesOf(courseOf(mid)).some((m) => m.id === "m-low"), mid.progress[deeId]["m-s1"]);
-    check("Grades count the best try while the next one is under way", courseOf(mid).weeks[0].lessons[0].decks?.find((d) => d.id === "m-sq")?.best === 40);
+    check("Grades count the best try while the next one is under way", courseOf(mid).weeks[0].lessons[0].decks?.find((d) => d.id === "m-sq")?.counted === 40);
     const dee2 = await take("Dee", 5);
     const d2 = await ids("Dee");
     check("a better try deals its band's card and keeps the earlier one", d2.includes("m-low") && d2.includes("m-top") && dee2.groupDealt?.some((x) => x.id === "m-top"), [d2, dee2]);
@@ -508,7 +508,7 @@ async function main() {
     const deeP = (await S.Dee.state(`${tid}?as=${deeId}`));
     check("after the last try every answer is shown", five.every((q, i) => deeP.progress[deeId][`m-s${i + 1}`].reveal?.[q.id]?.answer === 0), deeP.progress[deeId]["m-s1"]);
     const deck = courseOf(deeP).weeks[0].lessons[0].decks?.find((d) => d.id === "m-sq");
-    check("the group shows try 2 of 2, best 100%", deck?.attempt === 2 && deck?.attempts === 2 && deck?.best === 100 && deck?.score === 100, deck);
+    check("the group shows try 2 of 2, best 100%", deck?.attempt === 2 && deck?.attempts === 2 && deck?.counted === 100 && deck?.score === 100, deck);
     // A worse try keeps the better try's card, and deals its own.
     await S.Eve.op(tid, { op: "retakeGroup", studentId: eveId, moduleId: "m-sq" });
     await take("Eve", 1);

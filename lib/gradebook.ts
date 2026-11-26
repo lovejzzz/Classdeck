@@ -3,7 +3,7 @@ import { download, toCsv } from "./download";
 import { isFinished, isLate } from "./grading";
 import { visibleModules } from "./profile";
 import type { CourseState, Module } from "./types";
-import { bestOf, groupScore, leavesOf, parentOf, treeView, triesFor } from "./branching";
+import { averaged, countedOf, groupScore, leavesOf, parentOf, treeView, triesFor } from "./branching";
 import { awaitingFeedback, reviewableCard } from "./kinds";
 
 /** Per student over the whole course: cards done, late, card-group scores, reviews given, work waiting, skill levels. */
@@ -36,7 +36,8 @@ export function gradeRows(state: CourseState, now: number) {
     }).filter((x) => x.s.done || !!mine[x.g.id]?.tries?.length);
     // Each score, to list under the student: the card group, its week, right of total (its best try), and tries used.
     const scored = groups.map(({ g, week, s: x, inside }) => {
-      const best = Math.max(x.pct ?? 0, bestOf(mine[g.id]) ?? 0);
+      const c = countedOf(mine[g.id], g);
+      const best = averaged(g) ? c ?? x.pct ?? 0 : Math.max(x.pct ?? 0, c ?? 0);
       return { id: g.id, title: g.title, week, right: Math.round((best * x.total) / 100), total: Math.max(1, x.total), tries: triesFor(g) > 1 ? Math.min(mine[g.id]?.attempt ?? 1, triesFor(g)) : undefined, inside };
     });
     const scores = scored.filter((x) => !("inside" in x && x.inside)).map((x) => x.right / x.total);

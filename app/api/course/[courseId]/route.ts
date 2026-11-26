@@ -10,7 +10,7 @@ import { isCorrect, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { foldWeeks } from "@/lib/cardmodel";
 import { kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
 import { quizWeeks, quizzesToGroups } from "@/lib/quizgroups";
-import { bestOf, canBranch, cardsOf, cleanCourseWiring, deals, wiresOf, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoreCount, scoresIn, treeView, triedGroup, triesFor } from "@/lib/branching";
+import { canBranch, countedOf, averaged, cardsOf, cleanCourseWiring, deals, wiresOf, dealsByScore, groupScore, groupsAbove, leavesOf, orphansOf, parentOf, pathsFor, SCORE, scoreCount, scoresIn, treeView, triedGroup, triesFor } from "@/lib/branching";
 import { mailReady, sendInvite, takeAllowance } from "@/lib/mail";
 import { inviteUrl, issueInvite, postUpdate, revokeInvites } from "@/lib/hooks";
 import { docKey, entryOf, setText, writersOf } from "@/lib/collab";
@@ -108,7 +108,7 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
           id: g.id, title: g.title, members: leavesOf(g, l.modules).map((c) => c.id).filter((id) => visible.has(id)),
           done: prog[g.id]?.status === "done" || undefined, score: typeof prog[g.id]?.dealt?.[SCORE] === "number" ? (prog[g.id]!.dealt![SCORE] as number) : undefined,
           // Tries need a score (questions); a try the teacher has since taken away shows as the last one.
-          ...(triesFor(g) > 1 && scoreCount(g, l.modules) > 0 ? { attempts: triesFor(g), attempt: Math.min(prog[g.id]?.attempt ?? 1, triesFor(g)), best: bestOf(prog[g.id]) } : {}),
+          ...(triesFor(g) > 1 && scoreCount(g, l.modules) > 0 ? { attempts: triesFor(g), attempt: Math.min(prog[g.id]?.attempt ?? 1, triesFor(g)), counted: countedOf(prog[g.id], g), ...(averaged(g) ? { average: true } : {}) } : {}),
           paths: paths.get(g.id),
           // Its groups inside, each with its own score once it's done (the cards that score opened, too).
           parts: (() => {
