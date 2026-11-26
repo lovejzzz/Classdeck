@@ -205,8 +205,8 @@ type ThreadCtx = { me: Who; teacher: boolean; canReply: boolean; name: (id: stri
   structured: boolean; author?: string; helpful: (c: Comment) => void };
 
 /** One post in the feed: who wrote it, its text and media, reactions, and its replies as threads. */
-function PostCard({ post, me, teacher, readOnly = false, module: m, students, courseId, onChanged, index, groupName }: {
-  post: Post; me: Who; teacher: boolean; readOnly?: boolean; module: Module; students: Student[]; courseId: string; onChanged: () => void; index: number; groupName?: (id: string) => string;
+function PostCard({ post, me, teacher, readOnly = false, module: m, students, courseId, onChanged, index, groupName, roleOf }: {
+  post: Post; me: Who; teacher: boolean; readOnly?: boolean; module: Module; students: Student[]; courseId: string; onChanged: () => void; index: number; groupName?: (id: string) => string; roleOf?: (studentId: string) => string | undefined;
 }) {
   const w = wallOf(m);
   const [local, setLocal] = useState<{ likes?: string[]; votes?: string[] }>({});
@@ -273,6 +273,7 @@ function PostCard({ post, me, teacher, readOnly = false, module: m, students, co
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-ink-3">
             <span className="font-semibold text-ink">{author}</span>
             {post.studentId === "teacher" && <span className="chip h-4 text-[10px]">Teacher</span>}
+            {post.studentId && post.studentId !== "teacher" && !(post.anonymous && !teacher) && roleOf?.(post.studentId) && <span className="chip h-5 bg-[#eef0fb] text-[10.5px] text-[#4b56a8]">{roleOf(post.studentId)}</span>}
             {teacher && post.anonymous && <span className="chip h-5 text-[10.5px]">anonymous to class</span>}
             {teacher && post.groupId && groupName && <span className="chip h-5 bg-[#eef0fb] text-[10.5px] text-[#4b56a8]">{groupName(post.groupId)}</span>}
             <span className="mono">{ago(post.createdAt)}</span>
@@ -371,12 +372,14 @@ export function WallBoard(props: WallProps) {
   return <MentionPeople.Provider value={people}><Feed {...props} /></MentionPeople.Provider>;
 }
 
-function Feed({ courseId, me, teacher = false, readOnly = false, module: m, posts, students, onChanged, header, groupName }: {
+function Feed({ courseId, me, teacher = false, readOnly = false, module: m, posts, students, onChanged, header, groupName, roleOf }: {
   courseId: string; me: Who; teacher?: boolean; module: Module; posts: Post[]; students: Student[]; onChanged: () => void; header?: React.ReactNode;
   /** A co-teacher who can only view: they read the discussion (with what a teacher sees) but don't post, reply or moderate. */
   readOnly?: boolean;
   /** A discussion by groups: a group's name, shown to the teacher on each post. */
   groupName?: (id: string) => string;
+  /** A poster's role in their group, shown beside their name. */
+  roleOf?: (studentId: string) => string | undefined;
 }) {
   const w = wallOf(m);
   const [sort, setSort] = useState<"new" | "top">(w.reactions === "votes" ? "top" : "new");
@@ -448,7 +451,7 @@ function Feed({ courseId, me, teacher = false, readOnly = false, module: m, post
         <div className="hatch flex h-24 items-center justify-center text-[13px] text-ink-3">{filter ? `Nothing in #${filter} yet.` : "No posts yet. Be the first."}</div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-line bg-white">
-          {list.map((p, i) => <PostCard key={p.id} post={p} me={me} teacher={teacher} readOnly={readOnly} module={m} students={students} courseId={courseId} onChanged={onChanged} index={i} groupName={groupName} />)}
+          {list.map((p, i) => <PostCard key={p.id} post={p} me={me} teacher={teacher} readOnly={readOnly} module={m} students={students} courseId={courseId} onChanged={onChanged} index={i} groupName={groupName} roleOf={roleOf} />)}
         </div>
       )}
     </div>

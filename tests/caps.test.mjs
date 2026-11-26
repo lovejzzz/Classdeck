@@ -106,6 +106,39 @@ async function main() {
   check("the student gets the two videos they picked", want.every((id) => seen.has(id)), { want, seen: [...seen].filter((x) => videos.some((v) => v.id === x)) });
   check("and not the five they didn't", videos.filter((v) => !want.includes(v.id)).every((v) => !seen.has(v.id)), videos.filter((v) => seen.has(v.id)).map((v) => v.title));
 
+  // Roles in groups: kept for people in the group, dropped for others, and a student sees them.
+  await A.op(cid, { op: "addStudents", names: "Ben\nCai" });
+  const roster = courseOf(await A.state(cid)).students;
+  const id = (n) => roster.find((x) => x.name === n).id;
+  const sg = await A.op(cid, { op: "saveGrouping", grouping: { name: "Practice groups", groups: [{ name: "Red", studentIds: [id("Ann"), id("Ben")], roles: { [id("Ann")]: "Speaker", [id("Ben")]: "Timekeeper", [id("Cai")]: "Note-taker" } }, { name: "Blue", studentIds: [id("Cai")] }] } });
+  check("a grouping with roles saves", !!sg.id, sg);
+  const gs = courseOf(await A.state(cid)).groupings.find((g) => g.id === sg.id);
+  check("roles stay with the people in the group", gs.groups[0].roles?.[id("Ann")] === "Speaker" && gs.groups[0].roles?.[id("Ben")] === "Timekeeper", gs.groups[0].roles);
+  check("a role for someone not in the group is dropped", !gs.groups[0].roles?.[id("Cai")], gs.groups[0].roles);
+  const sv = courseOf(await S.state(`${cid}?as=${sid}`)).groupings.find((g) => g.id === sg.id);
+  check("the student sees the roles in their group", sv.groups[0].roles?.[id("Ann")] === "Speaker", sv.groups[0]);
+
+  // Certificate of completion: off by default; on at a share of cards; earned by work or given by the teacher.
+  const off = courseOf(await S.state(`${cid}?as=${sid}`));
+  check("no certificate until it's turned on", !off.certificate, off.certificate);
+  const bad = await S.op(cid, { op: "setCertificate", percent: 1 });
+  check("a student can't turn it on", bad.ok === false || bad.status >= 400, bad);
+  await A.op(cid, { op: "setCertificate", percent: 90 });
+  let mine = courseOf(await S.state(`${cid}?as=${sid}`)).certificate;
+  check("the student sees their standing, not earned yet", mine?.percent === 90 && mine.mine && mine.mine.earned === false && mine.mine.total > 0, mine);
+  check("students don't receive who else was given one", mine && !("given" in mine && mine.given), mine);
+  await A.op(cid, { op: "giveCertificate", studentId: sid });
+  mine = courseOf(await S.state(`${cid}?as=${sid}`)).certificate;
+  check("a certificate given by the teacher counts", mine?.mine?.earned === true && typeof mine.mine.at === "number", mine);
+  await A.op(cid, { op: "giveCertificate", studentId: sid, on: false });
+  mine = courseOf(await S.state(`${cid}?as=${sid}`)).certificate;
+  check("and can be taken back", mine?.mine?.earned === false, mine);
+  await A.op(cid, { op: "setCertificate", percent: 1 });
+  mine = courseOf(await S.state(`${cid}?as=${sid}`)).certificate;
+  check("finishing enough cards earns it", mine?.mine?.earned === true, mine);
+  await A.op(cid, { op: "setCertificate", on: false });
+  check("turning it off removes it", !courseOf(await S.state(`${cid}?as=${sid}`)).certificate, null);
+
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);
   process.exit(failures.length ? 1 : 0);

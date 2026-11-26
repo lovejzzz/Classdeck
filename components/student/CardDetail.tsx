@@ -10,7 +10,7 @@ import { asked, dueInfo, optionOrder } from "@/lib/grading";
 import { toast } from "@/lib/toast";
 import { TYPE_META, suitOfCard } from "@/lib/ui";
 import { faceMeta, familyOf, isPoll, kindOf, sharedDoc, writesOwn } from "@/lib/kinds";
-import { docKey } from "@/lib/shared";
+import { docKey, groupingOf, roleOn } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { RichBodyEditor } from "../teacher/RichBodyEditor";
 import { DocNotes } from "./DocNotes";
@@ -347,7 +347,8 @@ export function CardDetail(p: DetailProps) {
         {m.questions?.length ? <div className="mt-7"><Questions {...p} /></div> : null}
         {m.type === "wall" && (
           <div className="mt-7">
-            <WallBoard courseId={p.courseId} me={p.studentId} module={m} posts={p.posts} students={p.students} onChanged={p.onChanged} />
+            {m.wall?.byGroup && <GroupLine course={p.course} m={m} me={p.studentId} />}
+            <WallBoard courseId={p.courseId} me={p.studentId} module={m} posts={p.posts} students={p.students} onChanged={p.onChanged} roleOf={(id) => roleOn(p.course, m.wall?.byGroup ? m : undefined, id)} />
           </div>
         )}
 
@@ -362,6 +363,7 @@ export function CardDetail(p: DetailProps) {
         )}
         {shared && sharedKey && !m.choice && !(sharedKey.includes(":g:solo-") && pollFor) && (
           <div className="mt-6">
+            {m.writers === "group" && <GroupLine course={p.course} m={m} me={p.studentId} />}
             <div className="eyebrow mb-1.5">{m.writers === "class" ? "The class’s copy · everyone writes in it" : "Your group’s copy · you write in it together"}</div>
             <SharedDoc courseId={p.courseId} docKey={sharedKey} template={m.body} name={p.course.students.find((x) => x.id === p.studentId)?.name ?? "A student"} />
             <DocNotes notes={p.progress?.notes ?? []} me="student" courseId={p.courseId} studentId={p.studentId} moduleId={m.id} onChanged={p.onChanged} names={Object.fromEntries(p.students.map((x) => [x.id, x.name]))} />
@@ -756,5 +758,23 @@ function CardLinks({ cards }: { cards: { id: string; title: string }[] }) {
         </span>
       ))}
     </>
+  );
+}
+
+/** On a card done in groups: who's in the student's group, with the roles the teacher gave (theirs first). */
+function GroupLine({ course, m, me }: { course: Course; m: Module; me: string }) {
+  const g = groupingOf(course, m)?.groups.find((x) => x.studentIds.includes(me));
+  if (!g) return null;
+  const name = (id: string) => (id === me ? "You" : course.students.find((s) => s.id === id)?.name ?? "");
+  const ids = [me, ...g.studentIds.filter((x) => x !== me)];
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[12.5px] text-ink-2">
+      <span className="font-medium text-ink">{g.name}</span>
+      {ids.map((id) => (
+        <span key={id} className="inline-flex items-center gap-1 rounded-full bg-lane px-2 py-0.5">
+          {name(id)}{g.roles?.[id] && <span className="font-medium text-[#4b56a8]">· {g.roles[id]}</span>}
+        </span>
+      ))}
+    </div>
   );
 }

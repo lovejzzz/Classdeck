@@ -23,7 +23,7 @@ const worksheet = (id: string, title: string, body: string, minutes = 20): Card 
 
 /** The Collab session's card: what happens in it, and where to join (the facilitator adds the date and link). */
 const session = (id: string, title: string, steps: string[]): Card =>
-  content(id, title, `**When:** see this lesson’s date\n**Join:** add the meeting link here\n\n${steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`, 60);
+  content(id, title, `**When:** this lesson’s date. Add the time here.\n**Join:** add the Zoom, Meet or Teams link to this card; students get a Join button.\n\n${steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`, 60);
 const beforeLeaving = (id: string) => answer(id, "Before leaving: one thing to work on", "Name one thing you’ll work on before the next session, and how you’ll practise it.", 3);
 
 /** Intro survey (Week 0 in both flows): a card group of a poll and open answers. */

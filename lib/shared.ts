@@ -136,3 +136,19 @@ export function repliesNeeded(course: Pick<Course, "groups" | "groupings" | "stu
  * on the list, not late. Demo students, and names added before accounts, count as in.
  */
 export const joined = (st: { userId?: string; email?: string; demo?: boolean }) => !!st.userId || !!st.demo || !st.email;
+
+/** Roles a teacher can give people in a group (any other word works too). */
+export const GROUP_ROLES = ["Speaker", "Timekeeper", "Feedback giver", "Note-taker", "Facilitator"];
+
+/** A student's role in the group they're in on a card's grouping, if the teacher gave one. */
+export function roleOn(course: Pick<Course, "groups" | "groupings">, m: Pick<Module, "grouping"> | undefined, studentId: string): string | undefined {
+  return groupingOf(course, m)?.groups.find((g) => g.studentIds.includes(studentId))?.roles?.[studentId];
+}
+
+/** Pass each group's roles on by one: whoever had a role gives it to the next person in the group. */
+export function rotateRoles<G extends { studentIds: string[]; roles?: Record<string, string> }>(g: G): G {
+  if (!g.roles || g.studentIds.length < 2) return g;
+  const roles: Record<string, string> = {};
+  g.studentIds.forEach((id, i) => { const r = g.roles![g.studentIds[(i - 1 + g.studentIds.length) % g.studentIds.length]]; if (r) roles[id] = r; });
+  return { ...g, roles };
+}

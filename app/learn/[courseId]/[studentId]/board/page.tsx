@@ -93,6 +93,25 @@ export default function BoardPage() {
           </div>
         </header>
 
+        {/* The certificate of completion: earned (a link to it), or how close they are. */}
+        {course.certificate?.mine && (() => {
+          const c = course.certificate.mine;
+          const pct = c.total ? Math.round((c.done * 100) / c.total) : 0;
+          return c.earned ? (
+            <Link href={`/learn/${courseId}/${studentId}/certificate${testing ? "?preview=1" : ""}`} className="rise card card-hover press mt-6 flex items-center gap-3 px-4 py-3.5" style={{ "--i": 1 } as React.CSSProperties}>
+              <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-ok/10 text-ok"><Icon name="graduation" size={19} /></span>
+              <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-semibold">You’ve earned your certificate</span><span className="block text-[12.5px] text-ink-3">Open it to print or save as a PDF.</span></span>
+              <span className="btn btn-dark h-9 flex-none">View certificate</span>
+            </Link>
+          ) : (
+            <div className="rise no-print mt-6 flex items-center gap-3 rounded-xl bg-lane px-4 py-3 text-[13px] text-ink-2" style={{ "--i": 1 } as React.CSSProperties}>
+              <Icon name="graduation" size={16} />
+              <span className="flex-1">Finish {course.certificate.percent}% of your cards for a certificate of completion. You’re at {pct}%.</span>
+              <span className="h-1.5 w-24 overflow-hidden rounded-full bg-white"><span className="block h-full rounded-full bg-ok" style={{ width: `${Math.min(100, (pct * 100) / course.certificate.percent)}%` }} /></span>
+            </div>
+          );
+        })()}
+
         {/* Where they are in the course, lesson by lesson, with the few numbers that matter. */}
         <section className="rise card mt-6 px-4 pt-4" style={{ "--i": 1 } as React.CSSProperties} aria-label="Your progress">
           <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1 text-[12.5px] text-ink-3">

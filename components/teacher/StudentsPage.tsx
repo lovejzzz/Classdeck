@@ -6,6 +6,9 @@ import { exportGrades, gradeRows, type GradeRow } from "@/lib/gradebook";
 import { isFinished, isLate } from "@/lib/grading";
 import { visibleModules } from "@/lib/profile";
 import { treeView } from "@/lib/branching";
+import { certificates } from "@/lib/certificate";
+import { op } from "@/lib/client";
+import { toast } from "@/lib/toast";
 import { groupingsOf, joined } from "@/lib/shared";
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import type { CourseState, Lesson } from "@/lib/types";
@@ -116,7 +119,7 @@ export function StudentsPage({ courseId, state, connectors, lesson, setLesson, w
         )}
         {view === "student" && (
           <>
-            <StudentCourse state={state} row={picked!} courseId={courseId} onOpen={openWork} onMessage={onMessage} now={now} />
+            <StudentCourse state={state} row={picked!} courseId={courseId} onOpen={openWork} onMessage={onMessage} now={now} readOnly={readOnly} onChanged={onChanged} />
             {classroom(true)}
           </>
         )}
@@ -157,8 +160,8 @@ function LessonPicker({ state, lesson, onPick }: { state: CourseState; lesson: L
 }
 
 /** One student over the whole course: what's waiting for you, week by week, scores and your feedback. */
-function StudentCourse({ state, row: r, courseId, onOpen, onMessage, now }: {
-  state: CourseState; row: GradeRow; courseId: string; now: number;
+function StudentCourse({ state, row: r, courseId, onOpen, onMessage, now, readOnly, onChanged }: {
+  state: CourseState; row: GradeRow; courseId: string; now: number; readOnly?: boolean; onChanged?: () => void;
   onOpen: (sid: string, lessonId: string, mid: string) => void;
   onMessage?: (studentId: string) => void;
 }) {
@@ -188,6 +191,21 @@ function StudentCourse({ state, row: r, courseId, onOpen, onMessage, now }: {
           {onMessage && <button onClick={() => onMessage(sid)} className="btn btn-ghost press h-8"><Icon name="message" size={13} /> Message</button>}
         </div>
       </div>
+      {course.certificate && (() => {
+        const c = certificates(state, now).get(sid);
+        if (!c) return null;
+        const byWork = c.total > 0 && (c.done * 100) / c.total >= course.certificate.percent;
+        return (
+          <div className={`mt-4 flex flex-wrap items-center gap-2 rounded-xl px-3.5 py-2.5 text-[13px] ${c.earned ? "bg-ok/10 text-ok" : "bg-lane text-ink-2"}`}>
+            <Icon name="graduation" size={15} />
+            <span className="flex-1">{c.earned ? (c.given && !byWork ? "Certificate given by you" : "Certificate earned") : `Certificate at ${course.certificate.percent}% of their cards: ${c.total ? Math.round((c.done * 100) / c.total) : 0}% so far`}</span>
+            {!readOnly && !byWork && (
+              <button onClick={async () => { await op(courseId, { op: "giveCertificate", studentId: sid, on: !c.given }); onChanged?.(); toast(c.given ? `Took back ${r.st.name}’s certificate` : `Gave ${r.st.name} the certificate`, { icon: "graduation" }); }}
+                className="btn btn-ghost press h-7 px-2.5 text-[12px]">{c.given ? "Take it back" : "Give it now"}</button>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
         <div className="min-w-0 space-y-6">

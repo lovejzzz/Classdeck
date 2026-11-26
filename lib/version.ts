@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.93",
+    date: "2026-11-26",
+    changes: [
+      "Certificates of completion: turn one on in Settings (earned by finishing 80% of one’s cards, or any share you choose). Students see how close they are on their board, then open a certificate to print or save as a PDF. On the Students tab you can give one by hand, or take it back.",
+      "Roles in groups: give anyone a role beside their name (Speaker, Timekeeper, Feedback giver, Note-taker, or your own word), and Rotate roles passes each role to the next person. Students see their group and its roles on group cards, and the role shows beside their posts in a group discussion.",
+      "A Zoom, Google Meet, Teams, Webex or Whereby link on a card shows as Join the meeting, with a Join button.",
+      "The CaPS Flow templates’ session cards say where to add the meeting link and time.",
+    ],
+  },
+  {
     version: "0.2.92",
     date: "2026-11-26",
     changes: [

@@ -1,5 +1,5 @@
 import { fileExt, heroOf, hostOf } from "@/lib/cards";
-import { videoEmbed } from "@/lib/media";
+import { meetingOf, videoEmbed } from "@/lib/media";
 import { cardColor, suitOfCard } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
 import { Icon, StatusIcon } from "../Icon";
@@ -60,6 +60,15 @@ function Art({ m, big, playable }: { m: Module; big: boolean; playable?: boolean
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="#1b1b1a" /></svg>
           </span>
         </span>
+      </div>
+    );
+  }
+  if (a?.kind === "link" && meetingOf(a.url)) {
+    return (
+      <div className="relative flex h-full w-full flex-col items-center justify-center gap-1.5 overflow-hidden">
+        {backdrop}
+        <Icon name="video" size={glyph} strokeWidth={1.4} className="relative text-[#2f6fdb]" />
+        <span className="relative max-w-[85%] truncate font-mono text-[10px] text-ink-2">{meetingOf(a.url)} meeting</span>
       </div>
     );
   }

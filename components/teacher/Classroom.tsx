@@ -10,7 +10,7 @@ import { answerText, asked, dueAt, fmtSec, isLate, wallProgress } from "@/lib/gr
 import type { ConnectorInfo } from "@/lib/connectors/types";
 import { visibleModules } from "@/lib/profile";
 import { awaitingFeedback, faceMeta, isPoll, kindOf, reviewableCard, sharedDoc, writesOwn } from "@/lib/kinds";
-import { docKey, groupFor, groupingOf, repliesNeeded, joined } from "@/lib/shared";
+import { docKey, groupFor, groupingOf, roleOn, repliesNeeded, joined } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { DocReview } from "./DocReview";
 import { STATUS_LABEL, TYPE_META, suitOfCard } from "@/lib/ui";
@@ -611,6 +611,7 @@ function WallPanel({ courseId, module: m, state, aiReady, readOnly = false }: { 
         students={course.students}
         onChanged={() => {}}
         groupName={(id) => groupingOf(course, m)?.groups.find((g) => g.id === id)?.name ?? "A group"}
+        roleOf={(id) => (m.wall?.byGroup ? roleOn(course, m, id) : undefined)}
         header={
           <div className="mb-4">
             <div className="flex flex-wrap items-center gap-2">

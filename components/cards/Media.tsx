@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { fileExt, formatSize, hash, hostOf } from "@/lib/cards";
-import { fmtTime, knowLength, videoEmbed } from "@/lib/media";
+import { fmtTime, knowLength, meetingOf, videoEmbed } from "@/lib/media";
 import type { Attachment } from "@/lib/types";
 import { Icon } from "../Icon";
 import { useWaveform } from "./Waveform";
@@ -106,6 +106,21 @@ const previews = new Map<string, Promise<{ ok: boolean; title?: string; descript
 function loadPreview(url: string) {
   if (!previews.has(url)) previews.set(url, fetch(`/api/unfurl?url=${encodeURIComponent(url)}`).then((r) => r.json()).catch(() => ({ ok: false })));
   return previews.get(url)!;
+}
+
+/** A meeting link (Zoom, Meet, Teams…): a clear Join button, opening the meeting in a new tab. */
+function MeetingLink({ a }: { a: Attachment }) {
+  const service = meetingOf(a.url)!;
+  return (
+    <a href={a.url} target="_blank" rel="noreferrer" className="card card-hover press flex items-center gap-3.5 px-4 py-3.5">
+      <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-[#2f6fdb] text-white"><Icon name="video" size={20} /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14.5px] font-semibold text-ink">{a.name && a.name !== a.url ? a.name : `Join the ${service} meeting`}</span>
+        <span className="mono mt-0.5 block truncate">{service} · {hostOf(a.url)}</span>
+      </span>
+      <span className="btn btn-dark h-9 flex-none">Join <Icon name="external" size={12} /></span>
+    </a>
+  );
 }
 
 /** A rich preview card for an ordinary link: image, title, description, and site. */
@@ -216,5 +231,6 @@ export function MediaView({ a }: { a: Attachment }) {
       </div>
     );
   }
+  if (meetingOf(a.url)) return <MeetingLink a={a} />;
   return <div><LinkPreview a={a} /><Segment a={a} /></div>;
 }

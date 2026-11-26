@@ -1,3 +1,4 @@
+import { certificates } from "@/lib/certificate";
 import { mergeLesson, moveAnswers, type LessonBase } from "@/lib/merge";
 import { publicOrigin } from "@/lib/origin";
 import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
@@ -91,10 +92,14 @@ function forStudent(course: Course, studentId: string, chosen: Record<string, st
     trash: undefined,
     waiting: undefined,
     students: course.students.map(({ id, name }) => ({ id, name })),
+    certificate: course.certificate && (() => {
+      const st = certificates({ course, progress: db().progress[course.id] ?? {}, choices: db().choices[course.id] ?? {} }).get(studentId);
+      return { percent: course.certificate.percent, mine: st ? { earned: st.earned, done: st.done, total: st.total, at: st.given } : undefined };
+    })(),
     // A sign-up poll that hides who's in each group: a student learns only their own place in those groups.
     groupings: (() => {
       const hidden = new Set(course.weeks.flatMap((w) => w.lessons.flatMap((l) => l.modules.filter((m) => m.signup && m.signup.names === false).map((m) => signupGroupingId(m.id)))));
-      return course.groupings?.map((gs) => (hidden.has(gs.id) ? { ...gs, groups: gs.groups.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x === studentId) })) } : gs));
+      return course.groupings?.map((gs) => (hidden.has(gs.id) ? { ...gs, groups: gs.groups.map((g) => ({ ...g, studentIds: g.studentIds.filter((x) => x === studentId), roles: g.roles?.[studentId] ? { [studentId]: g.roles[studentId] } : undefined })) } : gs));
     })(),
     weeks: course.weeks.map((w) => ({
       ...w,
@@ -674,14 +679,19 @@ async function change(request: Request, courseId: string, body: Record<string, a
     case "saveGrouping": {
       // —— teacher —— A grouping (a new one, or a change to one): its name, and its named groups of students.
       const g = body.grouping ?? {};
-      const groups = (Array.isArray(g.groups) ? g.groups : []).slice(0, 40).map((x: { id?: string; name?: string; studentIds?: string[] }, i: number) => ({
+      const groups = (Array.isArray(g.groups) ? g.groups : []).slice(0, 40).map((x: { id?: string; name?: string; studentIds?: string[]; roles?: Record<string, unknown> }, i: number) => ({
         id: typeof x.id === "string" && x.id ? x.id.slice(0, 40) : uid("g-"),
         name: String(x.name ?? "").trim().slice(0, 40) || `Group ${i + 1}`,
         studentIds: [...new Set((Array.isArray(x.studentIds) ? x.studentIds : []).filter((id) => course.students.some((st) => st.id === id)))],
+        roles: x.roles && typeof x.roles === "object" ? x.roles : undefined,
       }));
-      // A student is in one group of a grouping.
+      // A student is in one group of a grouping; a role belongs to someone in the group.
       const seen = new Set<string>();
-      for (const x of groups) x.studentIds = x.studentIds.filter((id: string) => (seen.has(id) ? false : (seen.add(id), true)));
+      for (const x of groups) {
+        x.studentIds = x.studentIds.filter((id: string) => (seen.has(id) ? false : (seen.add(id), true)));
+        const roles = Object.fromEntries(x.studentIds.map((id: string) => [id, String(x.roles?.[id] ?? "").trim().slice(0, 30)]).filter(([, r]: string[]) => r));
+        if (Object.keys(roles).length) x.roles = roles; else delete x.roles;
+      }
       if (!groups.length) return fail("Make at least one group");
       if (g.id === DEFAULT_GROUPING) {
         course.groups = groups;
@@ -1094,6 +1104,21 @@ async function change(request: Request, courseId: string, body: Record<string, a
       // —— teacher —— Students may message each other (the default) or only the teacher.
       course.peerMessages = body.on === false ? false : undefined;
       break;
+    case "setCertificate": {
+      // —— teacher —— Turn the certificate of completion on (with the share of cards that earns it) or off.
+      if (body.percent === null || body.on === false) { course.certificate = undefined; break; }
+      const percent = Math.max(1, Math.min(100, Math.round(Number(body.percent) || 80)));
+      course.certificate = { percent, given: course.certificate?.given };
+      break;
+    }
+    case "giveCertificate": {
+      // —— teacher —— Give a student the certificate whatever their cards, or take that back.
+      if (!course.certificate) return fail("Turn on the certificate in Settings first");
+      if (!course.students.some((st) => st.id === body.studentId)) return fail("No such student");
+      const given = (course.certificate.given ??= {});
+      if (body.on === false) delete given[body.studentId]; else given[body.studentId] = Date.now();
+      break;
+    }
     case "setMapLive":
       // —— teacher —— The course map shows students' paths (the default), or only the cards.
       course.mapLive = body.on === false ? false : undefined;

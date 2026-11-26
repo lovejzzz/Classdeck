@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { op } from "@/lib/client";
-import { DEFAULT_GROUPING, GROUP_COLORS, groupBase, groupingsOf, signupGroupingId } from "@/lib/shared";
+import { DEFAULT_GROUPING, GROUP_COLORS, GROUP_ROLES, groupBase, groupingsOf, rotateRoles, signupGroupingId } from "@/lib/shared";
 import { toast } from "@/lib/toast";
 import type { Course, Group, Grouping } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
@@ -23,14 +23,16 @@ const usedBy = (course: Course, id: string) => course.weeks.flatMap((w) => w.les
  */
 export function GroupingEditor({ course, grouping, onClose, onSaved }: { course: Course; grouping?: Grouping; onClose: () => void; onSaved: (id: string) => void }) {
   const [name, setName] = useState(grouping?.name ?? "");
-  const [groups, setGroups] = useState<Group[]>(grouping?.groups.map((g) => ({ ...g, name: groupBase(g.name), studentIds: [...g.studentIds] })) ?? [{ id: newId(), name: "Red", studentIds: [] }, { id: newId(), name: "Blue", studentIds: [] }]);
+  const [groups, setGroups] = useState<Group[]>(grouping?.groups.map((g) => ({ ...g, name: groupBase(g.name), studentIds: [...g.studentIds], roles: g.roles ? { ...g.roles } : undefined })) ?? [{ id: newId(), name: "Red", studentIds: [] }, { id: newId(), name: "Blue", studentIds: [] }]);
   const [active, setActive] = useState(groups[0]?.id ?? "");
   const [split, setSplit] = useState(Math.max(2, groups.length));
   const [busy, setBusy] = useState(false);
   const placed = new Set(groups.flatMap((g) => g.studentIds));
   const free = course.students.filter((s) => !placed.has(s.id));
   const nameOf = (id: string) => course.students.find((s) => s.id === id)?.name ?? "";
-  const move = (sid: string, to: string | null) => setGroups((gs) => gs.map((g) => ({ ...g, studentIds: g.id === to ? [...g.studentIds.filter((x) => x !== sid), sid] : g.studentIds.filter((x) => x !== sid) })));
+  const setRole = (gid: string, sid: string, role: string) => setGroups((gs) => gs.map((g) => (g.id === gid ? { ...g, roles: { ...g.roles, [sid]: role } } : g)));
+  const hasRoles = groups.some((g) => Object.values(g.roles ?? {}).some((r) => r.trim()));
+  const move = (sid: string, to: string | null) => setGroups((gs) => gs.map((g) => ({ ...g, studentIds: g.id === to ? [...g.studentIds.filter((x) => x !== sid), sid] : g.studentIds.filter((x) => x !== sid), roles: g.id === to ? g.roles : Object.fromEntries(Object.entries(g.roles ?? {}).filter(([k]) => k !== sid)) })));
   function randomSplit(n: number) {
     const ids = [...course.students.map((s) => s.id)].sort(() => Math.random() - 0.5);
     const names: string[] = [];
@@ -62,10 +64,12 @@ export function GroupingEditor({ course, grouping, onClose, onSaved }: { course:
           <input type="number" min={1} max={20} value={split} onChange={(e) => setSplit(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} aria-label="How many groups" className="field h-8 w-16 py-0 font-mono" />
           <button onClick={() => randomSplit(split)} className="btn btn-ghost press h-8 px-2.5 text-[12.5px]"><Icon name="users" size={12} /> groups</button>
           <span className="flex-1" />
+          {hasRoles && <button onClick={() => { setGroups(groups.map(rotateRoles)); toast("Roles passed on to the next person in each group", { icon: "users" }); }} title="Each role goes to the next person in the group" className="btn btn-quiet press h-8 px-2.5 text-[12.5px]"><Icon name="reset" size={12} /> Rotate roles</button>}
           <button onClick={() => { const g = { id: newId(), name: freeColor(groups.map((x) => x.name)), studentIds: [] }; setGroups([...groups, g]); setActive(g.id); }} className="btn btn-ghost press h-8 px-2.5 text-[12.5px]"><Icon name="plus" size={12} /> Group</button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          <p className="mb-3 text-[12.5px] text-ink-3">Tap a group, then tap students to put them in it. Tap a student in a group to take them out.</p>
+          <p className="mb-3 text-[12.5px] text-ink-3">Tap a group, then tap students to put them in it. Give anyone a role beside their name; students see it in their group.</p>
+          <datalist id="group-roles">{GROUP_ROLES.map((r) => <option key={r} value={r} />)}</datalist>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {groups.map((g) => (
               <div key={g.id} onClick={() => setActive(g.id)} className={`cursor-pointer rounded-xl border p-2.5 transition-colors ${active === g.id ? "border-[#4b56a8] bg-[#eef0fb]/60" : "border-line hover:border-line-strong"}`}>
@@ -75,11 +79,17 @@ export function GroupingEditor({ course, grouping, onClose, onSaved }: { course:
                   <span className="mono text-[11px] text-ink-3">{g.studentIds.length}</span>
                   <button onClick={(e) => { e.stopPropagation(); setGroups(groups.filter((x) => x.id !== g.id)); if (active === g.id) setActive(groups.find((x) => x.id !== g.id)?.id ?? ""); }} aria-label={`Remove ${g.name} Group`} className="press flex h-6 w-6 items-center justify-center rounded-md text-ink-3 hover:bg-white hover:text-bad"><Icon name="x" size={11} /></button>
                 </div>
-                <div className="mt-1.5 flex min-h-[2rem] flex-wrap gap-1">
+                <div className="mt-1.5 flex min-h-[2rem] flex-col gap-1">
                   {g.studentIds.map((sid) => (
-                    <button key={sid} onClick={(e) => { e.stopPropagation(); move(sid, null); }} title="Take out of this group" className="press flex items-center gap-1.5 rounded-full bg-white py-0.5 pl-0.5 pr-2 text-[12.5px] ring-1 ring-line hover:ring-bad/40">
-                      <Avatar name={nameOf(sid)} size={18} />{nameOf(sid)}
-                    </button>
+                    <div key={sid} className="flex items-center gap-1.5 rounded-full bg-white py-0.5 pl-0.5 pr-1 text-[12.5px] ring-1 ring-line">
+                      <Avatar name={nameOf(sid)} size={18} /><span className="min-w-0 truncate">{nameOf(sid)}</span>
+                      <span className="flex-1" />
+                      {/* A role beside the name (pick one or type your own). */}
+                      <input value={g.roles?.[sid] ?? ""} list="group-roles" onClick={(e) => e.stopPropagation()} onFocus={() => setActive(g.id)}
+                        onChange={(e) => setRole(g.id, sid, e.target.value)} placeholder="+ role" aria-label={`${nameOf(sid)}’s role`}
+                        className={`h-5 w-[6.5rem] rounded-full px-2 text-[11.5px] outline-none placeholder:text-ink-3 focus:bg-lane ${g.roles?.[sid] ? "bg-[#eef0fb] font-medium text-[#4b56a8]" : "bg-transparent hover:bg-lane"}`} />
+                      <button onClick={(e) => { e.stopPropagation(); move(sid, null); }} aria-label={`Take ${nameOf(sid)} out of this group`} className="press flex h-5 w-5 flex-none items-center justify-center rounded-full text-ink-3 hover:bg-lane hover:text-bad"><Icon name="x" size={10} /></button>
+                    </div>
                   ))}
                   {!g.studentIds.length && <span className="px-1 text-[12px] text-ink-3">{active === g.id ? "Tap students below to add them" : "No one yet"}</span>}
                 </div>

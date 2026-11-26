@@ -149,6 +149,29 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
         </label>
       </section>
 
+      {/* Certificate of completion (in Settings): earned by finishing enough of one's cards, or given by the teacher. */}
+      <section className="card flex flex-wrap items-center gap-3 p-6">
+        <span className="min-w-[14rem] flex-1">
+          <span className="block text-[15px] font-medium">Certificate of completion</span>
+          <span className="block text-[13px] text-ink-3">Students who finish enough of their cards get a certificate to print or save. You can also give one by hand on the Students tab.</span>
+        </span>
+        <label className="inline-flex items-center gap-2 text-[13.5px]">
+          <input type="checkbox" disabled={readOnly} checked={!!course.certificate} aria-label="Give a certificate of completion"
+            onChange={async (e) => { await op(course.id, { op: "setCertificate", ...(e.target.checked ? { percent: 80 } : { on: false }) }); onChanged(); toast(e.target.checked ? "Students who finish 80% of their cards get a certificate" : "No certificate for this course", { icon: "graduation" }); }}
+            className="h-4 w-4 accent-[#1b1b1a]" />
+          Give a certificate
+        </label>
+        {course.certificate && (
+          <label className="inline-flex basis-full items-center justify-end gap-1.5 text-[13px] text-ink-2">
+            Earned by finishing
+            <input key={course.certificate.percent} type="number" min={1} max={100} defaultValue={course.certificate.percent} aria-label="Share of cards that earns the certificate" disabled={readOnly}
+              onBlur={async (e) => { if (Number(e.target.value) === course.certificate?.percent) return; await op(course.id, { op: "setCertificate", percent: Number(e.target.value) }); onChanged(); }}
+              className="field h-8 w-16 py-0 text-center" />
+            % of their cards
+          </label>
+        )}
+      </section>
+
       {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
         <section className="card flex flex-wrap items-center gap-3 p-6">
           <span className="min-w-[14rem] flex-1">

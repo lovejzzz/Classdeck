@@ -391,6 +391,8 @@ export interface Group {
   id: string;
   name: string;
   studentIds: string[];
+  /** Each member's role in the group (Speaker, Timekeeper…), by student id. Set by the teacher; shown beside names. */
+  roles?: Record<string, string>;
 }
 
 /**
@@ -454,6 +456,11 @@ export interface Course {
   enabledConnectors: string[];
   /** How many electives each student should take. */
   electiveMin?: number;
+  /**
+   * Certificate of completion: on when set. A student earns it by finishing `percent` of their cards, or when the
+   * teacher gives it (`given`: student → when). Students receive only `mine`, their own standing.
+   */
+  certificate?: { percent: number; given?: Record<string, number>; mine?: { earned: boolean; done: number; total: number; at?: number } };
   /** A visitor's copy of the public sample course: when it expires (ms). Nobody owns it; it is never listed or claimed. */
   sample?: number;
 }

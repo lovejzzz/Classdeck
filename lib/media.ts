@@ -99,3 +99,15 @@ export function knowLength(el: HTMLMediaElement) {
   el.addEventListener("durationchange", back);
   el.currentTime = 1e101;
 }
+
+/** A link to a video meeting (Zoom, Google Meet, Teams, Webex, Whereby): the service's name, so it shows as Join. */
+export function meetingOf(url: string): string | undefined {
+  let host = "";
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { return undefined; }
+  if (host === "zoom.us" || host.endsWith(".zoom.us") || host === "zoom.com" || host.endsWith(".zoom.com")) return "Zoom";
+  if (host === "meet.google.com") return "Google Meet";
+  if (host === "teams.microsoft.com" || host === "teams.live.com") return "Microsoft Teams";
+  if (host.endsWith(".webex.com")) return "Webex";
+  if (host === "whereby.com") return "Whereby";
+  return undefined;
+}
