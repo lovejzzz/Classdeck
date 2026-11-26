@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, snapBands, canBranch, DEFAULT_BANDS, mapSlot, picked, SCORE, sharedOnly, slotOf, targetsOf, wiresOf, type Wire, topOf, holdsGroups, leavesOf, cleanGroups } from "@/lib/branching";
-import { bandTone, pathColor, suitOfCard } from "@/lib/ui";
+import { MAP_ADD, bandTone, pathColor, suitOfCard } from "@/lib/ui";
 import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
 import { MathText, plainMath } from "../MathText";
@@ -38,7 +38,7 @@ const FAN = 70; // room above a card group for its cards, fanned out of its slee
 const HGAP = 64; // gap between cards side by side (room for the wires leaving their right edge)
 const VGAP = 84; // gap between a card and the cards it deals below it
 const REGION_GAP = 56; // gap between lessons
-const TOP = 92; // room for each lesson's header
+const TOP = 64; // room for each lesson's header
 // The two kinds of card you put down: Content, or a Question (it starts with choices; its form is set in the editor).
 const familyName = (k: CardKind) => FAMILIES.find((f) => f.start === k)!.name;
 const INK = "#4b56a8";
@@ -313,7 +313,7 @@ type Menu = { port: Port; x: number; y: number; mode: "port" | "new" } | { add: 
  * lesson or into a later one). Zoomed out, cards shrink to their titles; zoomed in, they show what to do. Drag from a
  * port onto a card to deal it, or into empty space for a new card. Click a card to edit it in the panel.
  */
-export function CourseMap({ lessons, weekOf, todayId, students, live = true, onSaveGroup, progress, readOnly, busy, selected, onDeselect, focus, onChange, onChangeMany, onEdit, onAddLesson, onDelete, trash = [], onRestore, onForget, lessonBar, footer, weekNames = {}, onDeleteMany }: {
+export function CourseMap({ lessons, weekOf, todayId, students, live = true, onSaveGroup, progress, readOnly, busy, selected, onDeselect, focus, onChange, onChangeMany, onEdit, onAddLesson, addLessonLabel, onDelete, trash = [], onRestore, onForget, lessonBar, footer, weekNames = {}, onDeleteMany }: {
   /** Delete several picked cards at once (it asks first, and offers Undo). */
   onDeleteMany?: (ms: Module[]) => void;
   /** Lesson id → its week's full title, for the contents panel. */
@@ -351,6 +351,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
   onChangeMany: (ls: Lesson[]) => Promise<void>;
   onEdit: (lessonId: string, moduleId: string) => void;
   onAddLesson?: () => void;
+  /** The "+ Lesson" button's words ("Lesson in Week 3"). */
+  addLessonLabel?: string;
   /** Delete a card (it asks first, and offers Undo). Hold a card to show the delete buttons. */
   onDelete?: (m: Module) => void;
 }) {
@@ -480,7 +482,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
   const targets = useMemo(() => new Map([...nodes].map(([id, n]) => [id, { x: n.x, y: n.y }])), [nodes]);
   // Cards that were in a group a moment ago (it was ungrouped) come out of where the group was.
   const wasIn = useRef(groupOf);
-  const pos = useGlide(targets, (id, now) => born.get(id) ?? (wasIn.current.has(id) ? now.get(topOf(id, wasIn.current)) : undefined) ?? (nodes.get(id)?.parent ? targets.get(nodes.get(id)!.parent!) : undefined));
+  // A follow-up shown again (its card unfolded) settles into its own place from a little above, so the wire into it
+  // grows straight down instead of first reaching up to where the card above it is.
+  const drop = (p?: { x: number; y: number }) => (p ? { x: p.x, y: p.y - 18 } : undefined);
+  const pos = useGlide(targets, (id, now) => born.get(id) ?? (wasIn.current.has(id) ? now.get(topOf(id, wasIn.current)) : undefined) ?? (nodes.get(id)?.parent ? drop(targets.get(id)) : undefined));
   useEffect(() => { wasIn.current = groupOf; }, [groupOf]);
   const at = (id: string) => pos.get(id) ?? targets.get(id)!;
   const lessonIndex = (lid: string) => lessons.findIndex((l) => l.id === lid);
@@ -1534,14 +1539,13 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
         {/* Room under the last row for the floating toolbar, so it never sits on the Lesson / week buttons. */}
         {/* While the card panel is open there's a panel's width of room past the last card, so even a card at the far
             right can scroll clear of the panel (the map narrows as the panel slides in, which would stop it short). */}
-        <div data-canvas="1" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0) * zoom + (gap > 0 ? PANEL : 0), height: (height + 120) * zoom }} className="relative">
-          <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0), height: height + 120, transform: `scale(${zoom})` }}>
+        <div data-canvas="1" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0) * zoom + (gap > 0 ? PANEL : 0), height: (height + 170) * zoom }} className="relative">
+          <div data-canvas="1" className="absolute left-0 top-0 origin-top-left" style={{ width: Math.max(width, menu && "add" in menu ? menu.x + 320 : 0), height: height + 170, transform: `scale(${zoom})` }}>
             {/* Lessons: a quiet band each, with its name and a way to add a card. */}
             {regions.map((r) => {
               const today = r.lesson.id === todayId;
               // The lesson as it really is (the drawn one leaves out folded-away cards).
               const full = lessons.find((l) => l.id === r.lesson.id) ?? r.lesson;
-              const branches = wiresOf(full).length;
               return (
                 <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "tree-lesson-today" : "tree-lesson"}`} style={{ left: r.x - 20, top: r.y, width: r.w + 40, height: r.h }}>
                   <div className="flex min-w-0 items-center gap-2 px-5 pt-3.5" style={{ fontSize: level === "far" ? 22 : 13 }}>
@@ -1551,13 +1555,10 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                     {weekOf[r.lesson.id] && <span className="flex-none text-ink-3">{weekOf[r.lesson.id]}</span>}
                     {lessonBar && level !== "far" ? lessonBar(r.lesson.id)
                       : today && <span className="chip h-5 flex-none bg-ok/10 text-[11px] text-ok"><span className="h-1.5 w-1.5 rounded-full bg-ok" />Today</span>}
-                  </div>
-                  <div className="flex items-center gap-2 px-5 pt-1.5">
-                    {level !== "far" && <span className="mono flex-none">{full.modules.filter((m) => m.type !== "group").length} card{full.modules.filter((m) => m.type !== "group").length === 1 ? "" : "s"}{branches ? ` · ${branches} branch${branches === 1 ? "" : "es"}` : ""}</span>}
                     <span className="flex-1" />
                     {!readOnly && level !== "far" && (
                       <button onClick={(e) => { e.stopPropagation(); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); const p = toCanvas(b.right + 8, b.top); setMenu({ add: r.lesson.id, x: p.x, y: p.y }); }}
-                        className="press flex h-7 items-center gap-1 rounded-lg bg-white px-2 text-[12px] text-ink-2 shadow-sm hover:text-ink"><Icon name="plus" size={12} /> Card</button>
+                        className="press flex h-7 flex-none items-center gap-1 rounded-lg bg-white px-2 text-[12px] text-ink-2 shadow-sm hover:text-ink"><Icon name="plus" size={12} /> Card</button>
                     )}
                   </div>
                   {!full.modules.length && (
@@ -1566,14 +1567,17 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                 </div>
               );
             })}
-            {!readOnly && (onAddLesson || footer) && (
-              <div className="absolute flex items-start gap-2" style={{ left: 40, top: height - 76 }}>
-                {onAddLesson && (
-                  <button onClick={onAddLesson} className="press flex items-center gap-1.5 rounded-2xl border border-dashed border-line-strong px-4 py-3 text-[13px] text-ink-3 hover:text-ink">
-                    <Icon name="plus" size={13} /> Lesson
-                  </button>
-                )}
-                {footer}
+            {/* Under the lessons: "+ Lesson" belongs to the last week, so it sits with it; adding a week is a course
+                thing, so it has its own row below a rule. */}
+            {!readOnly && onAddLesson && (
+              <div className="absolute" style={{ left: 40, top: height - 76 }}>
+                <button onClick={onAddLesson} className={MAP_ADD}><Icon name="plus" size={13} /> {addLessonLabel ?? "Lesson"}</button>
+              </div>
+            )}
+            {!readOnly && footer && (
+              <div className="absolute flex items-center gap-4" style={{ left: 20, top: height + 4, width: Math.max(width - 40, 400) }}>
+                <div className="absolute inset-x-0 -top-5 border-t border-line" />
+                <div className="pl-5">{footer}</div>
               </div>
             )}
 

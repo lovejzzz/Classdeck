@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.91",
+    date: "2026-11-26",
+    changes: [
+      "New weeks from a template: + Week asks Blank week or From a template, and the template window shows five ready-made weeks drawn as their card trees (Learn, check, make; Practice until it sticks; Read and discuss; Studio project; Choose your path), with each one’s cards and branches listed beside it.",
+      "On the course map, + Lesson (in the last week) and + Week look alike and sit apart: adding a week has its own row under a rule. Each lesson’s header is one line, with + Card on it, and no longer counts cards and branches.",
+      "Showing a card’s follow-ups is smooth: the wires grow straight down to the cards instead of first reaching up.",
+    ],
+  },
+  {
     version: "0.2.90",
     date: "2026-11-26",
     changes: [

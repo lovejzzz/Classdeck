@@ -107,3 +107,6 @@ export function bandTone(i: number, count: number): string {
   if (count <= 1) return tones[3];
   return tones[Math.round((i / (count - 1)) * (tones.length - 1))];
 }
+
+/** The course map's "+ Lesson" and "+ Week": one look, a dashed paper outline that firms up on hover (or while open). */
+export const MAP_ADD = "press inline-flex h-10 items-center gap-1.5 rounded-[14px] border border-dashed border-line-strong bg-white/55 px-4 text-[13px] text-ink-2 transition-[border-color,background-color,color] duration-200 hover:border-solid hover:bg-white hover:text-ink";

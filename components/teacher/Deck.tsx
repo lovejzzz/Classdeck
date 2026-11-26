@@ -15,7 +15,8 @@ import type { Course, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/type
 import { Icon } from "../Icon";
 import { useShortcuts } from "@/lib/shortcuts";
 import { useUrlState } from "@/lib/urlState";
-import { nextNumber, standardWeek } from "@/lib/templates";
+import { nextNumber } from "@/lib/templates";
+import { AddWeek } from "./WeekTemplates";
 import { CardEditor } from "./CardEditor";
 import { CourseMap } from "./CourseMap";
 import { newCard, type CardKind } from "@/lib/kinds";
@@ -677,14 +678,15 @@ export function Deck({ course, onRefresh, progress = {}, choices = {}, readOnly 
             onEdit={(lid, id) => { if (!readOnly) edit(lid, id); }}
             onAddLesson={course.weeks.length ? () => addLesson(course.weeks[course.weeks.length - 1].id) : undefined}
             lessonBar={(lid) => lessonBar(lid)}
-            footer={readOnly ? undefined : <NewWeek n={nextWeek} onBlank={async () => {
+            addLessonLabel={course.weeks.length ? `Lesson in ${course.weeks[course.weeks.length - 1].title.split(" · ")[0]}` : undefined}
+            footer={readOnly ? undefined : <AddWeek n={nextWeek} onBlank={async () => {
               await op(course.id, { op: "addWeek", title: `Week ${nextWeek}` });
               onRefresh();
               toast("Added a week");
-            }} onTemplate={async (theme) => {
-              await op(course.id, { op: "insertWeek", week: standardWeek(theme, nextWeek) });
+            }} onTemplate={async (week, name) => {
+              await op(course.id, { op: "insertWeek", week });
               onRefresh();
-              toast(`Added Week ${nextWeek}: “${theme}”, from the template`, { icon: "layers" });
+              toast(`Added Week ${nextWeek} from “${name}”`, { icon: "layers" });
             }} />}
             trash={course.trash ?? []}
             onRestore={readOnly ? undefined : (e) => void restoreTrash(e)}
@@ -778,27 +780,6 @@ export function Deck({ course, onRefresh, progress = {}, choices = {}, readOnly 
     </div>
   );
 }
-
-/** Add a week: blank, or a standard CaPS week built from a theme. */
-function NewWeek({ n, onBlank, onTemplate }: { n: number; onBlank: () => void; onTemplate: (theme: string) => void }) {
-  const [theme, setTheme] = useState("");
-  const [open, setOpen] = useState(false);
-  return open ? (
-    <form className="pop flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white p-3" onSubmit={(e) => { e.preventDefault(); if (theme.trim()) { onTemplate(theme.trim()); setOpen(false); setTheme(""); } }}>
-      <span className="text-[13px] text-ink-2">Week {n} theme</span>
-      <input autoFocus value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="e.g. Handling questions" aria-label="Week theme" className="field h-8 w-64 py-0" />
-      <button type="submit" disabled={!theme.trim()} className="btn btn-dark press h-8">Create from template</button>
-      <button type="button" onClick={() => setOpen(false)} className="btn btn-quiet press h-8">Cancel</button>
-      <p className="w-full text-[12px] text-ink-3">A goal, an example, a two-question quick check that deals a review or a stretch card, a task, a class discussion and a reflection. Edit anything after.</p>
-    </form>
-  ) : (
-    <div className="flex gap-2">
-      <button onClick={() => setOpen(true)} className="btn btn-ghost press"><Icon name="layers" size={13} /> New week from template</button>
-      <button onClick={onBlank} className="btn btn-quiet press"><Icon name="plus" size={13} /> Blank week</button>
-    </div>
-  );
-}
-
 
 /** A small "⋯" menu for the actions that don't need to be on screen all the time. */
 function More({ items, label }: { items: [string, () => void][]; label: string }) {
