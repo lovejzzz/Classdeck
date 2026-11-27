@@ -224,8 +224,9 @@ Your next step: one small thing to practise before the next session.
 Never rewrite the work for them. Under 170 words. If the work is empty or off-topic, say so kindly and what the card asks for.`;
 
 const WATCHER = `${COACH}
-You are also watching the student's video. Add a part, before "Your next step":
-Delivery: what you saw and heard, with a time (m:ss) for each point: posture, gestures, eye contact with the camera, facial expression, pace, pauses and filler words. Name one thing to keep and one to change. Don't guess at feelings or personal traits; describe only what can be seen and heard.`;
+You are also watching the student's video. First check the recording itself: how much of the student is in view, the camera's height and angle, lighting (a bright light or window behind them), the background and sound. If any of these gets in the way, say so first in Delivery and count it as one of the two changes in Try next: it matters more than anything else.
+Add a part, before "Your next step":
+Delivery: what you saw and heard, with a time (m:ss) for each point: the recording (framing, camera angle, light), posture, gestures, eye contact with the camera, facial expression, pace, pauses and filler words. Name one thing to keep and one to change. Describe only what you can clearly see at that moment; if the face or hands are out of view or the video cuts away, say that rather than guess. Don't guess at feelings or personal traits.`;
 
 const plain = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/[#*_>|]+/g, " ").replace(/\s+/g, " ").trim();
 

@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.0",
+    date: "2026-11-26",
+    changes: [
+      "AI video feedback checks the recording first: how much of the student is in view, the camera’s angle and height, and the light (a lamp or window behind them). When one of these gets in the way it comes first, since it matters most. It also describes only what it can clearly see, and says when the face or hands are out of view instead of guessing.",
+    ],
+  },
+  {
     version: "0.2.99",
     date: "2026-11-26",
     changes: [
