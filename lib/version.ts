@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.09",
+    date: "2026-11-26",
+    changes: [
+      "Students going between their cards and My board no longer see grey placeholders: the course stays loaded in the tab, shows at once, and refreshes quietly.",
+      "On My board, each piece of work opens its card: click its name (or what you wrote). Recordings still play right there.",
+      "Links to one card opened from within the site (like My work) now open the card every time.",
+    ],
+  },
+  {
     version: "0.3.08",
     date: "2026-11-26",
     changes: [

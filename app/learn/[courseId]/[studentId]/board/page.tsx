@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { countedOf, parentOf } from "@/lib/branching";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { MediaView } from "@/components/cards/Media";
 import { SignInNeeded } from "@/components/SignInNeeded";
@@ -26,6 +26,7 @@ export default function BoardPage() {
   const testing = useSearchParams().has("preview");
   if (typeof window !== "undefined") setPreview(testing ? studentId : null);
   const { state, error, needAuth, refresh } = useCourse(courseId, studentId, 8000);
+  const router = useRouter();
   const [tab, setTab] = useState<"work" | "feedback" | "starred" | "next">(() => {
     const h = typeof window === "undefined" ? "" : window.location.hash.slice(1);
     return (["work", "feedback", "starred", "next"] as const).find((t) => t === h) ?? "work";
@@ -205,18 +206,25 @@ export default function BoardPage() {
                     const wallPosts = state.posts.filter((x) => x.moduleId === m.id && x.studentId === studentId);
                     return (
                       <article key={m.id} className="card p-4">
-                        <div className="flex items-center gap-2">
+                        {/* The card's name (and what they wrote) opens the card; recordings play right here. */}
+                        <Link href={cardLink(m.id)} className="group -m-1 flex items-center gap-2 rounded-lg p-1 hover:bg-lane">
                           <span style={{ color: suitOfCard(m).tint }}><Icon name={faceMeta(m).icon} size={14} /></span>
-                          <h3 className="flex-1 text-[14px] font-medium">{m.title}</h3>
+                          <h3 className="flex-1 text-[14px] font-medium group-hover:underline group-hover:underline-offset-2">{m.title}</h3>
                           {p?.starred && <Icon name="star" size={13} className="text-[#d39b1f]" />}
                           <StatusIcon status={p?.status ?? "todo"} size={13} />
-                        </div>
+                          <Icon name="chevron" size={12} className="-rotate-90 text-ink-3 group-hover:text-ink" />
+                        </Link>
                         {p?.ratings && Object.keys(p.ratings).length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {course.skills?.map((s) => p.ratings![s.id] && <span key={s.id} className="chip">{s.name} · {p.ratings![s.id]}</span>)}
                           </div>
                         )}
-                        {p?.output && (writesOwn(m) ? <RichText text={p.output} className="mt-2 text-[13.5px] leading-relaxed text-[#353532]" /> : <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{p.output}</p>)}
+                        {p?.output && (
+                          // Not a link itself: what they wrote may hold links of its own, which still open.
+                          <div onClick={(e) => { if (!(e.target as HTMLElement).closest("a")) router.push(cardLink(m.id)); }} className="-mx-1 mt-1 cursor-pointer rounded-lg px-1 py-1 hover:bg-lane">
+                            {writesOwn(m) ? <RichText text={p.output} className="text-[13.5px] leading-relaxed text-[#353532]" /> : <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{p.output}</p>}
+                          </div>
+                        )}
                         {p?.work?.length ? <div className="mt-3 space-y-2">{p.work.map((a) => <div key={a.id}><div className="mb-1 text-[12px] text-ink-3">{a.name}</div><MediaView a={a} /></div>)}</div> : null}
                         {(p?.review?.text || p?.review?.attachments?.length) && (
                           // The teacher's feedback: their words, and anything they attached (a voice note, a drawing, a file).

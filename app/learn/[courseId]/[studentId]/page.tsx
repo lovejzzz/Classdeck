@@ -78,7 +78,8 @@ export default function LearnPage() {
   const { courseId, studentId } = useParams<{ courseId: string; studentId: string }>();
   // Student View (a teacher testing as this student): set before the course is read, so every request is a test.
   // From the router, not window.location: arriving by a link, the address bar still shows the page we came from.
-  const testing = useSearchParams().has("preview");
+  const params = useSearchParams();
+  const testing = params.has("preview");
   if (typeof window !== "undefined") setPreview(testing ? studentId : null);
   const { state, error, refresh, needAuth } = useCourse(courseId, studentId);
   const { connectors } = useConnectors(courseId);
@@ -114,7 +115,9 @@ export default function LearnPage() {
   const profile = course ? FIXED_PROFILE : undefined;
 
   // A card in the address when the page loads (a reload while it was open, or a link to it) opens again, once the course is in.
-  const [linkedCard] = useState<string | null>(() => (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("card") : null));
+  // A link to one card (from the board, an email…). Read from the router: on a move within the site the browser's
+  // address hasn't changed yet when the page first draws.
+  const [linkedCard] = useState<string | null>(() => params.get("card"));
   const restoring = !!linkedCard;
   const linkUsed = useRef(false);
   useEffect(() => {

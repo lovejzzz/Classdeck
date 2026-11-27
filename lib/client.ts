@@ -73,11 +73,20 @@ function takeAhead(courseId: string): string | null {
   return had.done ?? null;
 }
 
+/**
+ * The last copy of each course this tab has read (for each view of it). Going between a course's pages (the cards,
+ * the board) shows it at once instead of grey placeholders, then reads it again as usual. Kept in this tab's memory
+ * only: signing out loads a new page, which clears it.
+ */
+const seen = new Map<string, { raw: string; at: number }>();
+const seenKey = (courseId: string, as?: string) => `${courseId}|${as ?? ""}|${as && previewing() === as ? "p" : ""}`;
+const seenRaw = (courseId: string, as?: string) => { const had = seen.get(seenKey(courseId, as)); return had && Date.now() - had.at < 30 * 60_000 ? had.raw : null; };
+
 export function useCourse(courseId: string, as?: string, everyMs = 4000) {
   const [state, setState] = useState<CourseState | null>(() => {
-    // Read ahead (a teacher's own view only): shown straight away, then refreshed as usual.
-    if (as || typeof window === "undefined") return null;
-    const raw = takeAhead(courseId);
+    if (typeof window === "undefined") return null;
+    // Read ahead (a teacher's own view only), or this tab's last copy: shown straight away, then refreshed as usual.
+    const raw = seenRaw(courseId, as) ?? (as ? null : takeAhead(courseId));
     if (!raw) return null;
     try { const data = JSON.parse(raw); if (data?.course?.weeks) { data.course.currentLessonId = todayLessonId(data.course); return data; } } catch { /* fall through */ }
     return null;
@@ -87,7 +96,8 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
   // Why a signed-in visitor still can't open it (for example, a share that needs a Google sign-in).
   const [authDetail, setAuthDetail] = useState<string | undefined>(undefined);
   const alive = useRef(true);
-  const last = useRef("");
+  // What's on screen, as read: the same answer again changes nothing (the tab's last copy counts).
+  const last = useRef(typeof window === "undefined" ? "" : seenRaw(courseId, as) ?? "");
 
   const refresh = useCallback(async () => {
     try {
@@ -106,6 +116,7 @@ export function useCourse(courseId: string, as?: string, everyMs = 4000) {
       else {
         setNeedAuth(null);
         // 内容没变就不更新，避免每次轮询都让整页重画
+        seen.set(seenKey(courseId, as), { raw, at: Date.now() });
         if (raw !== last.current) {
           last.current = raw;
           // Today's lesson follows the lesson dates, in this browser's own calendar day.
