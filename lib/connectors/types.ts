@@ -41,6 +41,10 @@ export interface InvokeContext {
   moduleTitle?: string;
   moduleBody?: string;
   moduleCriteria?: string;
+  /** Where the card sits, so the AI's answer fits the course: its title, the lesson (week, goal), what's next. */
+  courseTitle?: string;
+  lesson?: string;
+  upcoming?: string[];
 }
 
 export interface Connector {

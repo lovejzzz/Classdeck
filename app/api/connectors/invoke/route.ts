@@ -73,7 +73,16 @@ export async function POST(request: Request) {
         throw new ConnectorError("forbidden", "This card doesn't have that tool");
       }
       if (rateLimited(`${courseId}:${studentId}`)) throw new ConnectorError("rate_limited", "Slow down a little. Try again in a minute.");
-      ctx = { moduleTitle: mod.title, moduleBody: mod.body, moduleCriteria: mod.criteria };
+      // Where the card sits (unseen by the student): the course, the lesson and its goal, the next lessons.
+      const week = course.weeks.find((w) => w.lessons.some((l) => l.id === lesson!.id));
+      const flat = course.weeks.flatMap((w) => w.lessons.map((l) => ({ w, l })));
+      const at = flat.findIndex((x) => x.l.id === lesson!.id);
+      const name = (w: { title: string }, l: { title: string; goal?: string }) => `${w.title.split(" · ")[0]} · ${l.title}${l.goal ? ` (${l.goal})` : ""}`;
+      ctx = {
+        moduleTitle: mod.title, moduleBody: mod.body, moduleCriteria: mod.criteria, courseTitle: course.title,
+        lesson: week ? name(week, lesson!) : lesson!.title,
+        upcoming: flat.slice(at + 1, at + 4).map((x) => name(x.w, x.l)),
+      };
     }
 
     // AI tools run on the teacher's own AI: their own when they use it themselves, the course owner's for students.

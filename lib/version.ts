@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.03",
+    date: "2026-11-26",
+    changes: [
+      "Less to read around AI. Students no longer see which AI model wrote their feedback, and the notes are shorter (“AI feedback when you hand in”, “From AI. Your teacher sees your work too.”). Settings’ notes about keys are shorter too.",
+      "The AI tutor’s tools (ask the tutor, feedback on my draft, quiz me, explain it simpler) quietly know where the student is: the course, the lesson and its goal, and what’s coming up. Nothing for the teacher to set up. What students type is treated as their material, never instructions to the AI, and draft feedback no longer invents problems.",
+    ],
+  },
+  {
     version: "0.3.02",
     date: "2026-11-26",
     changes: [

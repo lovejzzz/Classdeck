@@ -11,10 +11,9 @@ export const AI_PROVIDERS: { id: AiProvider; name: string; company: string; keyU
     labels: [
       { text: "Analyzes video", tone: "good" }, { text: "Posture & gestures", tone: "good" }, { text: "Eye contact", tone: "good" },
       { text: "Pace & filler words", tone: "good" }, { text: "Writing", tone: "plain" }, { text: "≈ 4–11¢ per 3-min video", tone: "plain" },
-      { text: "Free keys: ~20 a day", tone: "note" },
     ],
     keyHint: "Starts with AIza",
-    keyNote: "For a class, turn on billing for the key: a free key gives about 20 feedbacks a day per model, and Google may use what it’s sent (your students’ work) to improve its products.",
+    keyNote: "For a class, turn on billing: free keys stop after ~20 feedbacks a day, and Google may use what they’re sent.",
   },
   {
     id: "anthropic", name: "Claude", company: "Anthropic", keyUrl: "https://console.anthropic.com/settings/keys", watchesVideo: false,

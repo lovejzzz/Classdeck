@@ -184,7 +184,7 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
       <div className="mt-4 space-y-1">
         {error && <p className="flex items-center gap-2 text-[12.5px] text-bad" role="alert"><span className="h-2 w-2 flex-none rounded-full bg-bad" />{error}</p>}
         {(saved || busy) && !error && <StatusLine status={saved?.status} busy={busy} model={picked?.name ?? model} />}
-        <p className="text-[11.5px] text-ink-3">Keys are stored encrypted and never shown again. Checking for credit sends the service one word (a fraction of a cent).</p>
+        <p className="text-[11.5px] text-ink-3">Stored encrypted; never shown again.</p>
       </div>
     </section>
   );
