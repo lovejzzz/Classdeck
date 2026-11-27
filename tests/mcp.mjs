@@ -55,7 +55,7 @@ check("a notification gets 202 and no body", note.status === 202 && (await note.
 check("GET is 405", (await fetch(link)).status === 405);
 const list = await rpc(link, "tools/list", {});
 const names = (list.result?.tools ?? []).map((t) => t.name);
-check("the tools are listed", ["list_courses", "get_course", "get_card", "list_students", "review_queue", "get_work", "get_discussion", "create_course", "add_lesson", "add_cards", "update_card", "update_lesson", "update_week", "get_lesson", "give_feedback", "send_reminder", "move_card", "move_lesson", "move_week", "copy_lesson", "copy_week", "update_course", "make_narration", "find_videos", "make_video", "check_video", "list_tools", "test_tool", "ai_status", "demo_students", "act_as_demo", "student_view", "check_course", "demo_walkthrough"].every((n) => names.includes(n)), names);
+check("the tools are listed", ["list_courses", "get_course", "get_card", "list_students", "review_queue", "get_work", "get_discussion", "create_course", "add_lesson", "add_cards", "update_card", "update_lesson", "update_week", "get_lesson", "give_feedback", "send_reminder", "move_card", "move_lesson", "move_week", "copy_lesson", "copy_week", "update_course", "make_narration", "find_videos", "make_video", "check_video", "list_tools", "test_tool", "ai_status", "demo_students", "act_as_demo", "student_view", "check_course", "demo_walkthrough", "list_questions"].every((n) => names.includes(n)), names);
 check("reads are marked read-only, feedback as reaching students", list.result.tools.find((t) => t.name === "get_course").annotations.readOnlyHint === true && list.result.tools.find((t) => t.name === "give_feedback").annotations.readOnlyHint === false);
 check("nothing that deletes", !names.some((n) => /delete|remove/.test(n)), names);
 check("the Bearer header works too", (await rpc(link, "tools/list", {}, { bearer: true })).result?.tools?.length === names.length);
@@ -203,6 +203,13 @@ check("act_as_demo answers a quiz", /answered every question right/.test(act.tex
 const walk = await tool(link, "demo_walkthrough", { course_id: courseId, student_id: demoId });
 check("demo_walkthrough goes through the course, none failing", /went through \d+ cards, none failed/.test(walk.text) && /Not on their board[^\n]*Extra practice/.test(walk.text), walk.text.slice(-800));
 const chk = await tool(link, "check_course", { course_id: courseId });
+const lq = await tool(link, "list_questions", { course_id: courseId });
+const tpl = await tool(link, "create_course", { template: "caps2", title: "" });
+const tplId = tpl.text.match(/\(id ([\w-]+)\)/)?.[1];
+check("create_course from a template (CaPS Flow 2)", !tpl.error && /from the caps2 template: 8 weeks/.test(tpl.text), tpl.text);
+const tplChk = await tool(link, "check_course", { course_id: tplId });
+check("…and the check lists what the facilitator still fills in, once per card", /video card with no video/.test(tplChk.text) && /no meeting link/.test(tplChk.text) && !/placeholder text/.test(tplChk.text), tplChk.text.slice(0, 600));
+check("list_questions: every quiz question by week", /## Week/.test(lq.text) && /What does print\('hi'\) show\?/.test(lq.text), lq.text.slice(0, 300));
 check("check_course finds AI feedback with no key", /AI feedback is on, but no AI key/.test(chk.text), chk.text.slice(0, 800));
 check("…and the AI tutor needing a key", /AI tutor tool needs setting up|needs setting up/.test(chk.text), chk.text.slice(0, 800));
 const tt = await tool(link, "test_tool", { course_id: courseId, card_id: three, tool: "ai", action: "ask", input: { question: "What is a loop?" }, as_demo_student: demoId });

@@ -476,6 +476,12 @@ export const MORE_TOOLS: Tool[] = [
             else if (!describe(con, !!owner?.ai).configured) found.push(`${where}: the ${con.name} tool needs setting up before it works`);
             else if (!enabled.has(t.connector)) found.push(`${where}: the ${con.name} tool isn't turned on for the course (adding it with add_cards or update_card turns it on)`);
           }
+          // The text promises a link or a time on the card (as the CaPS templates do), and it isn't there yet.
+          const hasLink = (m.attachments ?? []).some((x) => x.kind === "link" || x.kind === "video");
+          // (Video cards and meetings already have their own line for a missing link.)
+          const ownLine = /^video\b/i.test(m.title) || /session|meeting|zoom/i.test(m.title);
+          if (!ownLine && /(link is on this card|linked on this card|video on this card|Join button on this card)/i.test(m.body ?? "") && !hasLink) found.push(`${where}: its text says the link is on the card, but there's no link yet`);
+          if (/at the time on this card/i.test(m.body ?? "") && !m.dueTime) found.push(`${where}: its text points to a time on the card, but no time is set (Access → meeting time, or update_card due_time)`);
           if (k === "content" && !m.body?.trim() && !(m.attachments ?? []).length && !m.playlist?.length) found.push(`${where}: an empty card (no text, link or file)`);
           if (m.wall?.replies && c.students.filter((s) => !s.demo).length && m.wall.replies > c.students.filter((s) => !s.demo).length - 1) found.push(`${where}: asks for ${m.wall.replies} replies, but the class is too small for that`);
           for (const x of m.attachments ?? []) if (x.kind === "link") links.push({ where, url: x.url });
@@ -515,6 +521,13 @@ export const MORE_TOOLS: Tool[] = [
           if (asked.length >= 2 && asked.filter((q) => TERM_ONLY.test(q.text) || q.kind === "short").length === asked.length) found.push(`${at(w, l, g)}: every question asks for a term or a fact; add one that has students apply the idea (judge an example, spot the problem, choose what to do)`);
         }
       }
+      // Near-identical questions in different lessons (meaning-level repeats: list_questions, for the AI to compare).
+      const everyQ = all.flatMap(({ w, l }) => l.modules.flatMap((m) => (m.poll ? [] : (m.questions ?? []).map((q) => ({ w, l, m, q })))));
+      for (let i = 0; i < everyQ.length; i++) for (let j = i + 1; j < everyQ.length; j++) {
+        const x = everyQ[i], y = everyQ[j];
+        if (x.l !== y.l && sameQuestion(x.q.text, y.q.text)) found.push(`“${clip(x.q.text, 60)}” (${x.w.title}) and “${clip(y.q.text, 60)}” (${y.w.title}) ask nearly the same thing: fine as planned review, otherwise change one`);
+      }
+      if (everyQ.length > 4) found.push(`(Questions that ask the same idea in other words can't be spotted by matching words: read them side by side with list_questions.)`);
       for (const [t, where] of titles) if (where.length > 1) found.push(`Several cards are called “${t}” (${where.join(", ")}): give each a title that says what it checks or asks`);
       else found.push(`${where[0]}: a card called just “${t}”: a title that says what it's about helps students`);
       if (a.check_links) {
@@ -540,6 +553,20 @@ export const MORE_TOOLS: Tool[] = [
         else lines.push(`${where.length} cards: ${what}. For example ${where.slice(0, 4).map((x) => x.replace(/^.* › /, "")).join("; ")}${where.length > 4 ? "; …" : ""}`);
       }
       return cap(`${found.length} thing${found.length === 1 ? "" : "s"} to look at:\n${lines.map((x) => `- ${x}`).join("\n")}`);
+    },
+  },
+  {
+    name: "list_questions", title: "List every question", annotations: { ...ro, title: "List every question" },
+    description: "Every quiz question in the course, week by week (with its card and kind), on one page: read them side by side to spot two that ask the same idea in different words, a week that only checks terms, or a gap in what's checked.",
+    inputSchema: obj(COURSE_ID, ["course_id"]),
+    async run(a, ctx) {
+      const c = courseFor(ctx, a.course_id);
+      const out: string[] = [];
+      for (const w of c.weeks) {
+        const qs = w.lessons.flatMap((l) => l.modules.flatMap((m) => (m.poll ? [] : (m.questions ?? []).map((q) => `- [${q.kind ?? "choice"}] ${clip(q.text, 160)} (“${m.title}”, card ${m.id})`))));
+        if (qs.length) out.push(`## ${w.title}`, ...qs);
+      }
+      return out.length ? cap(out.join("\n")) : "This course has no quiz questions.";
     },
   },
   {

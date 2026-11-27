@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.17",
+    date: "2026-11-27",
+    changes: [
+      "CaPS Flow 1 and Flow 2, polished: students never see notes meant for the facilitator (“add the link”, “add the time here”); the cards say the link is on the card, and the course check lists every card still missing a link or a meeting time. Flow 2’s weeks have their own goals and check-in titles (“How confident are you with your voice?”), questions read naturally, names like “The STAR method” keep their capitals, each practice recording says what to practise that week, and “Keep learning” gives concrete ways to keep improving.",
+      "Your own AI can start a course from Questhand’s templates (CaPS Flow 1 or 2, or the standard shape), and reads every quiz question side by side (list_questions) to catch two weeks asking the same idea in other words; the course check also flags near-identical questions across weeks.",
+    ],
+  },
+  {
     version: "0.3.16",
     date: "2026-11-27",
     changes: [

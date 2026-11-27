@@ -269,7 +269,7 @@ async function main() {
   // Week 3 practice: self-assess, focus, record, journal, best take in groups.
   for (const n of NAMES.slice(0, 3)) {
     const s = f2.S[n]; c = await view(s, f2.cid);
-    const self = find(c, 3, /Self-assessment/);
+    const self = find(c, 3, /How confident/);
     await s.c.op(f2.cid, { op: "answer", studentId: s.id, moduleId: self.id, qid: self.questions[0].id, choice: 1 });
     const focus = find(c, 3, /Choose your Week 3 focus/);
     await s.c.op(f2.cid, { op: "answer", studentId: s.id, moduleId: focus.id, qid: focus.questions[0].id, multi: [2] });

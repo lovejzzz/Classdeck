@@ -503,10 +503,21 @@ export const TOOLS: Tool[] = [
     name: "create_course", title: "Create a course", annotations: { ...add, title: "Create a course" },
     description: "Make a new course: its title, weeks, lessons (title and goal) and cards. For a long course, create it with every week and lesson and the first cards, then fill lessons in with add_cards (a call with too much text gets cut off). Returns the course id and a link.",
     inputSchema: obj({
+      template: { type: "string", enum: ["caps1", "caps2", "template"], description: "Start from a Questhand template instead of weeks: caps1 (CaPS Flow 1), caps2 (CaPS Flow 2), template (a standard 3-week shape)" },
       title: { type: "string" }, subtitle: { type: "string" },
       weeks: { type: "array", description: "In order", items: { type: "object", properties: { title: { type: "string", description: "Like “Week 1 · Getting started”" }, lessons: { type: "array", items: { type: "object", properties: { title: { type: "string" }, goal: { type: "string", description: "One line: what students get from it" }, cards: { type: "array", items: CARD_SCHEMA } }, required: ["title"] } } }, required: ["title", "lessons"] } },
-    }, ["title", "weeks"]),
+    }, ["title"]),
     async run(a, ctx) {
+      // From one of Questhand's own templates (then read it and change it to fit).
+      if (typeof a.template === "string") {
+        if (!["caps1", "caps2", "template"].includes(a.template)) throw new ToolError("template is caps1 (CaPS Flow 1), caps2 (CaPS Flow 2) or template (a standard 3-week shape)");
+        const req = actAs(new Request(`${ctx.origin}/api/courses`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ start: a.template, title: typeof a.title === "string" ? a.title : "", weeks: 3 }) }), ctx.user.id);
+        const res = await coursesPOST(req);
+        const j = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string; error?: string };
+        if (!res.ok || !j.ok || !j.id) throw new ToolError(j.error ?? "The course couldn’t be made");
+        const c = db().courses[j.id]!;
+        return `Made “${c.title}” (id ${c.id}) from the ${a.template} template: ${c.weeks.length} weeks, ${lessonsOf(c).reduce((n, x) => n + x.l.modules.length, 0)} cards. Open it: ${link(ctx, c)}\nNext: get_course and check_course to see what the facilitator still fills in (links, times).`;
+      }
       const title = str(a.title, "title", 80);
       const weeks = Array.isArray(a.weeks) ? a.weeks : [];
       if (!weeks.length) throw new ToolError("A course needs at least one week");
@@ -691,7 +702,7 @@ Keep what students see short and clear: plain words, one task per card, a short 
 Make it teach, not just cover:
 - Every card's title says what it's about or asks (“Spot the misleading axis”, not “Quiz” or “Short answer”), and no two cards in a lesson share a title.
 - Quizzes check understanding: most questions have students apply the idea (judge an example, spot the problem, pick what to do next); at most one asks for a term. A short answer accepts only answers that are really right, never common words.
-- Don't ask the same thing twice in a lesson; when you add a question, read the lesson's other questions first.
+- Don't ask the same thing twice; when you add a question, read the others first. After building or changing quizzes, read list_questions and make sure no two weeks ask the same idea in other words (unless it's planned review, and then say so in the card).
 - A video longer than about 10 minutes gets a clip of the part that matters, or the card says which minutes to watch. Prefer short, reliable sources a beginner can read.
 - The course builds: each lesson uses what came before, and a final project, wrap-up or celebration comes last. After moving or adding weeks or lessons, read the outline again and keep it that way.
 Start with list_courses. Working on a course that already has content: read it first (get_course, then get_lesson for the lessons you'll build on) and continue in its style: the same kinds of cards in the same order, similar titles, length and tone, the same week naming, and lessons that pick up where the last one ends. Cards marked ⤷ reach only students whose answer deals them; ↳ cards sit inside a card group. To build a new course, make it with create_course (all weeks and lessons, a few cards each), then fill lessons with add_cards; links come back for the teacher to open.
