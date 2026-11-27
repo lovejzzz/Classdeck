@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.11",
+    date: "2026-11-26",
+    changes: [
+      "Use your own AI with Questhand: connect Claude or ChatGPT (or Claude Code, Cursor and other MCP apps) with a personal link, and ask it to build a whole course, add lessons and cards, change cards, read students’ work and discussions, go through what’s waiting for feedback, give feedback and send reminders. It uses your own subscription. Set it up at the bottom of Settings → Tools for cards.",
+      "Safe by design: it works only in courses you teach (a viewer can only read; a student’s link sees nothing), it never deletes anything or reads private messages, students’ writing is marked as their work so the AI won’t take orders from it, and your AI asks before anything reaches students. The link works like a password: make a new one, or turn it off, any time.",
+    ],
+  },
+  {
     version: "0.3.10",
     date: "2026-11-26",
     changes: [

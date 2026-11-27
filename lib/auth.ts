@@ -35,7 +35,19 @@ function readCookie(request: Request, name: string) {
   return undefined;
 }
 
+/**
+ * Who a request made inside this server is from (the MCP endpoint acting for the teacher whose link it is). Only
+ * code on the server can put a request here, so it can't be forged from outside, and it leaves no session behind.
+ */
+const actingFor = new WeakMap<Request, Session & { key: string }>();
+export function actAs(request: Request, userId: string): Request {
+  actingFor.set(request, { kind: "teacher", userId, exp: Date.now() + 60_000, key: `act:${userId}` });
+  return request;
+}
+
 export function getSession(request: Request): (Session & { key: string }) | null {
+  const acting = actingFor.get(request);
+  if (acting) return acting;
   const token = readCookie(request, COOKIE);
   if (!token) return null;
   const key = sha(token);

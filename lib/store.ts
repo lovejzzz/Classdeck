@@ -34,6 +34,9 @@ export interface User {
    *  class code). Their course list puts that side first. */
   firstRole?: "teacher" | "student";
   /** Their AI for feedback (Settings → AI): which service, which model, and the key, encrypted (lib/aifeedback). */
+  /** The personal link for using Questhand from the teacher's own AI (MCP): its hash (to find it) and, sealed, the
+   * link itself (so Settings can show it again). */
+  mcp?: { hash: string; sealed: string; at: number; used?: number };
   ai?: {
     /** The service in use now, its model and key (encrypted): what cards with AI feedback use. */
     provider: import("./aimeta").AiProvider; model: string; key: string; tail: string;

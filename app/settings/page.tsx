@@ -10,6 +10,7 @@ import { toast } from "@/lib/toast";
 import { ask } from "@/components/Confirm";
 import { SiteFooter } from "@/components/SiteFooter";
 import { AiSettings } from "@/components/teacher/AiSettings";
+import { McpSettings } from "@/components/teacher/McpSettings";
 
 const EXAMPLE = `{
   "id": "holidays",
@@ -194,6 +195,7 @@ function ToolsTab() {
       </section>
 
       {canAdd && <AddApi onAdded={async (id) => { await refresh(); setShelf("All"); setOpen(id); }} />}
+      <McpSettings />
     </div>
   );
 }
