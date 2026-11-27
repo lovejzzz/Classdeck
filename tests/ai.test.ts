@@ -78,11 +78,13 @@ async function main() {
   // A newer hand-in wins: the older answer arriving late is dropped.
   let release: (v: Response) => void = () => {};
   reply = () => new Promise<Response>((r) => { release = r; }) as unknown as Response;
+  p.output += " Version two.";
   startAiFeedback(course, card, "s1", p);
   const first = release;
   await tick(5);
   reply = () => json({ choices: [{ message: { content: "Second look." } }] });
   p.ai!.at -= 1; // two hand-ins in the same millisecond still differ
+  p.output += " Version three.";
   startAiFeedback(course, card, "s1", p);
   await until(() => d.progress[course.id].s1["m-ai"].ai?.text === "Second look.");
   first(json({ choices: [{ message: { content: "Stale." } }] }));
@@ -91,6 +93,7 @@ async function main() {
 
   // An error says why, in words.
   reply = () => new Response("{}", { status: 429 });
+  p.output += " Version four.";
   startAiFeedback(course, card, "s1", p);
   await until(() => d.progress[course.id].s1["m-ai"].ai?.state !== "working");
   check("a failed call says why", d.progress[course.id].s1["m-ai"].ai?.state === "error" && /limit|credit/.test(d.progress[course.id].s1["m-ai"].ai?.error ?? ""), d.progress[course.id].s1["m-ai"].ai);
@@ -197,6 +200,56 @@ async function main() {
   const noneCookie = startSession({ kind: "teacher", userId: "u-none" } as never).split(";")[0];
   const noneTools = await (await toolsGet(new Request("http://x/api/connectors", { headers: { cookie: noneCookie } }))).json();
   check("without one, they wait for a key", !!process.env.ANTHROPIC_API_KEY || noneTools.connectors.find((c: { id: string }) => c.id === "ai")?.configured === false, null);
+
+  // ——— Real-key findings (CaPS run with a free Gemini key): busy answers, free limits, repeats, discussions. ———
+  d.users["u-ai"].ai = { provider: "gemini", model: "gemini-a", key: sealKey("AIza-teacher"), tail: "cher", saved: { gemini: { key: sealKey("AIza-teacher"), tail: "cher", model: "gemini-a", status: { state: "ready", at: 1 } } } };
+  const journal = cleanCard({ id: "m-j", type: "submit", kind: "answer", title: "Learning Journal", body: "Key takeaways.", audience: { kind: "all" }, tools: [], aiFeedback: true } as Module);
+  course.weeks[0].lessons[0].modules.push(journal);
+  const pj = (prog["m-j"] = { status: "done", output: "I learned to open with a story.", updatedAt: Date.now() } as Progress);
+  const ok = () => json({ candidates: [{ content: { parts: [{ text: "Works well: the story." }] } }] });
+  let n = 0;
+  calls = [];
+  reply = (url) => (url.includes(":generateContent") ? (n++ === 0 ? new Response('{"error":{"code":503,"message":"The model is overloaded."}}', { status: 503 }) : ok()) : new Response("{}", { status: 404 }));
+  startAiFeedback(course, journal, "s1", pj);
+  await until(() => d.progress[course.id].s1["m-j"].ai?.state !== "working", 9000);
+  check("Google busy (503): it tries again and the feedback lands", d.progress[course.id].s1["m-j"].ai?.state === "done" && n === 2, { n, ai: d.progress[course.id].s1["m-j"].ai });
+
+  calls = [];
+  startAiFeedback(course, journal, "s1", pj);
+  check("the same work handed in again keeps its feedback, with no new request", calls.length === 0 && pj.ai?.state === "done", { calls: calls.length, ai: pj.ai });
+  pj.output = "I learned to open with a story, and to pause.";
+
+  const daily = JSON.stringify({ error: { code: 429, message: "You exceeded your current quota", details: [{ "@type": "type.googleapis.com/google.rpc.QuotaFailure", violations: [{ description: "Generate content requests per day limit exceeded on Free Tier.", quotaId: "GenerateRequestsPerDayPerProjectPerModel-FreeTier" }] }, { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "24816s" }] } });
+  calls = [];
+  reply = (url) => (url.includes(":generateContent") ? new Response(daily, { status: 429 }) : new Response("{}", { status: 404 }));
+  startAiFeedback(course, journal, "s1", pj);
+  await until(() => d.progress[course.id].s1["m-j"].ai?.state !== "working");
+  const dj = d.progress[course.id].s1["m-j"].ai;
+  check("a free key's daily limit: no retry, and the teacher is told plainly", dj?.state === "error" && /free key.*today/.test(dj.error ?? "") && calls.filter((c) => c.url.includes(":generateContent")).length === 1, { dj, calls: calls.length });
+  const st = d.users["u-ai"].ai?.saved?.gemini?.status;
+  check("and Settings shows the key is over its free limit", st?.state === "no_credit" && /free key/.test(st.message ?? ""), st);
+  reply = (url) => (url.includes(":generateContent") ? ok() : new Response("{}", { status: 404 }));
+  pj.output += " Also eye contact.";
+  startAiFeedback(course, journal, "s1", pj);
+  await until(() => d.progress[course.id].s1["m-j"].ai?.state !== "working");
+  check("once feedback works again, Settings is back to ready", d.users["u-ai"].ai?.saved?.gemini?.status?.state === "ready", d.users["u-ai"].ai?.saved?.gemini?.status);
+
+  const free = await probe("gemini", "AIza-x", "gemini-a").then(() => null);
+  void free;
+  reply = () => new Response(daily, { status: 429 });
+  const pr = await probe("gemini", "AIza-x", "gemini-a");
+  check("the key check also says it's a free key over today's limit", pr.state === "no_credit" && /free key/.test(pr.message ?? ""), pr);
+
+  const wall = cleanCard({ id: "m-w", type: "wall", kind: "discussion", title: "Peer feedback", body: "Post your take, then give two people feedback.", audience: { kind: "all" }, tools: [], aiFeedback: true, wall: { replies: 2 } } as unknown as Module);
+  course.weeks[0].lessons[0].modules.push(wall);
+  (d.posts[course.id] ??= []).push({ id: "p-w", moduleId: "m-w", studentId: "s1", text: "My take: I open with a question.", createdAt: Date.now() });
+  const pw = (prog["m-w"] = { status: "doing", updatedAt: Date.now() } as Progress);
+  calls = [];
+  reply = (url) => (url.includes(":generateContent") ? ok() : new Response("{}", { status: 404 }));
+  startAiFeedback(course, wall, "s1", pw);
+  await until(() => d.progress[course.id].s1["m-w"].ai?.state !== "working");
+  const wsent = String(calls.find((c) => c.url.includes(":generateContent"))?.init?.body ?? "");
+  check("a discussion post: the AI is told replies come later", /own post only/.test(wsent) && wsent.includes("open with a question"), wsent.slice(0, 200));
 
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);

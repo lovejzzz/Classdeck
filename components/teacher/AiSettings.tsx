@@ -14,7 +14,7 @@ function StatusLine({ status, busy, model }: { status?: AiStatus; busy: boolean;
   const [dot, text] = busy ? ["bg-ink-3 animate-pulse", "Saving and checking your key…"]
     : !status ? ["bg-ok", `Saved${model ? ` · ${model}` : ""}`]
     : status.state === "ready" ? ["bg-ok", `Saved · ${model ?? ""} · ready, the key has credit`]
-    : status.state === "no_credit" ? ["bg-bad", "Saved, but the key has no credit left (or is over its limit). Add credit at the service and AI feedback starts working."]
+    : status.state === "no_credit" ? ["bg-bad", status.message ? `Saved. ${status.message}` : "Saved, but the key has no credit left (or is over its limit). Add credit at the service and AI feedback starts working."]
     : status.state === "bad_key" ? ["bg-bad", "The service no longer accepts this key. Paste a new one."]
     : ["bg-warn", `Saved, but the service didn’t answer the check${status.message ? ` (${status.message})` : ""}. It may work later.`];
   return (
@@ -144,6 +144,7 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
             <button onClick={remove} className="font-sans text-[12px] text-ink-3 underline underline-offset-2 hover:text-bad">Remove</button>
           </div>
         )}
+        {meta.keyNote && <p className="mt-1.5 text-[12px] leading-relaxed text-ink-3">{meta.keyNote}</p>}
       </div>
 
       {saved && (

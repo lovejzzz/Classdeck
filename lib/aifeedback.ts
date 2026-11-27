@@ -36,12 +36,51 @@ export function openKey(sealed: string): string | null {
   } catch { return null; }
 }
 
-export class AiError extends Error {}
+export class AiError extends Error {
+  /** The key is out of credit or over a limit: the teacher's Settings shows it. */
+  constructor(message: string, readonly quota?: string) { super(message); }
+}
 const why = (status: number, provider: string) =>
   status === 401 || status === 403 ? `${provider} didn’t accept the key. Check it in Settings → AI.`
   : status === 429 ? `${provider} says the key is over its limit or out of credit.`
   : status === 404 ? `${provider} doesn’t have that model. Pick another in Settings → AI.`
   : `${provider} had an error (${status}).`;
+
+/** How long to wait before trying again, when a service says it's busy (or asks for a short wait); null: don't. */
+function retryAfter(status: number, body: string): number | null {
+  if (status === 500 || status === 502 || status === 503 || status === 504) return 4000;
+  // Over a per-minute limit, with the wait it asks for: worth one more try. A daily limit or no credit isn't.
+  if (status !== 429 || /per ?day|PerDay|billing|credit|insufficient/i.test(body)) return null;
+  const s = Number(body.match(/"retryDelay":\s*"(\d+)(?:\.\d+)?s"/)?.[1] ?? NaN);
+  return s <= 40 ? s * 1000 + 500 : null;
+}
+/**
+ * A request to an AI service that gives up after `ms`, and tries twice more when the service is busy. Free keys and
+ * busy hours get "overloaded" (503) answers that work a few seconds later.
+ */
+async function send(url: string, init: RequestInit, ms = 180_000): Promise<Response | null> {
+  for (let tries = 0; ; tries++) {
+    const r = await fetch(url, { ...init, signal: AbortSignal.timeout(ms) }).catch(() => null);
+    if (!r || r.ok || tries >= 2) return r;
+    const wait = retryAfter(r.status, await r.clone().text().catch(() => ""));
+    if (wait === null) return r;
+    await new Promise((res) => setTimeout(res, wait * (tries + 1)));
+  }
+}
+/** What Settings says about a free key over its limit. */
+const FREE_DAILY = "This is a free key, and it has used today’s requests for this model. It starts again tomorrow; turn on billing for the key to lift the limit.";
+const FREE_RATE = "This is a free key, over its limit for the moment. Turn on billing for the key to lift the limit.";
+/** Why a service turned a request down, in words a teacher can act on (the body says more than the status). */
+async function refusal(r: Response, provider: string): Promise<AiError> {
+  const body = await r.text().catch(() => "");
+  if (r.status === 429 && /free.?tier/i.test(body) && /per ?day|PerDay/i.test(body))
+    return new AiError(`${provider}: this free key has used today’s requests for this model. AI feedback starts again tomorrow, or turn on billing for the key to lift the limit.`, "free_daily");
+  if (r.status === 429 && /free.?tier/i.test(body))
+    return new AiError(`${provider}: this free key is over its limit for now. Try again in a few minutes, or turn on billing for the key.`, "free_rate");
+  if (r.status === 402 || (r.status === 429 && /billing|credit|insufficient|quota/i.test(body)))
+    return new AiError(`${provider} says the key is out of credit or over its limit.`, "credit");
+  return new AiError(why(r.status, provider));
+}
 
 // ——— The models each service offers this key, newest first. ———
 
@@ -95,6 +134,7 @@ export async function probe(provider: AiProvider, key: string, model: string): P
     if (r.ok) return { state: "ready", at };
     const text = await r.text().catch(() => "");
     if (r.status === 401 || r.status === 403) return { state: "bad_key", at };
+    if (r.status === 429 && /free.?tier/i.test(text)) return { state: "no_credit", at, message: /per ?day|PerDay/i.test(text) ? FREE_DAILY : FREE_RATE };
     if (r.status === 429 || r.status === 402 || credit.test(text)) return { state: "no_credit", at };
     return { state: "error", at, message: `${r.status}` };
   } catch (e) {
@@ -113,24 +153,24 @@ type Video = { bytes: Buffer; mime: string; fps: number };
 
 export async function ask(provider: AiProvider, key: string, model: string, system: string, text: string, video?: Video): Promise<string> {
   if (provider === "anthropic") {
-    const client = new Anthropic({ apiKey: key });
+    const client = new Anthropic({ apiKey: key, timeout: 180_000, maxRetries: 2 });
     try {
       const res = await client.messages.create({ model, max_tokens: 2000, system, messages: [{ role: "user", content: text }] });
       if (res.stop_reason === "refusal") throw new AiError("The AI declined to give feedback on this one.");
       return res.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
     } catch (e) {
       if (e instanceof AiError) throw e;
-      if (e instanceof Anthropic.APIError) throw new AiError(why(e.status ?? 0, "Anthropic"));
+      if (e instanceof Anthropic.APIError) throw e.status === 429 || e.status === 402 ? new AiError(`Anthropic says the key is out of credit or over its limit.`, "credit") : new AiError(why(e.status ?? 0, "Anthropic"));
       throw new AiError("Couldn’t reach Anthropic.");
     }
   }
   if (provider === "openai") {
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    const r = await send("https://api.openai.com/v1/chat/completions", {
       method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model, messages: [{ role: "system", content: system }, { role: "user", content: text }] }),
     }).catch(() => null);
     if (!r) throw new AiError("Couldn’t reach OpenAI.");
-    if (!r.ok) throw new AiError(why(r.status, "OpenAI"));
+    if (!r.ok) throw await refusal(r, "OpenAI");
     const j = (await r.json()) as { choices?: { message?: { content?: string } }[] };
     return j.choices?.[0]?.message?.content?.trim() ?? "";
   }
@@ -139,35 +179,35 @@ export async function ask(provider: AiProvider, key: string, model: string, syst
   let fileName: string | undefined;
   if (video) {
     // Files API: start a resumable upload, send the bytes, wait until the video is processed.
-    const start = await fetch(`${base}/upload/v1beta/files`, {
+    const start = await send(`${base}/upload/v1beta/files`, {
       method: "POST",
       headers: { "x-goog-api-key": key, "X-Goog-Upload-Protocol": "resumable", "X-Goog-Upload-Command": "start", "X-Goog-Upload-Header-Content-Length": String(video.bytes.length), "X-Goog-Upload-Header-Content-Type": video.mime, "Content-Type": "application/json" },
       body: JSON.stringify({ file: { display_name: "student-video" } }),
-    }).catch(() => null);
+    }, 60_000);
     if (!start) throw new AiError("Couldn’t reach Google.");
-    if (!start.ok) throw new AiError(why(start.status, "Google"));
+    if (!start.ok) throw await refusal(start, "Google");
     const url = start.headers.get("x-goog-upload-url");
     if (!url) throw new AiError("Google didn’t accept the video upload.");
-    const up = await fetch(url, { method: "POST", headers: { "X-Goog-Upload-Offset": "0", "X-Goog-Upload-Command": "upload, finalize" }, body: new Uint8Array(video.bytes) }).catch(() => null);
+    const up = await fetch(url, { method: "POST", headers: { "X-Goog-Upload-Offset": "0", "X-Goog-Upload-Command": "upload, finalize" }, body: new Uint8Array(video.bytes), signal: AbortSignal.timeout(300_000) }).catch(() => null);
     if (!up?.ok) throw new AiError("The video didn’t upload to Google.");
     let file = ((await up.json()) as { file: { name: string; uri: string; state?: string; mimeType?: string } }).file;
     fileName = file.name;
     for (let i = 0; i < 60 && file.state === "PROCESSING"; i++) {
       await new Promise((res) => setTimeout(res, 2000));
-      const g = await fetch(`${base}/v1beta/${file.name}`, { headers: { "x-goog-api-key": key } });
-      if (g.ok) file = (await g.json()) as typeof file;
+      const g = await fetch(`${base}/v1beta/${file.name}`, { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(20_000) }).catch(() => null);
+      if (g?.ok) file = (await g.json()) as typeof file;
     }
     if (file.state && file.state !== "ACTIVE") throw new AiError("Google couldn’t process the video.");
     parts.push({ file_data: { mime_type: file.mimeType ?? video.mime, file_uri: file.uri }, video_metadata: { fps: video.fps } });
   }
   parts.push({ text });
   try {
-    const r = await fetch(`${base}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    const r = await send(`${base}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: "POST", headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
       body: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts }] }),
-    }).catch(() => null);
-    if (!r) throw new AiError("Couldn’t reach Google.");
-    if (!r.ok) throw new AiError(why(r.status, "Google"));
+    });
+    if (!r) throw new AiError("Google didn’t answer in time. Hand it in again to retry.");
+    if (!r.ok) throw await refusal(r, "Google");
     const j = (await r.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
     return (j.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("").trim();
   } finally {
@@ -215,6 +255,15 @@ export function aiFor(course: Course, m: Module): AiUse | null {
   return m.aiFeedback ? courseAi(course) : null;
 }
 
+/** The course owner's saved key for this service: out of credit (or over a free key's limit), or working again. */
+function markOwner(course: Course, provider: AiProvider, message?: string, ok = false) {
+  const owner = course.ownerId ? db().users[course.ownerId] : undefined;
+  const saved = owner?.ai?.saved?.[provider];
+  if (!saved || (ok && saved.status?.state !== "no_credit")) return;
+  saved.status = ok ? { state: "ready", at: Date.now() } : { state: "no_credit", at: Date.now(), message };
+  save();
+}
+
 /**
  * Start AI feedback on a student's handed-in card (if the course gives it and there's something to read or watch).
  * Marks the card "working" now; the feedback lands on the card when it's ready.
@@ -236,13 +285,18 @@ export function startAiFeedback(course: Course, m: Module, studentId: string, p:
   const said = work.filter((w) => w.transcript).map((w) => `${w.name ?? "Recording"}${w.duration ? ` (${w.duration}s)` : ""}: ${w.transcript}`);
   const film = setup.provider === "gemini" ? work.filter((w) => w.kind === "video" && /^\/api\/upload\//.test(w.url)).pop() : undefined;
   if (!words && !said.length && !film) return;
+  // The same work handed in again (nothing changed) keeps the feedback it has: no second request.
+  const input = crypto.createHash("sha256").update(JSON.stringify([setup.provider, setup.model, words, said, film?.url ?? "", film?.fps ?? 1])).digest("base64url").slice(0, 16);
+  if (p.ai?.state === "done" && p.ai.input === input) return;
   const at = Date.now();
-  p.ai = { state: "working", at, model: setup.model, watched: !!film };
+  p.ai = { state: "working", at, model: setup.model, watched: !!film, input };
   const courseId = course.id;
   void (async () => {
     let result: NonNullable<Progress["ai"]>;
     try {
-      const card = `Card: “${m.title}”\n${plain(m.body ?? "").slice(0, 3000)}${m.criteria ? `\nDone when: ${m.criteria}` : ""}`;
+      // A discussion card also asks for replies to classmates, which come later: feedback is on the student's post.
+      const discussion = m.type === "wall" ? "\nThis is a class discussion. Give feedback on the student's own post only; replying to classmates is a separate step, so don't mention replies." : "";
+      const card = `Card: “${m.title}”\n${plain(m.body ?? "").slice(0, 3000)}${m.criteria ? `\nDone when: ${m.criteria}` : ""}${discussion}`;
       const text = `${card}\n\n${words ? `The student's written work:\n${words.slice(0, 8000)}\n\n` : ""}${said.length ? `What the student said in their recordings (browser transcript, may have small errors):\n${said.join("\n").slice(0, 12000)}\n\n` : ""}${film ? "Their video is attached." : ""}`;
       let video: Video | undefined;
       if (film) {
@@ -251,9 +305,12 @@ export function startAiFeedback(course: Course, m: Module, studentId: string, p:
         if (bytes) video = { bytes, mime: TYPES[ext] ?? "video/webm", fps: film.fps && film.fps > 1 ? film.fps : 1 };
       }
       const out = await ask(setup.provider, setup.key, setup.model, video ? WATCHER : COACH, text, video);
-      result = out ? { state: "done", at, model: setup.model, text: out.slice(0, 6000), watched: !!video } : { state: "error", at, model: setup.model, error: "The AI gave no feedback. Hand it in again to retry." };
+      result = out ? { state: "done", at, model: setup.model, text: out.slice(0, 6000), watched: !!video, input } : { state: "error", at, model: setup.model, error: "The AI gave no feedback. Hand it in again to retry." };
+      if (out) markOwner(course, setup.provider, undefined, true);
     } catch (e) {
       result = { state: "error", at, model: setup.model, error: e instanceof AiError ? e.message : "The AI feedback didn’t work this time." };
+      // Out of credit or over a limit: the teacher's Settings shows it, so they know before the next student hands in.
+      if (e instanceof AiError && e.quota) markOwner(course, setup.provider, e.quota === "free_daily" ? FREE_DAILY : e.quota === "free_rate" ? FREE_RATE : undefined);
     }
     // Only if this is still the latest hand-in (a newer one starts its own feedback).
     const cur = db().progress[courseId]?.[studentId]?.[m.id];

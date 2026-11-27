@@ -3,6 +3,18 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.2.99",
+    date: "2026-11-26",
+    changes: [
+      "AI feedback tries again when the AI service is busy (Google often answers “overloaded” at first, especially with free keys), and gives up after a few minutes instead of showing “working” forever.",
+      "When a teacher’s key runs out (a free Gemini key allows about 20 requests a day per model), the teacher is told plainly, on the card and in Settings (a red light: “this is a free key, and it has used today’s requests”). Students just see that the AI couldn’t give feedback this time.",
+      "Handing in the same work again keeps its AI feedback instead of asking the AI again, so a key’s requests aren’t used up on repeats.",
+      "AI feedback on a discussion post is about the post itself; it no longer reminds students to reply to classmates before they’ve had the chance.",
+      "Settings → Gemini: a “Free keys: ~20 a day” label, and a note under the key that a class needs billing on (free keys are limited, and Google may use what’s sent to improve its products).",
+      "AI feedback shows its parts (Works well, Try next, Delivery, Your next step) in bold; a model whose description only repeats its name no longer shows it as a note.",
+    ],
+  },
+  {
     version: "0.2.98",
     date: "2026-11-26",
     changes: [

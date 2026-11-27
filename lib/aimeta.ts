@@ -5,14 +5,16 @@ export type AiProvider = "anthropic" | "openai" | "gemini";
 /** A short fact about a service, shown as a label: "good" (what it does well), "plain", or "note" (a caution). */
 export type AiLabel = { text: string; tone: "good" | "plain" | "note" };
 
-export const AI_PROVIDERS: { id: AiProvider; name: string; company: string; keyUrl: string; watchesVideo: boolean; labels: AiLabel[]; keyHint: string }[] = [
+export const AI_PROVIDERS: { id: AiProvider; name: string; company: string; keyUrl: string; watchesVideo: boolean; labels: AiLabel[]; keyHint: string; keyNote?: string }[] = [
   {
     id: "gemini", name: "Gemini", company: "Google", keyUrl: "https://aistudio.google.com/app/apikey", watchesVideo: true,
     labels: [
       { text: "Analyzes video", tone: "good" }, { text: "Posture & gestures", tone: "good" }, { text: "Eye contact", tone: "good" },
       { text: "Pace & filler words", tone: "good" }, { text: "Writing", tone: "plain" }, { text: "≈ 4–11¢ per 3-min video", tone: "plain" },
+      { text: "Free keys: ~20 a day", tone: "note" },
     ],
     keyHint: "Starts with AIza",
+    keyNote: "For a class, turn on billing for the key: a free key gives about 20 feedbacks a day per model, and Google may use what it’s sent (your students’ work) to improve its products.",
   },
   {
     id: "anthropic", name: "Claude", company: "Anthropic", keyUrl: "https://console.anthropic.com/settings/keys", watchesVideo: false,
@@ -69,7 +71,9 @@ const MONTH = (t: number) => new Date(t).toLocaleDateString("en-US", { month: "s
 export function noteOf(provider: AiProvider, m: AiModel): string | undefined {
   const own = m.description?.replace(/\s+/g, " ").trim().split(/(?<=\.)\s/)[0]?.replace(/\.$/, "");
   const fam = FAMILY[provider].find(([re]) => re.test(m.id))?.[1];
-  const text = own && own.length > 12 ? (own.length > 120 ? `${own.slice(0, 117)}…` : own) : fam;
+  // A description that only repeats the model's name says nothing.
+  const useful = own && own.length > 12 && own.toLowerCase() !== m.name.toLowerCase() && own.toLowerCase() !== m.id.toLowerCase();
+  const text = useful ? (own.length > 120 ? `${own.slice(0, 117)}…` : own) : fam;
   return [text, m.created ? `released ${MONTH(m.created)}` : ""].filter(Boolean).join(" · ") || undefined;
 }
 
