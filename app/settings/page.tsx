@@ -42,30 +42,123 @@ const EXAMPLE = `{
 type Tab = "tools" | "account";
 const TABS: [Tab, string][] = [["tools", "Tools for cards"], ["account", "Your account"]];
 
-/** Settings: the tools students can use on cards (the teacher's AI first), and their account. */
+type Studying = { id: string; title: string; studentId: string; teacher?: string; done?: number; total?: number };
+
+/**
+ * Settings. Someone who teaches: the tools students can use on cards (their AI first) and their account. Someone who
+ * only studies: one simple page (who they are, reminders, their classes); keys and tools are a teacher's business.
+ */
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("tools");
+  const [studying, setStudying] = useState<Studying[] | null | undefined>(undefined);
   // The tab in the address (#account; #ai and #tools open the first), so a link can open it.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the address
     if (window.location.hash === "#account") setTab("account");
+    fetch("/api/courses").then((r) => r.json()).then((j: { courses?: unknown[]; studying?: Studying[] }) => {
+      setStudying(!j.courses?.length && j.studying?.length ? j.studying : null);
+    }).catch(() => setStudying(null));
   }, []);
   const go = (t: Tab) => { setTab(t); history.replaceState(null, "", t === "account" ? "#account" : "#tools"); };
+  const student = !!studying;
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+    <main className={`mx-auto w-full flex-1 px-4 py-8 ${student ? "max-w-2xl" : "max-w-5xl"}`}>
       <Link href="/" className="inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink">
-        <Icon name="back" size={13} /> Your courses
+        <Icon name="back" size={13} /> {student ? "Your classes" : "Your courses"}
       </Link>
       <h1 className="rise mt-4 text-[24px] font-semibold tracking-tight">Settings</h1>
-      <div className="rise mt-5 flex gap-1 border-b border-line" role="tablist" aria-label="Settings">
-        {TABS.map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => go(k)}
-            className={`press -mb-px border-b-2 px-3 py-2 text-[14px] ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
-        ))}
-      </div>
-      {tab === "tools" ? <ToolsTab /> : <AccountTab />}
+      {studying === undefined ? <div className="card skeleton mt-6 h-64" aria-busy="true" />
+        : studying ? <StudentSettings studying={studying} />
+        : (
+          <>
+            <div className="rise mt-5 flex gap-1 border-b border-line" role="tablist" aria-label="Settings">
+              {TABS.map(([k, label]) => (
+                <button key={k} role="tab" aria-selected={tab === k} onClick={() => go(k)}
+                  className={`press -mb-px border-b-2 px-3 py-2 text-[14px] ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
+              ))}
+            </div>
+            {tab === "tools" ? <ToolsTab /> : <AccountTab />}
+          </>
+        )}
       <SiteFooter />
     </main>
+  );
+}
+
+/** A student's settings, on one card: who they are (photo, email, how they sign in), reminders, and their classes. */
+function StudentSettings({ studying }: { studying: Studying[] }) {
+  const [me, setMe] = useState<Me | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Reminders are the browser's notifications: on, not asked yet, or blocked (only the browser can unblock them).
+  const [notify, setNotify] = useState<NotificationPermission | "none">("default");
+  useEffect(() => {
+    fetch("/api/auth").then((r) => r.json()).then((j) => { if (j.kind === "teacher") setMe(j); }).catch(() => {});
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the browser
+    setNotify(typeof Notification === "undefined" ? "none" : Notification.permission);
+  }, []);
+  if (!me) return <div className="card skeleton mt-6 h-64" aria-busy="true" />;
+  const post = (body: object) => fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
+  async function photo(f?: File) {
+    if (!f) return;
+    if (!f.type.startsWith("image/")) return toast("Pick a picture (JPEG, PNG, WebP or GIF)", { icon: "x", tone: "bad" });
+    setBusy(true);
+    const up = await uploadFile(f, () => {});
+    const r = up.ok ? await post({ action: "setPicture", url: up.url }) : { ok: false, error: up.error };
+    setBusy(false);
+    if (!r.ok) return toast(r.error ?? "Couldn’t use that picture", { icon: "x", tone: "bad" });
+    setMe({ ...me!, picture: r.picture }); toast("Photo changed", { icon: "check" });
+  }
+  async function signOut() {
+    await post({ action: "logout" });
+    window.location.href = "/";
+  }
+  const methods = [me.signIn?.google && "Google", me.signIn?.password && "email and password"].filter(Boolean).join(" or ") || "email";
+  const row = "flex items-center gap-3 border-t border-line px-5 py-4";
+  return (
+    <section className="card rise mt-6 overflow-hidden">
+      <div className="flex items-center gap-4 px-5 py-5">
+        <label className={`group relative flex-none cursor-pointer rounded-full ${busy ? "opacity-60" : ""}`} title="Change photo">
+          {me.picture
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={me.picture} alt="" referrerPolicy="no-referrer" className="h-14 w-14 rounded-full object-cover" />
+            : <Avatar name={me.name} size={56} />}
+          <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true"><Icon name="camera" size={15} /></span>
+          <input type="file" accept="image/*" aria-label="Change photo" className="sr-only" disabled={busy} onChange={(e) => { void photo(e.target.files?.[0]); e.target.value = ""; }} />
+        </label>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[16px] font-semibold">{me.name}</div>
+          <div className="truncate text-[12.5px] text-ink-3" data-tip={`Signs in with ${methods}`}>{me.email}</div>
+        </div>
+        <button onClick={signOut} className="btn btn-ghost press h-8 text-[12.5px]">Sign out</button>
+      </div>
+
+      <div className={row}>
+        <Icon name="clock" size={15} className="text-ink-3" />
+        <span className="flex-1 text-[13.5px]">Reminders <span className="text-[12.5px] text-ink-3">· a notification when your teacher sends one</span></span>
+        {notify === "granted" ? <span className="flex items-center gap-1.5 text-[12.5px] text-ink-2"><span className="h-2 w-2 rounded-full bg-ok" />On</span>
+          : notify === "denied" ? <span className="text-[12.5px] text-ink-3" data-tip="Allow notifications for this site in your browser’s settings">Blocked in your browser</span>
+          : notify === "none" ? <span className="text-[12.5px] text-ink-3">Not on this browser</span>
+          : <button onClick={async () => setNotify(await Notification.requestPermission())} className="btn btn-quiet press h-8 text-[12.5px]">Turn on</button>}
+      </div>
+
+      <div className="border-t border-line px-5 py-4">
+        <div className="mb-2 text-[12px] text-ink-3">Your classes</div>
+        <ul className="space-y-1">
+          {studying.map((c) => (
+            <li key={c.id}>
+              <Link href={`/learn/${c.id}/${c.studentId}`} className="press -mx-2 flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-lane">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px]">{c.title}</span>
+                  {c.teacher && <span className="block truncate text-[12px] text-ink-3">{c.teacher}</span>}
+                </span>
+                {c.total ? <span className="mono text-[12px] text-ink-3">{c.done ?? 0}/{c.total}</span> : null}
+                <Icon name="chevron" size={12} className="-rotate-90 text-ink-3" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 

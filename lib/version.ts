@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.08",
+    date: "2026-11-26",
+    changes: [
+      "Settings → AI: what the picked service does (Writing, Recordings, Video, card tools) now sits on the same row as the Gemini / Claude / ChatGPT switcher.",
+      "Students get their own simple Settings: one card with who they are (photo, email, sign out), reminders (on, or turn on), and their classes with how far they are. They no longer see AI keys or the card tools catalog, which are for teachers.",
+    ],
+  },
+  {
     version: "0.3.07",
     date: "2026-11-26",
     changes: [

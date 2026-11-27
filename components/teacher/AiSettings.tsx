@@ -120,19 +120,46 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
       </div>
       <p className="mt-1 text-[13px] text-ink-3">Your own AI account, for AI feedback and card tools in all your courses.</p>
 
-      {/* One switcher: each service keeps its own saved key, so switching never loses one. */}
-      <div className="mt-4 inline-flex rounded-[10px] border border-line-strong p-0.5" role="radiogroup" aria-label="AI service">
-        {AI_PROVIDERS.map((p) => {
-          const has = setup?.providers[p.id];
-          return (
-            <button key={p.id} role="radio" aria-checked={provider === p.id} onClick={() => pick(p.id)}
-              className={`press flex h-8 items-center gap-1.5 rounded-[8px] px-3.5 text-[13px] ${provider === p.id ? "bg-[#eef0fb] font-medium text-[#3d4796]" : "text-ink-2 hover:text-ink"}`}>
-              {p.name}
-              {has && <span className={`h-1.5 w-1.5 rounded-full ${has.status?.state === "no_credit" || has.status?.state === "bad_key" ? "bg-bad" : "bg-ok"}`} aria-label="key saved" />}
+      {/* One switcher (each service keeps its own saved key) and, beside it, what the picked service does. */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="inline-flex rounded-[10px] border border-line-strong p-0.5" role="radiogroup" aria-label="AI service">
+          {AI_PROVIDERS.map((p) => {
+            const has = setup?.providers[p.id];
+            return (
+              <button key={p.id} role="radio" aria-checked={provider === p.id} onClick={() => pick(p.id)}
+                className={`press flex h-8 items-center gap-1.5 rounded-[8px] px-3.5 text-[13px] ${provider === p.id ? "bg-[#eef0fb] font-medium text-[#3d4796]" : "text-ink-2 hover:text-ink"}`}>
+                {p.name}
+                {has && <span className={`h-1.5 w-1.5 rounded-full ${has.status?.state === "no_credit" || has.status?.state === "bad_key" ? "bg-bad" : "bg-ok"}`} aria-label="key saved" />}
+              </button>
+            );
+          })}
+        </div>
+        <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]" aria-label="What it does">
+          {can.map((c) => (
+            <li key={c.text} data-tip={c.tip} className={`flex items-center gap-1.5 ${c.on ? "text-ink" : "text-ink-3"}`}>
+              <span className={`grid h-4 w-4 place-items-center rounded-full ${c.on ? "bg-ok text-white" : "bg-line text-ink-3"}`}><Icon name={c.on ? "check" : "x"} size={9} /></span>
+              <span aria-label={c.on ? undefined : `No ${c.text.toLowerCase()}`}>{c.text}</span>
+            </li>
+          ))}
+          <li>
+            <button onClick={() => setToolsOpen((o) => !o)} aria-expanded={toolsOpen} className="press flex items-center gap-1.5 text-ink hover:text-[#3d4796]">
+              <span className="grid h-4 w-4 place-items-center rounded-full bg-ok text-white"><Icon name="check" size={9} /></span>
+              {aiTools.length} card tools
+              <Icon name="chevron" size={12} className={`text-ink-3 transition-transform ${toolsOpen ? "rotate-180" : ""}`} />
             </button>
-          );
-        })}
+          </li>
+        </ul>
       </div>
+      {toolsOpen && (
+        <ul className="mt-3 grid gap-x-6 gap-y-2 rounded-xl bg-[#fafaf9] px-4 py-3 text-[13px] sm:grid-cols-2">
+          {aiTools.map((t) => (
+            <li key={t.id}>
+              <span className="text-ink">{t.title}</span>
+              <span className="block text-[12px] text-ink-3">{TOOL_WHAT[t.id] ? `${TOOL_WHAT[t.id]} · ` : ""}{t.teacherOnly ? "For you, in the card editor" : "Students use it on a card"}</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="mt-3 grid gap-2.5 md:grid-cols-2">
         <div>
@@ -161,35 +188,6 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
         </label>
       </div>
       {picked?.note && <p className="mt-1.5 text-[12px] text-ink-3 md:ml-[calc(50%+5px)]">{picked.note}</p>}
-
-      {/* What it does, the same row for each service; the card tools open to show what they are. */}
-      <div className="mt-4 border-t border-line pt-3.5">
-        <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px]">
-          {can.map((c) => (
-            <li key={c.text} data-tip={c.tip} className={`flex items-center gap-1.5 ${c.on ? "text-ink" : "text-ink-3"}`}>
-              <span className={`grid h-4 w-4 place-items-center rounded-full ${c.on ? "bg-ok text-white" : "bg-line text-ink-3"}`}><Icon name={c.on ? "check" : "x"} size={9} /></span>
-              <span aria-label={c.on ? undefined : `No ${c.text.toLowerCase()}`}>{c.text}</span>
-            </li>
-          ))}
-          <li>
-            <button onClick={() => setToolsOpen((o) => !o)} aria-expanded={toolsOpen} className="press flex items-center gap-1.5 text-ink hover:text-[#3d4796]">
-              <span className="grid h-4 w-4 place-items-center rounded-full bg-ok text-white"><Icon name="check" size={9} /></span>
-              {aiTools.length} card tools
-              <Icon name="chevron" size={12} className={`text-ink-3 transition-transform ${toolsOpen ? "rotate-180" : ""}`} />
-            </button>
-          </li>
-        </ul>
-        {toolsOpen && (
-          <ul className="mt-3 grid gap-x-6 gap-y-2 rounded-xl bg-[#fafaf9] px-4 py-3 text-[13px] sm:grid-cols-2">
-            {aiTools.map((t) => (
-              <li key={t.id}>
-                <span className="text-ink">{t.title}</span>
-                <span className="block text-[12px] text-ink-3">{TOOL_WHAT[t.id] ? `${TOOL_WHAT[t.id]} · ` : ""}{t.teacherOnly ? "For you, in the card editor" : "Students use it on a card"}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
       {(error || st.more || (!saved && meta.keyNote)) && (
         <div className="mt-3 space-y-1">
