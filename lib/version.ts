@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.07",
+    date: "2026-11-26",
+    changes: [
+      "Settings → AI: what the AI does shows as green checks (Writing, Recordings, Video, card tools), with a grey cross for what a service can’t do. Click “6 card tools” to see each tool, what it does, and who uses it.",
+    ],
+  },
+  {
     version: "0.3.06",
     date: "2026-11-26",
     changes: [
