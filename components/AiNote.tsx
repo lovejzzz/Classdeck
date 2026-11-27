@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "./Icon";
 import { RichText } from "./RichText";
+import { tidyFeedback } from "@/lib/aiprompt";
 import type { Progress } from "@/lib/types";
 
 /** AI feedback on a student's latest hand-in: still coming, the feedback itself, or why there's none. */
@@ -24,7 +25,7 @@ export function AiNote({ ai: given, teacher = false }: { ai: NonNullable<Progres
           {ai.watched ? "Analyzing your video and reading your work…" : "Reading your work…"} {teacher ? "" : "It appears here in a moment."}
         </p>
       ) : ai.state === "done" && ai.text ? (
-        <div className="mt-2 text-[14px] leading-relaxed text-ink"><RichText text={ai.text.replace(/^(Works well|Try next|Delivery|Your next step):/gm, "**$1:**")} /></div>
+        <div className="mt-2 text-[14px] leading-relaxed text-ink"><RichText text={tidyFeedback(ai.text).replace(/^(Your question|Works well|Try next|Delivery|Your next step):/gm, "**$1:**")} /></div>
       ) : (
         <p className="mt-2 text-[13px] text-ink-3">{teacher ? ai.error ?? "The AI couldn’t give feedback." : "The AI couldn’t give feedback this time. Your teacher will still see your work."}</p>
       )}

@@ -8,6 +8,7 @@ import { presignGet, r2Ready } from "./blob";
 import { db, save } from "./store";
 import { UPLOAD_DIR, TYPES } from "./uploads";
 import type { AiModel, AiProvider, AiStatus } from "./aimeta";
+import { feedbackPrompt, tidyFeedback, type FeedbackInput } from "./aiprompt";
 import type { Attachment, Course, Module, Progress } from "./types";
 
 // ——— Keys at rest: encrypted with the server's own secret (AI_KEY_SECRET, or a file made once in .data). ———
@@ -216,19 +217,6 @@ export async function ask(provider: AiProvider, key: string, model: string, syst
   }
 }
 
-const COACH = `You are a warm, specific coach giving a student feedback on work they just handed in for one card of their course. Write in plain English, in the second person.
-Use these labelled parts, each one to three short sentences:
-Works well: one concrete strength, quoting or pointing to something they did.
-Try next: the two changes that would help most, tied to the card's goal.
-Your next step: one small thing to practise before the next session.
-Never rewrite the work for them. Under 170 words. If the work is empty or off-topic, say so kindly and what the card asks for.`;
-
-const WATCHER = `${COACH}
-You are also watching the student's video. First check the recording itself: how much of the student is in view, the camera's height and angle, lighting (a bright light or window behind them), the background and sound. If any of these gets in the way, say so first in Delivery and count it as one of the two changes in Try next: it matters more than anything else.
-Add a part, before "Your next step":
-Delivery: what you saw and heard, with a time (m:ss) for each point: the recording (framing, camera angle, light), posture, gestures, eye contact with the camera, facial expression, pace, pauses and filler words. Name one thing to keep and one to change. Describe only what you can clearly see at that moment; if the face or hands are out of view or the video cuts away, say that rather than guess. Don't guess at feelings or personal traits.`;
-
-const plain = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/[#*_>|]+/g, " ").replace(/\s+/g, " ").trim();
 
 async function videoBytes(a: Attachment): Promise<Buffer | null> {
   const name = a.url.match(/^\/api\/upload\/([a-z0-9]+\.[a-z0-9]{1,5})$/)?.[1];
@@ -266,46 +254,65 @@ function markOwner(course: Course, provider: AiProvider, message?: string, ok = 
 }
 
 /**
+ * What the AI should know about this hand-in, from the course: the lesson (and its week and goal), the student's own
+ * posts on the card, what they picked on earlier cards (their goals, their focus), and, for a revision, the teacher's
+ * request and the AI's feedback last time. Nothing about classmates, and no names.
+ */
+export function feedbackInput(course: Course, m: Module, studentId: string, p: Progress, watchesVideo: boolean): FeedbackInput {
+  const prog = db().progress[course.id]?.[studentId] ?? {};
+  let lesson: FeedbackInput["lesson"];
+  const picks: { card: string; picked: string }[] = [];
+  outer: for (const w of course.weeks) for (const l of w.lessons) {
+    if (l.modules.some((x) => x.id === m.id)) { lesson = { title: l.title, goal: l.goal, week: w.title.split(" · ")[0] }; break outer; }
+    for (const x of l.modules) {
+      if (!x.poll) continue;
+      const answers = prog[x.id]?.answers;
+      if (!answers) continue;
+      for (const q of x.questions ?? []) {
+        const a = answers[q.id];
+        if (a === undefined) continue;
+        const picked = (Array.isArray(a) ? a : [a]).map((n) => (typeof n === "number" ? q.options[n] : String(n))).filter(Boolean).join(", ");
+        if (picked) picks.unshift({ card: x.title, picked });
+      }
+    }
+  }
+  const posts = (db().posts[course.id] ?? []).filter((x) => x.moduleId === m.id && x.studentId === studentId).map((x) => ({ text: x.text, work: x.work }));
+  const review = p.review && (!p.handedAt || p.review.at <= p.handedAt) ? p.review : undefined;
+  return {
+    course: { title: course.title }, lesson, card: m, progress: p, posts, picks, watchesVideo,
+    before: { ai: p.ai?.state === "done" ? p.ai.text : undefined, review },
+  };
+}
+
+/**
  * Start AI feedback on a student's handed-in card (if the course gives it and there's something to read or watch).
  * Marks the card "working" now; the feedback lands on the card when it's ready.
  */
 export function startAiFeedback(course: Course, m: Module, studentId: string, p: Progress): void {
   const setup = aiFor(course, m);
   if (!setup) return;
-  // Everything the student did on the card: what they wrote, recorded, answered, and posted.
-  const posts = (db().posts[course.id] ?? []).filter((x) => x.moduleId === m.id && x.studentId === studentId);
-  const work = [...(p.work ?? []), ...posts.flatMap((x) => x.work ?? [])];
-  const answered = (m.questions ?? []).filter((q) => p.answers?.[q.id] !== undefined).map((q, i) => {
-    const a = p.answers![q.id];
-    const pick = (n: unknown) => (typeof n === "number" ? q.options[n] ?? "" : String(n));
-    const given = Array.isArray(a) ? a.map(pick).join(", ") : pick(a);
-    const mark = m.poll ? "" : p.results?.[q.id] === undefined ? "" : p.results[q.id] ? " (right)" : " (not right)";
-    return `Q${i + 1}: ${q.text}\nTheir answer: ${given}${mark}`;
-  });
-  const words = [plain(p.output ?? ""), ...answered, ...posts.map((x) => `Their post: ${plain(x.text)}`)].filter(Boolean).join("\n\n");
-  const said = work.filter((w) => w.transcript).map((w) => `${w.name ?? "Recording"}${w.duration ? ` (${w.duration}s)` : ""}: ${w.transcript}`);
-  const film = setup.provider === "gemini" ? work.filter((w) => w.kind === "video" && /^\/api\/upload\//.test(w.url)).pop() : undefined;
-  if (!words && !said.length && !film) return;
+  const facts = feedbackInput(course, m, studentId, p, setup.provider === "gemini");
+  const prompt = feedbackPrompt(facts);
+  if (prompt.empty) return;
   // The same work handed in again (nothing changed) keeps the feedback it has: no second request.
-  const input = crypto.createHash("sha256").update(JSON.stringify([setup.provider, setup.model, words, said, film?.url ?? "", film?.fps ?? 1])).digest("base64url").slice(0, 16);
+  const input = crypto.createHash("sha256").update(JSON.stringify([setup.provider, setup.model, prompt.fingerprint])).digest("base64url").slice(0, 16);
   if (p.ai?.state === "done" && p.ai.input === input) return;
+  const film = prompt.film;
   const at = Date.now();
   p.ai = { state: "working", at, model: setup.model, watched: !!film, input };
   const courseId = course.id;
   void (async () => {
     let result: NonNullable<Progress["ai"]>;
     try {
-      // A discussion card also asks for replies to classmates, which come later: feedback is on the student's post.
-      const discussion = m.type === "wall" ? "\nThis is a class discussion. Give feedback on the student's own post only; replying to classmates is a separate step, so don't mention replies." : "";
-      const card = `Card: “${m.title}”\n${plain(m.body ?? "").slice(0, 3000)}${m.criteria ? `\nDone when: ${m.criteria}` : ""}${discussion}`;
-      const text = `${card}\n\n${words ? `The student's written work:\n${words.slice(0, 8000)}\n\n` : ""}${said.length ? `What the student said in their recordings (browser transcript, may have small errors):\n${said.join("\n").slice(0, 12000)}\n\n` : ""}${film ? "Their video is attached." : ""}`;
       let video: Video | undefined;
       if (film) {
         const bytes = await videoBytes(film);
         const ext = film.url.split(".").pop() ?? "webm";
         if (bytes) video = { bytes, mime: TYPES[ext] ?? "video/webm", fps: film.fps && film.fps > 1 ? film.fps : 1 };
       }
-      const out = await ask(setup.provider, setup.key, setup.model, video ? WATCHER : COACH, text, video);
+      // The video couldn't be read: the AI works from the words and transcript, and knows it can't see the video.
+      const told = film && !video ? feedbackPrompt({ ...facts, watchesVideo: false }) : prompt;
+      const out = tidyFeedback(await ask(setup.provider, setup.key, setup.model, told.system, told.text, video));
       result = out ? { state: "done", at, model: setup.model, text: out.slice(0, 6000), watched: !!video, input } : { state: "error", at, model: setup.model, error: "The AI gave no feedback. Hand it in again to retry." };
       if (out) markOwner(course, setup.provider, undefined, true);
     } catch (e) {

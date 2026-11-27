@@ -249,7 +249,7 @@ async function main() {
   startAiFeedback(course, wall, "s1", pw);
   await until(() => d.progress[course.id].s1["m-w"].ai?.state !== "working");
   const wsent = String(calls.find((c) => c.url.includes(":generateContent"))?.init?.body ?? "");
-  check("a discussion post: the AI is told replies come later", /own post only/.test(wsent) && wsent.includes("open with a question"), wsent.slice(0, 200));
+  check("a discussion post: the AI is told replies come later", /don't mention replies/.test(wsent) && wsent.includes("open with a question"), wsent.slice(0, 200));
 
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);
