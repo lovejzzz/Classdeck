@@ -100,6 +100,8 @@ const upd = await tool(link, "update_card", { course_id: courseId, card_id: quiz
 check("update_card changes title and questions", !upd.error, upd.text);
 const card = await tool(link, "get_card", { course_id: courseId, card_id: quizCard });
 check("get_card shows the change, with the right answer for the teacher", /Check: print\(\)/.test(card.text) && /an error/.test(card.text) && /"answer": 0/.test(card.text), card.text);
+check("a setting the tools can't make is refused, not ignored", (await tool(link, "update_card", { course_id: courseId, card_id: quizCard, changes: { by_groups: true } })).error === true);
+check("…on new cards too", (await tool(link, "add_cards", { course_id: courseId, lesson_id: lessonId, cards: [{ kind: "content", title: "x", checklist: ["a"] }] })).error === true);
 check("a card's kind can't change", (await tool(link, "update_card", { course_id: courseId, card_id: quizCard, changes: { kind: "poll" } })).error === true);
 const order = await tool(link, "get_course", { course_id: courseId });
 const ids = [...order.text.matchAll(/card id ([\w-]+)/g)].map((m) => m[1]);

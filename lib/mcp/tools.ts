@@ -99,7 +99,17 @@ const CARD_SCHEMA = {
 
 type CardIn = { ref?: string; kind?: string; title?: string; body?: string; minutes?: number; criteria?: string; link?: string; questions?: { text?: string; options?: string[]; answer?: number | number[]; explain?: string; multi?: boolean; deals?: (string | null)[] }[]; replies?: number; optional?: boolean; ai_feedback?: boolean; due?: string };
 
+/** Fields an AI may give: anything else is turned away with the list, so it never thinks a setting was made when it wasn't. */
+const CARD_FIELDS = Object.keys(CARD_SCHEMA.properties);
+const Q_FIELDS = Object.keys(QUESTION_SCHEMA.properties);
+function onlyKnown(o: Record<string, unknown>, allowed: string[], where: string) {
+  const extra = Object.keys(o).filter((k) => !allowed.includes(k));
+  if (extra.length) throw new ToolError(`${where}: ${extra.join(", ")} can’t be set through this connection (yet). Fields that can: ${allowed.join(", ")}. Tell the teacher what to set in Questhand themselves.`);
+}
+
 function toModule(x: CardIn, where: string): Module {
+  onlyKnown(x as Record<string, unknown>, CARD_FIELDS, where);
+  for (const [i, q] of (Array.isArray(x.questions) ? x.questions : []).entries()) onlyKnown((q ?? {}) as Record<string, unknown>, Q_FIELDS, `${where}, question ${i + 1}`);
   const kind = x.kind as (typeof CARD_KINDS)[number];
   if (!CARD_KINDS.includes(kind)) throw new ToolError(`${where}: kind must be one of ${CARD_KINDS.join(", ")}`);
   const title = typeof x.title === "string" && x.title.trim() ? x.title.trim().slice(0, 120) : "";
@@ -476,6 +486,7 @@ export const TOOLS: Tool[] = [
       const c = courseFor(ctx, a.course_id, true);
       const { l, m } = cardFor(c, a.card_id);
       const ch = (a.changes ?? {}) as CardIn & { due_time?: string };
+      onlyKnown(ch as Record<string, unknown>, [...CARD_FIELDS, "due_time"].filter((k) => k !== "ref"), "changes");
       const next: Module = { ...m };
       if (ch.kind && ch.kind !== cardOut(m).kind) throw new ToolError("A card’s kind can’t change. Add a new card instead.");
       if (typeof ch.title === "string" && ch.title.trim()) next.title = ch.title.trim().slice(0, 120);
@@ -488,7 +499,7 @@ export const TOOLS: Tool[] = [
       if (ch.due_time !== undefined) next.dueTime = typeof ch.due_time === "string" && /^\d{2}:\d{2}$/.test(ch.due_time) ? ch.due_time : undefined;
       if (typeof ch.link === "string") next.attachments = [...(m.attachments ?? []).filter((x) => x.kind !== "link"), ...(/^https?:\/\/\S+$/.test(ch.link.trim()) ? [{ id: uid("a-"), kind: "link" as const, url: ch.link.trim() }] : [])];
       if (Array.isArray(ch.questions)) {
-        const made = toModule({ ...cardOut(m), kind: cardOut(m).kind, title: next.title, questions: ch.questions } as CardIn, "Card");
+        const made = toModule({ kind: cardOut(m).kind, title: next.title, questions: ch.questions } as CardIn, "Card");
         wireDeals([made], new Map(), new Set(l.modules.map((x) => x.id)), "Card");
         // Keep the ids of questions whose text stays, so students' answers stay with them.
         next.questions = made.questions?.map((q) => ({ ...q, id: m.questions?.find((o) => o.text === q.text)?.id ?? q.id }));

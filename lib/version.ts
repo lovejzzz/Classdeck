@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.14",
+    date: "2026-11-26",
+    changes: [
+      "Your own AI no longer reports a change as made when it asked for a setting the connection can’t make yet (like discussion by groups, or a checklist): it’s told which settings it can make, so it tells you what to set yourself.",
+    ],
+  },
+  {
     version: "0.3.13",
     date: "2026-11-26",
     changes: [
