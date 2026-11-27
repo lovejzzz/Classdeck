@@ -125,6 +125,8 @@ async function harvest(page, where) {
 // Buttons that change things for good, send things, or leave: not pressed.
 const RISKY = /\bstar\b|unstar|delete|remove|sign out|log ?out|trash|leave|archive|reset|clear|ungroup|take (it )?out|discard|duplicate|copy|import|export|download|e-?mail|invite|send|publish|post\b|hand in|submit|merge|new course|undo|redo|rename|lock|unlock|regenerate|nudge|remind|approve|revise|mark|join|record|camera|upload|attach|full ?screen|print|unenroll|block|kick|end\b/i;
 async function pressAll(page, scope, where, limit = 40) {
+  // "a, b, body": the first of these that's on the page (an open editor covers the page behind it).
+  if (scope.includes(",")) { for (const s of scope.split(",").map((x) => x.trim())) if (await page.locator(s).count().catch(() => 0)) { scope = s; break; } if (process.env.DEBUG) console.log("    scope:", scope); }
   const done = new Set();
   const start = page.url();
   for (let n = 0; n < limit; n++) {
@@ -133,9 +135,9 @@ async function pressAll(page, scope, where, limit = 40) {
     let picked = -1, name = "";
     for (let i = 0; i < count; i++) {
       const b = list.nth(i);
-      const label = ((await b.getAttribute("aria-label").catch(() => null)) || (await b.innerText().catch(() => "")) || "").trim().replace(/\s+/g, " ").slice(0, 50);
+      const label = ((await b.getAttribute("aria-label", { timeout: 500 }).catch(() => null)) || (await b.innerText({ timeout: 500 }).catch(() => "")) || "").trim().replace(/\s+/g, " ").slice(0, 50);
       const key = `${label}#${i}`;
-      if (!label || done.has(label) || RISKY.test(label) || (await b.isDisabled().catch(() => true))) continue;
+      if (!label || done.has(label) || RISKY.test(label) || (await b.isDisabled({ timeout: 500 }).catch(() => true))) continue;
       picked = i; name = label; done.add(label); done.add(key); break;
     }
     if (picked < 0) break;
@@ -144,10 +146,16 @@ async function pressAll(page, scope, where, limit = 40) {
       await list.nth(picked).click({ timeout: 2000 });
       await settle(450);
       await harvest(page, `${where} › ${name}`);
-    } catch (e) { problems.console.push(`${where}: couldn't press “${name}”: ${String(e).split("\n")[0].slice(0, 120)}`); }
+      // A press that opened something modal (a confirm, the drawing canvas, a card picker): close it before the next.
+      if (await page.locator('[data-confirm], canvas[aria-label="The page"], div.fixed.inset-0.z-\\[95\\]').count().catch(() => 0)) { await page.keyboard.press("Escape"); await settle(300); }
+    } catch (e) {
+      // Playwright's reason (something covering it, still moving, gone) is in its call log.
+      const why = String(e).match(/ - (.*(?:intercepts|not stable|not visible|outside of the viewport|detached).*)/)?.[1].slice(0, 160);
+      problems.console.push(`${where}: couldn't press “${name}”: ${String(e).split("\n")[0].slice(0, 120)}${why ? ` (${why})` : ""}`);
+    }
     if (page.url().split("#")[0] !== start.split("#")[0]) { await page.goto(start); await settle(900); }
-    // Inside a card, Escape would close the card: reopen it instead if a button closed it.
-    if (scope.includes("dialog")) { if (!(await page.locator(scope).count())) { await page.goto(start); await settle(900); } }
+    // Inside a card (a dialog, or the editor panel), reopen it if a button closed it.
+    if (scope !== "body") { if (!(await page.locator(scope).count())) { await page.goto(start); await settle(900); } }
     else { await page.keyboard.press("Escape").catch(() => {}); await settle(150); }
   }
   return done.size / 2;

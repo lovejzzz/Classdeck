@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.18",
+    date: "2026-11-27",
+    changes: [
+      "Settings no longer jumps as its sections load, and a long lesson title on the course map shows in full when you point at it.",
+      "Behind the scenes: the whole-site browser check now presses the buttons inside each card editor (it used to miss them), closes anything it opens before moving on, and says why a button couldn’t be pressed.",
+    ],
+  },
+  {
     version: "0.3.17",
     date: "2026-11-27",
     changes: [

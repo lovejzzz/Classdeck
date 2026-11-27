@@ -660,6 +660,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
   }
   useEffect(() => {
     if (!focus || !hidden.has(focus.id)) return;
+    // Opening a card from elsewhere (a link, search) unfolds the branch it's on: the map follows an outside change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     reveal(focus.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.at]);
@@ -1550,7 +1552,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                 <div key={r.lesson.id} data-canvas="1" className={`absolute rounded-[28px] transition-[background-color,box-shadow] duration-200 ${moving && moving.to === r.lesson.id && lessonWith(moving.id)?.id !== r.lesson.id ? (whyNot(moving.id, r.lesson.id) ? "bg-bad/[0.06] ring-2 ring-bad/30" : "bg-[#4b56a8]/[0.07] ring-2 ring-[#4b56a8]/40") : today ? "tree-lesson-today" : "tree-lesson"}`} style={{ left: r.x - 20, top: r.y, width: r.w + 40, height: r.h }}>
                   <div className="flex min-w-0 items-center gap-2 px-5 pt-3.5" style={{ fontSize: level === "far" ? 22 : 13 }}>
                     <span className={`flex flex-none items-center justify-center rounded-full font-semibold ${today ? "bg-ok text-white" : "bg-ink text-white"} ${level === "far" ? "h-9 w-9 text-[17px]" : "h-[22px] w-[22px] text-[11px]"}`}>{regions.indexOf(r) + 1}</span>
-                    {readOnly || level === "far" ? <span className="min-w-0 truncate font-semibold text-ink">{r.lesson.title}</span>
+                    {readOnly || level === "far" ? <span className="min-w-0 truncate font-semibold text-ink" title={r.lesson.title}>{r.lesson.title}</span>
                       : <LessonName title={r.lesson.title} onRename={(title) => { const real = lessons.find((l) => l.id === r.lesson.id); if (real) onChange({ ...real, title }); }} />}
                     {weekOf[r.lesson.id] && <span className="flex-none text-ink-3">{weekOf[r.lesson.id]}</span>}
                     {lessonBar && level !== "far" ? lessonBar(r.lesson.id)
@@ -2071,7 +2073,7 @@ function LessonName({ title, onRename }: { title: string; onRename: (t: string) 
   };
   if (draft === null) {
     return (
-      <button onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setDraft(title); }} title="Rename this lesson"
+      <button onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setDraft(title); }} title={`${title} (click to rename)`}
         className="-mx-1 min-w-0 truncate rounded-md px-1 font-semibold text-ink hover:bg-white/80">{title}</button>
     );
   }
@@ -2091,6 +2093,8 @@ function LessonName({ title, onRename }: { title: string; onRename: (t: string) 
  */
 function TrashBin({ entries, hot, dragging, onRestore, onForget }: { entries: TrashEntry[]; hot: boolean; dragging: boolean; onRestore?: (e: TrashEntry) => void; onForget?: (id: string) => void }) {
   const [open, setOpen] = useState(false);
+  // "5 min ago" counts from when the list was opened, not from each render.
+  const [now, setNow] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -2099,10 +2103,10 @@ function TrashBin({ entries, hot, dragging, onRestore, onForget }: { entries: Tr
     return () => window.removeEventListener("pointerdown", away);
   }, [open]);
   const list = [...entries].reverse();
-  const ago = (t: number) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+  const ago = (t: number) => { const m = Math.round((now - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
   return (
     <div ref={box} className="pointer-events-auto relative">
-      <button data-trash="1" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={`Trash${entries.length ? `, ${entries.length} deleted` : ""}`}
+      <button data-trash="1" onClick={() => { setNow(Date.now()); setOpen((v) => !v); }} aria-expanded={open} aria-label={`Trash${entries.length ? `, ${entries.length} deleted` : ""}`}
         data-tip={dragging ? "Drop here to delete" : "Trash"}
         className={`press relative grid h-7 w-7 place-items-center rounded-lg transition-[transform,background-color,color] duration-200 ${hot ? "scale-125 bg-bad text-white" : dragging ? "bg-bad/10 text-bad" : open ? "bg-lane text-ink" : "text-ink-2 hover:bg-lane hover:text-ink"}`}>
         <Icon name="trash" size={14} />

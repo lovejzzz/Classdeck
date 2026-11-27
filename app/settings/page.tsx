@@ -63,7 +63,7 @@ export default function SettingsPage() {
   const go = (t: Tab) => { setTab(t); history.replaceState(null, "", t === "account" ? "#account" : "#tools"); };
   const student = !!studying;
   return (
-    <main className={`mx-auto w-full flex-1 px-4 py-8 ${student ? "max-w-2xl" : "max-w-5xl"}`}>
+    <main className={`mx-auto min-h-screen w-full flex-1 px-4 py-8 ${student ? "max-w-2xl" : "max-w-5xl"}`}>
       <Link href="/" className="inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink">
         <Icon name="back" size={13} /> {student ? "Your classes" : "Your courses"}
       </Link>
