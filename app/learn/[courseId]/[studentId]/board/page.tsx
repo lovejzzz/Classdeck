@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { WorkText } from "@/components/CodeBlock";
 import { countedOf, parentOf } from "@/lib/branching";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -221,8 +222,8 @@ export default function BoardPage() {
                         )}
                         {p?.output && (
                           // Not a link itself: what they wrote may hold links of its own, which still open.
-                          <div onClick={(e) => { if (!(e.target as HTMLElement).closest("a")) router.push(cardLink(m.id)); }} className="-mx-1 mt-1 cursor-pointer rounded-lg px-1 py-1 hover:bg-lane">
-                            {writesOwn(m) ? <RichText text={p.output} className="text-[13.5px] leading-relaxed text-[#353532]" /> : <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#353532]">{p.output}</p>}
+                          <div onClick={(e) => { if (!(e.target as HTMLElement).closest("a,[data-code]")) router.push(cardLink(m.id)); }} className="-mx-1 mt-1 cursor-pointer rounded-lg px-1 py-1 hover:bg-lane">
+                            {writesOwn(m) ? <RichText text={p.output} className="text-[13.5px] leading-relaxed text-[#353532]" /> : <WorkText text={p.output} className="text-[13.5px] leading-relaxed text-[#353532]" />}
                           </div>
                         )}
                         {p?.work?.length ? <div className="mt-3 space-y-2">{p.work.map((a) => <div key={a.id}><div className="mb-1 text-[12px] text-ink-3">{a.name}</div><MediaView a={a} /></div>)}</div> : null}

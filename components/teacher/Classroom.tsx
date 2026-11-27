@@ -21,6 +21,7 @@ import { MarkedMedia } from "../Marks";
 import { MathText } from "../MathText";
 import { AttachMenu } from "../AttachMenu";
 import { AiNote } from "../AiNote";
+import { WorkText } from "../CodeBlock";
 import { MediaView } from "../cards/Media";
 import { Present } from "../Present";
 import { WallBoard } from "../WallBoard";
@@ -297,7 +298,7 @@ export function Classroom({
               // Their own copy of a Text card: formatted, and open to comments on any passage.
               readOnly ? <div className="mt-3 rounded-lg bg-lane px-3.5 py-3"><RichText text={selProgress.output} className="text-[13.5px] leading-relaxed" /></div> : <DocReview doc={selProgress.output} notes={selProgress.notes ?? []} courseId={courseId} studentId={sel!.sid} moduleId={selModule.id} onChanged={() => {}} names={Object.fromEntries(course.students.map((x) => [x.id, x.name]))} />
             ) : selProgress?.output ? (
-              <p className="mt-3 whitespace-pre-wrap rounded-lg bg-lane px-3.5 py-3 text-[13.5px] leading-relaxed">{selProgress.output}</p>
+              <WorkText text={selProgress.output} className="mt-3 rounded-lg bg-lane px-3.5 py-3 text-[13.5px] leading-relaxed" />
             ) : (
               // A shared doc is written in its live copy above; what's said here is about the copy handed in.
               !selModule.questions && kindOf(selModule) !== "content" && <p className="mt-3 text-[13px] text-ink-3">{sharedDoc(selModule) ? "Not handed in yet. Once it is, you can comment on any passage of the copy they hand in." : "Nothing written yet."}</p>

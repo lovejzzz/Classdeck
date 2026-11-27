@@ -1,6 +1,7 @@
 // What the AI is told when a student hands in a card: the instructions (by kind of card) and everything it should know
 // (the course, the lesson's goal, the card, the student's work, what they picked earlier, the teacher's request for a
 // revision). Pure: no database, no network, so tests and the prompt evaluation build it straight from data.
+import { codeKey, pythonIn } from "./code";
 import { kindOf } from "./kinds";
 import type { Attachment, Module, Progress, Review } from "./types";
 
@@ -58,6 +59,8 @@ const KINDS: Record<string, string> = {
   poll: `This card asks for the student's choices or opinions. There are no right answers: respond to what they chose and connect it to the course.`,
 };
 
+const CODE = `The work includes Python code. Check whether it does what the card asks: if you're told what it printed or the error it hit, use that; otherwise read it carefully. Point to lines by what they say (for example "the line \`score = score + roll\`"). Explain an error in plain words and hint at the fix; never write the corrected code for them. Mention readability (names, repetition) only after correctness.`;
+
 const VIDEO = `You can also watch the student's video. First check the recording itself: how much of the student is in view, the camera's height and angle, the light (a bright light or window behind them), the background and the sound. If any of these gets in the way, say so first in Delivery, and make it one of the changes in Try next: it matters more than anything else.
 Add a part before "Your next step":
 Delivery: what you saw and heard, with a time (m:ss) for each point: the recording (framing, angle, light), posture, gestures, eye contact with the camera, facial expression, pace, pauses and filler words. Name one thing to keep and one to change. If the student chose focus areas earlier, look at those first. Before you mention gestures or posture, check that the hands and upper body are actually in the frame at that moment. If only the face shows, say gestures and posture can't be seen, and never work them out from what the student says (counting "first, second" isn't a gesture you saw). Describe only what you can clearly see at that moment; if the face is out of view or the video cuts away, say so rather than guess. If the video isn't the student's own recording (someone else's talk, a film clip), say so and don't review it. Don't guess at feelings or personal traits.`;
@@ -89,6 +92,9 @@ export function feedbackPrompt(x: FeedbackInput): FeedbackPrompt {
   const unseen = work.filter((w) => w !== film && !w.transcript);
   const heardOnly = !film && work.some((w) => w.kind === "video" && w.transcript);
   const kind = cardKind(m);
+  // Python in the answer, and (when it's of this very code) what it did when the student ran it in the browser.
+  const code = pythonIn(p.output ?? "");
+  const ran = code && p.run && p.run.key === codeKey(code) ? p.run : undefined;
   const review = x.before?.review;
   const revision = review?.verdict === "revise" ? review : undefined;
 
@@ -109,14 +115,15 @@ export function feedbackPrompt(x: FeedbackInput): FeedbackPrompt {
     "<student_work>",
     words ? `Written:\n${words.slice(0, 8000)}` : "",
     said.length ? `What they said in their recordings (a browser transcript, may have small errors):\n${said.join("\n").slice(0, 12000)}` : "",
+    ran ? `When they ran their code in the browser, ${ran.error ? `it stopped with an error:\n${ran.error.slice(0, 1500)}${ran.output ? `\nafter printing:\n${ran.output.slice(0, 1500)}` : ""}` : ran.output.trim() ? `it printed:\n${ran.output.slice(0, 2500)}` : "it ran and printed nothing."}` : code ? "They haven't run this code (or changed it since): judge it by reading." : "",
     film ? "Their video is attached." : "",
     heardOnly ? "You can read what they said in their video but can't watch it: don't comment on how they look, move, or where they look." : "",
     unseen.length ? `Also attached, which you can't open: ${unseen.map(label).join(", ")}. Don't pretend you've seen ${unseen.length > 1 ? "them" : "it"}; if it matters for the card, say you couldn't look at it.` : "",
     "</student_work>",
   ].filter(Boolean);
 
-  const system = [BASE, KINDS[kind], film ? VIDEO : "", `Length: under ${film ? 260 : 170} words. If there's no real work (empty, a word or two, or off-topic), say so kindly and what the card asks for, in Works well and Try next.`].filter(Boolean).join("\n\n");
-  const fingerprint = JSON.stringify([words, said, film?.url ?? "", film?.fps ?? 1, unseen.map((w) => w.url), revision?.text ?? ""]);
+  const system = [BASE, KINDS[kind], code ? CODE : "", film ? VIDEO : "", `Length: under ${film ? 260 : 170} words. If there's no real work (empty, a word or two, or off-topic), say so kindly and what the card asks for, in Works well and Try next.`].filter(Boolean).join("\n\n");
+  const fingerprint = JSON.stringify([words, said, film?.url ?? "", film?.fps ?? 1, unseen.map((w) => w.url), revision?.text ?? "", ran ? [ran.output, ran.error ?? ""] : ""]);
   return { system, text: parts.join("\n\n"), film, empty: !words && !said.length && !film && !unseen.length, fingerprint };
 }
 

@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.10",
+    date: "2026-11-26",
+    changes: [
+      "Code in students’ work is found by itself and shows as code: monospace, with its indentation, everywhere it appears (the review drawer, the Students page preview, My board). Nothing to mark or set up.",
+      "Python gets a Run button: it runs in the browser (Python for the web, loaded only when someone presses Run), never on our server, and can’t reach the page or anyone’s data. What it prints shows under the code; an error says which line; a program that asks for input() gets a box for the answers; it stops by itself after 10 seconds (an endless loop), or press Stop.",
+      "Students writing code in an answer get a code box (monospace, Tab indents) and “Run your code”, to try it before handing in. Their last run is saved with the work.",
+      "AI feedback on code knows what it did: when the student ran it, the AI sees what it printed or the error it hit (only for the code as it is now), and checks the code against the card before anything else, pointing to lines and hinting at fixes without writing the code for them.",
+    ],
+  },
+  {
     version: "0.3.09",
     date: "2026-11-26",
     changes: [

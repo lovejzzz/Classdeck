@@ -3,6 +3,7 @@
 import { feedbackPrompt, momentsIn, tidyFeedback, type FeedbackInput } from "../lib/aiprompt";
 import type { Module, Progress } from "../lib/types";
 import { rankModels, type AiModel } from "../lib/aimeta";
+import { codeKey, pythonIn } from "../lib/code";
 
 let passed = 0;
 const failures: string[] = [];
@@ -78,6 +79,19 @@ check("its note: what it is (without its name), when, about what a video costs",
 check("others follow, newest first", live.more[0].id === "gemini-4-neon", live.more.map((m) => m.id));
 const offline = rankModels("gemini", [{ id: "gemini-3.8-flash", name: "Gemini 3.8 Flash" }, { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" }]);
 check("without the catalog, the family ranking still works", offline.top[0]?.id === "gemini-3.8-flash", offline.top.map((m) => m.id));
+
+// Code in an answer: the AI is told it's code, and what it did when the student ran it (only for this very code).
+const prog2 = `import random\nscore = 0\nfor i in range(3):\n    score = score + random.randint(1, 6)\nprint("Total:", score)`;
+const codeCard = card({ title: "Make something small", body: "Write a short program." });
+const unrun = feedbackPrompt(base({ card: codeCard, progress: { status: "done", output: prog2, updatedAt: 1 } as Progress }));
+check("code: the AI gets code guidance, and is told it wasn't run", /includes Python code/.test(unrun.system) && /haven't run this code/.test(unrun.text), unrun.text.slice(-200));
+const ranP = { status: "done", output: prog2, updatedAt: 1, run: { key: codeKey(pythonIn(prog2)), output: "Total: 11\n", at: 1 } } as Progress;
+const ran = feedbackPrompt(base({ card: codeCard, progress: ranP }));
+check("a run of this code: what it printed goes along", /it printed:\nTotal: 11/.test(ran.text), ran.text.slice(-200));
+const stale = feedbackPrompt(base({ card: codeCard, progress: { ...ranP, output: prog2 + "\nprint('bye')" } }));
+check("a run of older code isn't used", !/Total: 11/.test(stale.text), stale.text.slice(-200));
+check("a run changes the fingerprint (new feedback)", ran.fingerprint !== unrun.fingerprint, null);
+check("prose answers get no code guidance", !/includes Python code/.test(feedbackPrompt(base()).system), null);
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 for (const f of failures) console.log("  ✗ " + f);

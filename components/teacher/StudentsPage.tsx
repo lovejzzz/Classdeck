@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { previewOf } from "@/lib/code";
 import { useMemo, useRef, useState } from "react";
 import { exportGrades, gradeRows, type GradeRow } from "@/lib/gradebook";
 import { isFinished, isLate } from "@/lib/grading";
@@ -214,13 +215,15 @@ function StudentCourse({ state, row: r, courseId, onOpen, onMessage, now, readOn
             {r.toReview.length ? (
               <ul className="space-y-1.5">
                 {r.toReview.map(({ m, week, lessonId }) => {
-                  const out = mine[m.id]?.output?.replace(/[#*_>|-]+/g, " ").replace(/\s+/g, " ").trim();
+                  // Code keeps its first lines in monospace; anything else is squeezed onto the line.
+                  const out = mine[m.id]?.output ? previewOf(mine[m.id]!.output!) : null;
                   return (
                     <li key={m.id}>
                       <button onClick={() => onOpen(sid, lessonId, m.id)} className="press flex w-full items-start gap-3 rounded-xl border border-line bg-white px-3.5 py-2.5 text-left hover:border-line-strong">
                         <span className="min-w-0 flex-1">
                           <span className="block text-[13.5px] font-medium">{m.title} <span className="font-normal text-ink-3">· {week.split(" · ")[0]}</span></span>
-                          {out && <span className="mt-0.5 block truncate text-[12.5px] text-ink-2">{out}</span>}
+                          {out?.code ? <span className="mt-0.5 block truncate font-mono text-[12px] text-ink-2">{out.code}</span>
+                            : out?.text ? <span className="mt-0.5 block truncate text-[12.5px] text-ink-2">{out.text}</span> : null}
                         </span>
                         <span className="mt-0.5 flex-none text-[12.5px] text-[#287670]">Review →</span>
                       </button>

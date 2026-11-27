@@ -819,6 +819,10 @@ async function change(request: Request, courseId: string, body: Record<string, a
       // When it was handed in (each time, revisions too), so work handed in after its due date shows as late.
       if (body.status) { if (body.status === "done" && p.status !== "done") p.handedAt = Date.now(); p.status = body.status; if (body.status === "done") p.reopened = undefined; }
       if (typeof body.output === "string") p.output = body.output.slice(0, 8000);
+      // A run of the code in their answer (in their browser): kept so AI feedback knows what the code did.
+      if (body.run && typeof body.run === "object" && typeof body.run.key === "string") {
+        p.run = { key: String(body.run.key).slice(0, 20), output: String(body.run.output ?? "").slice(0, 4000), error: body.run.error ? String(body.run.error).slice(0, 2000) : undefined, at: Date.now() };
+      }
       // Handed in on a card with AI feedback on: the AI starts looking at it.
       if (body.status === "done" && mod && familyOf(kindOf(mod)) === "question") startAiFeedback(course, mod, body.studentId, p);
       if (p.status === "todo") p.status = "doing";

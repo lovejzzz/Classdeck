@@ -21,6 +21,8 @@ import { ReadAloud } from "../ReadAloud";
 import { ToolTray } from "../ToolTray";
 import { WallBoard } from "../WallBoard";
 import { AiNote } from "../AiNote";
+import { CodeRun } from "../CodeBlock";
+import { codeKey, pythonIn } from "@/lib/code";
 import { CardForm } from "./CardForm";
 import { Checklist, HighlightableText, Playlist, Prompts, promptsToText, ReviewNote, UpdatesNote } from "./CardExtras";
 import { RichText } from "../RichText";
@@ -85,6 +87,8 @@ export function CardDetail(p: DetailProps) {
   // Only a Q&A card has a box to write in. A Content card is to take in (it gets a plain Done button), and a Choice
   // card is done once it's answered.
   const hasOutput = (!!meta.outputLabel && kind === "answer") || personal;
+  // Python in the answer (found, not marked): the box turns into a code box and gets a Run button.
+  const code = hasOutput && !personal ? pythonIn(output) : "";
   const doneOnly = familyOf(kind) === "content" && !personal && !shared;
   // A vote or a multiple-choice answer is the whole response: no recording or file box under it.
   const showWork = WORK_TYPES.has(m.type) && !m.choice && kind !== "choice";
@@ -395,10 +399,22 @@ export function CardDetail(p: DetailProps) {
                   value={output}
                   onChange={(e) => setOutput(e.target.value)}
                   onBlur={() => save()}
-                  rows={p.big ? 4 : 5}
+                  // Writing code: Tab indents (four spaces) instead of leaving the box.
+                  onKeyDown={(e) => {
+                    if (e.key !== "Tab" || e.shiftKey || !code) return;
+                    e.preventDefault();
+                    const t = e.currentTarget, a = t.selectionStart, b = t.selectionEnd;
+                    setOutput(output.slice(0, a) + "    " + output.slice(b));
+                    requestAnimationFrame(() => { t.selectionStart = t.selectionEnd = a + 4; });
+                  }}
+                  rows={p.big ? 4 : code ? 8 : 5}
                   placeholder="Write here. It saves as you go."
-                  className={`field resize-y leading-relaxed ${nudge && !output.trim() ? "border-warn/60" : ""} ${p.big ? "text-[16px]" : ""}`}
+                  spellCheck={!code}
+                  className={`field resize-y leading-relaxed ${code ? "font-mono text-[13px]" : ""} ${nudge && !output.trim() ? "border-warn/60" : ""} ${p.big ? "text-[16px]" : ""}`}
                 />
+                {/* Code in the answer: run it here before handing in. The run is saved, so AI feedback knows what it did. */}
+                {code && <CodeRun code={code} label="Run your code"
+                  onRan={(r) => void op(p.courseId, { op: "setProgress", studentId: p.studentId, moduleId: m.id, run: { key: codeKey(code), output: r.output, error: r.error } })} />}
               </>
             )}
           </div>

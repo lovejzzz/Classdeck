@@ -516,6 +516,8 @@ export interface Progress {
   review?: Review;
   /** AI feedback on the latest hand-in (cards with AI feedback on): working on it, the feedback, or why it failed. */
   ai?: { state: "working" | "done" | "error"; at: number; model?: string; text?: string; error?: string; watched?: boolean; /** The video it watched, so the moments it names can show as stills. */ video?: string; /** What it looked at (a fingerprint): the same work handed in again keeps its feedback. */ input?: string };
+  /** The student's last run of the Python in their answer (in their browser): which code (a key), what it printed. */
+  run?: { key: string; output: string; error?: string; at: number };
   /** When the work was last handed in (a revision too). */
   handedAt?: number;
   /** Feedback from earlier rounds (newest first): a revision asked, then the work looked at again. */
