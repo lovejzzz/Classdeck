@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.06",
+    date: "2026-11-26",
+    changes: [
+      "Settings → AI is redesigned to say each thing once: one status by the title (Ready, Over its limit…), one switcher for Gemini, Claude and ChatGPT, the key and the model side by side, and one row of what the AI does (Writing, Recordings, Video, card tools), with what a service can’t do greyed out. The long list of AI powers and the duplicate labels are gone; hover a capability for details.",
+      "The note about free keys shows only before a key is connected, or when a key reaches its limit.",
+    ],
+  },
+  {
     version: "0.3.05",
     date: "2026-11-26",
     changes: [

@@ -9,19 +9,14 @@ type Reply = { ok: boolean; error?: string; ai?: AiSetup; models?: AiModel[] };
 const post = (body: object): Promise<Reply> =>
   fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
 
-/** A saved key's state, in words, with its light. */
-function StatusLine({ status, busy, model }: { status?: AiStatus; busy: boolean; model?: string }) {
-  const [dot, text] = busy ? ["bg-ink-3 animate-pulse", "Saving and checking your key…"]
-    : !status ? ["bg-ok", `Saved${model ? ` · ${model}` : ""}`]
-    : status.state === "ready" ? ["bg-ok", `Saved · ${model ?? ""} · ready, the key has credit`]
-    : status.state === "no_credit" ? ["bg-bad", status.message ? `Saved. ${status.message}` : "Saved, but the key has no credit left (or is over its limit). Add credit at the service and AI feedback starts working."]
-    : status.state === "bad_key" ? ["bg-bad", "The service no longer accepts this key. Paste a new one."]
-    : ["bg-warn", `Saved, but the service didn’t answer the check${status.message ? ` (${status.message})` : ""}. It may work later.`];
-  return (
-    <p className="flex items-center gap-2 text-[12.5px] text-ink-2" role="status">
-      <span className={`h-2 w-2 flex-none rounded-full ${dot}`} />{text}
-    </p>
-  );
+/** A saved key's state: a short word by the title, and (when something's wrong) what to do, in a line below. */
+function statusOf(status: AiStatus | undefined, busy: boolean, connected: boolean): { dot: string; word: string; more?: string } {
+  if (busy) return { dot: "bg-ink-3 animate-pulse", word: "Checking…" };
+  if (!connected) return { dot: "bg-line-strong", word: "Not connected" };
+  if (!status || status.state === "ready") return { dot: "bg-ok", word: "Ready" };
+  if (status.state === "no_credit") return { dot: "bg-bad", word: "Over its limit", more: status.message ?? "The key has no credit left or is over its limit. Add credit at the service and AI feedback starts working again." };
+  if (status.state === "bad_key") return { dot: "bg-bad", word: "Key not accepted", more: "The service no longer accepts this key. Paste a new one." };
+  return { dot: "bg-warn", word: "Didn’t answer", more: `The service didn’t answer the check${status.message ? ` (${status.message})` : ""}. It may work later.` };
 }
 
 /**
@@ -97,95 +92,83 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
   const model = saved?.model ?? "";
   const picked = [...ranked.top, ...ranked.more].find((m) => m.id === model);
   const showInput = !saved || replacing;
+  const st = statusOf(saved?.status, busy, !!saved);
+  const video = meta.watchesVideo;
+  // What this service does on cards, the same row for each, so switching shows the difference.
+  const can = [
+    { icon: "pencil", text: "Writing", on: true },
+    { icon: "mic", text: "Recordings", on: true },
+    { icon: "video", text: "Video", on: video, tip: video ? "Watches students’ videos: framing, posture, gestures, eye contact, pace" : "Reads what students said in a recording, but can’t watch the video" },
+    { icon: "tool", text: `${aiTools.length} card tools`, on: true, tip: aiTools.map((t) => t.title).join(" · ") },
+  ];
   return (
     <section id="ai" className="card p-6">
       <div className="flex items-center gap-2">
         <Icon name="sparkles" size={16} />
         <h2 className="flex-1 text-[16px] font-semibold">AI</h2>
-        {setup?.active && <span className="chip h-6 bg-ok/10 text-[11.5px] text-ok">In use · {providerMeta(setup.active).name}</span>}
+        <span className="flex items-center gap-1.5 text-[12.5px] text-ink-2" role="status"><span className={`h-2 w-2 rounded-full ${st.dot}`} />{st.word}</span>
       </div>
-      <p className="mt-1 text-[13px] text-ink-3">Connect your own AI account once and every AI tool works on your cards, in all your courses. You pay the AI service for what it uses.</p>
+      <p className="mt-1 text-[13px] text-ink-3">Your own AI account, for AI feedback and card tools in all your courses.</p>
 
-      <div className="mt-4 grid gap-2.5 md:grid-cols-3" role="radiogroup" aria-label="AI service">
+      {/* One switcher: each service keeps its own saved key, so switching never loses one. */}
+      <div className="mt-4 inline-flex rounded-[10px] border border-line-strong p-0.5" role="radiogroup" aria-label="AI service">
         {AI_PROVIDERS.map((p) => {
           const has = setup?.providers[p.id];
           return (
             <button key={p.id} role="radio" aria-checked={provider === p.id} onClick={() => pick(p.id)}
-              className={`press flex flex-col rounded-xl border p-3.5 text-left transition-[border-color,box-shadow] ${provider === p.id ? "border-[#4b56a8] shadow-[0_0_0_3px_rgba(75,86,168,0.15)]" : "border-line hover:border-line-strong"}`}>
-              <span className="flex items-center gap-2">
-                <span className="text-[14px] font-semibold">{p.name}</span>
-                <span className="text-[12px] text-ink-3">{p.company}</span>
-                <span className="flex-1" />
-                {has && <span className="flex items-center gap-1 text-[11px] text-ink-3"><span className={`h-1.5 w-1.5 rounded-full ${has.status?.state === "no_credit" || has.status?.state === "bad_key" ? "bg-bad" : "bg-ok"}`} />Key saved</span>}
-              </span>
-              <span className="mt-2.5 flex flex-wrap gap-1.5">
-                {p.labels.map((l) => (
-                  <span key={l.text} className={`inline-flex h-6 items-center rounded-full px-2 text-[11.5px] ${l.tone === "good" ? "bg-ok/10 text-[#256e44]" : l.tone === "note" ? "bg-[#fbf3dd] text-[#8f630b]" : "bg-lane text-ink-2"}`}>{l.text}</span>
-                ))}
-              </span>
+              className={`press flex h-8 items-center gap-1.5 rounded-[8px] px-3.5 text-[13px] ${provider === p.id ? "bg-[#eef0fb] font-medium text-[#3d4796]" : "text-ink-2 hover:text-ink"}`}>
+              {p.name}
+              {has && <span className={`h-1.5 w-1.5 rounded-full ${has.status?.state === "no_credit" || has.status?.state === "bad_key" ? "bg-bad" : "bg-ok"}`} aria-label="key saved" />}
             </button>
           );
         })}
       </div>
 
-      <div className="mt-4">
-        <span className="mb-1 flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2">
-          Your {meta.company} API key
-          <a href={meta.keyUrl} target="_blank" rel="noreferrer" data-tip={`Get a key from ${meta.company}`} aria-label={`Get a ${meta.company} API key`}
-            className="grid h-4 w-4 place-items-center rounded-full bg-lane text-[10px] font-semibold text-ink-2 hover:bg-[#4b56a8] hover:text-white">i</a>
-        </span>
-        {showInput ? (
-          <input key={provider} type="password" autoComplete="off" autoFocus={replacing} value={drafts[provider] ?? ""} onChange={(e) => typeKey(e.target.value)}
-            placeholder={`Paste it here (${meta.keyHint.replace(/^S/, "s")}). It’s checked and saved straight away.`} aria-label={`${meta.company} API key`} className="field h-9 w-full py-0 font-mono text-[12.5px]" />
-        ) : (
-          <div className="flex h-9 items-center gap-3 rounded-[10px] border border-line bg-[#fafaf9] px-3 font-mono text-[12.5px] text-ink-2">
-            <span className="flex-1">•••••••••••••••• {saved!.keyTail}</span>
-            <button onClick={() => setReplacing(true)} className="font-sans text-[12px] text-ink-2 underline underline-offset-2 hover:text-ink">Replace</button>
-            <button onClick={remove} className="font-sans text-[12px] text-ink-3 underline underline-offset-2 hover:text-bad">Remove</button>
-          </div>
-        )}
-        {meta.keyNote && <p className="mt-1.5 text-[12px] leading-relaxed text-ink-3">{meta.keyNote}</p>}
-      </div>
-
-      {saved && (
-        <label className="mt-3 block">
-          <span className="mb-1 block text-[12.5px] font-medium text-ink-2">Model <span className="font-normal text-ink-3">(what your key can use, newest first)</span></span>
-          <select value={model} onChange={(e) => void send({ model: e.target.value })} disabled={!list.length || busy} className="field h-9 w-full py-0 text-[13px]">
-            {!list.length && <option value={model}>{model || "Loading the models…"}</option>}
+      <div className="mt-3 grid gap-2.5 md:grid-cols-2">
+        <div>
+          <span className="mb-1 flex items-center justify-between text-[12px] text-ink-3">
+            <span>{meta.company} API key</span>
+            {showInput && <a href={meta.keyUrl} target="_blank" rel="noreferrer" className="text-[#4b56a8] hover:underline">Get a key</a>}
+          </span>
+          {showInput ? (
+            <input key={provider} type="password" autoComplete="off" autoFocus={replacing} value={drafts[provider] ?? ""} onChange={(e) => typeKey(e.target.value)}
+              placeholder={`Paste it (${meta.keyHint.replace(/^S/, "s")})`} aria-label={`${meta.company} API key`} className="field h-9 w-full py-0 font-mono text-[12.5px]" />
+          ) : (
+            <div className="flex h-9 items-center gap-3 rounded-[10px] border border-line bg-[#fafaf9] px-3 font-mono text-[12.5px] text-ink-2" data-tip="Stored encrypted; never shown again">
+              <span className="flex-1">•••• {saved!.keyTail}</span>
+              <button onClick={() => setReplacing(true)} className="font-sans text-[12px] text-ink-3 hover:text-ink">Replace</button>
+              <button onClick={remove} className="font-sans text-[12px] text-ink-3 hover:text-bad">Remove</button>
+            </div>
+          )}
+        </div>
+        <label className="block">
+          <span className="mb-1 block text-[12px] text-ink-3">Model</span>
+          <select value={model} onChange={(e) => void send({ model: e.target.value })} disabled={!saved || !list.length || busy} className="field h-9 w-full py-0 text-[13px]">
+            {(!saved || !list.length) && <option value={model}>{!saved ? "After you paste a key" : model || "Loading the models…"}</option>}
             {ranked.top.length > 0 && <optgroup label="Suggested">{ranked.top.map((m) => <option key={m.id} value={m.id}>{m.name}{m.role ? ` · ${m.role}` : ""}</option>)}</optgroup>}
             {ranked.more.length > 0 && <optgroup label={`Other models (${ranked.more.length})`}>{ranked.more.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>}
           </select>
-          {/* What the picked model is, in the service's own words when it gives them, and whether it can analyze video. */}
-          {picked && (
-            <span className="mt-1.5 block text-[12px] leading-relaxed text-ink-3">
-              {picked.note ? `${picked.note}. ` : ""}{picked.video ? "Can analyze students’ videos." : "Reads writing and the transcripts of recordings; can’t analyze video."}
-            </span>
-          )}
         </label>
+      </div>
+      {picked?.note && <p className="mt-1.5 text-[12px] text-ink-3 md:ml-[calc(50%+5px)]">{picked.note}</p>}
+
+      {/* What it does, the same row for each service: what it can't do is greyed. */}
+      <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-3.5 text-[13px]">
+        {can.map((c) => (
+          <li key={c.text} data-tip={c.tip} className={`flex items-center gap-1.5 ${c.on ? "text-ink-2" : "text-ink-3/70"}`}>
+            <Icon name={c.icon} size={15} />{c.on ? c.text : <span className="line-through decoration-ink-3/50" aria-label={`No ${c.text.toLowerCase()}`}>{c.text}</span>}
+          </li>
+        ))}
+      </ul>
+
+      {(error || st.more || (!saved && meta.keyNote)) && (
+        <div className="mt-3 space-y-1">
+          {error && <p className="flex items-center gap-2 text-[12.5px] text-bad" role="alert"><span className="h-2 w-2 flex-none rounded-full bg-bad" />{error}</p>}
+          {!error && st.more && <p className="text-[12.5px] text-ink-2">{st.more}</p>}
+          {/* Free keys' limits matter before choosing one; once a key works, only a limit reached is shown. */}
+          {!saved && meta.keyNote && <p className="text-[12px] text-ink-3">{meta.keyNote}</p>}
+        </div>
       )}
-
-      {/* What the key unlocks: on (green) once an AI is in use, waiting (grey) until then. */}
-      <div className="mt-5 rounded-xl bg-[#fafaf9] px-4 py-3.5">
-        <div className="mb-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{setup?.active ? "Your AI powers" : "Connecting an AI turns on"}</div>
-        <ul className="grid gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2">
-          {[
-            { id: "fb", title: "AI feedback when students hand in", hint: "Turn it on per card, in the card’s Access" },
-            ...(setup?.active === "gemini" || (!setup?.active && provider === "gemini") ? [{ id: "video", title: "Video analysis of students’ recordings", hint: "With Gemini" }] : []),
-            ...aiTools.map((a) => ({ id: a.id, title: a.title, hint: a.teacherOnly ? "For you, in the card editor" : "A tool students use on a card" })),
-          ].map((x) => (
-            <li key={x.id} className="flex items-start gap-2">
-              <span className={`mt-[3px] grid h-4 w-4 flex-none place-items-center rounded-full ${setup?.active ? "bg-ok text-white" : "bg-line text-ink-3"}`}><Icon name={setup?.active ? "check" : "lock"} size={9} /></span>
-              <span><span className={setup?.active ? "text-ink" : "text-ink-2"}>{x.title}</span> <span className="text-[12px] text-ink-3">· {x.hint}</span></span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="mt-4 space-y-1">
-        {error && <p className="flex items-center gap-2 text-[12.5px] text-bad" role="alert"><span className="h-2 w-2 flex-none rounded-full bg-bad" />{error}</p>}
-        {(saved || busy) && !error && <StatusLine status={saved?.status} busy={busy} model={picked?.name ?? model} />}
-        <p className="text-[11.5px] text-ink-3">Stored encrypted; never shown again.</p>
-      </div>
     </section>
   );
 }
