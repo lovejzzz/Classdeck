@@ -1,3 +1,4 @@
+import type { Course } from "@/lib/types";
 import { DEMO, getSession, isAdmin, roleOf, teacherOf, unauthorized } from "@/lib/auth";
 import { cloneWeek } from "@/lib/clone";
 import { uid } from "@/lib/profile";
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
     });
     return Response.json({ calendars });
   }
-  type Studying = { id: string; title: string; studentId: string; teacher: string | null; done?: number; total?: number; waiting?: boolean };
+  type Studying = { id: string; title: string; subtitle?: string; cover?: Course["cover"]; studentId: string; teacher: string | null; done?: number; total?: number; waiting?: boolean };
   const studying = t ? Object.values(d.courses).flatMap((c): Studying[] => {
     if (c.id === DEMO || c.sample) return [];
     const owner = c.ownerId ? d.users[c.ownerId] : undefined;
@@ -53,10 +54,10 @@ export async function GET(request: Request) {
       const mine = d.progress[c.id]?.[st.id] ?? {};
       const tree = treeView(c.weeks, mine);
       const cards = c.weeks.flatMap((w) => w.lessons.flatMap((l) => visibleModules(l, st.id, d.choices[c.id]?.[st.id], tree, c)));
-      return [{ id: c.id, title: c.title, studentId: st.id, teacher: owner?.name ?? null, done: cards.filter((m) => mine[m.id]?.status === "done").length, total: cards.length }];
+      return [{ id: c.id, title: c.title, subtitle: c.subtitle, cover: c.cover, studentId: st.id, teacher: owner?.name ?? null, done: cards.filter((m) => mine[m.id]?.status === "done").length, total: cards.length }];
     }
     const w = c.waiting?.find((x) => x.userId === t.id);
-    return w ? [{ id: c.id, title: c.title, studentId: w.id, teacher: owner?.name ?? null, waiting: true }] : [];
+    return w ? [{ id: c.id, title: c.title, subtitle: c.subtitle, cover: c.cover, studentId: w.id, teacher: owner?.name ?? null, waiting: true }] : [];
   }) : [];
   return Response.json({
     firstRole: t?.firstRole ?? null,

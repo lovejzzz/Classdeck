@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useEffect, useState } from "react";
 import { AccountMenu } from "@/components/AccountMenu";
-import { GenArt } from "@/components/cards/GenArt";
+import { CourseCover } from "@/components/CourseCover";
+import type { Course } from "@/lib/types";
 import { SignInPanel } from "@/components/SignInPanel";
 import { prefetchCourse, useQuery } from "@/lib/client";
 import { Icon } from "@/components/Icon";
@@ -13,10 +14,10 @@ import { Clearable } from "@/components/Clearable";
 import { LogoMark, Wordmark } from "@/components/Logo";
 import { CARD_SIZE } from "@/lib/cards";
 
-type CourseTile = { id: string; title: string; subtitle?: string; weeks: number; cards: number; students: number; today?: string | null; toReview?: number; waiting?: number; role?: "owner" | "editor" | "viewer" };
+type CourseTile = { id: string; title: string; subtitle?: string; cover?: Course["cover"]; weeks: number; cards: number; students: number; today?: string | null; toReview?: number; waiting?: number; role?: "owner" | "editor" | "viewer" };
 const SIZE = CARD_SIZE.deck;
 
-type Studying = { id: string; title: string; studentId: string; teacher: string | null; done?: number; total?: number; waiting?: boolean };
+type Studying = { id: string; title: string; subtitle?: string; cover?: Course["cover"]; studentId: string; teacher: string | null; done?: number; total?: number; waiting?: boolean };
 
 export default function Home() {
   const router = useRouter();
@@ -150,7 +151,7 @@ function StudyCard({ c }: { c: Studying }) {
     <>
       <span className="pointer-events-none absolute inset-[5px] rounded-[10px] border border-line/70" />
       <span className="relative mx-2.5 mt-2.5 h-[42%] flex-none overflow-hidden rounded-[8px] border border-line/80">
-        <GenArt id={c.id} tint="#4b56a8" cover="radial-gradient(55% 90% at 25% 30%, #dfe2f4 0%, transparent 70%), radial-gradient(50% 80% at 80% 80%, #eceefa 0%, transparent 70%), #f1f2fa" />
+        <CourseCover c={c} />
       </span>
       <span className="relative px-3 pt-2.5 text-[14px] font-medium leading-tight line-clamp-2">{c.title}</span>
       {c.teacher && <span className="relative truncate px-3 pt-0.5 text-[11.5px] text-ink-3">{c.teacher}</span>}
@@ -209,7 +210,7 @@ function CourseCard({ c }: { c: CourseTile }) {
       className="group relative flex flex-col overflow-hidden rounded-[14px] border border-line bg-white transition-transform duration-300 ease-[var(--ease-spring)] hover:-translate-y-1 hover:shadow-[0_16px_30px_-18px_rgba(20,20,18,0.45)]">
       <span className="pointer-events-none absolute inset-[5px] rounded-[10px] border border-line/70" />
       <span className="relative mx-2.5 mt-2.5 h-[42%] flex-none overflow-hidden rounded-[8px] border border-line/80">
-        <GenArt id={c.id} tint="#55544f" cover="radial-gradient(55% 90% at 25% 30%, #dcdad3 0%, transparent 70%), radial-gradient(50% 80% at 80% 80%, #eceae4 0%, transparent 70%), #efeee9" />
+        <CourseCover c={c} />
       </span>
       <span className="relative px-3 pt-2.5 text-[14px] font-medium leading-tight line-clamp-2">{c.title}</span>
       {c.subtitle && <span className="relative truncate px-3 pt-0.5 text-[11.5px] text-ink-3">{c.subtitle}</span>}

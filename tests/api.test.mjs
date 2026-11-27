@@ -361,6 +361,28 @@ async function main() {
     check("joining refused when only invited students may join", (await (await student("Ann Lee")).post("/api/auth", { action: "joinCode", code: offState.joinCode })).ok === false);
   } else check("setAccess turned self-join off", false, offState.access);
 
+  // ---- Covers: a paper scene or a picture; a bad picture is refused; nothing goes back to the automatic one.
+  {
+    const cv = made["blank/music"];
+    const ideas = await A.op(cv, { op: "suggestCovers" });
+    check("four cover ideas, each a known motif and colour", ideas.ok && ideas.covers?.length === 4 && ideas.covers.every((x) => /^[a-z]+$/.test(x.motif) && /^#[0-9a-f]{6}$/.test(x.color)), ideas);
+    await A.op(cv, { op: "setCover", cover: { motif: "notes", color: "#287670", seed: 12 } });
+    let c = courseOf(await A.state(cv));
+    check("a paper cover is kept", c.cover?.motif === "notes" && c.cover?.color === "#287670" && c.cover?.seed === 12, c.cover);
+    const bad = await A.op(cv, { op: "setCover", cover: { image: "javascript:alert(1)" } });
+    check("a picture that isn't a web or uploaded one is refused", bad.ok === false, bad);
+    await A.op(cv, { op: "setCover", cover: { motif: "not-a-motif", color: "red" } });
+    c = courseOf(await A.state(cv));
+    check("an unknown motif or colour isn't kept", !c.cover?.motif && !c.cover?.color, c.cover);
+    await A.op(cv, { op: "setCover", cover: { image: "https://example.com/a.jpg", credit: "Someone · CC BY" } });
+    c = courseOf(await A.state(cv));
+    check("a web picture is kept with its credit", c.cover?.image === "https://example.com/a.jpg" && c.cover?.credit === "Someone · CC BY", c.cover);
+    const listed = (await A.get("/api/courses")).courses?.find((x) => x.id === cv);
+    check("the courses page gets the cover", listed?.cover?.image === "https://example.com/a.jpg", listed);
+    await A.op(cv, { op: "setCover", cover: null });
+    check("no cover: back to the automatic one", !courseOf(await A.state(cv)).cover);
+  }
+
   // ---- Card trees: each answer deals its own follow-up card
   {
     const tc = await A.post("/api/courses", { title: `Tree ${run}`, start: "blank" });

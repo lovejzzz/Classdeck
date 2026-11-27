@@ -336,6 +336,7 @@ export function listCourses(keep?: (c: Course) => boolean) {
     sample: c.sample,
     title: c.title,
     subtitle: c.subtitle,
+    cover: c.cover,
     students: c.students.length,
     weeks: c.weeks.length,
     cards: c.weeks.reduce((n, w) => n + w.lessons.reduce((m, l) => m + l.modules.length, 0), 0),

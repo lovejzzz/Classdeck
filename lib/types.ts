@@ -444,6 +444,9 @@ export interface Course {
   people?: CoTeacher[];
   title: string;
   subtitle?: string;
+  /** The course's cover on the courses page: a picture (uploaded, found, or drawn by AI, with its credit), or a paper
+   *  scene (one of lib/coverlib's motifs, in a colour). Unset: a paper scene picked from the course's name. */
+  cover?: { image?: string; credit?: string; motif?: string; color?: string; seed?: number };
   createdAt?: number;
   skills?: Skill[];
   levels?: Level[];

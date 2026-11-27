@@ -29,7 +29,8 @@ function rateLimited(key: string, limit = LIMIT) {
 }
 
 const STATUS: Record<string, number> = {
-  bad_input: 400, forbidden: 403, not_found: 404, rate_limited: 429, not_configured: 503, upstream: 502,
+  // Nothing found is an answer, not a failure: it comes back as one (so the browser logs no error).
+  bad_input: 400, forbidden: 403, not_found: 200, rate_limited: 429, not_configured: 503, upstream: 502,
 };
 
 export async function POST(request: Request) {

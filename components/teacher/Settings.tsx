@@ -9,6 +9,7 @@ import { useState } from "react";
 import { ask } from "../Confirm";
 import { Clearable } from "../Clearable";
 import { DeleteCourse } from "./DeleteCourse";
+import { CoverPicker } from "./CoverPicker";
 import type { Course, CourseState, Nudge } from "@/lib/types";
 import { Avatar, Icon } from "../Icon";
 import { GroupingsList } from "./Groupings";
@@ -109,190 +110,7 @@ export function Settings({ course, onChanged, part = "settings", readOnly = fals
         </>
       ) : (
         <>
-      <section className="card p-6">
-        <h3 className="text-[15px] font-medium">Course</h3>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="block text-[13px]"><span className="text-ink-2">Course name</span>
-            <Clearable className="mt-1"><input defaultValue={course.title} placeholder="Course name" onBlur={(e) => e.target.value.trim() && e.target.value !== course.title && info({ title: e.target.value })} className="field" /></Clearable>
-          </label>
-          <label className="block text-[13px]"><span className="text-ink-2">Subtitle</span>
-            <Clearable className="mt-1"><input defaultValue={course.subtitle ?? ""} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field" /></Clearable>
-          </label>
-        </div>
-      </section>
-
-      {/* Messages (in Settings):  students write to the teacher (always), and to each other (the teacher's choice, on by default). */}
-      <section className="card flex flex-wrap items-center gap-3 p-6">
-        <span className="min-w-[14rem] flex-1">
-          <span className="block text-[15px] font-medium">Messages</span>
-          <span className="block text-[13px] text-ink-3">Students can always message you from the Inbox under their photo. Messages between students are private to them.</span>
-        </span>
-        <label className="inline-flex items-center gap-2 text-[13.5px]">
-          <input type="checkbox" disabled={readOnly} checked={course.peerMessages !== false} aria-label="Students can message each other"
-            onChange={async (e) => { await op(course.id, { op: "setPeerMessages", on: e.target.checked }); onChanged(); toast(e.target.checked ? "Students can message each other" : "Students can only message you now", { icon: "message" }); }}
-            className="h-4 w-4 accent-[#1b1b1a]" />
-          Students can message each other
-        </label>
-      </section>
-
-      {/* The course map (in Settings): how many students went down each answer shows on it unless turned off. */}
-      <section className="card flex flex-wrap items-center gap-3 p-6">
-        <span className="min-w-[14rem] flex-1">
-          <span className="block text-[15px] font-medium">Course map</span>
-          <span className="block text-[13px] text-ink-3">On the map, each answer and score range shows how many students went that way, and its wire moves.</span>
-        </span>
-        <label className="inline-flex items-center gap-2 text-[13.5px]">
-          <input type="checkbox" disabled={readOnly} checked={course.mapLive !== false} aria-label="Show students' paths on the map"
-            onChange={async (e) => { await op(course.id, { op: "setMapLive", on: e.target.checked }); onChanged(); toast(e.target.checked ? "The map shows students’ paths" : "The map shows only the cards now", { icon: "users" }); }}
-            className="h-4 w-4 accent-[#1b1b1a]" />
-          Show students’ paths
-        </label>
-      </section>
-
-      {/* Certificate of completion (in Settings): earned by finishing enough of one's cards, or given by the teacher. */}
-      <section className="card flex flex-wrap items-center gap-3 p-6">
-        <span className="min-w-[14rem] flex-1">
-          <span className="block text-[15px] font-medium">Certificate of completion</span>
-          <span className="block text-[13px] text-ink-3">Students who finish enough of their cards get a certificate to print or save. You can also give one by hand on the Students tab.</span>
-        </span>
-        <label className="inline-flex items-center gap-2 text-[13.5px]">
-          <input type="checkbox" disabled={readOnly} checked={!!course.certificate} aria-label="Give a certificate of completion"
-            onChange={async (e) => { await op(course.id, { op: "setCertificate", ...(e.target.checked ? { percent: 80 } : { on: false }) }); onChanged(); toast(e.target.checked ? "Students who finish 80% of their cards get a certificate" : "No certificate for this course", { icon: "graduation" }); }}
-            className="h-4 w-4 accent-[#1b1b1a]" />
-          Give a certificate
-        </label>
-        {course.certificate && (
-          <label className="inline-flex basis-full items-center justify-end gap-1.5 text-[13px] text-ink-2">
-            Earned by finishing
-            <input key={course.certificate.percent} type="number" min={1} max={100} defaultValue={course.certificate.percent} aria-label="Share of cards that earns the certificate" disabled={readOnly}
-              onBlur={async (e) => { if (Number(e.target.value) === course.certificate?.percent) return; await op(course.id, { op: "setCertificate", percent: Number(e.target.value) }); onChanged(); }}
-              className="field h-8 w-16 py-0 text-center" />
-            % of their cards
-          </label>
-        )}
-      </section>
-
-      {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
-        <section className="card flex flex-wrap items-center gap-3 p-6">
-          <span className="min-w-[14rem] flex-1">
-            <span className="block text-[15px] font-medium">Electives</span>
-            <span className="block text-[13px] text-ink-3">How many elective lessons each student chooses.</span>
-          </span>
-          <label className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
-            Each student takes at least
-            <input type="number" min={0} max={10} defaultValue={course.electiveMin ?? 1} aria-label="Minimum electives" disabled={readOnly}
-              onBlur={async (e) => { await op(course.id, { op: "setElectiveMin", min: Number(e.target.value) }); onChanged(); }}
-              className="field h-8 w-14 py-0 text-center" />
-            electives
-          </label>
-        </section>
-      )}
-
-      <section className="card p-6">
-        <div className="flex items-center gap-2">
-          <h3 className="flex-1 text-[15px] font-medium">Teachers</h3>
-          <button onClick={() => setSharing(true)} className="btn btn-ghost press h-8"><Icon name="users" size={13} /> {owner ? "Share with teachers" : "See who has access"}</button>
-        </div>
-        <p className="mt-1 text-[13px] text-ink-3">Invite other teachers by email. Editors can change the course; viewers can only look. Students never see this list.</p>
-        <ul className="mt-3 divide-y divide-line">
-          {me?.owner && (
-            <li className="flex items-center gap-3 py-2">
-              {me.owner.picture
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={me.owner.picture} alt="" referrerPolicy="no-referrer" className="h-[34px] w-[34px] rounded-full object-cover" />
-                : <Avatar name={me.owner.name} size={34} />}
-              <span className="min-w-0 flex-1"><span className="block truncate text-[14px]">{me.owner.name}</span><span className="block truncate text-[12.5px] text-ink-3">{me.owner.email}</span></span>
-              <span className="text-[13px] text-ink-3">Owner</span>
-            </li>
-          )}
-          {(course.people ?? []).map((p) => (
-            <li key={p.email} className="flex items-center gap-3 py-2">
-              <Avatar name={p.email} size={34} />
-              <span className="min-w-0 flex-1 truncate text-[14px]">{p.email}</span>
-              <span className="text-[13px] text-ink-3">{p.role === "viewer" ? "Can view" : "Can edit"}</span>
-            </li>
-          ))}
-        </ul>
-        {sharing && <InviteTeachers course={course} me={me} onClose={() => setSharing(false)} onChanged={onChanged} />}
-      </section>
-
-      <section className="card p-6">
-        <h3 className="text-[15px] font-medium">Class code and guest link</h3>
-        <p className="mt-1 text-[13px] text-ink-3">Turn joining on or off, change the code, add a passcode, or share a read-only link.</p>
-        <div className="mt-4 divide-y divide-line border-t border-line text-[13px]">
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-32 text-ink-2">Class code</span>
-            <span className="font-mono text-[15px] tracking-[0.2em]">{course.joinCode}</span>
-            <button onClick={() => setAccess({}, true, "New class code made. The old one stops working.")} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="reset" size={12} /> New code</button>
-            <span className="flex-1" />
-            <label className="flex items-center gap-2 text-ink-2">
-              <span className={`relative h-[18px] w-8 rounded-full p-[2px] transition-colors duration-300 ${access.joinOpen ? "bg-ok" : "bg-line-strong"}`}>
-                <span className={`block h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-300 ease-[var(--ease-spring)] ${access.joinOpen ? "translate-x-[14px]" : ""}`} />
-              </span>
-              <input type="checkbox" className="sr-only" checked={access.joinOpen} onChange={(e) => setAccess({ joinOpen: e.target.checked }, false, e.target.checked ? "Joining is open" : "Joining is closed")} />
-              Accept new students
-            </label>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-32 text-ink-2">Join passcode</span>
-            <input defaultValue={access.passcode ?? ""} placeholder="None" aria-label="Join passcode" className="field h-8 w-40 py-0"
-              onBlur={(e) => (e.target.value || undefined) !== access.passcode && setAccess({ passcode: e.target.value || undefined }, false, e.target.value ? "Passcode set" : "Passcode removed")} />
-            <span className="text-[12px] text-ink-3">Students enter it after the class code.</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-32 text-ink-2">Guest link</span>
-            {access.guestToken ? (
-              <>
-                <code className="min-w-0 flex-1 truncate rounded-md bg-lane px-2 py-1 font-mono text-[12px] text-ink-2">{guestUrl}</code>
-                <button onClick={() => { navigator.clipboard?.writeText(guestUrl).catch(() => {}); toast("Guest link copied"); }} className="btn btn-ghost press h-8">Copy</button>
-                <a href={guestUrl} target="_blank" rel="noreferrer" className="btn btn-quiet press h-8">Open <Icon name="external" size={11} /></a>
-                <button onClick={() => setAccess({ guestToken: null }, false, "Guest link turned off")} className="btn btn-quiet press h-8 hover:!text-bad">Turn off</button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 text-[12.5px] text-ink-3">Read-only: guests browse the cards but see no students or their work.</span>
-                <button onClick={() => setAccess({ guestToken: true }, false, "Guest link created")} className="btn btn-ghost press h-8"><Icon name="link" size={13} /> Create link</button>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-
-      <section className="card p-6">
-        <h3 className="text-[15px] font-medium">Back up and share</h3>
-        <p className="mt-1 text-[13px] text-ink-3">Export the course (weeks, cards, media links, rubric, session agendas) as a file, or as a Common Cartridge for another LMS. Import adds weeks after your current ones, from a Questhand file or straight from a course plan document; nothing is replaced. To make a whole new course from a file, use New course → From a course file on your courses page.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <a href={`/api/course/${course.id}/file`} download className="btn btn-ghost press" title="A Questhand course file: make a new course from it with New course → From a course file">
-            <Icon name="download" size={13} /> Export course (.json)
-          </a>
-          <a href={`/api/course/${course.id}/export`} className="btn btn-ghost press" title="IMS Common Cartridge: imports into Canvas, Moodle, Blackboard, Brightspace, and Schoology">
-            <Icon name="download" size={13} /> Export for Canvas / Moodle (.imscc)
-          </a>
-          <DocImport courseId={course.id} onDone={onChanged} />
-          <label className="btn btn-ghost press cursor-pointer">
-            <Icon name="upload" size={13} /> Import weeks…
-            <input type="file" accept="application/json,.json" className="hidden"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (!f) return;
-                try {
-                  const data = JSON.parse(await f.text());
-                  const weeks = Array.isArray(data?.weeks) ? data.weeks : [];
-                  if (!weeks.length) throw new Error();
-                  for (const w of weeks) await op(course.id, { op: "insertWeek", week: w });
-                  onChanged();
-                  toast(`Imported ${weeks.length} week${weeks.length === 1 ? "" : "s"}`, { icon: "upload" });
-                } catch {
-                  toast("That file isn’t a Questhand course export", { icon: "x", tone: "bad" });
-                }
-              }} />
-          </label>
-        </div>
-      </section>
-
-      {course.id !== "demo" && owner && <DeleteCourse course={course} />}
+      <SettingsPage course={course} onChanged={onChanged} readOnly={readOnly} me={me} owner={owner} info={info} access={access} guestUrl={guestUrl} setAccess={setAccess} sharing={sharing} setSharing={setSharing} />
         </>
       )}
     </div>
@@ -336,5 +154,181 @@ function DemoStudents({ course, onChanged }: { course: Course; onChanged: () => 
         {demos.length > 0 && <span className="text-[12.5px] text-ink-3">{demos.length} on the class list</span>}
       </form>
     </section>
+  );
+}
+
+type Part = "course" | "class" | "sharing" | "files" | "delete";
+
+/** A switch, for a setting that's on or off. */
+function Switch({ on, label, onChange, disabled }: { on: boolean; label: string; onChange: (on: boolean) => void; disabled?: boolean }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => onChange(!on)}
+      className={`relative h-[22px] w-[38px] flex-none rounded-full p-[3px] transition-colors duration-300 disabled:opacity-50 ${on ? "bg-ok" : "bg-line-strong"}`}>
+      <span className={`block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[var(--ease-spring)] ${on ? "translate-x-4" : ""}`} />
+    </button>
+  );
+}
+/** One line of a list: what it is, a few words more if needed, and its control. */
+function Row({ label, hint, children }: { label: React.ReactNode; hint?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line px-4 py-3 first:border-t-0">
+      <span className="min-w-0 flex-1 text-[14px]">{label}{hint && <span className="text-[12.5px] text-ink-3"> · {hint}</span>}</span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The Settings tab: a short list on the left, one part at a time on the right. Course (its cover, name and subtitle),
+ * Class (how it runs for students), Sharing (other teachers, and a read-only guest link), Files (export and import).
+ * Who joins and how is on the Students tab, with the class list.
+ */
+function SettingsPage({ course, onChanged, readOnly, me, owner, info, access, guestUrl, setAccess, sharing, setSharing }: {
+  course: Course; onChanged: () => void; readOnly: boolean; me?: CourseState["me"]; owner: boolean;
+  info: (p: { title?: string; subtitle?: string }) => Promise<void>;
+  access: { guestToken?: string }; guestUrl: string;
+  setAccess: (patch: Record<string, unknown>, newCode: boolean, note: string) => Promise<void>;
+  sharing: boolean; setSharing: (v: boolean) => void;
+}) {
+  const [part, setPart] = useState<Part>("course");
+  const parts: { id: Part; label: string }[] = [
+    { id: "course", label: "Course" }, { id: "class", label: "Class" }, { id: "sharing", label: "Sharing" }, { id: "files", label: "Files" },
+    ...(course.id !== "demo" && owner ? [{ id: "delete" as const, label: "Delete" }] : []),
+  ];
+  const toggle = async (o: string, on: boolean, note: string, icon: string, extra: Record<string, unknown> = {}) => {
+    await op(course.id, { op: o, on, ...extra });
+    onChanged();
+    toast(note, { icon });
+  };
+  return (
+    <div className="flex flex-col gap-5 md:flex-row md:items-start">
+      <nav aria-label="Settings" className="flex gap-1 overflow-x-auto md:sticky md:top-4 md:w-44 md:flex-none md:flex-col">
+        {parts.map((p) => (
+          <button key={p.id} type="button" onClick={() => setPart(p.id)} aria-current={part === p.id ? "page" : undefined}
+            className={`press whitespace-nowrap rounded-[9px] px-3 py-2 text-left text-[14px] ${part === p.id ? "border border-line bg-white font-medium shadow-[0_1px_2px_rgba(0,0,0,0.04)]" : "border border-transparent text-ink-2 hover:bg-white/60"} ${p.id === "delete" ? "text-bad md:mt-4" : ""}`}>
+            {p.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="min-w-0 max-w-3xl flex-1">
+        {part === "course" && (
+          <section className="card p-5">
+            <CoverPicker course={course} onChanged={onChanged} readOnly={readOnly} />
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <label className="block text-[12.5px]"><span className="text-ink-3">Name</span>
+                <Clearable className="mt-1"><input key={course.title} defaultValue={course.title} disabled={readOnly} placeholder="Course name" onBlur={(e) => e.target.value.trim() && e.target.value !== course.title && info({ title: e.target.value })} className="field" /></Clearable>
+              </label>
+              <label className="block text-[12.5px]"><span className="text-ink-3">Subtitle</span>
+                <Clearable className="mt-1"><input key={course.subtitle} defaultValue={course.subtitle ?? ""} disabled={readOnly} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field" /></Clearable>
+              </label>
+            </div>
+          </section>
+        )}
+
+        {part === "class" && (
+          <section className="card overflow-hidden p-0">
+            <Row label="Students can message each other" hint="they can always message you">
+              <Switch on={course.peerMessages !== false} label="Students can message each other" disabled={readOnly}
+                onChange={(on) => toggle("setPeerMessages", on, on ? "Students can message each other" : "Students can only message you now", "message")} />
+            </Row>
+            <Row label="Certificate when they finish" hint={course.certificate ? undefined : "to print or save"}>
+              {course.certificate && (
+                <label className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
+                  at
+                  <input key={course.certificate.percent} type="number" min={1} max={100} defaultValue={course.certificate.percent} aria-label="Share of cards that earns the certificate" disabled={readOnly}
+                    onBlur={async (e) => { if (Number(e.target.value) === course.certificate?.percent) return; await op(course.id, { op: "setCertificate", percent: Number(e.target.value) }); onChanged(); }}
+                    className="field h-7 w-14 py-0 text-center text-[12.5px]" />
+                  % of their cards
+                </label>
+              )}
+              <Switch on={!!course.certificate} label="Give a certificate of completion" disabled={readOnly}
+                onChange={async (on) => { await op(course.id, { op: "setCertificate", ...(on ? { percent: 80 } : { on: false }) }); onChanged(); toast(on ? "Students who finish 80% of their cards get a certificate" : "No certificate for this course", { icon: "graduation" }); }} />
+            </Row>
+            <Row label="Show students’ paths on the map">
+              <Switch on={course.mapLive !== false} label="Show students' paths on the map" disabled={readOnly}
+                onChange={(on) => toggle("setMapLive", on, on ? "The map shows students’ paths" : "The map shows only the cards now", "users")} />
+            </Row>
+            {course.weeks.some((w) => w.lessons.some((l) => l.elective)) && (
+              <Row label="Electives each student takes">
+                <input type="number" min={0} max={10} defaultValue={course.electiveMin ?? 1} aria-label="Minimum electives" disabled={readOnly}
+                  onBlur={async (e) => { await op(course.id, { op: "setElectiveMin", min: Number(e.target.value) }); onChanged(); }}
+                  className="field h-7 w-14 py-0 text-center text-[12.5px]" />
+              </Row>
+            )}
+          </section>
+        )}
+
+        {part === "sharing" && (
+          <section className="card overflow-hidden p-0">
+            {me?.owner && (
+              <Row label={<span className="flex items-center gap-2.5">{me.owner.picture
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={me.owner.picture} alt="" referrerPolicy="no-referrer" className="h-7 w-7 rounded-full object-cover" />
+                : <Avatar name={me.owner.name} size={28} />}<span className="truncate">{me.owner.name}</span></span>}>
+                <span className="text-[12.5px] text-ink-3">Owner</span>
+              </Row>
+            )}
+            {(course.people ?? []).map((p) => (
+              <Row key={p.email} label={<span className="flex items-center gap-2.5"><Avatar name={p.email} size={28} /><span className="truncate">{p.email}</span></span>}>
+                <span className="text-[12.5px] text-ink-3">{p.role === "viewer" ? "Can view" : "Can edit"}</span>
+              </Row>
+            ))}
+            <Row label="Other teachers" hint="students never see this">
+              <button onClick={() => setSharing(true)} className="btn btn-ghost press h-8"><Icon name="users" size={13} /> {owner ? "Invite" : "See who has access"}</button>
+            </Row>
+            <Row label="Guest link" hint="read-only, no students or their work">
+              {access.guestToken ? (
+                <>
+                  <button onClick={() => { navigator.clipboard?.writeText(guestUrl).catch(() => {}); toast("Guest link copied"); }} className="btn btn-ghost press h-8"><Icon name="link" size={12} /> Copy</button>
+                  <a href={guestUrl} target="_blank" rel="noreferrer" className="btn btn-quiet press h-8">Open <Icon name="external" size={11} /></a>
+                  {!readOnly && <button onClick={() => setAccess({ guestToken: null }, false, "Guest link turned off")} className="btn btn-quiet press h-8 hover:!text-bad">Turn off</button>}
+                </>
+              ) : !readOnly && <button onClick={() => setAccess({ guestToken: true }, false, "Guest link created")} className="btn btn-ghost press h-8"><Icon name="link" size={13} /> Create</button>}
+            </Row>
+            {sharing && <InviteTeachers course={course} me={me} onClose={() => setSharing(false)} onChanged={onChanged} />}
+          </section>
+        )}
+
+        {part === "files" && (
+          <section className="card overflow-hidden p-0">
+            <Row label="Export" hint="for a new course, or for another LMS">
+              <a href={`/api/course/${course.id}/file`} download className="btn btn-ghost press h-8" title="A Questhand course file: make a new course from it with New course → From a course file">
+                <Icon name="download" size={12} /> Questhand (.json)
+              </a>
+              <a href={`/api/course/${course.id}/export`} className="btn btn-ghost press h-8" title="IMS Common Cartridge: imports into Canvas, Moodle, Blackboard, Brightspace and Schoology">
+                <Icon name="download" size={12} /> Canvas / Moodle
+              </a>
+            </Row>
+            {!readOnly && (
+              <Row label="Import" hint="adds weeks after yours; nothing is replaced">
+                <DocImport courseId={course.id} onDone={onChanged} />
+                <label className="btn btn-ghost press h-8 cursor-pointer">
+                  <Icon name="upload" size={12} /> Weeks from a file…
+                  <input type="file" accept="application/json,.json" className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!f) return;
+                      try {
+                        const data = JSON.parse(await f.text());
+                        const weeks = Array.isArray(data?.weeks) ? data.weeks : [];
+                        if (!weeks.length) throw new Error();
+                        for (const w of weeks) await op(course.id, { op: "insertWeek", week: w });
+                        onChanged();
+                        toast(`Imported ${weeks.length} week${weeks.length === 1 ? "" : "s"}`, { icon: "upload" });
+                      } catch {
+                        toast("That file isn’t a Questhand course export", { icon: "x", tone: "bad" });
+                      }
+                    }} />
+                </label>
+              </Row>
+            )}
+          </section>
+        )}
+
+        {part === "delete" && <DeleteCourse course={course} />}
+      </div>
+    </div>
   );
 }

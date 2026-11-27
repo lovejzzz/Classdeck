@@ -125,15 +125,24 @@ export function InviteStudents({ course, me, onClose, onChanged }: { course: Cou
   useEffect(() => setOrigin(window.location.origin), []);
   // The class link opens Questhand with the code ready: students sign in (or make an account), then join.
   const link = `${origin}/?code=${course.joinCode}`;
-  const mode = course.access?.selfJoin ?? "off";
+  // A class closed to new students (from before this lived here) reads as Restricted: choosing another way opens it.
+  const mode = course.access?.joinOpen === false ? "off" : course.access?.selfJoin ?? "off";
   const waiting = course.waiting ?? [];
   const withEmail = course.students.filter((s) => s.email).map((s) => s.email!);
 
   async function setMode(v: "off" | "approve" | "open") {
     const a = course.access;
-    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "setAccess", access: { joinOpen: a?.joinOpen !== false, passcode: a?.passcode, selfJoin: v === "off" ? undefined : v } });
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "setAccess", access: { joinOpen: true, passcode: a?.passcode, selfJoin: v === "off" ? undefined : v } });
     onChanged();
     if (r.ok === false) toast(r.error ?? "That didn’t save", { icon: "x", tone: "bad" });
+  }
+  /** The class code (a new one) and the passcode students type after it. */
+  async function setCode(patch: { passcode?: string }, newCode: boolean, note: string) {
+    const a = course.access;
+    const r = await op<{ ok?: boolean; error?: string }>(course.id, { op: "setAccess", access: { joinOpen: a?.joinOpen !== false, passcode: "passcode" in patch ? patch.passcode : a?.passcode, selfJoin: a?.selfJoin }, newCode });
+    onChanged();
+    if (r.ok === false) toast(r.error ?? "That didn’t save", { icon: "x", tone: "bad" });
+    else toast(note);
   }
   async function letIn(ids: string[], allow: boolean, label: string) {
     await op(course.id, { op: "letIn", studentIds: ids, allow });
@@ -184,15 +193,23 @@ export function InviteStudents({ course, me, onClose, onChanged }: { course: Cou
           ) : "Student" })),
         ]}
         general={(
-          <label className="flex items-start gap-3 rounded-xl bg-lane/70 px-3 py-2.5">
+          <div className="flex items-start gap-3 rounded-xl bg-lane/70 px-3 py-2.5">
             <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-full bg-white text-ink-2"><Icon name={mode === "off" ? "lock" : "globe"} size={15} /></span>
             <span className="min-w-0 flex-1">
               <select value={mode} onChange={(e) => setMode(e.target.value as "off" | "approve" | "open")} aria-label="General access" className="-ml-1 max-w-full rounded-md bg-transparent px-1 py-0.5 text-[14px] font-medium hover:bg-white">
                 {ACCESS.map((x) => <option key={x.v} value={x.v}>{x.label}</option>)}
               </select>
               <span className="block text-[12.5px] text-ink-3">{ACCESS.find((x) => x.v === mode)!.hint}</span>
+              {mode !== "off" && (
+                <span className="mt-2 flex flex-wrap items-center gap-2 text-[12.5px] text-ink-2">
+                  Class code <span className="font-mono text-[14px] tracking-[0.18em] text-ink">{course.joinCode}</span>
+                  <button type="button" onClick={() => setCode({}, true, "New class code made. The old one stops working.")} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="reset" size={11} /> New code</button>
+                  <input defaultValue={course.access?.passcode ?? ""} placeholder="No passcode" aria-label="Join passcode" className="field h-7 w-32 py-0 text-[12.5px]"
+                    onBlur={(e) => (e.target.value || undefined) !== course.access?.passcode && setCode({ passcode: e.target.value || undefined }, false, e.target.value ? "Passcode set: students type it after the class code" : "Passcode removed")} />
+                </span>
+              )}
             </span>
-          </label>
+          </div>
         )}
         link={link}
         linkLabel="Copy link"

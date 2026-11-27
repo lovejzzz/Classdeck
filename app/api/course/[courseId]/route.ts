@@ -2,12 +2,14 @@ import { certificates } from "@/lib/certificate";
 import { startAiFeedback } from "@/lib/aifeedback";
 import { mergeLesson, moveAnswers, type LessonBase } from "@/lib/merge";
 import { publicOrigin } from "@/lib/origin";
-import { canBeStudent, canTeach, DEMO, getSession, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
+import { canBeStudent, canTeach, DEMO, getSession, teacherOf, startSession, unauthorized, canSeeTeacher, roleOf, teacherAccessHint } from "@/lib/auth";
 import { cloneLesson, cloneWeek } from "@/lib/clone";
 import { findLesson, groupByRef, uid, visibleModules, wallOf } from "@/lib/profile";
 import { db, endPreview, inPreview, logEvent, reset, runPreview, save } from "@/lib/store";
 import { mentionsIn, plainText } from "@/lib/markdown";
 import { randomCode, safeUrl } from "@/lib/uploads";
+import { isCoverColor, isMotif } from "@/lib/coverlib";
+import { CoverError, drawCover, suggestCovers } from "@/lib/covers";
 import { isCorrect, asked, mixedOrder, wallProgress } from "@/lib/grading";
 import { foldWeeks } from "@/lib/cardmodel";
 import { familyOf, kindOf, kindWeeks, reviewableCard, unfinished } from "@/lib/kinds";
@@ -675,6 +677,35 @@ async function change(request: Request, courseId: string, body: Record<string, a
       course.trash = (course.trash ?? []).filter((x) => x.id !== body.id);
       if (!course.trash.length) course.trash = undefined;
       break;
+    }
+    case "setCover": {
+      // —— teacher —— The course's cover: a picture (one of the site's uploads, or a picture on the web, with its credit),
+      // or a paper scene (a motif in a colour). Nothing: back to the automatic one.
+      const v = body.cover;
+      if (!v) { course.cover = undefined; break; }
+      const image = typeof v.image === "string" && (v.image.startsWith("/api/upload/") || (/^https:\/\//.test(v.image) && safeUrl(v.image))) ? v.image.slice(0, 600) : undefined;
+      if (v.image && !image) return fail("That picture can’t be a cover");
+      course.cover = image
+        ? { image, credit: typeof v.credit === "string" ? v.credit.slice(0, 160) || undefined : undefined }
+        : { motif: isMotif(v.motif) ? v.motif : undefined, color: isCoverColor(v.color) ? v.color.toLowerCase() : undefined, seed: Number.isFinite(v.seed) ? Math.abs(Math.round(v.seed)) % 1000 : undefined };
+      break;
+    }
+    case "suggestCovers": {
+      // —— teacher —— Four paper covers (the teacher's AI picks them from what the course teaches, or its name does),
+      // words to find photos with, and a scene to draw. Nothing changes until one is picked.
+      const ideas = await suggestCovers(course, teacherOf(session));
+      return Response.json({ ok: true, ...ideas });
+    }
+    case "drawCover": {
+      // —— teacher —— A picture drawn by the teacher's Google key, kept as their upload. Not the cover until picked.
+      const me = teacherOf(session);
+      if (!me) return fail("Sign in first", 401);
+      try {
+        const drawn = await drawCover(course, me, String(body.scene ?? course.title).slice(0, 300));
+        return Response.json({ ok: true, ...drawn });
+      } catch (e) {
+        return fail(e instanceof CoverError ? e.message : "Couldn’t draw a cover. Try again.");
+      }
     }
     case "setCourseInfo": {
       if (String(body.title ?? "").trim()) course.title = String(body.title).trim().slice(0, 80);

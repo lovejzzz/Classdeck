@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.21",
+    date: "2026-11-27",
+    changes: [
+      "Every course has a cover. Without choosing one it gets a paper-cut scene that fits its name (leaves for an ecology course, a code window for Python, speech bubbles for a language, a microphone for public speaking), in its own colour. Change it in Settings → Course: four paper covers your AI picks from what the course teaches, open photos to search (the words are filled in for you), a picture drawn with your Google key, or your own upload. Students see the cover on their courses page too.",
+      "Settings, simpler: a short list on the left (Course, Class, Sharing, Files) and one part at a time, with switches instead of paragraphs. Who can join, the class code and the passcode now live together in Students → Invite students; the separate “Accept new students” switch is gone (choosing who can join opens or closes it).",
+      "An image search that finds nothing no longer shows as an error.",
+    ],
+  },
+  {
     version: "0.3.20",
     date: "2026-11-27",
     changes: [
