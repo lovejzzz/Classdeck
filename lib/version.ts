@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.16",
+    date: "2026-11-27",
+    changes: [
+      "Your own AI makes better courses: it’s now guided to write titles that say what each card is about, quizzes that have students apply an idea (judge an example, spot the problem) rather than recall terms, short answers that accept only really right answers, clips of long videos, and courses that build to a final project last.",
+      "The course check looks for weaker spots too, not just broken ones: a final project or wrap-up that isn’t last, the same question asked twice in a lesson, titles that say nothing or repeat (“Short answer”), short answers that accept common words, quizzes that only check terms, and videos over 12 minutes with no clip. The same problem on many cards (like a template’s placeholders) is one line with examples.",
+    ],
+  },
+  {
     version: "0.3.15",
     date: "2026-11-27",
     changes: [

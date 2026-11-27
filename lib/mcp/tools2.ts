@@ -148,6 +148,35 @@ async function linkOk(u: string): Promise<string | null> {
   } catch { return "couldn't be reached"; }
 }
 
+// ——— Quality: what makes a course weaker even when nothing is broken ———
+
+const STOP = new Set("a an the of to in on for and or is are be it its this that what which who how why do does should would your you we our with as at by from into than then when where".split(" "));
+const words = (t: string) => new Set(t.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)));
+/** Two questions asking the same thing (most of their words shared). */
+function sameQuestion(a: string, b: string): boolean {
+  const x = words(a), y = words(b);
+  if (x.size < 3 || y.size < 3) return false;
+  const both = [...x].filter((w) => y.has(w)).length;
+  return both / Math.min(x.size, y.size) >= 0.7;
+}
+/** Titles that say nothing about the card (students see them on every week). */
+const GENERIC = /^(pick the answer|short answer|answer|quiz|question|questions|reading|read|video|watch|discussion|practice|activity|task|exercise|card|check|review)( \d+)?$/i;
+/** The last stretch of a course: a project, a wrap-up, a celebration. It belongs at the end. */
+const CAPSTONE = /\b(final project|capstone|wrap-?up|final presentation|course review|celebrat\w*|next steps)\b/i;
+/** Accepted answers so short or so common that wrong answers would count as right. */
+const LOOSE = new Set(["point", "thing", "things", "stuff", "yes", "no", "it", "answer", "good", "bad", "data", "story", "the", "a"]);
+/** A question that only asks for a term (“What do we call…”, “the big ___”). */
+const TERM_ONLY = /(what do (we|you) call|what is the (word|term|name)|which (word|term)|_{3,}|\(one word\)|\(two words)/i;
+/** A YouTube video's length in seconds, from its page (null when it can't be read). */
+async function youtubeSeconds(u: string): Promise<number | null> {
+  const id = u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/)?.[1];
+  if (!id) return null;
+  const r = await fetch(`https://www.youtube.com/watch?v=${id}`, { headers: { "user-agent": "Mozilla/5.0", "accept-language": "en" }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+  const html = r?.ok ? await r.text() : "";
+  const n = Number(html.match(/"lengthSeconds":"(\d+)"/)?.[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export const MORE_TOOLS: Tool[] = [
   // ——— Moving and copying ———
   {
@@ -411,7 +440,7 @@ export const MORE_TOOLS: Tool[] = [
   },
   {
     name: "check_course", title: "Check a course", annotations: { ...ro, openWorldHint: true, title: "Check a course" },
-    description: "Look over a whole course for problems before students meet them: placeholders left in (“add the link”), video cards with no video, quiz questions without right answers, card trees that deal nothing or point nowhere, meetings without a time or link, AI feedback with no AI key, tools that aren't set up, empty lessons, dates out of order, and (check_links) links and videos that don't open.",
+    description: "Look over a whole course for problems before students meet them. Broken: placeholders left in (“add the link”), video cards with no video, quiz questions without right answers, card trees that point nowhere, meetings without a time or link, AI feedback with no AI key, tools not set up, empty lessons, dates out of order, and (check_links) links and videos that don't open. Weaker: a final project or wrap-up that isn't last, the same question asked twice, titles that say nothing (“Short answer”) or repeat, short answers that accept too much, quizzes that only check terms, and (check_links) videos over 12 minutes with no clip. Run it after every round of changes, and again after moving weeks or lessons.",
     inputSchema: obj({ ...COURSE_ID, check_links: { type: "boolean", description: "Also open every link (slower)" } }, ["course_id"]),
     async run(a, ctx) {
       const c = courseFor(ctx, a.course_id);
@@ -453,12 +482,64 @@ export const MORE_TOOLS: Tool[] = [
           for (const v of m.playlist ?? []) links.push({ where: `${where} (video “${v.title}”)`, url: v.url });
         }
       }
+      // ——— Quality, not just breakage ———
+      const lastWeek = c.weeks[c.weeks.length - 1];
+      for (const { w, l } of all) {
+        if (w === lastWeek) continue;
+        const later = c.weeks.slice(c.weeks.indexOf(w) + 1).filter((x) => x.lessons.some((y) => y.modules.length));
+        if (!later.length || later.some((x) => CAPSTONE.test(x.title) || x.lessons.some((y) => CAPSTONE.test(y.title) || y.modules.some((z) => CAPSTONE.test(z.title))))) continue;
+        const after = `${later.map((x) => x.title).join(", ")} still come${later.length === 1 ? "s" : ""} after it (move it, or the weeks, so it's last)`;
+        // A whole wrap-up lesson is one finding; otherwise each final card.
+        if (CAPSTONE.test(l.title) || CAPSTONE.test(w.title)) found.push(`${at(w, l)}: the course's last stretch, but ${after}`);
+        else for (const m of l.modules) if (CAPSTONE.test(m.title)) found.push(`${at(w, l, m)}: a final piece of the course, but ${after}`);
+      }
+      const titles = new Map<string, string[]>();
+      for (const { w, l } of all) {
+        const seenHere = new Map<string, number>();
+        for (const m of l.modules) {
+          if (GENERIC.test(m.title.trim())) (titles.get(m.title.trim()) ?? titles.set(m.title.trim(), []).get(m.title.trim())!).push(`${w.title}`);
+          seenHere.set(m.title.trim().toLowerCase(), (seenHere.get(m.title.trim().toLowerCase()) ?? 0) + 1);
+        }
+        for (const [t, n] of seenHere) if (n > 1) found.push(`${at(w, l)}: ${n} cards are called “${t}” in this one lesson`);
+        // The same question asked twice in a lesson (often after adding one later).
+        const qs = l.modules.flatMap((m) => (m.poll ? [] : (m.questions ?? []).map((q) => ({ m, q }))));
+        for (let i = 0; i < qs.length; i++) for (let j = i + 1; j < qs.length; j++) if (sameQuestion(qs[i].q.text, qs[j].q.text)) found.push(`${at(w, l)}: “${clip(qs[i].q.text, 60)}” (in “${qs[i].m.title}”) and “${clip(qs[j].q.text, 60)}” (in “${qs[j].m.title}”) ask the same thing`);
+        for (const { m, q } of qs) if (q.kind === "short") {
+          const loose = (q.accept ?? []).filter((x) => LOOSE.has(x.trim().toLowerCase()) || (x.trim().length <= 2 && !/^\d+$/.test(x.trim())));
+          if (loose.length) found.push(`${at(w, l, m)}: the short answer accepts “${loose.join("”, “")}”, which would count many wrong answers as right`);
+        }
+        // A quiz (or card group of quiz cards) whose questions all ask for a term: it checks words, not understanding.
+        for (const g of l.modules.filter((m) => m.type === "group" || (m.type === "practice" && !m.poll && (m.questions?.length ?? 0) > 1))) {
+          const inner = g.type === "group" ? l.modules.filter((x) => g.members?.includes(x.id)) : [g];
+          const asked = inner.flatMap((x) => (x.poll ? [] : x.questions ?? []));
+          if (asked.length >= 2 && asked.filter((q) => TERM_ONLY.test(q.text) || q.kind === "short").length === asked.length) found.push(`${at(w, l, g)}: every question asks for a term or a fact; add one that has students apply the idea (judge an example, spot the problem, choose what to do)`);
+        }
+      }
+      for (const [t, where] of titles) if (where.length > 1) found.push(`Several cards are called “${t}” (${where.join(", ")}): give each a title that says what it checks or asks`);
+      else found.push(`${where[0]}: a card called just “${t}”: a title that says what it's about helps students`);
       if (a.check_links) {
         const results = await Promise.all(links.slice(0, 60).map(async (x) => ({ ...x, bad: await linkOk(x.url) })));
         for (const r of results) if (r.bad) found.push(`${r.where}: the link ${r.url} ${r.bad}`);
+        // A long video with no clip: most of a self-paced lesson spent watching.
+        const vids = all.flatMap(({ w, l }) => l.modules.flatMap((m) => (m.attachments ?? []).filter((x) => x.kind === "link" && /youtu/.test(x.url) && x.start === undefined && x.end === undefined).map((x) => ({ where: at(w, l, m), url: x.url }))));
+        const lens = await Promise.all(vids.slice(0, 30).map(async (v) => ({ ...v, secs: await youtubeSeconds(v.url) })));
+        for (const v of lens) if (v.secs && v.secs > 12 * 60) found.push(`${v.where}: the video is ${Math.round(v.secs / 60)} minutes long; clip the part that matters (update_card clip: {start, end}) or say which minutes to watch`);
         if (links.length > 60) found.push(`(Only the first 60 of ${links.length} links were opened.)`);
       }
-      return found.length ? cap(`${found.length} thing${found.length === 1 ? "" : "s"} to look at:\n${found.map((x) => `- ${x}`).join("\n")}`) : `No problems found in ${all.length} lessons${a.check_links ? ` (${links.length} links opened)` : ""}.`;
+      if (!found.length) return `No problems found in ${all.length} lessons${a.check_links ? ` (${links.length} links opened)` : ""}.`;
+      // The same problem on many cards (a template's placeholders, say) reads as one line with examples.
+      const byWhat = new Map<string, string[]>();
+      const loose: string[] = [];
+      for (const f of found) {
+        const m = f.match(/^(.+?\(m-[\w]+\)): (.+)$/);
+        if (m) (byWhat.get(m[2]) ?? byWhat.set(m[2], []).get(m[2])!).push(m[1]); else loose.push(f);
+      }
+      const lines = [...loose];
+      for (const [what, where] of byWhat) {
+        if (where.length <= 3) lines.push(...where.map((x) => `${x}: ${what}`));
+        else lines.push(`${where.length} cards: ${what}. For example ${where.slice(0, 4).map((x) => x.replace(/^.* › /, "")).join("; ")}${where.length > 4 ? "; …" : ""}`);
+      }
+      return cap(`${found.length} thing${found.length === 1 ? "" : "s"} to look at:\n${lines.map((x) => `- ${x}`).join("\n")}`);
     },
   },
   {
