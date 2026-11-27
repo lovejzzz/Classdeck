@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.19",
+    date: "2026-11-27",
+    changes: [
+      "Opening and closing a card feels smoother: the card grows into its full view without stretching (text keeps its shape, corners stay round), its title stays where you read it, there’s no tilt, it settles in about a third of a second, and it closes straight back into its place without bouncing past it. Content that arrives as it opens no longer makes it jump.",
+    ],
+  },
+  {
     version: "0.3.18",
     date: "2026-11-27",
     changes: [
