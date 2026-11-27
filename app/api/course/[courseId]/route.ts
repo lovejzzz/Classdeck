@@ -37,7 +37,7 @@ const STUDENT_OPS = new Set([
 const AUTO_LESSON = /^Lesson \d+$/;
 /** A week called only by its number ("Week 3"). */
 const AUTO_WEEK = /^Week \d+$/;
-const STRUCTURAL = new Set(["addLesson", "addWeek", "duplicateLesson", "duplicateWeek", "insertWeek", "insertLesson", "deleteLesson", "deleteWeek"]);
+const STRUCTURAL = new Set(["addLesson", "addWeek", "duplicateLesson", "duplicateWeek", "insertWeek", "insertLesson", "deleteLesson", "deleteWeek", "moveLesson", "moveWeek"]);
 
 /** Lessons still named "Lesson N" take their place in the course as their number; named lessons keep their names. */
 function renumberLessons(course: Course) {
@@ -1444,6 +1444,28 @@ async function change(request: Request, courseId: string, body: Record<string, a
       const copy = cloneWeek(course.weeks[i], AUTO_WEEK.test(course.weeks[i].title) ? `Week ${top + 1}` : undefined);
       course.weeks.splice(i + 1, 0, copy);
       extra = { weekId: copy.id };
+      break;
+    }
+    case "moveWeek": {
+      // —— teacher —— A week to a new place: before another week, or at the end.
+      const i = course.weeks.findIndex((w) => w.id === body.weekId);
+      if (i < 0) return fail("No such week");
+      const [w] = course.weeks.splice(i, 1);
+      const at = body.beforeWeekId ? course.weeks.findIndex((x) => x.id === body.beforeWeekId) : course.weeks.length;
+      if (at < 0) { course.weeks.splice(i, 0, w); return fail("No such week to put it before"); }
+      course.weeks.splice(at, 0, w);
+      break;
+    }
+    case "moveLesson": {
+      // —— teacher —— A lesson to another week (or another place in its week): before a lesson there, or at its end.
+      const from = course.weeks.find((w) => w.lessons.some((l) => l.id === body.lessonId));
+      const to = course.weeks.find((w) => w.id === body.weekId);
+      if (!from || !to) return fail("No such lesson or week");
+      if (from !== to && from.lessons.length <= 1) return fail("That's the only lesson in its week: move the week instead");
+      const l = from.lessons.find((x) => x.id === body.lessonId)!;
+      from.lessons = from.lessons.filter((x) => x !== l);
+      const at = body.beforeLessonId ? to.lessons.findIndex((x) => x.id === body.beforeLessonId) : to.lessons.length;
+      to.lessons.splice(at < 0 ? to.lessons.length : at, 0, l);
       break;
     }
     case "duplicateLesson": {

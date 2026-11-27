@@ -3,6 +3,17 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.15",
+    date: "2026-11-27",
+    changes: [
+      "Your own AI can now do almost everything a teacher does to a course’s content: every kind of card (card groups that deal cards by score, short-answer and put-in-order questions, sign-up polls, forms, shared worksheets, several videos or a clip of one, files from the web, steps and prompts), tools on cards, and moving or copying cards, lessons and weeks, and renaming the course.",
+      "Voice and video: it can read text aloud onto a card with a natural voice (with your Gemini or ChatGPT key), find videos, and make a video clip with Google Veo when your key has it (it asks first: it costs money).",
+      "It tests a course before students see it: a check for placeholders, missing answers, broken links and videos, meetings without a time, tools that aren’t set up; and demo students it can act as, see the board of, and walk through the whole course (right or wrong answers, to try every path of a card tree). It can try any card tool as a demo student, and see whether your AI key is ready.",
+      "It still can’t delete anything, change the class list or groups, message students, see grades, share a course or set keys.",
+      "The AI tutor’s message when no AI is connected now says where to connect one.",
+    ],
+  },
+  {
     version: "0.3.14",
     date: "2026-11-26",
     changes: [

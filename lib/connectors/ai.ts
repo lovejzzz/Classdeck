@@ -67,7 +67,7 @@ export async function complete(system: string, user: string, use?: InvokeContext
   try {
     client = new Anthropic();
   } catch {
-    throw new ConnectorError("not_configured", "The AI key (ANTHROPIC_API_KEY) isn't set on the server");
+    throw new ConnectorError("not_configured", "No AI is connected yet. The teacher connects their own AI in Settings → Tools for cards.");
   }
   try {
     const res = await client.beta.messages.create({
@@ -90,7 +90,7 @@ export async function complete(system: string, user: string, use?: InvokeContext
     }
     if (e instanceof Anthropic.RateLimitError) throw new ConnectorError("rate_limited", "Lots of people are asking right now. Try again in a moment.");
     if (e instanceof Anthropic.APIError) throw new ConnectorError("upstream", `The AI service had an error (${e.status ?? "network"})`);
-    throw new ConnectorError("not_configured", "The AI key (ANTHROPIC_API_KEY) isn't set on the server");
+    throw new ConnectorError("not_configured", "No AI is connected yet. The teacher connects their own AI in Settings → Tools for cards.");
   }
 }
 

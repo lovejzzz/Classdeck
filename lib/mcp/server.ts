@@ -4,7 +4,10 @@ import { throttled } from "../auth";
 import { publicOrigin } from "../origin";
 import { VERSION } from "../version";
 import { userOfToken } from "./token";
-import { INSTRUCTIONS, TOOLS, ToolError, type Ctx } from "./tools";
+import { INSTRUCTIONS, TOOLS as BASE_TOOLS, ToolError, type Ctx } from "./tools";
+import { MORE_TOOLS } from "./tools2";
+
+const TOOLS = [...BASE_TOOLS, ...MORE_TOOLS];
 
 const VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 type Rpc = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown> };
