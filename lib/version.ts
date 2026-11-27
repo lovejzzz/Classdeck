@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.13",
+    date: "2026-11-26",
+    changes: [
+      "Your own AI understands courses that already have content, and builds on them: it reads every card in full (questions and answers, videos, checklists, card groups, and which answers deal which cards), a lesson at a time, and is told to continue in the course’s own pattern and style. Asked to “add a week like the others”, it copies the pattern, wires the card tree, and keeps the week numbering.",
+      "It can now make pick-all-that-apply polls, wire an answer to the card it deals (a card tree), add a new week before another (say, before a wrap-up week), and rename weeks.",
+    ],
+  },
+  {
     version: "0.3.12",
     date: "2026-11-26",
     changes: [

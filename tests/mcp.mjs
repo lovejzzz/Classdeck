@@ -55,7 +55,7 @@ check("a notification gets 202 and no body", note.status === 202 && (await note.
 check("GET is 405", (await fetch(link)).status === 405);
 const list = await rpc(link, "tools/list", {});
 const names = (list.result?.tools ?? []).map((t) => t.name);
-check("the tools are listed", ["list_courses", "get_course", "get_card", "list_students", "review_queue", "get_work", "get_discussion", "create_course", "add_lesson", "add_cards", "update_card", "update_lesson", "give_feedback", "send_reminder"].every((n) => names.includes(n)), names);
+check("the tools are listed", ["list_courses", "get_course", "get_card", "list_students", "review_queue", "get_work", "get_discussion", "create_course", "add_lesson", "add_cards", "update_card", "update_lesson", "update_week", "get_lesson", "give_feedback", "send_reminder"].every((n) => names.includes(n)), names);
 check("reads are marked read-only, feedback as reaching students", list.result.tools.find((t) => t.name === "get_course").annotations.readOnlyHint === true && list.result.tools.find((t) => t.name === "give_feedback").annotations.readOnlyHint === false);
 check("nothing that deletes", !names.some((n) => /delete|remove/.test(n)), names);
 check("the Bearer header works too", (await rpc(link, "tools/list", {}, { bearer: true })).result?.tools?.length === names.length);
@@ -106,6 +106,24 @@ const ids = [...order.text.matchAll(/card id ([\w-]+)/g)].map((m) => m[1]);
 const ul = await tool(link, "update_lesson", { course_id: courseId, lesson_id: lessonId, date: "2026-12-01", goal: "Write, run and fix a first program." });
 check("update_lesson sets date and goal", !ul.error && /2026-12-01 · goal: Write, run and fix/.test((await tool(link, "get_course", { course_id: courseId })).text), ul.text);
 check("update_lesson won't drop cards in a reorder", (await tool(link, "update_lesson", { course_id: courseId, lesson_id: lessonId, card_order: ids.slice(0, 1) })).error === true);
+
+// ——— Building on what's there: a card tree, a week before another, reading a lesson in full ———
+const wkIds = [...(await tool(link, "get_course", { course_id: courseId })).text.matchAll(/week id ([\w-]+)/g)].map((m) => m[1]);
+const tree = await tool(link, "add_lesson", { course_id: courseId, new_week_title: "Week 2b · Pick a path", before_week_id: wkIds[1], title: "Pick a path", cards: [
+  { kind: "poll", title: "Choose your focus", questions: [{ text: "What do you want to practise?", options: ["Loops", "Functions"], multi: true, deals: ["loops", "funcs"] }] },
+  { ref: "loops", kind: "content", title: "Video: Loops" },
+  { ref: "funcs", kind: "content", title: "Video: Functions" },
+] });
+check("a new week goes before another, with its card tree", !tree.error, tree.text);
+const after = await tool(link, "get_course", { course_id: courseId });
+check("…in the right place", after.text.indexOf("Week 2b · Pick a path") > after.text.indexOf("Week 1 ·") && after.text.indexOf("Week 2b · Pick a path") < after.text.indexOf("Week 2 · Loops"), after.text.slice(0, 600));
+check("…its dealt cards marked as such", /⤷ \[content\] Video: Loops .*dealt by answering “Loops”/.test(after.text), after.text);
+const pathLesson = after.text.match(/Pick a path \(lesson id ([\w-]+)\)/)?.[1];
+const full = await tool(link, "get_lesson", { course_id: courseId, lesson_id: pathLesson });
+check("get_lesson: every card in full, with what each answer deals", /"type": "multi"/.test(full.text) && /Loops → Video: Loops/.test(full.text), full.text);
+check("a deal pointing nowhere is an error to fix", (await tool(link, "add_cards", { course_id: courseId, lesson_id: pathLesson, cards: [{ kind: "poll", title: "x", questions: [{ text: "?", options: ["a", "b"], deals: ["nope", null] }] }] })).error === true);
+const wk2b = after.text.match(/Week 2b · Pick a path \(week id ([\w-]+)\)/)?.[1];
+check("update_week renames a week", !(await tool(link, "update_week", { course_id: courseId, week_id: wk2b, title: "Week 2 · Pick a path" })).error);
 
 // ——— A student hands in (with a sentence trying to instruct the AI) ———
 await T.post(`/api/course/${courseId}`, { op: "addStudents", names: "Sam Lee" });
