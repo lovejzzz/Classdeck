@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.20",
+    date: "2026-11-27",
+    changes: [
+      "New card pictures, cut from coloured paper, for every card without a picture of its own. They show what is in the card: a long text is a thicker pile with its reading time, a table has its real rows and columns, a file is labelled PDF, PPTX or XLSX, a link shows its site, a meeting its time, and a recording is a strip as long as the recording. A question with four options is four strips of paper, true or false is a tick and a cross, a 12-question quiz is a fan of cards marked “12 Q”, a poll’s bars rise with the class’s votes once you’ve voted, a sign-up shows each group’s seats filling up, and a timed practice shows a stopwatch. Options that deal a card trail a string to it. Gold and holographic cards use foil paper. Cards with the same content still look different from each other, and the picture never gives away the answer.",
+    ],
+  },
+  {
     version: "0.3.19",
     date: "2026-11-27",
     changes: [

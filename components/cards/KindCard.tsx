@@ -1,4 +1,4 @@
-import { FAMILIES, faceOf, familyOf, newCard, type CardKind } from "@/lib/kinds";
+import { FAMILIES, familyOf, newCard, type CardKind } from "@/lib/kinds";
 import { suitOfKind } from "@/lib/ui";
 import { KindArt } from "./KindArt";
 
@@ -18,7 +18,7 @@ export function KindCard({ kind, w = 124 }: { kind: CardKind; w?: number }) {
         <span className="h-1.5 w-1.5 rounded-full" style={{ background: suit.tint }} />{suit.name}
       </span>
       <span className="relative mx-2 mt-1.5 block overflow-hidden rounded-[7px] border border-line/70" style={{ height: Math.round(h * 0.42) }}>
-        <KindArt id={`new-${kind}`} face={faceOf(newCard(kind))} tint={suit.tint} cover={suit.cover} />
+        <KindArt m={{ ...newCard(kind), id: `new-${kind}` }} tint={suit.tint} />
       </span>
       <span className="relative px-2.5 pt-2 text-[13.5px] font-semibold leading-tight text-ink">{family.name}</span>
       <span className="relative px-2.5 pt-1 text-[11px] leading-snug text-ink-3">{question ? "Choose, write, fill in, discuss" : "Words, pictures, video, links"}</span>

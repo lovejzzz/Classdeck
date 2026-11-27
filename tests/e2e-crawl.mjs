@@ -177,12 +177,17 @@ for (const tab of ["Students", "Settings", "Map"]) {
 }
 // Every card's editor: open, look, close.
 let opened = 0;
+const missed = [];
 for (const m of cards) {
   await tp.goto(`${B}/teach/${cid}?card=${m.id}`); await settle(700);
-  if (await tp.locator("text=Edit this card").count().catch(() => 0) || await tp.getByRole("button", { name: "Close" }).count()) opened++;
+  const open = async () => await tp.locator("text=Edit this card").count().catch(() => 0) || await tp.getByRole("button", { name: "Close" }).count();
+  // A slow first render gets one more look before it counts as not opening.
+  if (await open() || (await settle(1500), await open())) opened++;
+  else missed.push(`${m.kind} “${m.title}”`);
   await harvest(tp, `teacher card ${m.kind} “${m.title}”`);
 }
-check("every card's editor opens", opened >= cards.length - 2, `${opened} of ${cards.length}`);
+check("every card's editor opens", opened >= cards.length - 2, `${opened} of ${cards.length}; not open: ${missed.join(", ")}`);
+if (missed.length) console.log("  editors that didn't open:", missed.join(", "));
 // Buttons in a few editors (one of each kind).
 const oneOfEach = ["content", "choice", "answer", "worksheet", "discussion", "group"].map((k) => cards.find((m) => m.kind === k)).filter(Boolean);
 for (const m of oneOfEach) {

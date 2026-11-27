@@ -4,13 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bandLabel, bandRight, bandsOf, branchBelow, scoreCount, snapBands, canBranch, DEFAULT_BANDS, mapSlot, picked, SCORE, sharedOnly, slotOf, targetsOf, wiresOf, type Wire, topOf, holdsGroups, leavesOf, cleanGroups } from "@/lib/branching";
 import { MAP_ADD, bandTone, pathColor, suitOfCard } from "@/lib/ui";
-import { FAMILIES, faceMeta, faceOf, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
+import { FAMILIES, faceMeta, kindOf, newCard as makeCard, unfinished, blankContent, type CardKind } from "@/lib/kinds";
 import { KindArt } from "../cards/KindArt";
 import { MathText, plainMath } from "../MathText";
 import { plainText } from "@/lib/markdown";
 import { isAsked } from "@/lib/grading";
 import { groupsOf, studentsOf } from "@/lib/profile";
-import { fileExt, heroOf, hostOf } from "@/lib/cards";
+import { heroOf } from "@/lib/cards";
 import type { Attachment, Lesson, Module, ProgressMap, TrashEntry } from "@/lib/types";
 import { videoEmbed } from "@/lib/media";
 import { MediaLift } from "../cards/MediaLift";
@@ -2008,20 +2008,11 @@ function MapArt({ m, tint, cover, onMedia }: { m: Module; tint: string; cover: s
   );
   if (first?.kind === "audio") return <div className="absolute inset-0"><Recording a={first} cover={cover} /></div>;
   if (first?.kind === "file") return (
-    <a href={first.url} target="_blank" rel="noreferrer" data-art onClick={(e) => e.stopPropagation()} aria-label={`Open ${first.name || "the file"} on “${m.title}”`} className="absolute inset-0 flex items-center justify-center">
-      <span className="relative flex h-[62%] aspect-[3/4] flex-col justify-end rounded-md border border-line bg-white p-1.5 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.2)]">
-        <span className="rounded bg-ink px-1 py-0.5 text-center font-mono text-[9px] font-medium tracking-wide text-white">{fileExt(first)}</span>
-      </span>
-      {first.name && <span className="absolute inset-x-2 bottom-1.5 truncate text-center font-mono text-[10px] text-ink-2">{first.name}</span>}
+    <a href={first.url} target="_blank" rel="noreferrer" data-art onClick={(e) => e.stopPropagation()} aria-label={`Open ${first.name || "the file"} on “${m.title}”`} className="absolute inset-0">
+      <KindArt m={m} tint={tint} />
     </a>
   );
-  if (first?.kind === "link" && kindOf(m) !== "content") return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-      <Icon name="globe" size={26} strokeWidth={1.4} className="text-ink/75" />
-      <span className="max-w-[85%] truncate font-mono text-[10px] text-ink-2">{hostOf(first.url)}</span>
-    </div>
-  );
-  return <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />;
+  return <KindArt m={m} tint={tint} />;
 }
 
 function CardRest({ m, far, art, tint, cover, onMedia }: { m: Module; far: boolean; art: boolean; tint: string; cover: string; onMedia?: (a: Attachment, el: HTMLElement, e: React.MouseEvent) => void }) {
@@ -2041,7 +2032,7 @@ function CardRest({ m, far, art, tint, cover, onMedia }: { m: Module; far: boole
       {/* Nothing more to say: the card's drawing fills the rest of its face, as on a playing card. */}
       {!far && !body && !art && (
         <div className="relative min-h-0 flex-1 overflow-hidden rounded-[12px] opacity-80" style={{ background: cover }}>
-          <KindArt id={m.id} face={faceOf(m)} tint={tint} cover={cover} />
+          <KindArt m={m} tint={tint} />
         </div>
       )}
     </div>
@@ -2312,7 +2303,7 @@ function Fan({ members, x, y, open, faded, adding, bad, act }: {
               <span className="block h-[4px]" style={{ background: c.type === "group" ? "#4b56a8" : suit.tint }} />
               <span className="block truncate px-2 pt-1 text-[7.5px] font-semibold uppercase tracking-[0.06em]" style={{ color: c.type === "group" ? "#4b56a8" : suit.tint }}>{c.type === "group" ? `Group · ${c.members?.length ?? 0}` : faceMeta(c).name}</span>
               <span className="block truncate px-2 text-[9.5px] font-semibold leading-tight text-ink">{c.title || "Untitled card"}</span>
-              <span className="mx-2 mt-1 block h-[46px] rounded-[6px]" style={{ background: suit.cover }} />
+              <span className="mx-2 mt-1 block h-[46px] overflow-hidden rounded-[6px]">{c.type === "group" ? <span className="block h-full" style={{ background: suit.cover }} /> : <KindArt m={c} tint={suit.tint} />}</span>
             </span>
             {live && jiggle && act.onDelete && (
               <button type="button" data-fan-delete onClick={(e) => { e.stopPropagation(); act.onDelete!(c); }} onPointerDown={(e) => e.stopPropagation()} aria-label={`Delete ${c.title || "this card"}`}

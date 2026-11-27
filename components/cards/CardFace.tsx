@@ -1,19 +1,17 @@
-import { fileExt, heroOf, hostOf } from "@/lib/cards";
-import { meetingOf, videoEmbed } from "@/lib/media";
+import { heroOf } from "@/lib/cards";
+import { videoEmbed } from "@/lib/media";
 import { cardColor, suitOfCard } from "@/lib/ui";
 import type { Module, Status } from "@/lib/types";
 import { Icon, StatusIcon } from "../Icon";
 import { KindArt } from "./KindArt";
 import { PlayArt, playableArt } from "./PlayArt";
-import { Waveform } from "./Waveform";
-import { faceMeta, faceOf } from "@/lib/kinds";
+import { faceMeta } from "@/lib/kinds";
 
-/** The artwork window: shows the card's main media, or a soft gradient with the type glyph. */
-function Art({ m, big, playable }: { m: Module; big: boolean; playable?: boolean }) {
+/** The artwork window: the card's picture or video, or else a paper drawing of what is in it. */
+function Art({ m, playable }: { m: Module; playable?: boolean }) {
   const meta = suitOfCard(m);
   const a = heroOf(m);
   if (playable && a && playableArt(a)) return <PlayArt key={a.id} a={a} cover={meta.cover} />;
-  const glyph = big ? 34 : 28;
   if (a?.kind === "image") {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={a.url} alt="" draggable={false} className="h-full w-full object-cover" />;
@@ -27,25 +25,6 @@ function Art({ m, big, playable }: { m: Module; big: boolean; playable?: boolean
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="#1b1b1a" /></svg>
           </span>
         </span>
-      </div>
-    );
-  }
-  const backdrop = <div className="absolute inset-[-30%] blur-[16px]" style={{ background: meta.cover }} />;
-  if (a?.kind === "audio") {
-    return (
-      <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
-        {backdrop}
-        <Waveform url={a.url} seed={a.id} off="bg-ink/70" className="h-1/2" />
-      </div>
-    );
-  }
-  if (a?.kind === "file") {
-    return (
-      <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
-        {backdrop}
-        <div className="relative flex h-[62%] aspect-[3/4] flex-col justify-end rounded-md border border-line bg-white p-1.5 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.2)]">
-          <span className="rounded bg-ink px-1 py-0.5 text-center font-mono text-[9px] font-medium tracking-wide text-white">{fileExt(a)}</span>
-        </div>
       </div>
     );
   }
@@ -63,25 +42,8 @@ function Art({ m, big, playable }: { m: Module; big: boolean; playable?: boolean
       </div>
     );
   }
-  if (a?.kind === "link" && meetingOf(a.url)) {
-    return (
-      <div className="relative flex h-full w-full flex-col items-center justify-center gap-1.5 overflow-hidden">
-        {backdrop}
-        <Icon name="video" size={glyph} strokeWidth={1.4} className="relative text-[#2f6fdb]" />
-        <span className="relative max-w-[85%] truncate font-mono text-[10px] text-ink-2">{meetingOf(a.url)} meeting</span>
-      </div>
-    );
-  }
-  if (a?.kind === "link") {
-    return (
-      <div className="relative flex h-full w-full flex-col items-center justify-center gap-1.5 overflow-hidden">
-        {backdrop}
-        <Icon name="globe" size={glyph} strokeWidth={1.4} className="relative text-ink/75" />
-        <span className="relative max-w-[85%] truncate font-mono text-[10px] text-ink-2">{hostOf(a.url)}</span>
-      </div>
-    );
-  }
-  return <KindArt id={m.id} face={faceOf(m)} tint={meta.tint} cover={meta.cover} />;
+  // A recording, a file, a link or a meeting, or nothing at all: drawn in paper, from what is in the card.
+  return <KindArt m={m} tint={meta.tint} />;
 }
 
 
@@ -126,7 +88,7 @@ export function CardFace({
       </div>
       {/* artwork */}
       <div className={`relative mx-2.5 mt-2 h-[44%] flex-none overflow-hidden rounded-[8px] border border-line/80 transition-[filter] duration-500 ${status === "done" ? "saturate-[0.35]" : ""}`}>
-        <Art m={m} big={big} playable={playable} />
+        <Art m={m} playable={playable} />
         {tag && <span className="pill absolute left-1.5 top-1.5 h-[18px] max-w-[85%] truncate px-1.5 text-[10px]">{tag}</span>}
       </div>
       {/* title */}
