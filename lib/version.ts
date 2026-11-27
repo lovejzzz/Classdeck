@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.04",
+    date: "2026-11-26",
+    changes: [
+      "When the AI watched a student’s video, each moment it names (“looks down at 0:44”) shows as a still from that moment, right under the point it’s about. Click a still to play the video from there. Students and teachers see the same.",
+    ],
+  },
+  {
     version: "0.3.03",
     date: "2026-11-26",
     changes: [

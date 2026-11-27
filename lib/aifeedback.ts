@@ -315,7 +315,7 @@ export function startAiFeedback(course: Course, m: Module, studentId: string, p:
       // The video couldn't be read: the AI works from the words and transcript, and knows it can't see the video.
       const told = film && !video ? feedbackPrompt({ ...facts, watchesVideo: false }) : prompt;
       const out = tidyFeedback(await ask(setup.provider, setup.key, setup.model, told.system, told.text, video));
-      result = out ? { state: "done", at, model: setup.model, text: out.slice(0, 6000), watched: !!video, input } : { state: "error", at, model: setup.model, error: "The AI gave no feedback. Hand it in again to retry." };
+      result = out ? { state: "done", at, model: setup.model, text: out.slice(0, 6000), watched: !!video, video: video ? film!.url : undefined, input } : { state: "error", at, model: setup.model, error: "The AI gave no feedback. Hand it in again to retry." };
       if (out) markOwner(course, setup.provider, undefined, true);
     } catch (e) {
       result = { state: "error", at, model: setup.model, error: e instanceof AiError ? e.message : "The AI feedback didn’t work this time." };

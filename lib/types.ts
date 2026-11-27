@@ -515,7 +515,7 @@ export interface Progress {
   /** The teacher's feedback on this work. */
   review?: Review;
   /** AI feedback on the latest hand-in (cards with AI feedback on): working on it, the feedback, or why it failed. */
-  ai?: { state: "working" | "done" | "error"; at: number; model?: string; text?: string; error?: string; watched?: boolean; /** What it looked at (a fingerprint): the same work handed in again keeps its feedback. */ input?: string };
+  ai?: { state: "working" | "done" | "error"; at: number; model?: string; text?: string; error?: string; watched?: boolean; /** The video it watched, so the moments it names can show as stills. */ video?: string; /** What it looked at (a fingerprint): the same work handed in again keeps its feedback. */ input?: string };
   /** When the work was last handed in (a revision too). */
   handedAt?: number;
   /** Feedback from earlier rounds (newest first): a revision asked, then the work looked at again. */

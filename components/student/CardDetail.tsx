@@ -253,7 +253,7 @@ export function CardDetail(p: DetailProps) {
         )}
 
         {review && !m.choice && <ReviewNote review={review} big={p.big} skills={p.course.skills} levels={p.course.levels} />}
-        {p.progress?.ai ? <AiNote ai={p.progress.ai} /> : m.aiFeedback && (
+        {p.progress?.ai ? <AiNote ai={p.progress.ai} work={p.progress.work} /> : m.aiFeedback && (
           <p className="mt-5 flex items-center gap-1.5 text-[12px] text-ink-3"><Icon name="sparkles" size={11} /> AI feedback when you hand in</p>
         )}
         {!m.choice && <EarlierFeedback earlier={p.progress?.earlier} />}

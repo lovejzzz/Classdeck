@@ -1,6 +1,6 @@
 // What the AI is told when a student hands in a card (lib/aiprompt.ts): no network.
 //   npx tsx tests/aiprompt.test.ts
-import { feedbackPrompt, tidyFeedback, type FeedbackInput } from "../lib/aiprompt";
+import { feedbackPrompt, momentsIn, tidyFeedback, type FeedbackInput } from "../lib/aiprompt";
 import type { Module, Progress } from "../lib/types";
 
 let passed = 0;
@@ -48,6 +48,12 @@ check("nothing handed in: nothing to send", feedbackPrompt(base({ progress: { st
 const t = tidyFeedback("**Works well**  \nGood.\n\n## Try next:\nX\n\n- **Your next step:** Y\n\n**Delivery**: Z\n\nyour question - no");
 check("labels come out in one form", t.includes("Works well: Good.") && t.includes("Try next: X") && t.includes("Your next step: Y") && t.includes("Delivery: Z") && !t.includes("**"), t);
 check("a plain answer is left alone", tidyFeedback("Works well: fine.") === "Works well: fine.", null);
+
+// The moments feedback names, for stills from the student's video.
+const mo = momentsIn("From 0:00 to 0:32, the video… um (0:20, 0:01), uh (0:04–0:06) and like at 1:05; again 0:20");
+check("moments: a range counts from its start, repeats once, earliest first, four at most", JSON.stringify(mo) === "[0,1,4,20]", mo);
+check("no times, no moments", momentsIn("Works well: clear.").length === 0, null);
+check("a clock time inside a bigger number isn't a moment", momentsIn("version 10:15:30").length === 0, momentsIn("version 10:15:30"));
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 for (const f of failures) console.log("  ✗ " + f);

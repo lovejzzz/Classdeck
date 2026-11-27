@@ -130,3 +130,13 @@ export function tidyFeedback(text: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
+/** The moments a paragraph points to ("0:44"; "0:05–0:12" or "0:00 to 0:32" counts from its start), the first four, earliest first. */
+export function momentsIn(text: string): number[] {
+  const out: number[] = [];
+  for (const m of text.matchAll(/(?<![\d:])(\d{1,2}):([0-5]\d)(?:\s*(?:[–—-]|to|and)\s*\d{1,2}:[0-5]\d)?(?![\d:])/g)) {
+    const t = Number(m[1]) * 60 + Number(m[2]);
+    if (!out.includes(t)) out.push(t);
+  }
+  return out.slice(0, 4).sort((a, b) => a - b);
+}

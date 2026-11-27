@@ -347,7 +347,7 @@ export function Classroom({
               <>
               {selProgress?.review && selProgress.output && <ChangedSince review={selProgress.review} now={selProgress.output} />}
               <EarlierFeedback earlier={selProgress?.earlier} teacher />
-              {selProgress?.ai && <AiNote ai={selProgress.ai} teacher />}
+              {selProgress?.ai && <AiNote ai={selProgress.ai} teacher work={selProgress.work} />}
               <ReviewBox key={`${sel.sid}-${sel.mid}-${selProgress?.review?.at ?? 0}`}
                 fresh={!!selProgress?.review && selProgress.review.verdict === "revise" && selProgress.review.on !== undefined && selProgress.review.on !== (selProgress.output ?? "")} group={groupOnCard(selModule, sel.sid)} courseId={courseId} studentId={sel.sid} moduleId={sel.mid} name={selStudent.name} review={selProgress?.review} done={selProgress?.status === "done"}
                 skills={selModule.skills?.length ? (course.skills ?? []).filter((sk) => selModule.skills!.includes(sk.id)) : course.skills ?? []} rateOpen={!!selModule.skills?.length} levels={course.levels ?? []} onNext={() => nextWaiting(sel.sid)} />
