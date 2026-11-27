@@ -262,8 +262,10 @@ export function feedbackInput(course: Course, m: Module, studentId: string, p: P
   const prog = db().progress[course.id]?.[studentId] ?? {};
   let lesson: FeedbackInput["lesson"];
   const picks: { card: string; picked: string }[] = [];
-  outer: for (const w of course.weeks) for (const l of w.lessons) {
-    if (l.modules.some((x) => x.id === m.id)) { lesson = { title: l.title, goal: l.goal, week: w.title.split(" · ")[0] }; break outer; }
+  const upcoming: string[] = [];
+  for (const w of course.weeks) for (const l of w.lessons) {
+    if (lesson) { if (upcoming.length < 4) upcoming.push(`${w.title.split(" · ")[0]} · ${l.title}${l.goal ? ` (${l.goal})` : ""}`); continue; }
+    if (l.modules.some((x) => x.id === m.id)) { lesson = { title: l.title, goal: l.goal, week: w.title.split(" · ")[0] }; continue; }
     for (const x of l.modules) {
       if (!x.poll) continue;
       const answers = prog[x.id]?.answers;
@@ -279,7 +281,7 @@ export function feedbackInput(course: Course, m: Module, studentId: string, p: P
   const posts = (db().posts[course.id] ?? []).filter((x) => x.moduleId === m.id && x.studentId === studentId).map((x) => ({ text: x.text, work: x.work }));
   const review = p.review && (!p.handedAt || p.review.at <= p.handedAt) ? p.review : undefined;
   return {
-    course: { title: course.title }, lesson, card: m, progress: p, posts, picks, watchesVideo,
+    course: { title: course.title }, lesson, card: m, progress: p, posts, picks, upcoming, watchesVideo,
     before: { ai: p.ai?.state === "done" ? p.ai.text : undefined, review },
   };
 }

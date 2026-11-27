@@ -13,6 +13,8 @@ export type FeedbackInput = {
   posts: { text: string; work?: Attachment[] }[];
   /** What the student picked on earlier cards of the course (their goals, their focus), most recent first. */
   picks?: { card: string; picked: string }[];
+  /** The next lessons in the course (week · title, goal), so feedback can point ahead. */
+  upcoming?: string[];
   /** The service can watch video (Gemini). */
   watchesVideo: boolean;
   /** Before this hand-in: the AI's feedback and the teacher's, for a revision. */
@@ -49,7 +51,7 @@ Try next: at most two changes that would help most, tied to what the card asks. 
 Your next step: one small, concrete thing to practise before the next card or session.`;
 
 const KINDS: Record<string, string> = {
-  answer: `This card asks for an open answer. If it asks the student to reflect, or to share their goals, hopes, worries or experience (a journal, a survey question), there's no right answer: respond to what they shared, connect it to the course, and make Try next about getting more out of the course, not about fixing their writing. Treat a worry with care.`,
+  answer: `This card asks for an open answer. If it asks the student to reflect, or to share their goals, hopes, worries or experience (a journal, a survey question), there's no right answer: respond to what they shared, connect it to what's coming up in the course, and make Try next about getting more out of the course, not about fixing their writing. Treat a worry with care.`,
   worksheet: `This card is a worksheet: its text is a template the student fills in. Notice which parts they filled in well and which they left empty or thin.`,
   discussion: `This card is a class discussion. Give feedback on the student's own post. Replying to classmates is a separate step that comes later, so don't mention replies.`,
   quiz: `This card is a quiz. For an answer marked not right, help them see why, briefly and without lecturing; for right answers, a short note is enough. Talk only about the questions they answered.`,
@@ -58,7 +60,7 @@ const KINDS: Record<string, string> = {
 
 const VIDEO = `You can also watch the student's video. First check the recording itself: how much of the student is in view, the camera's height and angle, the light (a bright light or window behind them), the background and the sound. If any of these gets in the way, say so first in Delivery, and make it one of the changes in Try next: it matters more than anything else.
 Add a part before "Your next step":
-Delivery: what you saw and heard, with a time (m:ss) for each point: the recording (framing, angle, light), posture, gestures, eye contact with the camera, facial expression, pace, pauses and filler words. Name one thing to keep and one to change. If the student chose focus areas earlier, look at those first. Describe only what you can clearly see at that moment; if the face or hands are out of view or the video cuts away, say so rather than guess. Don't guess at feelings or personal traits.`;
+Delivery: what you saw and heard, with a time (m:ss) for each point: the recording (framing, angle, light), posture, gestures, eye contact with the camera, facial expression, pace, pauses and filler words. Name one thing to keep and one to change. If the student chose focus areas earlier, look at those first. Before you mention gestures or posture, check that the hands and upper body are actually in the frame at that moment. If only the face shows, say gestures and posture can't be seen, and never work them out from what the student says (counting "first, second" isn't a gesture you saw). Describe only what you can clearly see at that moment; if the face is out of view or the video cuts away, say so rather than guess. If the video isn't the student's own recording (someone else's talk, a film clip), say so and don't review it. Don't guess at feelings or personal traits.`;
 
 function cardKind(m: Module): keyof typeof KINDS {
   const k = kindOf(m);
@@ -97,9 +99,11 @@ export function feedbackPrompt(x: FeedbackInput): FeedbackPrompt {
     plain(m.body ?? "").slice(0, 3000),
     m.criteria ? `Done when: ${m.criteria}` : "",
   ].filter(Boolean).join("\n");
+  const ahead = (x.upcoming ?? []).slice(0, 4).map((u) => `- ${u}`).join("\n");
   const picks = (x.picks ?? []).slice(0, 6).map((k) => `- ${k.card}: ${k.picked}`).join("\n");
   const parts = [
     context,
+    ahead ? `Coming up next in the course (mention it when it helps, e.g. where they'll practise what you suggest):\n${ahead}` : "",
     picks ? `What the student picked earlier in the course (their own goals and focus; use it when it's relevant, don't list it back):\n${picks}` : "",
     revision ? `This is a revision. The teacher asked for changes: “${plain(revision.text).slice(0, 1500)}”${x.before?.ai ? `\nYour feedback last time: “${plain(x.before.ai).slice(0, 1500)}”` : ""}\nStart Works well with what improved since then, if anything, and keep to what the teacher asked.` : "",
     "<student_work>",

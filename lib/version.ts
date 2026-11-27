@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.02",
+    date: "2026-11-26",
+    changes: [
+      "AI feedback knows what’s coming next in the course, so it can say where the student will practise what it suggests (“you’ll build your pitch in Week 1”).",
+      "Video feedback checks that the hands and upper body are actually in the frame before it says anything about gestures or posture, and never works them out from what the student says. If the video isn’t the student’s own recording (someone else’s talk, a film clip), it says so instead of reviewing it.",
+    ],
+  },
+  {
     version: "0.3.01",
     date: "2026-11-26",
     changes: [

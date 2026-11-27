@@ -69,6 +69,7 @@ const CASES: Case[] = [
     id: "worry", what: "Week 0 survey: hopes and a real worry",
     check: "Responds to the worry with care and connects it to how the course will help; does not critique the writing or ask them to 'add more detail' to a survey answer.",
     input: { course: F1, lesson: { week: "Week 0", title: "Orient to CaPS", goal: "Meet CaPS and tell us where you’re starting from." }, watchesVideo: false,
+      upcoming: ["Week 1 · Develop a short personal pitch (Everyone develops a one-minute personal pitch.)", "Week 2 · Track practice (Practise your track with your peer group.)"],
       card: card({ title: "Hopes and concerns", body: "What do you hope to get from CaPS? Is anything worrying you about it?" }),
       progress: prog({ output: "I hope to stop freezing in interviews. Honestly I'm scared of recording myself, I hate how I look on camera and I'm worried the others will judge me." }), posts: [] },
   },
