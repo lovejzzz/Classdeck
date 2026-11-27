@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.12",
+    date: "2026-11-26",
+    changes: [
+      "Connecting your own AI: the address AI apps check first (for a sign-in they don’t need) now answers properly instead of with a server error.",
+    ],
+  },
+  {
     version: "0.3.11",
     date: "2026-11-26",
     changes: [
