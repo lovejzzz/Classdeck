@@ -149,10 +149,10 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
 
       {saved && (
         <label className="mt-3 block">
-          <span className="mb-1 block text-[12.5px] font-medium text-ink-2">Model <span className="font-normal text-ink-3">(the ones your key can use, from {meta.company}, most used first)</span></span>
+          <span className="mb-1 block text-[12.5px] font-medium text-ink-2">Model <span className="font-normal text-ink-3">(what your key can use, newest first)</span></span>
           <select value={model} onChange={(e) => void send({ model: e.target.value })} disabled={!list.length || busy} className="field h-9 w-full py-0 text-[13px]">
             {!list.length && <option value={model}>{model || "Loading the models…"}</option>}
-            {ranked.top.length > 0 && <optgroup label="Most used">{ranked.top.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>}
+            {ranked.top.length > 0 && <optgroup label="Suggested">{ranked.top.map((m) => <option key={m.id} value={m.id}>{m.name}{m.role ? ` · ${m.role}` : ""}</option>)}</optgroup>}
             {ranked.more.length > 0 && <optgroup label={`Other models (${ranked.more.length})`}>{ranked.more.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>}
           </select>
           {/* What the picked model is, in the service's own words when it gives them, and whether it can analyze video. */}

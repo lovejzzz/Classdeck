@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.05",
+    date: "2026-11-26",
+    changes: [
+      "Settings → AI suggests models from live information, not old naming patterns: when a key is connected, each model it can use is matched with a public catalog of release dates, prices and makers’ descriptions. Three suggestions come from the last few months: Recommended (the maker’s everyday workhorse), Most thorough (its flagship) and Lowest cost; the rest follow, newest first.",
+      "Each model’s note says what it is in a few words, when it came out, and about what one piece of feedback costs (“≈5¢ a 3-min video”, “≈2¢ a piece of writing”). The fixed price label on the Gemini card is gone.",
+      "A newly connected key starts on the recommended model. Models that make images or video (not feedback) are no longer listed.",
+    ],
+  },
+  {
     version: "0.3.04",
     date: "2026-11-26",
     changes: [

@@ -9,6 +9,7 @@ import { db, save } from "./store";
 import { UPLOAD_DIR, TYPES } from "./uploads";
 import type { AiModel, AiProvider, AiStatus } from "./aimeta";
 import { feedbackPrompt, tidyFeedback, type FeedbackInput } from "./aiprompt";
+import { enrich } from "./catalog";
 import type { Attachment, Course, Module, Progress } from "./types";
 
 // ——— Keys at rest: encrypted with the server's own secret (AI_KEY_SECRET, or a file made once in .data). ———
@@ -86,6 +87,11 @@ async function refusal(r: Response, provider: string): Promise<AiError> {
 // ——— The models each service offers this key, newest first. ———
 
 export async function listModels(provider: AiProvider, key: string): Promise<AiModel[]> {
+  return enrich(provider, await serviceModels(provider, key));
+}
+
+/** The models the service itself lists for this key. */
+async function serviceModels(provider: AiProvider, key: string): Promise<AiModel[]> {
   if (provider === "anthropic") {
     const client = new Anthropic({ apiKey: key });
     const out: AiModel[] = [];

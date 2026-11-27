@@ -2,6 +2,7 @@
 //   npx tsx tests/aiprompt.test.ts
 import { feedbackPrompt, momentsIn, tidyFeedback, type FeedbackInput } from "../lib/aiprompt";
 import type { Module, Progress } from "../lib/types";
+import { rankModels, type AiModel } from "../lib/aimeta";
 
 let passed = 0;
 const failures: string[] = [];
@@ -54,6 +55,29 @@ const mo = momentsIn("From 0:00 to 0:32, the video… um (0:20, 0:01), uh (0:04�
 check("moments: a range counts from its start, repeats once, earliest first, four at most", JSON.stringify(mo) === "[0,1,4,20]", mo);
 check("no times, no moments", momentsIn("Works well: clear.").length === 0, null);
 check("a clock time inside a bigger number isn't a moment", momentsIn("version 10:15:30").length === 0, momentsIn("version 10:15:30"));
+
+// Suggested models from the live catalog (prices, dates, the maker's words), not old naming patterns.
+const day = 864e5, now = Date.UTC(2026, 10, 20);
+const gm = (id: string, daysAgo: number, inP: number, description: string): AiModel => ({ id, name: id, created: now - daysAgo * day, price: { in: inP, out: inP * 5 }, video: true, description });
+const live = rankModels("gemini", [
+  gm("gemini-2.5-pro", 520, 1.25, "Stable release of Gemini 2.5 Pro, our flagship."),
+  gm("gemini-4-neon", 2, 3, "Gemini 4 Neon is a fast, mid-priced model in the Gemini 4 family."),
+  gm("gemini-4-hydrogen", 8, 1.5, "Gemini 4 Hydrogen is the high-efficiency workhorse model of the Gemini 4 family."),
+  gm("gemini-4-argon", 38, 2, "Gemini 4 Argon is Google's flagship reasoning model."),
+  gm("gemini-3.8-flash", 60, 0.5, "Google's most intelligent Flash model."),
+  gm("gemini-3.5-flash-lite", 130, 0.1, "A high-efficiency model from Google."),
+  gm("gemini-3.1-pro-preview", 300, 2, "Preview."),
+]);
+const roles = Object.fromEntries(live.top.map((m) => [m.role, m.id]));
+check("recommended: the maker's workhorse, not an old Pro", roles.Recommended === "gemini-4-hydrogen", roles);
+check("most thorough: the flagship of the current models", roles["Most thorough"] === "gemini-4-argon", roles);
+check("lowest cost: the cheapest current one", roles["Lowest cost"] === "gemini-3.5-flash-lite", roles);
+check("an old model is never suggested", !live.top.some((m) => m.id === "gemini-2.5-pro"), live.top.map((m) => m.id));
+const hy = live.top[0];
+check("its note: what it is (without its name), when, about what a video costs", /^The high-efficiency workhorse/.test(hy.note ?? "") && /Nov 2026/.test(hy.note ?? "") && /¢ a 3-min video/.test(hy.note ?? ""), hy.note);
+check("others follow, newest first", live.more[0].id === "gemini-4-neon", live.more.map((m) => m.id));
+const offline = rankModels("gemini", [{ id: "gemini-3.8-flash", name: "Gemini 3.8 Flash" }, { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" }]);
+check("without the catalog, the family ranking still works", offline.top[0]?.id === "gemini-3.8-flash", offline.top.map((m) => m.id));
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 for (const f of failures) console.log("  ✗ " + f);

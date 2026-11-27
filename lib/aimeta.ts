@@ -10,7 +10,7 @@ export const AI_PROVIDERS: { id: AiProvider; name: string; company: string; keyU
     id: "gemini", name: "Gemini", company: "Google", keyUrl: "https://aistudio.google.com/app/apikey", watchesVideo: true,
     labels: [
       { text: "Analyzes video", tone: "good" }, { text: "Posture & gestures", tone: "good" }, { text: "Eye contact", tone: "good" },
-      { text: "Pace & filler words", tone: "good" }, { text: "Writing", tone: "plain" }, { text: "≈ 4–11¢ per 3-min video", tone: "plain" },
+      { text: "Pace & filler words", tone: "good" }, { text: "Writing", tone: "plain" },
     ],
     keyHint: "Starts with AIza",
     keyNote: "For a class, turn on billing: free keys stop after ~20 feedbacks a day, and Google may use what they’re sent.",
@@ -43,9 +43,13 @@ export type AiStatus = { state: "ready" | "no_credit" | "bad_key" | "error"; at:
 export type AiSetup = { active: AiProvider | null; providers: Partial<Record<AiProvider, { keyTail: string; model?: string; status?: AiStatus }>> };
 
 /** A model as the service lists it: its id and name, and (when the service says) a description and release date. */
-export type AiModel = { id: string; name: string; description?: string; created?: number };
-/** A model as the Settings list shows it: whether it can analyze video, and (the most used ones) what it's good for. */
-export type RankedModel = AiModel & { video: boolean; note?: string };
+export type AiModel = {
+  id: string; name: string; description?: string; created?: number;
+  /** From the live catalog (lib/catalog.ts): US dollars per million tokens in and out, and whether it takes video. */
+  price?: { in: number; out: number }; video?: boolean;
+};
+/** A model as the Settings list shows it: whether it can analyze video, its note, and (the picks) why it's suggested. */
+export type RankedModel = AiModel & { video: boolean; note?: string; role?: "Recommended" | "Most thorough" | "Lowest cost" };
 
 const ver = (s: string) => s.split(/[.-]/).map(Number).reduce((n, x, i) => n + (Number.isFinite(x) ? x / 100 ** i : 0), 0);
 const preview = (id: string) => /preview|exp|latest/.test(id);
@@ -76,18 +80,68 @@ export function noteOf(provider: AiProvider, m: AiModel): string | undefined {
   return [text, m.created ? `released ${MONTH(m.created)}` : ""].filter(Boolean).join(" · ") || undefined;
 }
 
+const DAY = 864e5;
+/** About what one piece of feedback costs: a 3-minute video watched (≈18k tokens in) or a piece of writing read. */
+function costOf(m: AiModel, video: boolean): string | undefined {
+  if (!m.price || (!m.price.in && !m.price.out)) return undefined;
+  const usd = video ? (18000 * m.price.in + 3000 * m.price.out) / 1e6 : (2500 * m.price.in + 1500 * m.price.out) / 1e6;
+  const cents = usd * 100;
+  const amount = cents < 1 ? "under 1¢" : `≈${cents < 10 ? Math.round(cents * 2) / 2 : Math.round(cents)}¢`;
+  return `${amount} ${video ? "a 3-min video" : "a piece of writing"}`;
+}
+/** The first sentence of a description, without the model's own name in front ("Gemini 4 Hydrogen is the …"). */
+function blurb(m: AiModel): string | undefined {
+  const first = m.description?.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\s+/g, " ").trim().split(/(?<=\.)\s/)[0]?.replace(/\.$/, "");
+  if (!first || first.length < 12 || first.toLowerCase() === m.name.toLowerCase()) return undefined;
+  // "Gemini 4 Hydrogen is the high-efficiency workhorse …" → "The high-efficiency workhorse …"
+  const cut = first.replace(/^[A-Z][\w.\- ]{2,40}?\s+(is|are)\s+(?=(an?|the|\w+['’]s)\s)/, "");
+  // Its first clause: what it is. What it's "built for" (coding, agents…) is for developers, not teachers.
+  const clause = cut.split(/,\s/)[0].length >= 20 ? cut.split(/,\s/)[0] : cut;
+  const text = clause.charAt(0).toUpperCase() + clause.slice(1);
+  return text.length > 90 ? `${text.slice(0, 87)}…` : text;
+}
+
 /**
- * The models to offer, most used first: the newest stable release of each provider's main models; then every other
- * model (stable ones before previews). Each has a note, from the service when it gives one. Gemini models analyze
- * video; Claude and ChatGPT read only.
+ * The models to offer. With the live catalog: from the models released in the last five months, a recommended one
+ * (the maker's everyday workhorse), the most thorough (its flagship) and the lowest cost; then every other model,
+ * newest first. Each note says what it is, when it came out, and about what a piece of feedback costs. Without the
+ * catalog (offline), the newest release of each main family, as before.
  */
 export function rankModels(provider: AiProvider, models: AiModel[]): { top: RankedModel[]; more: RankedModel[] } {
-  const video = provider === "gemini";
+  const videoOf = (m: AiModel) => m.video ?? provider === "gemini";
+  const ranked = (m: AiModel, role?: RankedModel["role"]): RankedModel => {
+    const video = videoOf(m);
+    const note = m.price ? [blurb(m), m.created ? MONTH(m.created) : "", costOf(m, video)].filter(Boolean).join(" · ") : noteOf(provider, m);
+    return { ...m, video, note, role };
+  };
+  const live = models.filter((m) => m.price && m.created && !preview(m.id) && !/tts|image|transcribe|robotics|computer|embedding|audio|live|customtools/.test(m.id));
+  if (live.length) {
+    const newestAt = Math.max(...live.map((m) => m.created!));
+    const recent = live.filter((m) => newestAt - m.created! <= 150 * DAY).sort((a, b) => b.created! - a.created!);
+    // The maker's own words, strongest first: its "workhorse" before a model merely "mid-priced".
+    const said = (words: string[]) => words.flatMap((w) => recent.filter((m) => new RegExp(`\\b${w}\\b`, "i").test(m.description ?? "")));
+    const byPrice = [...recent].sort((a, b) => a.price!.in - b.price!.in);
+    const recommended = said(["workhorse", "everyday", "balanced", "versatile", "mid-tier", "mid-priced"])[0] ?? byPrice[Math.floor((byPrice.length - 1) / 2)];
+    // The most thorough: of those its maker calls its best, the one that costs most ("most intelligent Flash" isn't the top).
+    const best = said(["most capable", "most intelligent", "flagship", "frontier"]).filter((m) => m !== recommended);
+    const thorough = [...best].sort((a, b) => b.price!.in - a.price!.in || best.indexOf(a) - best.indexOf(b))[0] ?? [...byPrice].reverse().find((m) => m !== recommended);
+    const cheapest = byPrice.find((m) => m !== recommended && m !== thorough && m.price!.in < (recommended?.price?.in ?? Infinity));
+    const picks: [AiModel | undefined, RankedModel["role"]][] = [[recommended, "Recommended"], [thorough, "Most thorough"], [cheapest, "Lowest cost"]];
+    const top = picks.flatMap(([m, role]) => (m ? [ranked(m, role)] : []));
+    const more = models.filter((m) => !top.some((x) => x.id === m.id))
+      .sort((a, b) => Number(preview(a.id)) - Number(preview(b.id)) || (b.created ?? 0) - (a.created ?? 0))
+      .map((m) => ranked(m));
+    return { top, more };
+  }
+  return familyRank(provider, models, ranked);
+}
+
+/** Offline: the newest stable release of each provider's main model families first. */
+function familyRank(provider: AiProvider, models: AiModel[], ranked: (m: AiModel) => RankedModel): { top: RankedModel[]; more: RankedModel[] } {
   const picks: RegExp[] =
     provider === "gemini" ? [/^gemini-(\d+(?:\.\d+)?)-flash(?:-preview[\w-]*)?$/, /^gemini-(\d+(?:\.\d+)?)-pro(?:-preview[\w-]*)?$/, /^gemini-(\d+(?:\.\d+)?)-flash-lite(?:-preview[\w-]*)?$/]
     : provider === "anthropic" ? [/^claude-sonnet-(\d+(?:-\d+)?)(?:-\d{8})?$/, /^claude-opus-(\d+(?:-\d+)?)(?:-\d{8})?$/, /^claude-haiku-(\d+(?:-\d+)?)(?:-\d{8})?$/]
     : [/^gpt-(\d+(?:\.\d+)?)$/, /^gpt-(\d+(?:\.\d+)?)-mini$/];
-  const ranked = (m: AiModel): RankedModel => ({ ...m, video, note: noteOf(provider, m) });
   const top: RankedModel[] = [];
   for (const re of picks) {
     const m = newest(models, re);
