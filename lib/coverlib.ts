@@ -7,6 +7,7 @@ export type CourseCover = NonNullable<Course["cover"]>;
 
 /** The paper motifs, each with the words in a course's name that call for it. */
 export const MOTIFS: { id: string; name: string; words: RegExp }[] = [
+  { id: "cards", name: "A hand of cards", words: /questhand|\bcards?\b|\bdeck\b|card game|board game|game design/i },
   { id: "leaf", name: "Leaves and sun", words: /ecolog|ecosystem|biolog|plant|nature|environment|climate|garden|earth science|life science|animal|forest|river|wetland|ocean|marine|water|weather|field study|wildlife|farm/i },
   { id: "flask", name: "Lab flask", words: /chemi|\blabs?\b|science|experiment|molecul/i },
   { id: "atom", name: "Atom", words: /physic|atom|quantum|energy|electric|astronom|space/i },

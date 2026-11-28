@@ -120,6 +120,14 @@ function scene(motif: string, t: string, seed: number): string {
     case "heart":
       s = hills(80) + rot(tilt, 80, 46, cut(`<path d="M80 72S50 54 50 36a14 14 0 0 1 30-6 14 14 0 0 1 30 6c0 18-30 36-30 36z" fill="${deep}"/>`) + `<path d="M58 44h10l4-8 6 16 4-8h12" stroke="${CREAM}" stroke-width="2.4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`);
       break;
+    case "cards": {
+      // A hand of three paper cards, fanned from the bottom: a band of colour on top and a few lines each.
+      const card = (band: string) => `<rect x="63" y="20" width="34" height="50" rx="4" fill="${CREAM}"/><path d="M67 20h26a4 4 0 0 1 4 4v6H63v-6a4 4 0 0 1 4-4z" fill="${band}"/>`
+        + [0, 1, 2].map((i) => `<rect x="68" y="${37 + i * 7}" width="${[24, 18, 21][i]}" height="2.6" rx="1.3" fill="${soft}"/>`).join("");
+      s = hills(84) + cut(`<circle cx="${122 + r() * 10}" cy="22" r="8" fill="${sun}"/>`)
+        + [[-17, mid], [17, soft], [0, deep]].map(([a, band]) => rot(Number(a) + tilt * 0.4, 80, 82, cut(card(String(band)), 2))).join("");
+      break;
+    }
     default: // book
       s = hills(82) + rot(tilt, 80, 50, cut(`<path d="M80 30c-10-6-24-8-38-6v48c14-2 28 0 38 6z" fill="${CREAM}"/><path d="M80 30c10-6 24-8 38-6v48c-14-2-28 0-38 6z" fill="${pale}"/>`, 2.2)
         + [0, 1, 2].map((i) => `<rect x="${50}" y="${36 + i * 9}" width="22" height="2.6" rx="1.3" fill="${soft}"/><rect x="${88}" y="${36 + i * 9}" width="22" height="2.6" rx="1.3" fill="${mid}"/>`).join("") + `<rect x="78.6" y="30" width="2.8" height="48" fill="${deep}"/>`);

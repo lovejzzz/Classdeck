@@ -487,12 +487,12 @@ export function Deck({ course, onRefresh, progress = {}, choices = {}, readOnly 
   async function updateCollected(m: Module, quiet = false): Promise<boolean> {
     const r = await fetch("/api/library", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: m.collected, module: m }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!r.ok) {
-      if (!quiet) toast(r.error ?? "Couldn’t save it to My cards", { icon: "x", tone: "bad" });
+      if (!quiet) toast(r.error ?? "Couldn’t save it to Saved cards", { icon: "x", tone: "bad" });
       return false;
     }
     await loadLibrary(true);
     if (openedAs.current?.id === m.id) openedAs.current = { id: m.id, was: lookOfContent(m) };
-    toast(`Saved the changes to “${m.title || "the card"}” in My cards`, { icon: "star" });
+    toast(`Saved the changes to “${m.title || "the card"}” in Saved cards`, { icon: "star" });
     return true;
   }
 
@@ -506,7 +506,7 @@ export function Deck({ course, onRefresh, progress = {}, choices = {}, readOnly 
     if (prev && prev.id !== id) {
       const m = find(prev.id);
       if (m?.collected && lookOfContent(m) !== prev.was && !readOnly) {
-        ask({ title: `Save your changes to My cards?`, body: `“${m.title || "This card"}” is in My cards. Save these changes there too, so the next copy you put down has them? Copies already in your courses stay as they are.`, confirm: "Save to My cards", cancel: "Not now" })
+        ask({ title: `Update the saved copy?`, body: `“${m.title || "This card"}” is in Saved cards. Save these changes there too, so the next copy you put down has them? Copies already in your courses stay as they are.`, confirm: "Save to Saved cards", cancel: "Not now" })
           .then((yes) => { if (yes) updateCollected(m); });
       }
     }
@@ -576,7 +576,7 @@ export function Deck({ course, onRefresh, progress = {}, choices = {}, readOnly 
       }],
       ["Duplicate lesson", () => duplicate("duplicateLesson", l.id, `“${l.title}”`)],
       ...(course.weeks.reduce((n, x) => n + x.lessons.length, 0) > 1 ? [["Delete lesson…", () => void remove("lesson", l.id, l.title, l.modules.filter((m) => m.type !== "group").length)] as [string, () => void]] : []),
-      ...(l.modules.length ? [["Save lesson to my cards", () => saveToLibrary(null, l)] as [string, () => void]] : []),
+      ...(l.modules.length ? [["Save lesson to Saved cards", () => saveToLibrary(null, l)] as [string, () => void]] : []),
       ["—", () => {}],
       [`Add a lesson to ${w.title.split(" · ")[0]}`, () => addLesson(w.id)],
       [`Rename ${w.title.split(" · ")[0]}`, () => setRenamingWeek(w.id)],

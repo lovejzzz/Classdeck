@@ -65,7 +65,7 @@ export default function Home() {
             note={codeParam
               ? <p className="rounded-xl bg-white px-4 py-3 text-[13.5px] text-ink-2 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">Sign in, or make an account, to join the class with code <span className="font-mono font-medium tracking-[0.15em] text-ink">{codeParam}</span>.</p>
               : <p className="text-center text-[13.5px] text-ink-2">Sign in to your courses, or make an account to start one. Invited to a class? Open the link in your invitation email.</p>} />
-          <Link href="/teach/demo" className="mt-6 block text-center text-[12.5px] text-ink-3 hover:text-ink">Or look around a demo course first, no account needed →</Link>
+          <Link href="/teach/demo" className="mt-6 block text-center text-[12.5px] text-ink-3 hover:text-ink">How to use Questhand →</Link>
           {me.kind === "student" && me.courseId && (
             // A student signed in the old way (before accounts) can still get to their board.
             <Link href={`/learn/${me.courseId}/${me.studentId}`} className="mt-6 flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-[13px] text-ink-2 shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:text-ink">

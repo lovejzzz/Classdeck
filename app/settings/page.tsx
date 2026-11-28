@@ -163,22 +163,21 @@ function StudentSettings({ studying }: { studying: Studying[] }) {
   );
 }
 
-/** The tools students can use on cards: the teacher's AI (and what it unlocks) first, then every other tool. */
+/** The teacher's AI first, then every other tool, to try here. */
 function ToolsTab() {
   const { connectors, refresh, loaded, canAdd } = useConnectors();
-  const ai = connectors.find((c) => c.usesAi);
   const others = connectors.filter((c) => !c.usesAi);
   const [shelf, setShelf] = useState<string>("All");
   const [open, setOpen] = useState<string | null>(null);
   const shown = others.filter((c) => shelf === "All" || c.category === shelf);
   return (
     <div className="mt-6 space-y-8">
-      <AiSettings aiTools={ai?.actions ?? []} />
+      <AiSettings />
 
       <section>
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h2 className="text-[16px] font-semibold">Other tools</h2>
-          <p className="text-[13px] text-ink-3">Free to use, no key needed. Add them to a card in the card editor; students use them right on the card.</p>
+          <p className="text-[13px] text-ink-3">Free to use, no key needed. Try them here.</p>
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {["All", ...CATEGORIES.filter((cat) => others.some((c) => c.category === cat))].map((cat) => (

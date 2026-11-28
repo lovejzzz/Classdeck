@@ -51,7 +51,7 @@ export function makeCourse(ownerId: string, title: string, weeks: Week[], extra:
   return course;
 }
 
-type StarterLesson = { title: string; modules: Module[]; elective?: boolean };
+type StarterLesson = { title: string; goal?: string; modules: Module[]; elective?: boolean };
 type Starter = { title: string; subtitle?: string; electiveMin?: number; weeks: { title: string; lessons: StarterLesson[] }[] };
 
 /**
@@ -63,7 +63,7 @@ export function giveStarterCourse(ownerId: string): Course {
   const weeks = s.weeks.map((w) => cloneWeek({
     id: "",
     title: w.title,
-    lessons: w.lessons.map((l): Lesson => ({ id: "", title: l.title, modules: l.modules, branches: {}, elective: l.elective })),
+    lessons: w.lessons.map((l): Lesson => ({ id: "", title: l.title, ...(l.goal ? { goal: l.goal } : {}), modules: l.modules, branches: {}, elective: l.elective })),
   }, w.title));
   const course = makeCourse(ownerId, s.title, weeks, { subtitle: s.subtitle, electiveMin: s.electiveMin });
   // A sign-up poll's groups exist from the start, so cards that use them (or go to one of them) find them.

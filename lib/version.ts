@@ -3,6 +3,21 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.23",
+    date: "2026-11-27",
+    changes: [
+      "A new Questhand 101, the short course on Questhand made in Questhand: three weeks, written for the site as it is now (covers, the new Settings, AI feedback, inviting), with short screen clips of making a card, drawing a branch, a card group and its scores, Student View, giving feedback, picking a cover and inviting a class. New teachers start with it.",
+      "“How to use Questhand” on the sign-in page opens it as the demo course, with a class of six part-way through: answers that dealt different cards, a quiz group that dealt by score, a card that waited for one student in a later lesson, open answers with AI feedback, one marked Looks good and one asked to revise.",
+      "Ticking “Make groups from the answers” on a poll no longer quietly drops the cards its answers dealt: each becomes a card for that answer’s group, so it still reaches the same students.",
+      "A card group’s “Branch by score on the map” now adds its score ranges, ready to wire. Dragging a score range to a card says “Deal it by this score”, not “by this answer”.",
+      "After “+ Option”, what you type goes into the new option.",
+      "Scheduling lessons starts from the days your class already meets.",
+      "A new paper cover, a hand of cards, for Questhand 101 and for courses about cards or games. Photo search for a cover tries fewer words when very specific ones find little, and photos that no longer load leave the grid.",
+      "Settings → AI: a key too short to be one says so instead of waiting silently. The page no longer promises tools students use on cards (they were taken off cards earlier); AI is for feedback and covers.",
+      "“Saved cards” everywhere (it was “My cards” in some places).",
+    ],
+  },
+  {
     version: "0.3.22",
     date: "2026-11-27",
     changes: [

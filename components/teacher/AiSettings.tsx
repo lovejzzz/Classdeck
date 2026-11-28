@@ -9,16 +9,6 @@ type Reply = { ok: boolean; error?: string; ai?: AiSetup; models?: AiModel[] };
 const post = (body: object): Promise<Reply> =>
   fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
 
-/** What each AI card tool does, in a few words (the tool list itself only names them). */
-const TOOL_WHAT: Record<string, string> = {
-  ask: "Hints about the card, not answers",
-  feedback: "Feedback on a draft before handing in",
-  quizme: "Three practice questions on the card",
-  simplify: "Rewrites hard text in plain words",
-  draftquiz: "Writes quiz questions for a card",
-  summarize: "Themes and mix-ups in a discussion",
-};
-
 /** A saved key's state: a short word by the title, and (when something's wrong) what to do, in a line below. */
 function statusOf(status: AiStatus | undefined, busy: boolean, connected: boolean): { dot: string; word: string; more?: string } {
   if (busy) return { dot: "bg-ink-3 animate-pulse", word: "Checking…" };
@@ -34,7 +24,7 @@ function statusOf(status: AiStatus | undefined, busy: boolean, connected: boolea
  * its key (checked and saved as soon as it's pasted), pick a model (saved as soon as it's picked). The light says
  * whether the key has credit.
  */
-export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: what a connected AI unlocks on cards. */ aiTools?: { id: string; title: string; teacherOnly?: boolean }[] }) {
+export function AiSettings() {
   const [setup, setSetup] = useState<AiSetup | null | undefined>(undefined);
   const [teacher, setTeacher] = useState(true);
   const [provider, setProvider] = useState<AiProvider>("gemini");
@@ -43,7 +33,6 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
   const [replacing, setReplacing] = useState(false);
   const [models, setModels] = useState<Partial<Record<AiProvider, AiModel[]>>>({});
   const [busy, setBusy] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -77,7 +66,13 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
     setDrafts((d) => ({ ...d, [provider]: v }));
     clearTimeout(timer.current);
     const key = v.trim();
-    if (key.length < 20) return;
+    setError(null);
+    // A real key is long; something shorter gets a word after a pause instead of silence. ("claude-cli" stands in for
+    // a Claude key on a local server, for trying the AI features; the live site refuses it.)
+    if (key.length < 20 && key !== "claude-cli") {
+      if (key) timer.current = setTimeout(() => setError("That’s shorter than an API key. Paste the whole key."), 1200);
+      return;
+    }
     timer.current = setTimeout(async () => {
       if (await send({ key })) { setDrafts((d) => ({ ...d, [provider]: "" })); setReplacing(false); }
     }, 700);
@@ -110,6 +105,7 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
     { text: "Writing", on: true, tip: "Feedback on what students write" },
     { text: "Recordings", on: true, tip: "Feedback on what students say in a recording (from its transcript)" },
     { text: "Video", on: video, tip: video ? "Watches students’ videos: framing, posture, gestures, eye contact, pace" : "Reads what students said in a recording, but can’t watch the video" },
+    { text: "Covers", on: true, tip: provider === "gemini" ? "Picks paper covers from what each course teaches, and draws one" : "Picks paper covers from what each course teaches" },
   ];
   return (
     <section id="ai" className="card p-6">
@@ -118,7 +114,7 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
         <h2 className="flex-1 text-[16px] font-semibold">AI</h2>
         <span className="flex items-center gap-1.5 text-[12.5px] text-ink-2" role="status"><span className={`h-2 w-2 rounded-full ${st.dot}`} />{st.word}</span>
       </div>
-      <p className="mt-1 text-[13px] text-ink-3">Your own AI account, for AI feedback and card tools in all your courses.</p>
+      <p className="mt-1 text-[13px] text-ink-3">Your own AI account, for AI feedback and course covers in all your courses.</p>
 
       {/* One switcher (each service keeps its own saved key) and, beside it, what the picked service does. */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
@@ -141,25 +137,8 @@ export function AiSettings({ aiTools = [] }: { /** The AI tutor tool's actions: 
               <span aria-label={c.on ? undefined : `No ${c.text.toLowerCase()}`}>{c.text}</span>
             </li>
           ))}
-          <li>
-            <button onClick={() => setToolsOpen((o) => !o)} aria-expanded={toolsOpen} className="press flex items-center gap-1.5 text-ink hover:text-[#3d4796]">
-              <span className="grid h-4 w-4 place-items-center rounded-full bg-ok text-white"><Icon name="check" size={9} /></span>
-              {aiTools.length} card tools
-              <Icon name="chevron" size={12} className={`text-ink-3 transition-transform ${toolsOpen ? "rotate-180" : ""}`} />
-            </button>
-          </li>
         </ul>
       </div>
-      {toolsOpen && (
-        <ul className="mt-3 grid gap-x-6 gap-y-2 rounded-xl bg-[#fafaf9] px-4 py-3 text-[13px] sm:grid-cols-2">
-          {aiTools.map((t) => (
-            <li key={t.id}>
-              <span className="text-ink">{t.title}</span>
-              <span className="block text-[12px] text-ink-3">{TOOL_WHAT[t.id] ? `${TOOL_WHAT[t.id]} · ` : ""}{t.teacherOnly ? "For you, in the card editor" : "Students use it on a card"}</span>
-            </li>
-          ))}
-        </ul>
-      )}
 
       <div className="mt-3 grid gap-2.5 md:grid-cols-2">
         <div>

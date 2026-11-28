@@ -1,10 +1,10 @@
 {
- "exportedAt": 1795591939161,
+ "exportedAt": 1795832251654,
  "courses": {
   "id": "demo",
-  "title": "Mission to Mars",
-  "createdAt": 1795591935563,
-  "joinCode": "U9GM9A",
+  "title": "Questhand 101",
+  "createdAt": 1795829480275,
+  "joinCode": "CN9M22",
   "access": {
    "joinOpen": true,
    "selfJoin": "approve"
@@ -18,28 +18,28 @@
   },
   "students": [
    {
-    "id": "s-vny9yoq",
-    "name": "Ava Chen"
+    "id": "s-maya",
+    "name": "Maya Lin"
    },
    {
-    "id": "s-c7j45cl",
-    "name": "Leo Park"
+    "id": "s-omar",
+    "name": "Omar Haddad"
    },
    {
-    "id": "s-yjd0k1q",
-    "name": "Mia Rossi"
+    "id": "s-ana",
+    "name": "Ana Souza"
    },
    {
-    "id": "s-rlzns3t",
-    "name": "Noah Kim"
-   },
-   {
-    "id": "s-0gv4pys",
-    "name": "Zara Ali"
-   },
-   {
-    "id": "s-fj99uev",
+    "id": "s-sam",
     "name": "Sam Okafor"
+   },
+   {
+    "id": "s-lena",
+    "name": "Lena Fischer"
+   },
+   {
+    "id": "s-kai",
+    "name": "Kai Tanaka"
    }
   ],
   "skills": [],
@@ -70,7 +70,7 @@
    }
   ],
   "groups": [],
-  "currentLessonId": "l-y2pjian",
+  "currentLessonId": "l-wb6cgkr",
   "enabledConnectors": [
    "wikipedia",
    "dictionary",
@@ -78,252 +78,188 @@
   ],
   "weeks": [
    {
-    "id": "w-fxjafxk",
-    "title": "Week 1 · Launch training",
+    "id": "w-pwcu5gp",
+    "title": "Week 1 · Cards",
     "lessons": [
      {
-      "id": "l-y2pjian",
-      "title": "Welcome aboard, cadet",
+      "id": "l-wb6cgkr",
+      "title": "Welcome to Questhand",
+      "branches": {},
+      "goal": "Know what a card, a lesson and the Map are",
+      "date": "2026-11-20",
       "modules": [
        {
-        "id": "m-lr2nei9",
-        "kind": "content",
-        "title": "Your mission briefing",
-        "minutes": 3,
-        "body": "Good morning, cadet. 🚀\n\nIn three weeks our crew leaves for **Mars**, the red planet. Before then you'll train: how far it is, what to pack, how to breathe and drink when there's no air or rain, and how to build a base.\n\nEvery card is one step of your training. Some cards only appear when you need them, so your board won't look exactly like your friend's.\n\nReady? Pick your crew job next.",
-        "attachments": [
-         {
-          "id": "a-6n6aufq",
-          "kind": "image",
-          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/Mars_Valles_Marineris.jpeg/960px-Mars_Valles_Marineris.jpeg",
-          "name": "Mars, with the canyon Valles Marineris across the middle",
-          "credit": "NASA / JPL / USGS"
-         },
-         {
-          "id": "a-ez3uo4j",
-          "kind": "link",
-          "url": "https://science.nasa.gov/mars/",
-          "name": "NASA: All about Mars"
-         }
-        ],
+        "id": "m-m2g2zh9",
         "type": "read",
+        "title": "A course is a deck of cards",
+        "body": "Each lesson is a short row of cards. A card is one small thing to do: read, watch, answer, make or discuss.\n\nYour students play one card at a time and always see what comes next. You see every card at once, on the **Map**.\n\nThis course is made in Questhand, so you'll learn it the way your students will. Work through the cards in order.",
         "audience": {
          "kind": "all"
         },
-        "tools": []
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 2
        },
        {
-        "id": "m-706fg3x",
+        "id": "m-21h70bo",
+        "type": "practice",
+        "title": "Where are you starting from?",
+        "body": "There's no wrong answer. It only changes which card you get next.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
         "kind": "choice",
-        "title": "Pick your crew job",
         "poll": true,
-        "signup": {
-         "max": 3,
-         "names": true
-        },
-        "minutes": 1,
-        "body": "Every crew needs all four jobs. Up to three cadets per job, so pick fast!",
         "questions": [
          {
-          "id": "q",
-          "kind": "choice",
-          "text": "Which job do you want on the crew?",
+          "id": "q-1",
+          "text": "How much have you used online course tools?",
           "options": [
-           "Pilot",
-           "Engineer",
-           "Botanist",
-           "Medic"
-          ]
-         }
-        ],
-        "type": "practice",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-nnpkijh",
-        "kind": "choice",
-        "title": "How far is Mars?",
-        "minutes": 2,
-        "body": "Mars is our neighbour, but neighbours in space are a long way apart.",
-        "questions": [
-         {
-          "id": "q",
-          "kind": "choice",
-          "text": "How long does the trip to Mars take?",
-          "options": [
-           "About 7 months",
-           "About 3 days",
-           "About 10 years"
+           "Never, this is new to me",
+           "A little",
+           "A lot"
           ],
-          "answer": 0,
-          "explain": "With today's rockets it takes about 7 months, when Earth and Mars are on the same side of the Sun.",
           "next": [
+           [
+            "m-yuwdl6f",
+            "m-agv10hw"
+           ],
            null,
-           "m-sf03u4w",
-           "m-sf03u4w"
+           "m-8om0p6s"
           ]
          }
-        ],
-        "type": "practice",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
+        ]
        },
        {
-        "id": "m-sf03u4w",
-        "kind": "content",
-        "title": "Space is BIG",
-        "minutes": 2,
-        "body": "Not quite! The Moon is 3 days away, but Mars is about **150 times further**.\n\nIf you drove a car to Mars at motorway speed without stopping, you'd arrive in about **100 years**. A rocket is much faster, but the trip still takes about **7 months**.\n\nPack some good books. 📚",
+        "id": "m-yuwdl6f",
         "type": "read",
+        "title": "New here? Two words are enough",
+        "body": "**Card**: one small thing for a student to do.\n\n**Lesson**: a row of cards, played in order.\n\nThat's all you need to start. Everything else in this course is a way to make cards do more.",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-8om0p6s",
+        "type": "read",
+        "title": "Coming from another tool?",
+        "body": "Two things work differently here.\n\n1. **Everything is a card.** A lesson is quick to build and easy to change: drag cards on the Map to rearrange them.\n2. **Answers deal cards.** What a student gets next can depend on what they just answered. No rules to set up: you draw a line from the answer to the card.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-jtj0mn6",
+        "type": "read",
+        "title": "What your students see",
+        "body": "Students open a course to **Today**: the one card to play now, big, with today's lesson under it. Small tags beside it say what else needs them: a card to revise, one overdue or due soon, or an elective to choose.\n\n- **All cards** shows every week, with the cards they've done face up.\n- **My board** keeps their own work in one place.\n\nOn the Map you see each card the way students see its face.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 2
+       },
+       {
+        "id": "m-0cj6cr9",
+        "type": "practice",
+        "title": "Quick check",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-2",
+          "text": "Where do you see every card of the course at once?",
+          "options": [
+           "Settings",
+           "Student View",
+           "The Map"
+          ],
+          "answer": 2,
+          "explain": "The Map shows each lesson as a row of cards, with lines from answers to the cards they deal."
+         }
+        ]
        }
-      ],
-      "branches": {},
-      "goal": "Know where we're going, how far it is, and which job you'll do on the crew.",
-      "session": {
-       "minutes": 50,
-       "agenda": [
-        {
-         "label": "Mission briefing",
-         "minutes": 10
-        },
-        {
-         "label": "Pick your crew job",
-         "minutes": 10
-        },
-        {
-         "label": "How far is Mars?",
-         "minutes": 15
-        },
-        {
-         "label": "Crew huddle",
-         "minutes": 15
-        }
-       ]
-      },
-      "date": "2026-11-18"
+      ]
      },
      {
-      "id": "l-v7kdyzd",
-      "title": "Pack the rocket",
+      "id": "l-wd0i8n0",
+      "title": "Cards, the building blocks",
+      "branches": {},
+      "goal": "Make a Content card and a Question card",
+      "date": "2026-11-23",
       "modules": [
        {
-        "id": "m-yg6xo33",
-        "kind": "choice",
-        "title": "What goes on board?",
-        "minutes": 2,
-        "body": "Every kilogram costs fuel, so only take what you need.",
-        "questions": [
-         {
-          "id": "q",
-          "kind": "multi",
-          "text": "Tick everything the crew needs.",
-          "options": [
-           "Oxygen",
-           "Water",
-           "Food",
-           "Your bicycle",
-           "A spare spacesuit"
-          ],
-          "answerSet": [
-           0,
-           1,
-           2,
-           4
-          ],
-          "explain": "The bicycle stays home: there are no roads on Mars (yet)."
-         }
-        ],
-        "type": "practice",
+        "id": "m-cjg6wv1",
+        "type": "read",
+        "title": "Two kinds of card",
+        "body": "**Content** cards hold something to read, watch or listen to.\n\n**Question** cards ask something back. Under **How students answer**, pick one of four:\n\n- **Choices**: with a right answer, or a poll with none.\n- **Open answer**: students hand in words, a drawing, a recording or a file.\n- **Worksheet**: they fill in the page you wrote.\n- **Discussion**: a feed of posts and replies.",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
+        "attachments": [],
+        "kind": "content",
+        "minutes": 2
        },
        {
-        "id": "m-k2l2r2h",
-        "kind": "choice",
-        "title": "Countdown",
-        "minutes": 2,
-        "questions": [
-         {
-          "id": "q",
-          "kind": "order",
-          "text": "Put the launch steps in order.",
-          "options": [
-           "Close the hatch",
-           "Check the fuel",
-           "Start the engines",
-           "Lift off!"
-          ]
-         }
-        ],
+        "id": "m-wrpgx4f",
+        "type": "read",
+        "title": "Make a card",
+        "body": "On the Map, press **+ Card** on a lesson's row and pick **Content** or **Question**. The card's panel opens on the right: give it a title and what students should do.\n\nEverything saves as you type. Close the panel (or press Esc) and the card is on the map, its face already showing what's in it.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
         "attachments": [
          {
-          "id": "a-8tdgcki",
-          "kind": "image",
-          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Space_Shuttle_Columbia_launching.jpg/960px-Space_Shuttle_Columbia_launching.jpg",
-          "name": "A space shuttle lifting off",
-          "credit": "NASA"
+          "id": "a-q101-make-card",
+          "kind": "video",
+          "url": "/samples/q101/make-card.mp4",
+          "name": "Making a card",
+          "duration": 12
          }
         ],
-        "type": "practice",
-        "body": "",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": []
+        "kind": "content",
+        "minutes": 2
        },
        {
-        "id": "m-pvs61ja",
-        "kind": "choice",
-        "title": "One word",
-        "minutes": 1,
-        "questions": [
-         {
-          "id": "q",
-          "kind": "short",
-          "text": "Which gas do your lungs need? (one word)",
-          "options": [],
-          "accept": [
-           "oxygen",
-           "O2"
-          ]
-         }
-        ],
-        "type": "practice",
-        "body": "",
+        "id": "m-6g7dpej",
+        "type": "group",
+        "title": "Card quiz",
+        "body": "Three quick questions. Your score decides which card you get next.",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-dgy5qek",
+        "attachments": [],
         "kind": "group",
-        "title": "Fuel check",
         "members": [
-         "m-1iizdkb",
-         "m-2ckwc6d",
-         "m-ubvofxs"
+         "m-xhz32yb",
+         "m-6uu5g7p",
+         "m-lwyavnq"
         ],
         "bands": [
          {
           "min": 0,
-          "next": "m-gsmh3wr"
+          "next": "m-6sidjy5"
          },
          {
           "min": 67,
@@ -331,377 +267,922 @@
          },
          {
           "min": 100,
-          "next": "m-44kf2df"
+          "next": "m-2fen2fw"
          }
-        ],
-        "type": "group",
-        "body": "",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
+        ]
        },
        {
-        "id": "m-1iizdkb",
-        "kind": "choice",
-        "title": "Closest to the Sun",
-        "questions": [
-         {
-          "id": "q",
-          "kind": "choice",
-          "text": "Which planet is closest to the Sun?",
-          "options": [
-           "Mercury",
-           "Mars",
-           "Earth"
-          ],
-          "answer": 0
-         }
-        ],
+        "id": "m-xhz32yb",
         "type": "practice",
+        "title": "Card quiz 1",
         "body": "",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-2ckwc6d",
+        "attachments": [],
         "kind": "choice",
-        "title": "The red planet",
         "questions": [
          {
-          "id": "q",
-          "kind": "choice",
-          "text": "Why does Mars look red?",
+          "id": "q-3",
+          "text": "You want students to watch a short video. Which card?",
           "options": [
-           "Its dust has rust in it",
-           "It's very hot",
-           "It's covered in lava"
+           "A poll",
+           "A Content card",
+           "A Discussion card"
           ],
-          "answer": 0,
-          "explain": "Mars dust is full of iron oxide: rust!"
+          "answer": 1,
+          "explain": "A Content card holds words, pictures, videos, links and recordings."
          }
-        ],
+        ]
+       },
+       {
+        "id": "m-6uu5g7p",
         "type": "practice",
+        "title": "Card quiz 2",
         "body": "",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-ubvofxs",
+        "attachments": [],
         "kind": "choice",
-        "title": "Moons",
         "questions": [
          {
-          "id": "q",
-          "kind": "choice",
-          "text": "How many moons does Mars have?",
+          "id": "q-4",
+          "text": "Students should vote, and no answer is right. Which card?",
           "options": [
-           "Two",
-           "None",
-           "Twelve"
+           "Choices, with Has a right answer: No",
+           "Open answer",
+           "Worksheet"
           ],
           "answer": 0,
-          "explain": "Two small ones, Phobos and Deimos. Phobos is only about 22 km across."
+          "explain": "A poll is a Choices card with no right answer. After voting, students see how the class voted."
          }
-        ],
+        ]
+       },
+       {
+        "id": "m-lwyavnq",
         "type": "practice",
+        "title": "Card quiz 3",
         "body": "",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-5",
+          "text": "A student should write a paragraph or upload a photo of their work. Which card?",
+          "options": [
+           "Content",
+           "Open answer",
+           "Choices"
+          ],
+          "answer": 1,
+          "explain": "An Open answer card takes words, a drawing, a recording or a file."
+         }
+        ]
        },
        {
-        "id": "m-gsmh3wr",
-        "kind": "content",
-        "title": "Refuel: planet facts",
-        "minutes": 3,
-        "body": "Your tank's a bit low, cadet. Top up with these:\n\n- **Mercury** is the closest planet to the Sun. Earth is third, Mars is fourth.\n- Mars is red because its dust has **rust** (iron oxide) in it.\n- Mars has **two** small moons: Phobos and Deimos.\n\nThen you're cleared for the next lesson.",
-        "attachments": [
-         {
-          "id": "a-ig2uryf",
-          "kind": "image",
-          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5c/Phobos_colour_2008.jpg/960px-Phobos_colour_2008.jpg",
-          "name": "Phobos, the bigger of Mars's two moons",
-          "credit": "NASA / JPL-Caltech / University of Arizona"
-         }
-        ],
+        "id": "m-6sidjy5",
         "type": "read",
+        "title": "The card kinds, side by side",
+        "body": "- **Content**: something to read, watch or listen to.\n- **Choices with a right answer**: checked at once. One answer, several, an order, or a short typed answer.\n- **Choices with no right answer**: a poll.\n- **Open answer**: students hand in work, and you give feedback.\n- **Worksheet**: a page to fill in, alone, in a group or as a class.\n- **Discussion**: posts and replies.\n\nYou got this card because of your quiz score. Students who scored higher went straight on.",
         "audience": {
          "kind": "all"
         },
-        "tools": []
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 2
        },
        {
-        "id": "m-44kf2df",
-        "kind": "content",
-        "title": "Bonus: the tallest volcano",
-        "minutes": 2,
-        "body": "Full tank! 🌋 Here's a reward fact: Mars has **Olympus Mons**, the tallest volcano in the solar system. It's about **22 km** high, nearly three times taller than Mount Everest, and as wide as France.",
-        "attachments": [
-         {
-          "id": "a-0oxs3lz",
-          "kind": "image",
-          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/00/Olympus_Mons_alt.jpg/960px-Olympus_Mons_alt.jpg",
-          "name": "Olympus Mons from above",
-          "credit": "NASA"
-         }
-        ],
+        "id": "m-2fen2fw",
         "type": "read",
+        "title": "Ahead of the class: card groups",
+        "body": "Full marks. The quiz you just took was a **card group**: several cards answered together, with one score.\n\nTo make one, drag a box around cards on the Map (start on an empty spot) and press **Make a card group**. Under the group, its score ranges can each deal a card, just like an answer. That's how this card reached you.",
         "audience": {
          "kind": "all"
         },
-        "tools": []
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-1r438mo",
+        "type": "submit",
+        "title": "Your turn: plan a card",
+        "body": "Think of a lesson you'll teach soon. Which card would you open it with, and why? Write a few lines, or record yourself saying it.\n\nThis card has AI feedback on, so you'll get a few words back as soon as you hand it in.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "answer",
+        "minutes": 5,
+        "aiFeedback": true
        }
-      ],
+      ]
+     },
+     {
+      "id": "l-23jzffu",
+      "title": "Every kind of question",
       "branches": {},
-      "goal": "Choose what the crew needs, and pass the fuel check.",
-      "date": "2026-11-20"
+      "goal": "Pick the right kind of question",
+      "date": "2026-11-25",
+      "modules": [
+       {
+        "id": "m-e6q9aav",
+        "type": "read",
+        "title": "Five ways to ask",
+        "body": "A Choices card can ask in five ways. With **Has a right answer: Yes**, pick **One answer**, **Several**, **Order** or **Short answer**. With **No (a poll)**, it's a vote.\n\nTry three of them on the next cards. Each student sees the options in their own order, so the right one isn't always first.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-u7y8sea",
+        "type": "practice",
+        "title": "Pick all that apply",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-6",
+          "kind": "multi",
+          "text": "What can a Content card hold? Choose all that apply.",
+          "options": [
+           "A video",
+           "A recording",
+           "A picture",
+           "A grade"
+          ],
+          "answerSet": [
+           0,
+           1,
+           2
+          ],
+          "explain": "Grades come from Question cards. Content cards hold things to read, watch or listen to."
+         }
+        ]
+       },
+       {
+        "id": "m-fw1a5r8",
+        "type": "practice",
+        "title": "Put them in order",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-7",
+          "kind": "order",
+          "text": "Put the steps of making a branch in order.",
+          "options": [
+           "Make a Question card",
+           "Give it some answers",
+           "Drag an answer's dot to a card",
+           "Try it in Student View"
+          ],
+          "explain": "Question, answers, then drag each answer to the card it deals, and check it as a student."
+         }
+        ]
+       },
+       {
+        "id": "m-iokfr1s",
+        "type": "practice",
+        "title": "Type the answer",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-8",
+          "kind": "short",
+          "text": "Which tab shows every card of the course at once? (one word)",
+          "options": [],
+          "accept": [
+           "map",
+           "the map",
+           "course map"
+          ],
+          "explain": "The Map. Short answers ignore capitals, spaces and punctuation."
+         }
+        ]
+       },
+       {
+        "id": "m-u271j08",
+        "type": "read",
+        "title": "Math in a card",
+        "body": "Write math between dollar signs and students see it typeset: $\\frac{3}{4} + \\frac{1}{8} = \\frac{7}{8}$, or $x^2 + y^2 = r^2$.\n\nIt works in a card's text, its questions, its options and the explanation.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-lh0ndx7",
+        "type": "practice",
+        "title": "How is it going?",
+        "body": "Pick one and press Submit vote.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "poll": true,
+        "questions": [
+         {
+          "id": "q-9",
+          "text": "How do you feel about building your first course?",
+          "options": [
+           "Ready to start",
+           "Getting there",
+           "I need more help"
+          ],
+          "next": [
+           null,
+           null,
+           "m-ulmtnql"
+          ]
+         }
+        ]
+       },
+       {
+        "id": "m-ulmtnql",
+        "type": "read",
+        "title": "More help, just for you",
+        "body": "You said you need more help, so this card is yours. No one else sees it.\n\nStart small: one lesson, three cards. Something to read, one question, and one card that an answer deals. Then open **Student View** and play it as a student.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-4xzpupy",
+        "type": "read",
+        "title": "Several questions, one card group",
+        "body": "Writing a quiz? On a Choices card, press **+ Add the next question**. Each question goes on its own card, and the cards become a card group: answered together, with one score.\n\nOne question per card keeps the tree simple: each answer can deal its own card.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       }
+      ]
      }
     ]
    },
    {
-    "id": "w-yoywrr0",
-    "title": "Week 2 · Life on Mars",
+    "id": "w-qbxohgc",
+    "title": "Week 2 · Card trees and your course",
     "lessons": [
      {
-      "id": "l-uv35orj",
-      "title": "Build the base",
+      "id": "l-zh24y95",
+      "title": "Card trees",
+      "branches": {},
+      "goal": "Deal a card from an answer and from a score",
+      "date": "2026-11-27",
       "modules": [
        {
-        "id": "m-lmd7krb",
-        "kind": "content",
-        "title": "Three things to stay alive",
-        "minutes": 3,
-        "body": "On Earth, air, water and food are easy. On Mars:\n\n- The **air** is thin and mostly carbon dioxide. We can't breathe it.\n- The **water** is frozen as ice, under the ground and at the poles.\n- **Food** has to be grown indoors, under lights, in a greenhouse.\n\nPass the base inspection, then design your greenhouse.",
-        "attachments": [
-         {
-          "id": "a-ic53m8j",
-          "kind": "image",
-          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7a/Jezero_crater_on_Mars%2C_sol_43_of_Perseverance_mission.png/960px-Jezero_crater_on_Mars%2C_sol_43_of_Perseverance_mission.png",
-          "name": "Jezero crater, seen by the Perseverance rover",
-          "credit": "NASA / JPL-Caltech"
-         }
-        ],
+        "id": "m-ykerz37",
         "type": "read",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": []
-       },
-       {
-        "id": "m-n1nbco5",
-        "kind": "group",
-        "title": "Base inspection",
-        "members": [
-         "m-rj83uuv",
-         "m-zo7fygi"
-        ],
-        "bands": [
-         {
-          "min": 0,
-          "next": "m-kc97zt0"
-         },
-         {
-          "min": 75,
-          "next": null
-         }
-        ],
-        "type": "group",
-        "body": "",
+        "title": "Why branch?",
+        "body": "A class doesn't all need the same next step. Some need another example; some are ready for a challenge.\n\nOn the Map, each line runs from an answer to the card it deals. Students who pick that answer get the card. The others never see it.",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-rj83uuv",
-        "kind": "group",
-        "title": "Air",
-        "members": [
-         "m-aem0uj4",
-         "m-8qrg8oh"
-        ],
-        "type": "group",
-        "body": "",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-aem0uj4",
-        "kind": "choice",
-        "title": "Mars air",
-        "questions": [
-         {
-          "id": "q",
-          "kind": "choice",
-          "text": "What is the air on Mars mostly made of?",
-          "options": [
-           "Carbon dioxide",
-           "Oxygen",
-           "Helium"
-          ],
-          "answer": 0
-         }
-        ],
-        "type": "practice",
-        "body": "",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-8qrg8oh",
-        "kind": "choice",
-        "title": "A walk outside",
-        "questions": [
-         {
-          "id": "q",
-          "kind": "choice",
-          "text": "Can you breathe outside on Mars?",
-          "options": [
-           "No: you need a spacesuit",
-           "Yes, on sunny days"
-          ],
-          "answer": 0
-         }
-        ],
-        "type": "practice",
-        "body": "",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-zo7fygi",
-        "kind": "group",
-        "title": "Water",
-        "members": [
-         "m-c03dvtj",
-         "m-3tv8tti"
-        ],
-        "type": "group",
-        "body": "",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-c03dvtj",
-        "kind": "choice",
-        "title": "Where's the water?",
-        "questions": [
-         {
-          "id": "q",
-          "kind": "choice",
-          "text": "Where is the water on Mars?",
-          "options": [
-           "Frozen as ice",
-           "In big oceans",
-           "Falling as rain"
-          ],
-          "answer": 0
-         }
-        ],
-        "type": "practice",
-        "body": "",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-3tv8tti",
-        "kind": "choice",
-        "title": "A drink, please",
-        "questions": [
-         {
-          "id": "q",
-          "kind": "choice",
-          "text": "How could the crew get drinking water?",
-          "options": [
-           "Dig up ice, melt it and clean it",
-           "Wait for it to rain"
-          ],
-          "answer": 0
-         }
-        ],
-        "type": "practice",
-        "body": "",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-kc97zt0",
+        "attachments": [],
         "kind": "content",
-        "title": "Fix-it list",
-        "minutes": 2,
-        "body": "The inspector found a few problems. 🔧\n\n- The air outside is mostly **carbon dioxide**: always wear your suit.\n- There's no rain on Mars. Water comes from **ice**, which we dig up, melt and clean.\n\nRead the first card again, then carry on to the greenhouse.",
-        "attachments": [
-         {
-          "id": "a-t3i84zi",
-          "kind": "image",
-          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/Martian_north_polar_cap.jpg/960px-Martian_north_polar_cap.jpg",
-          "name": "The ice cap at Mars's north pole",
-          "credit": "NASA / JPL / MSSS"
-         }
-        ],
+        "minutes": 1
+       },
+       {
+        "id": "m-90jjayn",
         "type": "read",
+        "title": "Draw a branch",
+        "body": "Every answer on a Question card has a small dot on the Map. Drag the dot to empty space and pick the kind of card it deals, or drop it on a card that's already there.\n\nOne answer can deal more than one card: drag its dot again.",
         "audience": {
          "kind": "all"
         },
-        "tools": []
-       },
-       {
-        "id": "m-o57ayfd",
-        "kind": "answer",
-        "title": "Design a Mars greenhouse",
-        "minutes": 20,
-        "body": "Draw your greenhouse (on paper or with **Draw**), then add a photo or your drawing here.\n\nLabel:\n1. Where the light comes from\n2. Where the water comes from\n3. Three plants you'd grow, and why\n\nDone when: A labelled drawing with light, water and three plants.",
+        "tools": [],
         "attachments": [
          {
-          "id": "a-70ndhg4",
-          "kind": "image",
-          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/ISS-44_VEGGIE_Red_Romaine_Lettuce.jpg/960px-ISS-44_VEGGIE_Red_Romaine_Lettuce.jpg",
-          "name": "Lettuce grown on the International Space Station",
-          "credit": "NASA"
+          "id": "a-q101-branch",
+          "kind": "video",
+          "url": "/samples/q101/branch.mp4",
+          "name": "Drawing a branch",
+          "duration": 10
          }
         ],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-cjs4yxf",
+        "type": "practice",
+        "title": "Try a branch",
+        "body": "This card is a branch itself: each answer deals a different card.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-10",
+          "text": "A student answers “I'm not sure yet”. What should they get next?",
+          "options": [
+           "The same card again",
+           "Another example, explained step by step",
+           "Nothing: move on"
+          ],
+          "answer": 1,
+          "explain": "A short extra example, only for the students who need it, is what a branch is for.",
+          "next": [
+           "m-adl2bis",
+           "m-xybdv47",
+           "m-h06c29d"
+          ]
+         }
+        ]
+       },
+       {
+        "id": "m-xybdv47",
+        "type": "read",
+        "title": "Yes: a short extra example",
+        "body": "That's the idea. Make the extra example a small card, and drag the “not sure” answer to it. Only those students get it.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-adl2bis",
+        "type": "read",
+        "title": "Why not the same card again?",
+        "body": "Showing the same card rarely helps. Give a different way in instead: another example, a video, a picture.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-h06c29d",
+        "type": "read",
+        "title": "Why not just move on?",
+        "body": "A student who isn't sure yet will likely be stuck on the next card too. A short detour card helps them catch up first.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-4b9dd01",
+        "type": "read",
+        "title": "Branch by score",
+        "body": "A card group can deal cards by score. Its score ranges sit under it on the Map, such as 0–59%, 60–99% and 100%. Drag a range's dot to the card it deals, just like an answer.\n\nScores count the student's best try, so a better retake deals the better card.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [
+         {
+          "id": "a-q101-card-group",
+          "kind": "video",
+          "url": "/samples/q101/card-group.mp4",
+          "name": "A card group and its score ranges",
+          "duration": 10
+         }
+        ],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-81q44sf",
+        "type": "read",
+        "title": "Deal a card in a later lesson",
+        "body": "An answer can deal a card in another lesson. When you make the card from the answer's dot, pick the lesson under **New card in**.\n\nThe student gets the card when they reach that lesson, with a note saying which answer opened it.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-cp9185j",
+        "type": "read",
+        "title": "Who gets a card",
+        "body": "A card's panel says who gets it, under **Access**:\n\n- **Everyone gets this card**: the usual.\n- **Students get it from** an answer or a score: set on the Map, by drawing the line.\n- **Only some students or groups**: pick them by name.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-3io6r4m",
         "type": "submit",
+        "title": "Sketch your own tree",
+        "body": "Draw a small tree for one of your lessons: one question, its answers, and the card each answer deals. Press **Draw**, or describe it in words.",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "due": "2026-11-27"
+        "attachments": [],
+        "kind": "answer",
+        "minutes": 6
        },
        {
-        "id": "m-husy3fv",
+        "id": "m-agv10hw",
+        "type": "read",
+        "title": "This card waited for you",
+        "body": "In the first lesson you said online course tools are new to you. That answer dealt this card, here, in a later lesson: a card can wait until a student reaches it.\n\nFor your first tree, keep it tiny: one question with two answers, and one extra card for the answer that needs help. That's a whole branch.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content"
+       }
+      ]
+     },
+     {
+      "id": "l-eou7se2",
+      "title": "Building your course",
+      "branches": {},
+      "goal": "Set up a course: weeks, dates, a cover",
+      "date": "2026-11-30",
+      "modules": [
+       {
+        "id": "m-sngrq1t",
+        "type": "read",
+        "title": "Make a course",
+        "body": "On your courses page, press **New course**. Give it a name (a subtitle is optional), then choose:\n\n- **Start blank**: one empty week to fill yourself.\n- **Standard weeks**: three weeks with a ready-made rhythm of goal, example, quick check, task, discussion and reflection.\n- **From a course file**: a course someone exported from Questhand.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-owzvczp",
+        "type": "read",
+        "title": "A cover for your course",
+        "body": "Every course has a cover from the start: a paper-cut scene that fits its name, in its own colour. Your students see it on their courses page.\n\nTo change it, open **Settings → Course**. Pick one of four paper covers (with your AI connected, it picks them from what the course teaches), search open photos, draw one with a Google AI key, or **Upload** your own.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [
+         {
+          "id": "a-q101-cover",
+          "kind": "video",
+          "url": "/samples/q101/cover.mp4",
+          "name": "Choosing a cover",
+          "duration": 20
+         }
+        ],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-tigz0eu",
+        "type": "read",
+        "title": "Weeks and lessons",
+        "body": "Each lesson is a row on the Map, and lessons sit in weeks.\n\n- **+ Card** on a lesson's row adds a card.\n- **+ Lesson in Week 1** (under the week) adds a lesson; **+ Week 2** adds a week.\n- Click a lesson's name to rename it.\n- A lesson's **⋯** menu holds the rest: move, copy, save, delete.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-bdrncuh",
+        "type": "read",
+        "title": "Dates and today's lesson",
+        "body": "Each lesson can have a date. The lesson for today is the one on top of every student's Today.\n\nTo date them all at once, open a lesson's **⋯** menu and pick **Schedule lessons from here**: choose the first class and the days you meet.\n\nNo dates? Pick a lesson's **⋯ → Make it today's lesson** when the class moves on.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-uhe64bd",
+        "type": "read",
+        "title": "Use a card again",
+        "body": "Made a card you'll want again, like a weekly reflection? Press **Collect** at the top of its panel. It's in **Saved cards** the next time you press **+ Card**, in any course.\n\nA whole lesson can be saved the same way, from its **⋯** menu.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-3cvye2y",
+        "type": "read",
+        "title": "Already have a plan written?",
+        "body": "**Settings → Files → Import from a document…**: upload your course plan, look over the weeks and cards Questhand proposes, untick what you don't want, and add them.\n\nThe same place exports a course: **Questhand (.json)** to keep a copy or share it, or **Canvas / Moodle** for another system.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-5e7mmwu",
+        "type": "practice",
+        "title": "Quick check",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-11",
+          "text": "Your lessons have no dates, and the class is moving on to lesson 3. What do you do?",
+          "options": [
+           "Nothing: students move on by themselves",
+           "Lesson 3's ⋯ menu → Make it today's lesson",
+           "Delete lessons 1 and 2"
+          ],
+          "answer": 1,
+          "explain": "Today's lesson is the one on top of every student's Today. Without dates, you choose it."
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "l-gij6ndj",
+      "title": "Working on the map",
+      "branches": {},
+      "goal": "Find, move and undo on the Map",
+      "date": "2026-12-02",
+      "modules": [
+       {
+        "id": "m-e6i7b47",
+        "type": "read",
+        "title": "Getting around the map",
+        "body": "Scroll to move around, and zoom with the buttons at the bottom left (or pinch). Point at the map's left edge to see every week and lesson; click one to go there.\n\nPress **/** to search: type any word on a card and pick a result to jump to it.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-om0fkk3",
+        "type": "read",
+        "title": "Move, pick and tidy",
+        "body": "- **Move a card**: drag it along its row, or into another lesson.\n- **Pick several**: drag a box around them, starting on an empty spot. Then move them together, delete them, or make them a card group.\n- **Deleted something?** The trash button at the bottom of the map puts it back.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-za1d336",
+        "type": "read",
+        "title": "One undo for everything",
+        "body": "Everything saves as you go: you'll see **Saved** at the top right.\n\n**Undo** (⌘Z or Ctrl+Z) and **Redo** sit at the top of the page and of every card's panel: one undo for every change, on the Map or in a card. The clock beside them is **History**: every change, to step back to.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-ideud03",
+        "type": "read",
+        "title": "Keyboard shortcuts",
+        "body": "Press **?** on any page for the full list. The ones you'll use most:\n\n- **1**, **2**, **3**: Map, Students, Settings.\n- **n**: a new card.\n- **/**: find a card.\n- In a card's panel, **[** and **]** go to the previous and next card.\n- On the Map, the arrow keys move between cards and Enter opens one.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-85ntsog",
+        "type": "practice",
+        "title": "Put them in order",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-12",
+          "kind": "order",
+          "text": "Put the steps of making a card group and branching from its score in order.",
+          "options": [
+           "Drag a box around the cards",
+           "Press Make a card group",
+           "Drag a score range's dot to a card",
+           "Try it in Student View"
+          ],
+          "explain": "Pick the cards, make the group, wire its score ranges, then try it as a student."
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "l-oonklye",
+      "title": "Writing and media",
+      "branches": {},
+      "goal": "Write well-formatted cards with media",
+      "date": "2026-12-04",
+      "modules": [
+       {
+        "id": "m-6ucw0lv",
+        "type": "read",
+        "title": "Format a card",
+        "body": "## Text that's easy to read\n\nA card can have **headings**, *emphasis*, lists, links and tables. Use the bar above the text, or type: **⌘B** for bold, a line starting with - for a list.\n\n> A callout like this one is good for a tip.\n\n| Kind | Use it for |\n| --- | --- |\n| Content | Read, watch, listen |\n| Question | Ask something back |",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-g6mhcbe",
+        "type": "read",
+        "title": "Worksheets",
+        "body": "When students should fill something in, make a Question card and pick **Worksheet** under How students answer. Your text is the worksheet: headings, prompts, a table with empty cells.\n\n**Who fills it in**:\n\n- **Each student**: everyone gets their own copy.\n- **Each group**: a group shares one copy and writes in it together, live.\n- **Whole class**: one copy for everyone.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-lnmh1zt",
+        "type": "read",
+        "title": "Try it: plan a lesson in your own copy",
+        "body": "## My first lesson\n\n**Topic:** \n\n**By the end, students can:** \n\n| Card | What students do |\n| --- | --- |\n| 1 | |\n| 2 | |\n| 3 | |\n\n**The question that branches, and what each answer deals:** ",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "worksheet",
+        "writers": "each",
+        "minutes": 8
+       },
+       {
+        "id": "m-dwg69f0",
+        "type": "read",
+        "title": "Media on a card",
+        "body": "Under a card's text: **Link**, **Upload**, **Draw**, and **Record** (audio, video, your screen or a photo, right in the browser).\n\n- A video can play just one part: set where it starts and stops.\n- **Make cover** puts a picture on the card's face.\n- Students hand in work with the same buttons.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-tcdl4jd",
+        "type": "submit",
+        "title": "Record a hello",
+        "body": "Record a short hello for your future class: who you are, and what the first lesson is about. Press **Record** for your voice or a video, or write it instead.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "answer",
+        "minutes": 4
+       },
+       {
+        "id": "m-yedk9j6",
+        "type": "read",
+        "title": "AI feedback on handed-in work",
+        "body": "Connect your own AI account once, in your account's **Settings → Tools for cards** (Claude, ChatGPT or Gemini, with your own key). Then tick **Allow AI feedback** on any Open answer card.\n\nWhen a student hands in, they get a few lines of feedback right away: what works, one thing to try next. You see it too, beside their work, and your own feedback still counts most.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "w-ye9xz67",
+    "title": "Week 3 · Your class, together",
+    "lessons": [
+     {
+      "id": "l-yjowlkh",
+      "title": "Groups and discussions",
+      "branches": {},
+      "goal": "Run group work and a discussion",
+      "date": "2026-12-07",
+      "modules": [
+       {
+        "id": "m-a7gki7f",
+        "type": "read",
+        "title": "Writing together",
+        "body": "With a worksheet for **Each group**, every group shares one copy and sees each other typing. Make the groups right on the card: name them, split the class at random, or tap students into each group.\n\nGroups are kept in **Students → Class list and groups**, so other cards can use them.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-k2mxd74",
+        "type": "read",
+        "title": "Let students pick their group",
+        "body": "Sometimes students should choose: a project, a topic, a time. Make a poll and tick **Make groups from the answers**. Each option becomes a group, and students can switch until you lock the groups.\n\nTry it on the next card.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-0bi7gr8",
+        "type": "practice",
+        "title": "Pick your study group",
+        "body": "Choose the group you'll work with for the rest of the course. The next worksheet is shared with your group.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "poll": true,
+        "questions": [
+         {
+          "id": "q-13",
+          "text": "Which group do you want to join?",
+          "options": [
+           "Short units",
+           "Full terms",
+           "Just exploring"
+          ]
+         }
+        ],
+        "signup": {
+         "names": true
+        }
+       },
+       {
+        "id": "m-06ywa2d",
+        "type": "read",
+        "title": "Our group's first lesson",
+        "body": "Fill this in together: everyone in your group writes in the same copy, live.\n\n**Topic:** \n\n\n| Card | Kind     | What students do |\n| ---- | -------- | ---------------- |\n| 1    | Content  |                  |\n| 2    | Question |                  |\n| 3    |          |                  |\n\n\n**Who builds which card:** ",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "worksheet",
+        "writers": "group",
+        "minutes": 10,
+        "grouping": "gs-m-0bi7gr8"
+       },
+       {
+        "id": "m-dmk06py",
+        "type": "read",
+        "title": "Just exploring? Start here",
+        "body": "You picked **Just exploring**, so this card is yours.\n\nTake one lesson you already teach and turn just its first ten minutes into three cards: something to read or watch, one question, and one card an answer deals.",
+        "audience": {
+         "kind": "student",
+         "studentId": "",
+         "studentIds": [],
+         "groups": [
+          "gs-m-0bi7gr8~m-0bi7gr8-o2"
+         ]
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-tulgh7b",
+        "type": "read",
+        "title": "Our class in numbers",
+        "body": "## How long did this course take you?\n\nAdd a row with your name and about how many minutes you've spent on Questhand 101 so far. Everyone writes in this one table.\n\n| Name | Minutes |\n| --- | --- |\n| Example | 40 |",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "worksheet",
+        "writers": "class",
+        "minutes": 2
+       },
+       {
+        "id": "m-squ1508",
+        "type": "read",
+        "title": "Setting up a discussion",
+        "body": "A Discussion card is a feed of posts, each with its replies.\n\n- Posts are written like a card: formatting, math, and Record, Upload, Draw or Link.\n- You choose who posts, whether students reply and react, and whether posts wait for your approval.\n- Ask for replies, such as “reply to two classmates”, and the card is done when they have.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-9zo401p",
+        "type": "wall",
+        "title": "Introduce yourself",
+        "body": "Post a line about you and what you teach. Then reply to one classmate; try a voice reply with Record.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
         "kind": "discussion",
-        "title": "What would you miss from Earth?",
-        "minutes": 5,
-        "body": "Seven months there, seven months back. What would you miss most? Post one thing, then reply to a classmate.",
         "wall": {
          "posting": "students",
          "comments": true,
@@ -709,2021 +1190,2871 @@
          "anonymous": false,
          "approval": false,
          "replies": 1
-        },
+        }
+       },
+       {
+        "id": "m-q6bt9zi",
         "type": "wall",
+        "title": "Peer review: your lesson plan",
+        "body": "Post your lesson plan: a few lines, a photo of a sketch, or the worksheet you filled in. Then give feedback on two plans.\n\nEach reply has three parts: **what I noticed**, **the effect it had on me**, and **one thing to try next**.",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
+        "attachments": [],
+        "kind": "discussion",
+        "wall": {
+         "posting": "students",
+         "comments": true,
+         "reactions": "likes",
+         "anonymous": false,
+         "approval": false,
+         "replies": 2
+        }
        }
-      ],
-      "branches": {},
-      "goal": "Work out how the crew gets air and water, then design a greenhouse for food.",
-      "date": "2026-11-25"
+      ]
      },
      {
-      "id": "l-yfy7qg3",
-      "title": "Elective: Rover driving school",
+      "id": "l-t7p7c1o",
+      "title": "Elective: one lesson, three readings",
+      "branches": {},
+      "goal": "See how an elective works",
+      "elective": true,
       "modules": [
        {
-        "id": "m-vlw32mc",
+        "id": "m-qzd1q7o",
+        "type": "read",
+        "title": "Why an elective?",
+        "body": "An elective is a lesson students choose to take. Make one from a lesson's **⋯** menu. Students see it in its week with its cards face down, and press **Choose**.\n\nOnce a course has electives, **Settings → Class** says how many each student should take.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
         "kind": "content",
-        "title": "Meet the rover",
-        "minutes": 3,
-        "body": "A rover is a car for Mars, driven from Earth. Radio signals take **up to 20 minutes** to get there, so every turn arrives late. Drivers plan each move carefully, and the rover checks for rocks by itself.",
+        "minutes": 1
+       },
+       {
+        "id": "m-8dvz7ku",
+        "type": "group",
+        "title": "Reading pack",
+        "body": "Three short readings that go together. A card group can hold any kind of card, not only questions.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "group",
+        "members": [
+         "m-qx8jx0g",
+         "m-hvz0taj",
+         "m-d8ij0bl"
+        ]
+       },
+       {
+        "id": "m-qx8jx0g",
+        "type": "read",
+        "title": "Reading 1: small cards",
+        "body": "Short cards are easier to start and easier to finish. Students see progress after every card.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-hvz0taj",
+        "type": "read",
+        "title": "Reading 2: one question per card",
+        "body": "One question per card keeps the tree simple: each answer deals its own next card.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-d8ij0bl",
+        "type": "read",
+        "title": "Reading 3: feedback that moves",
+        "body": "Feedback helps most with one thing done well and one thing to try next.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       }
+      ]
+     },
+     {
+      "id": "l-8ez8w9q",
+      "title": "Bringing students in",
+      "branches": {},
+      "goal": "Invite a class and manage who joins",
+      "date": "2026-12-09",
+      "modules": [
+       {
+        "id": "m-mibclyr",
+        "type": "read",
+        "title": "Invite your class",
+        "body": "Press **Invite students** (on the Map, or in the Students tab). Then:\n\n1. **By email**: type their addresses, and each gets their own link.\n2. **The class code or link**: share it, or show the QR code in class.\n\nEvery student signs in with their own account (Google, or email and password).",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
         "attachments": [
          {
-          "id": "a-8qcmz8y",
-          "kind": "image",
-          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/PIA16239_High-Resolution_Self-Portrait_by_Curiosity_Rover_Arm_Camera.jpg/960px-PIA16239_High-Resolution_Self-Portrait_by_Curiosity_Rover_Arm_Camera.jpg",
-          "name": "The Curiosity rover takes a selfie",
-          "credit": "NASA / JPL-Caltech / MSSS"
+          "id": "a-q101-invite",
+          "kind": "video",
+          "url": "/samples/q101/invite.mp4",
+          "name": "The invite box",
+          "duration": 7
+         }
+        ],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-qq27rxc",
+        "type": "read",
+        "title": "Who can join",
+        "body": "In the invite box, **General access** decides what the class code and link do:\n\n- **Restricted**: only students you invite.\n- **Anyone with the link or code, after you let them in**: they wait until you press **Let in**.\n- **Anyone with the link or code**: they join straight away.\n\nAdd a **Join passcode** for one more step, or make a **New code** if the old one got out.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-9n1inc5",
+        "type": "read",
+        "title": "Your class list",
+        "body": "**Students → Class list and groups** lists everyone, with a way to message them, send their link again, or remove them. Their work stays saved.\n\nThe groups made on cards are there too, to rename or change.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-19f3ot7",
+        "type": "read",
+        "title": "Demo students",
+        "body": "Demo students are made-up students on your class list, for you to try the course as. In **Students → Class list and groups**, press **Add a demo student**. What you do as them is kept, like a real student's, so groups, discussions and the Students tab fill up.\n\nThey never get email, and once real students join, class numbers leave them out.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-mp0ao67",
+        "type": "read",
+        "title": "Messages",
+        "body": "Every conversation is in your **Inbox**, at the top right of a course. Its number counts new messages and new class activity together.\n\nStudents can always message you. Whether they can message each other is up to you, in **Settings → Class**.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-j75wi8k",
+        "type": "practice",
+        "title": "Quick check",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-14",
+          "text": "A student says: “I entered the class code, and it says I'm waiting.” What's going on?",
+          "options": [
+           "The code is wrong",
+           "Joining is set to “after you let them in”: press Let in",
+           "They need a new account"
+          ],
+          "answer": 1,
+          "explain": "With that setting, people who use the code wait for you. You'll see them at the top of the Map and in Students."
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "l-c6d85pw",
+      "title": "Running your class",
+      "branches": {},
+      "goal": "See who needs you and give feedback",
+      "date": "2026-12-11",
+      "modules": [
+       {
+        "id": "m-hj7wdr0",
+        "type": "read",
+        "title": "Try it as a student",
+        "body": "**Student View**, at the top of every course, shows exactly what a student sees. Play as a demo student and your work is kept; as a new student it's only a test, and **Start over** clears it. No one is graded or notified.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [
+         {
+          "id": "a-q101-student-view",
+          "kind": "video",
+          "url": "/samples/q101/student-view.mp4",
+          "name": "Student View",
+          "duration": 17
+         }
+        ],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-43p896z",
+        "type": "read",
+        "title": "Who needs you",
+        "body": "The **Students** tab has your class on the left. Pick **Whole class** to see a lesson at a glance: who is **Overdue**, whose work is **Ready for your feedback**, **Low quiz scores**, who **Haven't started**, and who has **Stalled**. Press **Remind** to send a short note.\n\nPick one student to see everything of theirs.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-bfxddzc",
+        "type": "read",
+        "title": "Give feedback",
+        "body": "Work students hand in waits for you in **Students**. Open it, write what they did well and one thing to try next. You can record how you'd say it, attach a file, or **Rate skills**.\n\nThen press **Looks good**, or **Ask to revise**: the student sees the card come back to them, and hands in again.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [
+         {
+          "id": "a-q101-feedback",
+          "kind": "video",
+          "url": "/samples/q101/feedback.mp4",
+          "name": "Giving feedback",
+          "duration": 16
+         }
+        ],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-ciwkbm1",
+        "type": "wall",
+        "title": "Share one idea",
+        "body": "What will your first Questhand lesson be about? Post one idea, and reply to someone else's.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "discussion",
+        "wall": {
+         "posting": "students",
+         "comments": true,
+         "reactions": "likes",
+         "anonymous": false,
+         "approval": false,
+         "replies": 1
+        }
+       }
+      ]
+     },
+     {
+      "id": "l-c0h3yca",
+      "title": "Wrap-up",
+      "branches": {},
+      "goal": "Check what you know, then build",
+      "date": "2026-12-14",
+      "modules": [
+       {
+        "id": "m-nj20jq1",
+        "type": "group",
+        "title": "Final check",
+        "body": "Five questions, two tries. Your best try decides your last card.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "group",
+        "members": [
+         "m-0hsuet3",
+         "m-tgtashm",
+         "m-eqb814m",
+         "m-6f0zm77",
+         "m-n7089zm"
+        ],
+        "attempts": 2,
+        "bands": [
+         {
+          "min": 0,
+          "next": "m-ib1yyuy"
          },
          {
-          "id": "a-diws783",
-          "kind": "link",
-          "url": "https://science.nasa.gov/mission/mars-2020-perseverance/",
-          "name": "NASA: the Perseverance rover"
+          "min": 60,
+          "next": null
+         },
+         {
+          "min": 100,
+          "next": "m-rxmn65t"
          }
-        ],
-        "type": "read",
+        ]
+       },
+       {
+        "id": "m-0hsuet3",
+        "type": "practice",
+        "title": "Dealt cards",
+        "body": "",
         "audience": {
          "kind": "all"
         },
-        "tools": []
-       },
-       {
-        "id": "m-p9q3wn9",
+        "tools": [],
+        "attachments": [],
         "kind": "choice",
-        "title": "Rock ahead!",
-        "minutes": 1,
         "questions": [
          {
-          "id": "q",
-          "kind": "choice",
-          "text": "Your rover sees a big rock 2 metres ahead. Your command takes 20 minutes to arrive. What should the rover do?",
+          "id": "q-15",
+          "text": "How does a student get a card that an answer deals?",
           "options": [
-           "Stop and steer around it by itself",
-           "Wait for you and hope"
+           "You send it by hand",
+           "By picking that answer",
+           "Everyone gets it anyway"
           ],
-          "answer": 0
+          "answer": 1,
+          "explain": "The answer deals it: only students who pick it get the card."
          }
-        ],
+        ]
+       },
+       {
+        "id": "m-tgtashm",
         "type": "practice",
+        "title": "More than one card",
         "body": "",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
-       }
-      ],
-      "branches": {},
-      "goal": "Drive a rover safely across Mars.",
-      "elective": true,
-      "date": "2026-11-27"
-     },
-     {
-      "id": "l-va3hp99",
-      "title": "Elective: Space kitchen",
-      "modules": [
-       {
-        "id": "m-gcl1h5r",
-        "kind": "content",
-        "title": "Why crumbs are a problem",
-        "minutes": 2,
-        "body": "In a spaceship, crumbs don't fall. They float into eyes, noses and machines! That's why astronauts eat tortillas instead of bread.",
-        "attachments": [
-         {
-          "id": "a-w4wiyal",
-          "kind": "image",
-          "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/ISS-50_Peggy_Whitson_with_a_%27space_cheeseburger%27.jpg/960px-ISS-50_Peggy_Whitson_with_a_%27space_cheeseburger%27.jpg",
-          "name": "Astronaut Peggy Whitson with a “space cheeseburger”",
-          "credit": "NASA"
-         }
-        ],
-        "type": "read",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": []
-       },
-       {
-        "id": "m-27uhoec",
-        "kind": "answer",
-        "title": "Invent a space snack",
-        "minutes": 10,
-        "body": "Invent a snack for the trip. Give it a name, say what's in it, and how it stays crumb-free. A drawing or a recording is welcome.",
-        "type": "submit",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
-       }
-      ],
-      "branches": {},
-      "goal": "Invent a snack astronauts can eat without crumbs.",
-      "elective": true,
-      "date": "2026-11-27"
-     }
-    ]
-   },
-   {
-    "id": "w-ujzpva1",
-    "title": "Week 3 · Mission debrief",
-    "lessons": [
-     {
-      "id": "l-wtltlhg",
-      "title": "Mission debrief",
-      "modules": [
-       {
-        "id": "m-5zmhp4n",
-        "kind": "worksheet",
-        "title": "Captain's log",
-        "writers": "each",
-        "minutes": 10,
-        "body": "**Day 1 on Mars**\n\nToday I woke up and …\n\nFor breakfast we …\n\nThe hardest part of the day was …",
-        "type": "read",
-        "audience": {
-         "kind": "all"
-        },
-        "tools": [],
-        "attachments": []
-       },
-       {
-        "id": "m-nazzadu",
+        "attachments": [],
         "kind": "choice",
-        "title": "Ready for launch?",
-        "poll": true,
-        "minutes": 1,
         "questions": [
          {
-          "id": "q",
-          "kind": "choice",
-          "text": "How ready do you feel to go to Mars?",
+          "id": "q-16",
+          "text": "Can one answer deal more than one card?",
           "options": [
-           "Pack my bags!",
-           "Almost",
-           "Not yet"
-          ]
+           "No, only one",
+           "Yes: drag its dot to each card"
+          ],
+          "answer": 1,
+          "explain": "Drag the same answer's dot onto another card and a second line appears."
          }
-        ],
+        ]
+       },
+       {
+        "id": "m-eqb814m",
         "type": "practice",
+        "title": "Student View",
         "body": "",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-17",
+          "text": "Where do you try the course as a student, with nothing graded?",
+          "options": [
+           "The Map",
+           "Settings",
+           "Student View"
+          ],
+          "answer": 2,
+          "explain": "Student View, at the top of every course."
+         }
+        ]
        },
        {
-        "id": "m-j8uqr88",
-        "kind": "answer",
-        "title": "Mission report",
-        "minutes": 10,
-        "body": "Write three things you learned in training, and one question you still have about Mars.",
-        "type": "submit",
+        "id": "m-6f0zm77",
+        "type": "practice",
+        "title": "Work handed in",
+        "body": "",
         "audience": {
          "kind": "all"
         },
         "tools": [],
-        "attachments": []
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-18",
+          "text": "A student handed in work. Where is it waiting?",
+          "options": [
+           "In Students, ready for your feedback",
+           "In your email only",
+           "Nowhere until they finish the course"
+          ],
+          "answer": 0,
+          "explain": "Handed-in work waits in the Students tab."
+         }
+        ]
+       },
+       {
+        "id": "m-n7089zm",
+        "type": "practice",
+        "title": "Good feedback",
+        "body": "",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "choice",
+        "questions": [
+         {
+          "id": "q-19",
+          "text": "Good feedback has two parts:",
+          "options": [
+           "A score and a grade",
+           "A long list of mistakes",
+           "One thing done well, one thing to try next"
+          ],
+          "answer": 2,
+          "explain": "One strength, one next step."
+         }
+        ]
+       },
+       {
+        "id": "m-ib1yyuy",
+        "type": "read",
+        "title": "Let's go over it",
+        "body": "No problem. These are the five things to remember:\n\n1. Answers deal cards; only students who pick an answer get its card.\n2. One answer can deal several cards.\n3. Student View is a safe test: nothing is graded.\n4. Handed-in work waits in Students.\n5. Feedback: one thing done well, one thing to try next.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-rxmn65t",
+        "type": "read",
+        "title": "You're ready",
+        "body": "Full marks. Go and build your first lesson: one Content card, one question, and one branch. Your students will feel the difference.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "content",
+        "minutes": 1
+       },
+       {
+        "id": "m-vsr9sxx",
+        "type": "submit",
+        "title": "What will you build first?",
+        "body": "One or two sentences: the lesson you'll build first, and the branch you'll put in it.",
+        "audience": {
+         "kind": "all"
+        },
+        "tools": [],
+        "attachments": [],
+        "kind": "answer",
+        "minutes": 3,
+        "aiFeedback": true
        }
-      ],
-      "branches": {},
-      "goal": "Look back on the training and get ready to launch.",
-      "date": "2026-12-02"
+      ]
      }
     ]
    }
   ],
-  "subtitle": "Year 6 Science · a three-week mission",
-  "electiveMin": 1,
+  "subtitle": "How to use Questhand, made in Questhand",
   "groupings": [
    {
-    "id": "gs-m-706fg3x",
-    "name": "Pick your crew job",
+    "id": "gs-m-0bi7gr8",
+    "name": "Pick your study group",
     "groups": [
      {
-      "id": "m-706fg3x-o0",
-      "name": "Pilot Group",
-      "studentIds": [
-       "s-vny9yoq",
-       "s-fj99uev"
-      ]
+      "id": "m-0bi7gr8-o0",
+      "name": "Short units Group",
+      "studentIds": []
      },
      {
-      "id": "m-706fg3x-o1",
-      "name": "Engineer Group",
-      "studentIds": [
-       "s-c7j45cl",
-       "s-rlzns3t"
-      ]
+      "id": "m-0bi7gr8-o1",
+      "name": "Full terms Group",
+      "studentIds": []
      },
      {
-      "id": "m-706fg3x-o2",
-      "name": "Botanist Group",
-      "studentIds": [
-       "s-yjd0k1q"
-      ]
-     },
-     {
-      "id": "m-706fg3x-o3",
-      "name": "Medic Group",
-      "studentIds": [
-       "s-0gv4pys"
-      ]
+      "id": "m-0bi7gr8-o2",
+      "name": "Just exploring Group",
+      "studentIds": []
      }
     ]
    }
   ],
-  "waiting": [
-   {
-    "id": "s-bhzhbpd",
-    "name": "Ivy Moreno",
-    "email": "ivy@example.test",
-    "joinedAt": 1795591936511
-   }
-  ]
+  "cover": {
+   "motif": "cards",
+   "color": "#3d68a6",
+   "seed": 174
+  },
+  "waiting": []
  },
  "progress": {
-  "s-vny9yoq": {
-   "m-lr2nei9": {
+  "s-maya": {
+   "m-m2g2zh9": {
     "status": "done",
-    "updatedAt": 1794967976161
+    "updatedAt": 1795200037000,
+    "handedAt": 1795830600108,
+    "output": ""
    },
-   "m-706fg3x": {
+   "m-21h70bo": {
     "status": "done",
-    "updatedAt": 1794970413161,
+    "updatedAt": 1795204911000,
     "answers": {
-     "q": 0
+     "q-1": 0
     },
     "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-nnpkijh": {
-    "status": "done",
-    "updatedAt": 1794972850161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
+     "q-1": true
     },
     "dealt": {
-     "q": 0
+     "q-1": 0
     },
     "results": {
-     "q": true
+     "q-1": true
     },
     "score": 1
    },
-   "m-yg6xo33": {
+   "m-yuwdl6f": {
     "status": "done",
-    "updatedAt": 1795148087161,
+    "updatedAt": 1795209785000,
+    "handedAt": 1795830805052,
+    "output": ""
+   },
+   "m-jtj0mn6": {
+    "status": "done",
+    "updatedAt": 1795200259000,
+    "handedAt": 1795830806982,
+    "output": ""
+   },
+   "m-0cj6cr9": {
+    "status": "done",
+    "updatedAt": 1795205133000,
     "answers": {
-     "q": [
-      0,
-      1,
-      2,
-      4
-     ]
+     "q-2": 0
     },
     "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-k2l2r2h": {
-    "status": "done",
-    "updatedAt": 1795150524161,
-    "answers": {
-     "q": [
-      "Close the hatch",
-      "Check the fuel",
-      "Start the engines",
-      "Lift off!"
-     ]
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-pvs61ja": {
-    "status": "done",
-    "updatedAt": 1795152961161,
-    "answers": {
-     "q": "oxygen"
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-1iizdkb": {
-    "status": "done",
-    "updatedAt": 1795155398161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-dgy5qek": {
-    "status": "done",
-    "updatedAt": 1795139835161,
-    "dealt": {
-     "#score": 100
-    },
-    "score": 3
-   },
-   "m-2ckwc6d": {
-    "status": "done",
-    "updatedAt": 1795142272161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-ubvofxs": {
-    "status": "done",
-    "updatedAt": 1795144709161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-44kf2df": {
-    "status": "done",
-    "updatedAt": 1795147146161
-   },
-   "m-lmd7krb": {
-    "status": "done",
-    "updatedAt": 1795581583161
-   },
-   "m-aem0uj4": {
-    "status": "done",
-    "updatedAt": 1795584020161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-rj83uuv": {
-    "status": "done",
-    "updatedAt": 1795586457161,
-    "dealt": {
-     "#score": 100
-    },
-    "score": 2
-   },
-   "m-n1nbco5": {
-    "status": "done",
-    "updatedAt": 1795570894161,
-    "dealt": {
-     "#score": 100
-    },
-    "score": 4
-   },
-   "m-8qrg8oh": {
-    "status": "done",
-    "updatedAt": 1795573331161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-c03dvtj": {
-    "status": "done",
-    "updatedAt": 1795575768161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-zo7fygi": {
-    "status": "done",
-    "updatedAt": 1795578205161,
-    "dealt": {
-     "#score": 100
-    },
-    "score": 2
-   },
-   "m-3tv8tti": {
-    "status": "done",
-    "updatedAt": 1795580642161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-o57ayfd": {
-    "status": "done",
-    "updatedAt": 1795583079161,
-    "output": "My greenhouse is a dome made of thick clear plastic, half buried so it stays warm.\n1. Light: sunlight through the dome, plus LED lamps for dust storms.\n2. Water: ice from under the base, melted and cleaned in the tank by the door.\n3. Plants: potatoes (lots of food, grow in poor soil), lettuce (fast), and strawberries (for morale!).",
-    "review": {
-     "verdict": "good",
-     "text": "Brilliant, Ava. Half-burying it is exactly what real designs do. Strawberries for morale: approved. 🍓",
-     "at": 1795581139161
-    }
-   },
-   "m-husy3fv": {
-    "status": "doing",
-    "updatedAt": 1795585516161
-   },
-   "m-vlw32mc": {
-    "status": "done",
-    "updatedAt": 1795587953161
-   },
-   "m-p9q3wn9": {
-    "status": "done",
-    "updatedAt": 1795572390161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   }
-  },
-  "s-c7j45cl": {
-   "m-lr2nei9": {
-    "status": "done",
-    "updatedAt": 1794970027161
-   },
-   "m-706fg3x": {
-    "status": "done",
-    "updatedAt": 1794972464161,
-    "answers": {
-     "q": 1
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-nnpkijh": {
-    "status": "done",
-    "updatedAt": 1794974901161,
-    "answers": {
-     "q": 1
-    },
-    "first": {
-     "q": false
+     "q-2": false
     },
     "dealt": {
-     "q": 1
+     "q-2": 0
     },
     "results": {
-     "q": false
+     "q-2": false
     },
     "score": 0
    },
-   "m-sf03u4w": {
+   "m-cjg6wv1": {
     "status": "done",
-    "updatedAt": 1794977338161
+    "updatedAt": 1795469207000,
+    "handedAt": 1795830812611,
+    "output": ""
    },
-   "m-yg6xo33": {
+   "m-wrpgx4f": {
     "status": "done",
-    "updatedAt": 1795152575161,
+    "updatedAt": 1795459681000,
+    "handedAt": 1795830814497,
+    "output": ""
+   },
+   "m-xhz32yb": {
+    "status": "done",
+    "updatedAt": 1795464555000,
     "answers": {
-     "q": [
-      0,
-      1,
-      2,
-      4
-     ]
+     "q-3": 0
     },
     "first": {
-     "q": true
+     "q-3": false
+    },
+    "dealt": {
+     "q-3": 0
     },
     "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-k2l2r2h": {
-    "status": "done",
-    "updatedAt": 1795155012161,
-    "answers": {
-     "q": [
-      "Close the hatch",
-      "Check the fuel",
-      "Start the engines",
-      "Lift off!"
-     ]
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-pvs61ja": {
-    "status": "done",
-    "updatedAt": 1795139449161,
-    "answers": {
-     "q": "oxygen"
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-1iizdkb": {
-    "status": "done",
-    "updatedAt": 1795141886161,
-    "answers": {
-     "q": 1
-    },
-    "first": {
-     "q": false
-    },
-    "results": {
-     "q": false
+     "q-3": false
     },
     "score": 0
    },
-   "m-dgy5qek": {
+   "m-6g7dpej": {
     "status": "done",
-    "updatedAt": 1795144323161,
+    "updatedAt": 1795469429000,
     "dealt": {
      "#score": 33
     },
     "score": 1
    },
-   "m-2ckwc6d": {
+   "m-6uu5g7p": {
     "status": "done",
-    "updatedAt": 1795146760161,
+    "updatedAt": 1795459903000,
     "answers": {
-     "q": 0
+     "q-4": 0
     },
     "first": {
-     "q": true
+     "q-4": true
+    },
+    "dealt": {
+     "q-4": 0
     },
     "results": {
-     "q": true
+     "q-4": true
     },
     "score": 1
    },
-   "m-ubvofxs": {
+   "m-lwyavnq": {
     "status": "done",
-    "updatedAt": 1795149197161,
+    "updatedAt": 1795464777000,
     "answers": {
-     "q": 1
+     "q-5": 0
     },
     "first": {
-     "q": false
+     "q-5": false
+    },
+    "dealt": {
+     "q-5": 0
     },
     "results": {
-     "q": false
+     "q-5": false
     },
     "score": 0
    },
-   "m-gsmh3wr": {
-    "status": "doing",
-    "updatedAt": 1795151634161
-   },
-   "m-lmd7krb": {
+   "m-6sidjy5": {
     "status": "done",
-    "updatedAt": 1795586071161
+    "updatedAt": 1795469651000,
+    "handedAt": 1795830826962,
+    "output": ""
+   },
+   "m-1r438mo": {
+    "status": "done",
+    "updatedAt": 1795460125000,
+    "output": "My plan: start the lesson with a short story card, then one question that branches, so students who aren't sure get an extra example.",
+    "handedAt": 1795830828929,
+    "ai": {
+     "state": "done",
+     "at": 1795460185000,
+     "model": "claude-sonnet-5-5",
+     "text": "Works well: You've already thought about the students who aren't sure. \"A short story card, then one question that branches, so students who aren't sure get an extra example\" gives your lesson a clear opening and a plan for different learners. That's a strong plan for someone new to this.\n\nTry next: The card also asks why you'd open with that card. Add a line on what the story is for, such as grabbing attention or setting up the question, and name the lesson it belongs to. Then say what the extra example would help a student understand. That way the plan is ready to build.\n\nYour next step: Write the first sentence of your story card and the question that follows it. Keep them short, as a rough draft. You'll build this branching idea for real in Week 2, in \"Card trees\", and next you'll look at how to choose the right kind of question in \"Every kind of question\".",
+     "watched": false,
+     "input": "1PUPFl6qdM-ntB6F"
+    },
+    "review": {
+     "verdict": "good",
+     "text": "Lovely start: the story card will hook them. Try making the branch question about the story itself.",
+     "at": 1795478125000,
+     "on": "My plan: start the lesson with a short story card, then one question that branches, so students who aren't sure get an extra example."
+    }
+   },
+   "m-e6q9aav": {
+    "status": "done",
+    "updatedAt": 1795637799000,
+    "handedAt": 1795830831481,
+    "output": ""
+   },
+   "m-u7y8sea": {
+    "status": "doing",
+    "updatedAt": 1795642673000
+   },
+   "m-fw1a5r8": {
+    "status": "done",
+    "updatedAt": 1795633147000,
+    "answers": {
+     "q-7": [
+      "Make a Question card",
+      "Try it in Student View",
+      "Drag an answer's dot to a card",
+      "Give it some answers"
+     ]
+    },
+    "first": {
+     "q-7": false
+    },
+    "results": {
+     "q-7": false
+    },
+    "score": 0
+   },
+   "m-iokfr1s": {
+    "status": "doing",
+    "updatedAt": 1795638021000
+   },
+   "m-u271j08": {
+    "status": "done",
+    "updatedAt": 1795642895000,
+    "handedAt": 1795830870528,
+    "output": ""
+   },
+   "m-lh0ndx7": {
+    "status": "done",
+    "updatedAt": 1795633369000,
+    "answers": {
+     "q-9": 0
+    },
+    "first": {
+     "q-9": true
+    },
+    "dealt": {
+     "q-9": 0
+    },
+    "results": {
+     "q-9": true
+    },
+    "score": 1
+   },
+   "m-4xzpupy": {
+    "status": "done",
+    "updatedAt": 1795638243000,
+    "handedAt": 1795830876035,
+    "output": ""
+   },
+   "m-ykerz37": {
+    "status": "done",
+    "updatedAt": 1795815917000,
+    "handedAt": 1795832065134,
+    "output": ""
+   },
+   "m-90jjayn": {
+    "status": "done",
+    "updatedAt": 1795806391000,
+    "handedAt": 1795832067010,
+    "output": ""
+   },
+   "m-cjs4yxf": {
+    "status": "done",
+    "updatedAt": 1795811265000,
+    "answers": {
+     "q-10": 2
+    },
+    "first": {
+     "q-10": false
+    },
+    "dealt": {
+     "q-10": 2
+    },
+    "results": {
+     "q-10": false
+    },
+    "score": 0
+   },
+   "m-h06c29d": {
+    "status": "done",
+    "updatedAt": 1795816139000,
+    "handedAt": 1795832072516,
+    "output": ""
+   },
+   "m-4b9dd01": {
+    "status": "done",
+    "updatedAt": 1795806613000,
+    "handedAt": 1795832074378,
+    "output": ""
+   },
+   "m-81q44sf": {
+    "status": "done",
+    "updatedAt": 1795811487000,
+    "handedAt": 1795832076323,
+    "output": ""
+   },
+   "m-cp9185j": {
+    "status": "done",
+    "updatedAt": 1795816361000,
+    "handedAt": 1795832078165,
+    "output": ""
+   },
+   "m-3io6r4m": {
+    "status": "done",
+    "updatedAt": 1795806835000,
+    "output": "One question: Is 3/4 bigger than 2/3? Yes deals a stretch card on ordering fractions; No deals a card with two pizzas cut into quarters and thirds.",
+    "handedAt": 1795832080186
+   },
+   "m-agv10hw": {
+    "status": "done",
+    "updatedAt": 1795811709000,
+    "handedAt": 1795832082661,
+    "output": ""
    }
   },
-  "s-yjd0k1q": {
-   "m-lr2nei9": {
+  "s-omar": {
+   "m-m2g2zh9": {
     "status": "done",
-    "updatedAt": 1794965708161
+    "updatedAt": 1795211783000,
+    "handedAt": 1795830916889,
+    "output": ""
    },
-   "m-706fg3x": {
+   "m-21h70bo": {
     "status": "done",
-    "updatedAt": 1794968145161,
+    "updatedAt": 1795202257000,
     "answers": {
-     "q": 2
+     "q-1": 1
     },
     "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-nnpkijh": {
-    "status": "done",
-    "updatedAt": 1794970582161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
+     "q-1": true
     },
     "dealt": {
-     "q": 0
+     "q-1": 1
     },
     "results": {
-     "q": true
+     "q-1": true
     },
     "score": 1
    },
-   "m-yg6xo33": {
+   "m-jtj0mn6": {
     "status": "done",
-    "updatedAt": 1795145819161,
+    "updatedAt": 1795207131000,
+    "handedAt": 1795830922273,
+    "output": ""
+   },
+   "m-0cj6cr9": {
+    "status": "done",
+    "updatedAt": 1795197605000,
     "answers": {
-     "q": [
-      0,
-      1,
-      2,
-      4
-     ]
+     "q-2": 2
     },
     "first": {
-     "q": true
+     "q-2": true
     },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-k2l2r2h": {
-    "status": "done",
-    "updatedAt": 1795148256161,
-    "answers": {
-     "q": [
-      "Close the hatch",
-      "Check the fuel",
-      "Start the engines",
-      "Lift off!"
-     ]
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-pvs61ja": {
-    "status": "done",
-    "updatedAt": 1795150693161,
-    "answers": {
-     "q": "oxygen"
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-1iizdkb": {
-    "status": "done",
-    "updatedAt": 1795153130161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-dgy5qek": {
-    "status": "done",
-    "updatedAt": 1795155567161,
     "dealt": {
-     "#score": 67
-    },
-    "score": 2
-   },
-   "m-2ckwc6d": {
-    "status": "done",
-    "updatedAt": 1795140004161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
+     "q-2": 2
     },
     "results": {
-     "q": true
+     "q-2": true
     },
     "score": 1
    },
-   "m-ubvofxs": {
+   "m-cjg6wv1": {
     "status": "done",
-    "updatedAt": 1795142441161,
+    "updatedAt": 1795461679000,
+    "handedAt": 1795830927750,
+    "output": ""
+   },
+   "m-wrpgx4f": {
+    "status": "done",
+    "updatedAt": 1795466553000,
+    "handedAt": 1795830929651,
+    "output": ""
+   },
+   "m-xhz32yb": {
+    "status": "done",
+    "updatedAt": 1795457027000,
     "answers": {
-     "q": 2
+     "q-3": 1
     },
     "first": {
-     "q": false
+     "q-3": true
+    },
+    "dealt": {
+     "q-3": 1
     },
     "results": {
-     "q": false
-    },
-    "score": 0
-   },
-   "m-lmd7krb": {
-    "status": "done",
-    "updatedAt": 1795576878161
-   },
-   "m-aem0uj4": {
-    "status": "done",
-    "updatedAt": 1795579315161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
+     "q-3": true
     },
     "score": 1
    },
-   "m-rj83uuv": {
+   "m-6g7dpej": {
     "status": "done",
-    "updatedAt": 1795581752161,
+    "updatedAt": 1795461901000,
     "dealt": {
      "#score": 100
     },
-    "score": 2
-   },
-   "m-n1nbco5": {
-    "status": "done",
-    "updatedAt": 1795584189161,
-    "dealt": {
-     "#score": 75
-    },
     "score": 3
    },
-   "m-8qrg8oh": {
+   "m-6uu5g7p": {
     "status": "done",
-    "updatedAt": 1795586626161,
+    "updatedAt": 1795466775000,
     "answers": {
-     "q": 0
+     "q-4": 0
     },
     "first": {
-     "q": true
+     "q-4": true
     },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-c03dvtj": {
-    "status": "done",
-    "updatedAt": 1795571063161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-zo7fygi": {
-    "status": "done",
-    "updatedAt": 1795573500161,
     "dealt": {
-     "#score": 50
+     "q-4": 0
+    },
+    "results": {
+     "q-4": true
     },
     "score": 1
    },
-   "m-3tv8tti": {
+   "m-lwyavnq": {
     "status": "done",
-    "updatedAt": 1795575937161,
+    "updatedAt": 1795457249000,
     "answers": {
-     "q": 1
+     "q-5": 1
     },
     "first": {
-     "q": false
+     "q-5": true
+    },
+    "dealt": {
+     "q-5": 1
     },
     "results": {
-     "q": false
+     "q-5": true
+    },
+    "score": 1
+   },
+   "m-2fen2fw": {
+    "status": "done",
+    "updatedAt": 1795462123000,
+    "handedAt": 1795830942179,
+    "output": ""
+   },
+   "m-1r438mo": {
+    "status": "done",
+    "updatedAt": 1795466997000,
+    "output": "My plan: start the lesson with a short story card, then one question that branches, so students who aren't sure get an extra example.",
+    "handedAt": 1795830944150,
+    "ai": {
+     "state": "done",
+     "at": 1795467057000,
+     "model": "claude-sonnet-5-5",
+     "text": "Works well: You're already thinking about the student's experience, not just the content. Your line \"students who aren't sure get an extra example\" gives the branching question a clear purpose, which is exactly why a card tree is worth building.\n\nTry next: The card asks which card you'd open with and why. You've named a story card, but you haven't said why a story is the right way to begin. One sentence on what you want it to do for students (grab attention, set up the question, connect to something they know) would complete your answer. It would also help to name the lesson, so the story has something to be about.\n\nYour next step: Write two or three sentences of your story card, as if you were typing it into the card. Then note what the question that follows should check. That will make the branch easier to plan when you reach \"Every kind of question\" and, in Week 2, \"Card trees.\"",
+     "watched": false,
+     "input": "1PUPFl6qdM-ntB6F"
+    }
+   },
+   "m-e6q9aav": {
+    "status": "done",
+    "updatedAt": 1795630271000,
+    "handedAt": 1795830946745,
+    "output": ""
+   },
+   "m-u7y8sea": {
+    "status": "done",
+    "updatedAt": 1795635145000,
+    "answers": {
+     "q-6": [
+      0,
+      1,
+      2
+     ]
+    },
+    "first": {
+     "q-6": true
+    },
+    "dealt": {
+     "q-6": [
+      0,
+      1,
+      2
+     ]
+    },
+    "results": {
+     "q-6": true
+    },
+    "score": 1
+   },
+   "m-fw1a5r8": {
+    "status": "done",
+    "updatedAt": 1795640019000,
+    "answers": {
+     "q-7": [
+      "Make a Question card",
+      "Give it some answers",
+      "Drag an answer's dot to a card",
+      "Try it in Student View"
+     ]
+    },
+    "first": {
+     "q-7": true
+    },
+    "results": {
+     "q-7": true
+    },
+    "score": 1
+   },
+   "m-iokfr1s": {
+    "status": "done",
+    "updatedAt": 1795630493000,
+    "answers": {
+     "q-8": "map"
+    },
+    "first": {
+     "q-8": true
+    },
+    "results": {
+     "q-8": true
+    },
+    "score": 1
+   },
+   "m-u271j08": {
+    "status": "done",
+    "updatedAt": 1795635367000,
+    "handedAt": 1795830960138,
+    "output": ""
+   },
+   "m-lh0ndx7": {
+    "status": "done",
+    "updatedAt": 1795640241000,
+    "answers": {
+     "q-9": 1
+    },
+    "first": {
+     "q-9": true
+    },
+    "dealt": {
+     "q-9": 1
+    },
+    "results": {
+     "q-9": true
+    },
+    "score": 1
+   },
+   "m-4xzpupy": {
+    "status": "done",
+    "updatedAt": 1795630715000,
+    "handedAt": 1795830965760,
+    "output": ""
+   },
+   "m-ykerz37": {
+    "status": "done",
+    "updatedAt": 1795808389000,
+    "handedAt": 1795830967640,
+    "output": ""
+   },
+   "m-90jjayn": {
+    "status": "done",
+    "updatedAt": 1795813263000,
+    "handedAt": 1795830969701,
+    "output": ""
+   },
+   "m-cjs4yxf": {
+    "status": "done",
+    "updatedAt": 1795803737000,
+    "answers": {
+     "q-10": 1
+    },
+    "first": {
+     "q-10": true
+    },
+    "dealt": {
+     "q-10": 1
+    },
+    "results": {
+     "q-10": true
+    },
+    "score": 1
+   },
+   "m-xybdv47": {
+    "status": "done",
+    "updatedAt": 1795808611000,
+    "handedAt": 1795830975144,
+    "output": ""
+   },
+   "m-4b9dd01": {
+    "status": "done",
+    "updatedAt": 1795813485000,
+    "handedAt": 1795830977051,
+    "output": ""
+   },
+   "m-81q44sf": {
+    "status": "done",
+    "updatedAt": 1795803959000,
+    "handedAt": 1795830979041,
+    "output": ""
+   },
+   "m-cp9185j": {
+    "status": "done",
+    "updatedAt": 1795808833000,
+    "handedAt": 1795830981060,
+    "output": ""
+   },
+   "m-3io6r4m": {
+    "status": "done",
+    "updatedAt": 1795813707000,
+    "output": "My plan: start the lesson with a short story card, then one question that branches, so students who aren't sure get an extra example.",
+    "handedAt": 1795830983028
+   }
+  },
+  "s-ana": {
+   "m-m2g2zh9": {
+    "status": "done",
+    "updatedAt": 1795199381000,
+    "handedAt": 1795831849027,
+    "output": ""
+   },
+   "m-21h70bo": {
+    "status": "done",
+    "updatedAt": 1795204255000,
+    "answers": {
+     "q-1": 0
+    },
+    "first": {
+     "q-1": true
+    },
+    "dealt": {
+     "q-1": 0
+    },
+    "results": {
+     "q-1": true
+    },
+    "score": 1
+   },
+   "m-yuwdl6f": {
+    "status": "done",
+    "updatedAt": 1795209129000,
+    "handedAt": 1795831854402,
+    "output": ""
+   },
+   "m-jtj0mn6": {
+    "status": "done",
+    "updatedAt": 1795199603000,
+    "handedAt": 1795831856207,
+    "output": ""
+   },
+   "m-0cj6cr9": {
+    "status": "done",
+    "updatedAt": 1795204477000,
+    "answers": {
+     "q-2": 0
+    },
+    "first": {
+     "q-2": false
+    },
+    "dealt": {
+     "q-2": 0
+    },
+    "results": {
+     "q-2": false
     },
     "score": 0
    },
-   "m-o57ayfd": {
-    "status": "doing",
-    "updatedAt": 1795578374161,
-    "output": "A long glass tunnel with shelves of tomatoes, beans and basil, and big windows for sunlight.",
-    "review": {
-     "verdict": "revise",
-     "text": "Lovely plants, Mia! Where does the water come from? Add it to your drawing and hand it in again.",
-     "at": 1795581139161
-    }
+   "m-cjg6wv1": {
+    "status": "done",
+    "updatedAt": 1795468551000,
+    "handedAt": 1795831861684,
+    "output": ""
    },
-   "m-husy3fv": {
+   "m-wrpgx4f": {
     "status": "done",
-    "updatedAt": 1795580811161
-   }
-  },
-  "s-rlzns3t": {
-   "m-lr2nei9": {
-    "status": "done",
-    "updatedAt": 1794978448161
+    "updatedAt": 1795459025000,
+    "handedAt": 1795831863500,
+    "output": ""
    },
-   "m-706fg3x": {
+   "m-xhz32yb": {
     "status": "done",
-    "updatedAt": 1794980885161,
+    "updatedAt": 1795463899000,
     "answers": {
-     "q": 1
+     "q-3": 2
     },
     "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-nnpkijh": {
-    "status": "done",
-    "updatedAt": 1794983322161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
+     "q-3": false
     },
     "dealt": {
-     "q": 0
+     "q-3": 2
     },
     "results": {
-     "q": true
+     "q-3": false
     },
-    "score": 1
+    "score": 0
    },
-   "m-yg6xo33": {
+   "m-6g7dpej": {
     "status": "done",
-    "updatedAt": 1795140559161,
+    "updatedAt": 1795468773000,
+    "dealt": {
+     "#score": 0
+    },
+    "score": 0
+   },
+   "m-6uu5g7p": {
+    "status": "done",
+    "updatedAt": 1795459247000,
     "answers": {
-     "q": [
+     "q-4": 1
+    },
+    "first": {
+     "q-4": false
+    },
+    "dealt": {
+     "q-4": 1
+    },
+    "results": {
+     "q-4": false
+    },
+    "score": 0
+   },
+   "m-lwyavnq": {
+    "status": "done",
+    "updatedAt": 1795464121000,
+    "answers": {
+     "q-5": 2
+    },
+    "first": {
+     "q-5": false
+    },
+    "dealt": {
+     "q-5": 2
+    },
+    "results": {
+     "q-5": false
+    },
+    "score": 0
+   },
+   "m-6sidjy5": {
+    "status": "done",
+    "updatedAt": 1795468995000,
+    "handedAt": 1795831875806,
+    "output": ""
+   },
+   "m-1r438mo": {
+    "status": "doing",
+    "updatedAt": 1795459469000,
+    "output": "I teach Year 8 science. I'd open the water cycle lesson with a short video of a puddle drying up, because it's something they've all seen and it makes them ask where the water went.",
+    "handedAt": 1795831877716,
+    "reopened": true,
+    "ai": {
+     "state": "done",
+     "at": 1795459529000,
+     "model": "claude-sonnet-5-5",
+     "text": "Works well: You chose an opening that does real work. A puddle drying up is something every Year 8 student has seen, and you say why it matters: it makes them ask \"where the water went.\" That's a hook that starts the thinking before you've explained anything.\n\nTry next: The card asks which card you'd open with, and you've described the content but not named the type. Decide whether your video would sit in a Content card (they watch, then you move on) or lead into a Question card (they predict \"where did the water go?\" before they see the answer). Your reason, getting them to ask, suggests the second might fit well. Say which one you'd pick and why.\n\nYour next step: Write the one question you'd put right after the puddle video, in your own words. Then try it as a Question card in \"Every kind of question,\" where you'll practise picking the right kind of question for it.",
+     "watched": false,
+     "input": "SGddW4EnlAbX6U4y"
+    },
+    "review": {
+     "verdict": "revise",
+     "text": "The puddle is a great hook. Before you hand it in again: add the question you'd ask right after the video, so the card leads somewhere.",
+     "at": 1795477469000,
+     "on": "I teach Year 8 science. I'd open the water cycle lesson with a short video of a puddle drying up, because it's something they've all seen and it makes them ask where the water went."
+    }
+   },
+   "m-e6q9aav": {
+    "status": "done",
+    "updatedAt": 1795637143000,
+    "handedAt": 1795831880245,
+    "output": ""
+   },
+   "m-u7y8sea": {
+    "status": "done",
+    "updatedAt": 1795642017000,
+    "answers": {
+     "q-6": [
       0,
-      1,
       3
      ]
     },
     "first": {
-     "q": false
+     "q-6": false
+    },
+    "dealt": {
+     "q-6": [
+      0,
+      3
+     ]
     },
     "results": {
-     "q": false
+     "q-6": false
     },
     "score": 0
    },
-   "m-k2l2r2h": {
+   "m-fw1a5r8": {
     "status": "done",
-    "updatedAt": 1795142996161,
+    "updatedAt": 1795632491000,
     "answers": {
-     "q": [
-      "Start the engines",
-      "Close the hatch",
-      "Check the fuel",
-      "Lift off!"
+     "q-7": [
+      "Give it some answers",
+      "Make a Question card",
+      "Drag an answer's dot to a card",
+      "Try it in Student View"
      ]
     },
     "first": {
-     "q": false
+     "q-7": false
     },
     "results": {
-     "q": false
+     "q-7": false
     },
     "score": 0
    },
-   "m-pvs61ja": {
+   "m-iokfr1s": {
     "status": "done",
-    "updatedAt": 1795145433161,
+    "updatedAt": 1795637365000,
     "answers": {
-     "q": "oxygen"
+     "q-8": "board"
     },
     "first": {
-     "q": true
+     "q-8": false
     },
     "results": {
-     "q": true
+     "q-8": false
+    },
+    "score": 0
+   },
+   "m-u271j08": {
+    "status": "done",
+    "updatedAt": 1795642239000,
+    "handedAt": 1795831892806,
+    "output": ""
+   },
+   "m-lh0ndx7": {
+    "status": "done",
+    "updatedAt": 1795632713000,
+    "answers": {
+     "q-9": 2
+    },
+    "first": {
+     "q-9": true
+    },
+    "dealt": {
+     "q-9": 2
+    },
+    "results": {
+     "q-9": true
     },
     "score": 1
    },
-   "m-1iizdkb": {
+   "m-ulmtnql": {
     "status": "done",
-    "updatedAt": 1795147870161,
+    "updatedAt": 1795637587000,
+    "handedAt": 1795831898394,
+    "output": ""
+   },
+   "m-4xzpupy": {
+    "status": "done",
+    "updatedAt": 1795642461000,
+    "handedAt": 1795831900303,
+    "output": ""
+   }
+  },
+  "s-sam": {
+   "m-m2g2zh9": {
+    "status": "done",
+    "updatedAt": 1795200935000,
+    "handedAt": 1795831918542,
+    "output": ""
+   },
+   "m-21h70bo": {
+    "status": "done",
+    "updatedAt": 1795205809000,
     "answers": {
-     "q": 0
+     "q-1": 2
     },
     "first": {
-     "q": true
+     "q-1": true
+    },
+    "dealt": {
+     "q-1": 2
     },
     "results": {
-     "q": true
+     "q-1": true
     },
     "score": 1
    },
-   "m-dgy5qek": {
+   "m-8om0p6s": {
     "status": "done",
-    "updatedAt": 1795150307161,
+    "updatedAt": 1795210683000,
+    "handedAt": 1795831923910,
+    "output": ""
+   },
+   "m-jtj0mn6": {
+    "status": "done",
+    "updatedAt": 1795201157000,
+    "handedAt": 1795831925735,
+    "output": ""
+   },
+   "m-0cj6cr9": {
+    "status": "done",
+    "updatedAt": 1795206031000,
+    "answers": {
+     "q-2": 2
+    },
+    "first": {
+     "q-2": true
+    },
+    "dealt": {
+     "q-2": 2
+    },
+    "results": {
+     "q-2": true
+    },
+    "score": 1
+   },
+   "m-cjg6wv1": {
+    "status": "done",
+    "updatedAt": 1795470105000,
+    "handedAt": 1795831931183,
+    "output": ""
+   },
+   "m-wrpgx4f": {
+    "status": "done",
+    "updatedAt": 1795460579000,
+    "handedAt": 1795831933027,
+    "output": ""
+   },
+   "m-xhz32yb": {
+    "status": "done",
+    "updatedAt": 1795465453000,
+    "answers": {
+     "q-3": 1
+    },
+    "first": {
+     "q-3": true
+    },
+    "dealt": {
+     "q-3": 1
+    },
+    "results": {
+     "q-3": true
+    },
+    "score": 1
+   },
+   "m-6g7dpej": {
+    "status": "done",
+    "updatedAt": 1795470327000,
     "dealt": {
      "#score": 100
     },
     "score": 3
    },
-   "m-2ckwc6d": {
+   "m-6uu5g7p": {
     "status": "done",
-    "updatedAt": 1795152744161,
+    "updatedAt": 1795460801000,
     "answers": {
-     "q": 0
+     "q-4": 0
     },
     "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-ubvofxs": {
-    "status": "done",
-    "updatedAt": 1795155181161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   }
-  },
-  "s-0gv4pys": {
-   "m-lr2nei9": {
-    "status": "done",
-    "updatedAt": 1794966818161
-   },
-   "m-706fg3x": {
-    "status": "done",
-    "updatedAt": 1794969255161,
-    "answers": {
-     "q": 3
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-nnpkijh": {
-    "status": "done",
-    "updatedAt": 1794971692161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
+     "q-4": true
     },
     "dealt": {
-     "q": 0
+     "q-4": 0
     },
     "results": {
-     "q": true
+     "q-4": true
     },
     "score": 1
    },
-   "m-yg6xo33": {
+   "m-lwyavnq": {
     "status": "done",
-    "updatedAt": 1795146929161,
+    "updatedAt": 1795465675000,
     "answers": {
-     "q": [
+     "q-5": 1
+    },
+    "first": {
+     "q-5": true
+    },
+    "dealt": {
+     "q-5": 1
+    },
+    "results": {
+     "q-5": true
+    },
+    "score": 1
+   },
+   "m-2fen2fw": {
+    "status": "done",
+    "updatedAt": 1795470549000,
+    "handedAt": 1795831945360,
+    "output": ""
+   },
+   "m-1r438mo": {
+    "status": "done",
+    "updatedAt": 1795461023000,
+    "output": "History, Year 10. First card: a photo of a 1920s street with no caption. Students guess the year. It gets them looking closely before I say anything.",
+    "handedAt": 1795831947249,
+    "ai": {
+     "state": "done",
+     "at": 1795461083000,
+     "model": "claude-sonnet-5-5",
+     "text": "Works well: You chose a photo with no caption and asked students to guess the year. That's a clear reason, not just a pick: it gets them \"looking closely before I say anything.\" It also gives every student something to say, even if they know little about the 1920s.\n\nTry next: Your plan fits a Content card (the photo) followed by a Question card (the guess). Say which card does which job, and what kind of question the guess is. A year is a typed number, but you might also ask \"What clues made you choose that year?\" Which format suits each? You'll practise this in \"Every kind of question\" next.\n\nYour next step: Write the exact question that goes under your photo, then note what you'd want a student to see or say once they've answered. Having that ready will make building the card in Week 1 much quicker.",
+     "watched": false,
+     "input": "9pEBgz_6rxNus5rG"
+    }
+   }
+  },
+  "s-lena": {
+   "m-m2g2zh9": {
+    "status": "done",
+    "updatedAt": 1795206697000,
+    "handedAt": 1795831964931,
+    "output": ""
+   },
+   "m-21h70bo": {
+    "status": "done",
+    "updatedAt": 1795211571000,
+    "answers": {
+     "q-1": 1
+    },
+    "first": {
+     "q-1": true
+    },
+    "dealt": {
+     "q-1": 1
+    },
+    "results": {
+     "q-1": true
+    },
+    "score": 1
+   },
+   "m-jtj0mn6": {
+    "status": "done",
+    "updatedAt": 1795202045000,
+    "handedAt": 1795831970248,
+    "output": ""
+   },
+   "m-0cj6cr9": {
+    "status": "done",
+    "updatedAt": 1795206919000,
+    "answers": {
+     "q-2": 2
+    },
+    "first": {
+     "q-2": true
+    },
+    "dealt": {
+     "q-2": 2
+    },
+    "results": {
+     "q-2": true
+    },
+    "score": 1
+   },
+   "m-cjg6wv1": {
+    "status": "done",
+    "updatedAt": 1795470993000,
+    "handedAt": 1795831975522,
+    "output": ""
+   },
+   "m-wrpgx4f": {
+    "status": "done",
+    "updatedAt": 1795461467000,
+    "handedAt": 1795831977436,
+    "output": ""
+   },
+   "m-xhz32yb": {
+    "status": "done",
+    "updatedAt": 1795466341000,
+    "answers": {
+     "q-3": 1
+    },
+    "first": {
+     "q-3": true
+    },
+    "dealt": {
+     "q-3": 1
+    },
+    "results": {
+     "q-3": true
+    },
+    "score": 1
+   },
+   "m-6g7dpej": {
+    "status": "done",
+    "updatedAt": 1795456815000,
+    "dealt": {
+     "#score": 100
+    },
+    "score": 3
+   },
+   "m-6uu5g7p": {
+    "status": "done",
+    "updatedAt": 1795461689000,
+    "answers": {
+     "q-4": 0
+    },
+    "first": {
+     "q-4": true
+    },
+    "dealt": {
+     "q-4": 0
+    },
+    "results": {
+     "q-4": true
+    },
+    "score": 1
+   },
+   "m-lwyavnq": {
+    "status": "done",
+    "updatedAt": 1795466563000,
+    "answers": {
+     "q-5": 1
+    },
+    "first": {
+     "q-5": true
+    },
+    "dealt": {
+     "q-5": 1
+    },
+    "results": {
+     "q-5": true
+    },
+    "score": 1
+   },
+   "m-2fen2fw": {
+    "status": "done",
+    "updatedAt": 1795457037000,
+    "handedAt": 1795831989614,
+    "output": ""
+   },
+   "m-1r438mo": {
+    "status": "done",
+    "updatedAt": 1795461911000,
+    "output": "For my Spanish class I'd start with a 30-second voice note of me ordering coffee, then a question: what did I order? It's real listening from the first minute.",
+    "handedAt": 1795831991504,
+    "ai": {
+     "state": "done",
+     "at": 1795461971000,
+     "model": "claude-sonnet-5-5",
+     "text": "Works well: You've picked a plan that fits your lesson. A 30-second voice note of you ordering coffee, followed by \"what did I order?\", gives students something real to listen to straight away. Your line \"real listening from the first minute\" says exactly why it works, and it's a clear reason for opening with that card.\n\nTry next: Tell us which card is which. It sounds like the voice note is a Content card and the \"what did I order?\" part is a Question card. Say that in your plan so it's clear you've matched each idea to a card. Then think about what a student sees if they get the answer wrong. Would they hear the note again, or move on? You don't have to build that yet, just have an idea.\n\nYour next step: Write down one thing you'd want a student to hear in the voice note, such as the drink, the size or the price. That will help you choose the right kind of question in \"Every kind of question,\" coming up next in Week 1.",
+     "watched": false,
+     "input": "fx-XQoIKpMCAZDaD"
+    }
+   },
+   "m-e6q9aav": {
+    "status": "done",
+    "updatedAt": 1795639585000,
+    "handedAt": 1795831993963,
+    "output": ""
+   },
+   "m-u7y8sea": {
+    "status": "done",
+    "updatedAt": 1795630059000,
+    "answers": {
+     "q-6": [
       0,
       1,
-      2,
-      4
+      2
      ]
     },
     "first": {
-     "q": true
+     "q-6": true
+    },
+    "dealt": {
+     "q-6": [
+      0,
+      1,
+      2
+     ]
     },
     "results": {
-     "q": true
+     "q-6": true
     },
     "score": 1
    },
-   "m-k2l2r2h": {
+   "m-fw1a5r8": {
     "status": "done",
-    "updatedAt": 1795149366161,
+    "updatedAt": 1795634933000,
     "answers": {
-     "q": [
-      "Close the hatch",
-      "Check the fuel",
-      "Start the engines",
-      "Lift off!"
+     "q-7": [
+      "Make a Question card",
+      "Give it some answers",
+      "Drag an answer's dot to a card",
+      "Try it in Student View"
      ]
     },
     "first": {
-     "q": true
+     "q-7": true
     },
     "results": {
-     "q": true
+     "q-7": true
     },
     "score": 1
    },
-   "m-pvs61ja": {
+   "m-iokfr1s": {
     "status": "done",
-    "updatedAt": 1795151803161,
+    "updatedAt": 1795639807000,
     "answers": {
-     "q": "oxygen"
+     "q-8": "map"
     },
     "first": {
-     "q": true
+     "q-8": true
     },
     "results": {
-     "q": true
+     "q-8": true
     },
     "score": 1
    },
-   "m-1iizdkb": {
+   "m-u271j08": {
     "status": "done",
-    "updatedAt": 1795154240161,
+    "updatedAt": 1795630281000,
+    "handedAt": 1795832007007,
+    "output": ""
+   },
+   "m-lh0ndx7": {
+    "status": "done",
+    "updatedAt": 1795635155000,
     "answers": {
-     "q": 0
+     "q-9": 0
     },
     "first": {
-     "q": true
+     "q-9": true
     },
-    "results": {
-     "q": true
-    },
-    "score": 1
-   },
-   "m-dgy5qek": {
-    "status": "done",
-    "updatedAt": 1795138677161,
     "dealt": {
-     "#score": 67
-    },
-    "score": 2
-   },
-   "m-2ckwc6d": {
-    "status": "done",
-    "updatedAt": 1795141114161,
-    "answers": {
-     "q": 1
-    },
-    "first": {
-     "q": false
+     "q-9": 0
     },
     "results": {
-     "q": false
-    },
-    "score": 0
-   },
-   "m-ubvofxs": {
-    "status": "done",
-    "updatedAt": 1795143551161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
+     "q-9": true
     },
     "score": 1
    },
-   "m-lmd7krb": {
+   "m-4xzpupy": {
     "status": "done",
-    "updatedAt": 1795577988161
+    "updatedAt": 1795640029000,
+    "handedAt": 1795832012463,
+    "output": ""
    },
-   "m-aem0uj4": {
+   "m-ykerz37": {
     "status": "done",
-    "updatedAt": 1795580425161,
+    "updatedAt": 1795803303000,
+    "handedAt": 1795832014300,
+    "output": ""
+   },
+   "m-90jjayn": {
+    "status": "done",
+    "updatedAt": 1795808177000,
+    "handedAt": 1795832016203,
+    "output": ""
+   },
+   "m-cjs4yxf": {
+    "status": "done",
+    "updatedAt": 1795813051000,
     "answers": {
-     "q": 1
+     "q-10": 1
     },
     "first": {
-     "q": false
+     "q-10": true
     },
-    "results": {
-     "q": false
-    },
-    "score": 0
-   },
-   "m-rj83uuv": {
-    "status": "done",
-    "updatedAt": 1795582862161,
     "dealt": {
-     "#score": 50
-    },
-    "score": 1
-   },
-   "m-n1nbco5": {
-    "status": "done",
-    "updatedAt": 1795585299161,
-    "dealt": {
-     "#score": 50
-    },
-    "score": 2
-   },
-   "m-8qrg8oh": {
-    "status": "done",
-    "updatedAt": 1795587736161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
+     "q-10": 1
     },
     "results": {
-     "q": true
+     "q-10": true
     },
     "score": 1
    },
-   "m-c03dvtj": {
+   "m-xybdv47": {
     "status": "done",
-    "updatedAt": 1795572173161,
-    "answers": {
-     "q": 0
-    },
-    "first": {
-     "q": true
-    },
-    "results": {
-     "q": true
-    },
-    "score": 1
+    "updatedAt": 1795803525000,
+    "handedAt": 1795832021494,
+    "output": ""
    },
-   "m-zo7fygi": {
+   "m-4b9dd01": {
     "status": "done",
-    "updatedAt": 1795574610161,
-    "dealt": {
-     "#score": 50
-    },
-    "score": 1
+    "updatedAt": 1795808399000,
+    "handedAt": 1795832023409,
+    "output": ""
    },
-   "m-3tv8tti": {
+   "m-81q44sf": {
     "status": "done",
-    "updatedAt": 1795577047161,
-    "answers": {
-     "q": 1
-    },
-    "first": {
-     "q": false
-    },
-    "results": {
-     "q": false
-    },
-    "score": 0
+    "updatedAt": 1795813273000,
+    "handedAt": 1795832025226,
+    "output": ""
    },
-   "m-kc97zt0": {
+   "m-cp9185j": {
     "status": "done",
-    "updatedAt": 1795579484161
+    "updatedAt": 1795803747000,
+    "handedAt": 1795832027165,
+    "output": ""
    },
-   "m-o57ayfd": {
+   "m-3io6r4m": {
     "status": "done",
-    "updatedAt": 1795581921161,
-    "output": "Greenhouse made of ice blocks (ice lets light through and keeps the cold out).\n1. Light: the sun shining through the ice.\n2. Water: we melt a little of the wall when we need it!\n3. Plants: wheat for bread, peas, and sunflowers."
-   },
-   "m-husy3fv": {
-    "status": "done",
-    "updatedAt": 1795584358161
+    "updatedAt": 1795808621000,
+    "output": "Question: Which word means 'tomorrow'? A) mañana B) ayer. A -> next card, a short dialogue. B -> a card with a calendar picture showing ayer / hoy / mañana.",
+    "handedAt": 1795832029093
    }
   },
-  "s-fj99uev": {
-   "m-lr2nei9": {
+  "s-kai": {
+   "m-m2g2zh9": {
     "status": "done",
-    "updatedAt": 1794981995161
+    "updatedAt": 1795208695000,
+    "handedAt": 1795832035805,
+    "output": ""
    },
-   "m-706fg3x": {
+   "m-21h70bo": {
     "status": "done",
-    "updatedAt": 1794966432161,
+    "updatedAt": 1795199169000,
     "answers": {
-     "q": 0
+     "q-1": 0
     },
     "first": {
-     "q": true
+     "q-1": true
+    },
+    "dealt": {
+     "q-1": 0
     },
     "results": {
-     "q": true
+     "q-1": true
+    },
+    "score": 1
+   },
+   "m-yuwdl6f": {
+    "status": "done",
+    "updatedAt": 1795204043000,
+    "handedAt": 1795832041156,
+    "output": ""
+   },
+   "m-jtj0mn6": {
+    "status": "done",
+    "updatedAt": 1795208917000,
+    "handedAt": 1795832043098,
+    "output": ""
+   },
+   "m-0cj6cr9": {
+    "status": "done",
+    "updatedAt": 1795199391000,
+    "answers": {
+     "q-2": 2
+    },
+    "first": {
+     "q-2": true
+    },
+    "dealt": {
+     "q-2": 2
+    },
+    "results": {
+     "q-2": true
     },
     "score": 1
    }
   }
  },
- "posts": [
-  {
-   "id": "p-2ut15dk",
-   "moduleId": "m-husy3fv",
-   "studentId": "s-vny9yoq",
-   "text": "The sea. Swimming on a hot day, and the sound of waves. 🌊",
-   "work": [],
-   "createdAt": 1795580377161,
-   "comments": [
-    {
-     "id": "c-zogsd7w",
-     "from": "s-yjd0k1q",
-     "text": "Same! Maybe the base can have a pool?",
-     "at": 1795582777161
-    }
-   ]
-  },
-  {
-   "id": "p-126kepr",
-   "moduleId": "m-husy3fv",
-   "studentId": "s-yjd0k1q",
-   "text": "My dog Biscuit. Can dogs go to Mars?",
-   "work": [],
-   "createdAt": 1795582814161,
-   "comments": [
-    {
-     "id": "c-nxvf3so",
-     "from": "s-0gv4pys",
-     "text": "Dogs can't fit in a spacesuit… yet 🐶",
-     "at": 1795585214161
-    }
-   ]
-  },
-  {
-   "id": "p-wvtjc9w",
-   "moduleId": "m-husy3fv",
-   "studentId": "s-0gv4pys",
-   "text": "Rain! I never thought I'd say that.",
-   "work": [],
-   "createdAt": 1795585251161
-  },
-  {
-   "id": "p-29552r7",
-   "moduleId": "m-husy3fv",
-   "studentId": "teacher",
-   "text": "Mine: fresh bread from the bakery on my street. What a list, crew!",
-   "work": [],
-   "createdAt": 1795587688161
-  }
- ],
+ "posts": [],
  "toolLog": [],
  "events": [
   {
    "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-lr2nei9",
-   "text": "Finished “Your mission briefing”",
-   "id": "rxzg4n6o",
-   "at": 1794968869161
+   "studentId": "s-maya",
+   "moduleId": "m-m2g2zh9",
+   "text": "Finished “A course is a deck of cards”",
+   "id": "315gg3g6",
+   "at": 1795204265000
   },
   {
    "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-706fg3x",
-   "text": "Finished “Pick your crew job”",
-   "id": "x4pukcah",
-   "at": 1794971306161
+   "studentId": "s-maya",
+   "moduleId": "m-21h70bo",
+   "text": "Finished “Where are you starting from?”",
+   "id": "0ii2bw6z",
+   "at": 1795209139000
   },
   {
    "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-nnpkijh",
-   "text": "Finished “How far is Mars?”",
-   "id": "uhgnyi6w",
-   "at": 1794973743161
+   "studentId": "s-maya",
+   "moduleId": "m-yuwdl6f",
+   "text": "Finished “New here? Two words are enough”",
+   "id": "n3l1m8rf",
+   "at": 1795199613000
   },
   {
    "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-yg6xo33",
-   "text": "Finished “What goes on board?”",
-   "id": "46qdkgaf",
-   "at": 1795148980161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-k2l2r2h",
-   "text": "Finished “Countdown”",
-   "id": "eflpy0tv",
-   "at": 1795151417161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-pvs61ja",
-   "text": "Finished “One word”",
-   "id": "rzjw9lf0",
-   "at": 1795153854161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-1iizdkb",
-   "text": "Finished “Closest to the Sun”",
-   "id": "wo912awz",
-   "at": 1795156291161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-2ckwc6d",
-   "text": "Finished “The red planet”",
-   "id": "v1mvx5g5",
-   "at": 1795140728161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-ubvofxs",
-   "text": "Finished “Moons”",
-   "id": "qd7jpnav",
-   "at": 1795143165161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-44kf2df",
-   "text": "Finished “Bonus: the tallest volcano”",
-   "id": "8r05rx57",
-   "at": 1795145602161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-lmd7krb",
-   "text": "Finished “Three things to stay alive”",
-   "id": "r1phr7xr",
-   "at": 1795580039161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-aem0uj4",
-   "text": "Finished “Mars air”",
-   "id": "oxeiitwv",
-   "at": 1795582476161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-8qrg8oh",
-   "text": "Finished “A walk outside”",
-   "id": "4elzs96y",
-   "at": 1795584913161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-c03dvtj",
-   "text": "Finished “Where's the water?”",
-   "id": "9bhvg1ef",
-   "at": 1795587350161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-3tv8tti",
-   "text": "Finished “A drink, please”",
-   "id": "n6swcu0m",
-   "at": 1795571787161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-o57ayfd",
-   "text": "Finished “Design a Mars greenhouse”",
-   "id": "ceto50f5",
-   "at": 1795574224161
-  },
-  {
-   "kind": "post",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-husy3fv",
-   "text": "The sea. Swimming on a hot day, and the sound of waves. 🌊",
-   "id": "rxkfp9jp",
-   "at": 1795576661161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-vlw32mc",
-   "text": "Finished “Meet the rover”",
-   "id": "vd71imq5",
-   "at": 1795579098161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-vny9yoq",
-   "moduleId": "m-p9q3wn9",
-   "text": "Finished “Rock ahead!”",
-   "id": "upmo6frl",
-   "at": 1795581535161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-lr2nei9",
-   "text": "Finished “Your mission briefing”",
-   "id": "l8m1f5fd",
-   "at": 1794979172161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-706fg3x",
-   "text": "Finished “Pick your crew job”",
-   "id": "i1budrb8",
-   "at": 1794981609161
+   "studentId": "s-maya",
+   "moduleId": "m-jtj0mn6",
+   "text": "Finished “What your students see”",
+   "id": "te83g6lg",
+   "at": 1795204487000
   },
   {
    "kind": "wrong",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-nnpkijh",
-   "text": "Q1: chose “About 3 days”; answer is “About 7 months”",
-   "id": "og55kqme",
-   "at": 1794966046161
+   "studentId": "s-maya",
+   "moduleId": "m-0cj6cr9",
+   "text": "Q1: chose “Settings”; answer is “The Map”",
+   "id": "udz88mkd",
+   "at": 1795209361000
   },
   {
    "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-nnpkijh",
-   "text": "Finished “How far is Mars?”",
-   "id": "bau0ctct",
-   "at": 1794968483161
+   "studentId": "s-maya",
+   "moduleId": "m-0cj6cr9",
+   "text": "Finished “Quick check”",
+   "id": "vxdgg7r1",
+   "at": 1795199835000
   },
   {
    "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-sf03u4w",
-   "text": "Finished “Space is BIG”",
-   "id": "86bdwzp2",
-   "at": 1794970920161
+   "studentId": "s-maya",
+   "moduleId": "m-cjg6wv1",
+   "text": "Finished “Two kinds of card”",
+   "id": "fb48wt12",
+   "at": 1795463909000
   },
   {
    "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-yg6xo33",
-   "text": "Finished “What goes on board?”",
-   "id": "nznmdokz",
-   "at": 1795146157161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-k2l2r2h",
-   "text": "Finished “Countdown”",
-   "id": "m9amfy5x",
-   "at": 1795148594161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-pvs61ja",
-   "text": "Finished “One word”",
-   "id": "6mw8ylvc",
-   "at": 1795151031161
+   "studentId": "s-maya",
+   "moduleId": "m-wrpgx4f",
+   "text": "Finished “Make a card”",
+   "id": "chyfbtwv",
+   "at": 1795468783000
   },
   {
    "kind": "wrong",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-1iizdkb",
-   "text": "Q1: chose “Mars”; answer is “Mercury”",
-   "id": "ptr6tjga",
-   "at": 1795153468161
+   "studentId": "s-maya",
+   "moduleId": "m-xhz32yb",
+   "text": "Q1: chose “A poll”; answer is “A Content card”",
+   "id": "0tm4488u",
+   "at": 1795459257000
   },
   {
    "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-1iizdkb",
-   "text": "Finished “Closest to the Sun”",
-   "id": "grfjuaup",
-   "at": 1795155905161
+   "studentId": "s-maya",
+   "moduleId": "m-xhz32yb",
+   "text": "Finished “Card quiz 1”",
+   "id": "1x2ioodi",
+   "at": 1795464131000
   },
   {
    "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-2ckwc6d",
-   "text": "Finished “The red planet”",
-   "id": "ztjcpd6s",
-   "at": 1795140342161
+   "studentId": "s-maya",
+   "moduleId": "m-6uu5g7p",
+   "text": "Finished “Card quiz 2”",
+   "id": "eac0qmkx",
+   "at": 1795469005000
   },
   {
    "kind": "wrong",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-ubvofxs",
-   "text": "Q1: chose “None”; answer is “Two”",
-   "id": "f6kod6o7",
-   "at": 1795142779161
+   "studentId": "s-maya",
+   "moduleId": "m-lwyavnq",
+   "text": "Q1: chose “Content”; answer is “Open answer”",
+   "id": "c75epvta",
+   "at": 1795459479000
   },
   {
    "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-ubvofxs",
-   "text": "Finished “Moons”",
-   "id": "33j3jv3f",
-   "at": 1795145216161
+   "studentId": "s-maya",
+   "moduleId": "m-lwyavnq",
+   "text": "Finished “Card quiz 3”",
+   "id": "6vfqjab4",
+   "at": 1795464353000
   },
   {
    "kind": "done",
-   "studentId": "s-c7j45cl",
-   "moduleId": "m-lmd7krb",
-   "text": "Finished “Three things to stay alive”",
-   "id": "29379kpn",
-   "at": 1795579653161
+   "studentId": "s-maya",
+   "moduleId": "m-6sidjy5",
+   "text": "Finished “The card kinds, side by side”",
+   "id": "7zsaot0n",
+   "at": 1795469227000
   },
   {
    "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-lr2nei9",
-   "text": "Finished “Your mission briefing”",
-   "id": "umd1z9zj",
-   "at": 1794977290161
+   "studentId": "s-maya",
+   "moduleId": "m-1r438mo",
+   "text": "Finished “Your turn: plan a card”",
+   "id": "per692ft",
+   "at": 1795459701000
   },
   {
    "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-706fg3x",
-   "text": "Finished “Pick your crew job”",
-   "id": "kcuwspaf",
-   "at": 1794979727161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-nnpkijh",
-   "text": "Finished “How far is Mars?”",
-   "id": "u0vk6ext",
-   "at": 1794982164161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-yg6xo33",
-   "text": "Finished “What goes on board?”",
-   "id": "d9jk23nn",
-   "at": 1795139401161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-k2l2r2h",
-   "text": "Finished “Countdown”",
-   "id": "ngekwwr9",
-   "at": 1795141838161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-pvs61ja",
-   "text": "Finished “One word”",
-   "id": "yc8lh9fl",
-   "at": 1795144275161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-1iizdkb",
-   "text": "Finished “Closest to the Sun”",
-   "id": "n3wv56ty",
-   "at": 1795146712161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-2ckwc6d",
-   "text": "Finished “The red planet”",
-   "id": "7p577mtk",
-   "at": 1795149149161
+   "studentId": "s-maya",
+   "moduleId": "m-e6q9aav",
+   "text": "Finished “Five ways to ask”",
+   "id": "3ji0qt7t",
+   "at": 1795637375000
   },
   {
    "kind": "wrong",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-ubvofxs",
-   "text": "Q1: chose “Twelve”; answer is “Two”",
-   "id": "ordxfsse",
-   "at": 1795151586161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-ubvofxs",
-   "text": "Finished “Moons”",
-   "id": "qv2nvbje",
-   "at": 1795154023161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-lmd7krb",
-   "text": "Finished “Three things to stay alive”",
-   "id": "e9uafk07",
-   "at": 1795570460161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-aem0uj4",
-   "text": "Finished “Mars air”",
-   "id": "4vkfs2nv",
-   "at": 1795572897161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-8qrg8oh",
-   "text": "Finished “A walk outside”",
-   "id": "wni1j0t7",
-   "at": 1795575334161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-c03dvtj",
-   "text": "Finished “Where's the water?”",
-   "id": "5oecul1g",
-   "at": 1795577771161
-  },
-  {
-   "kind": "wrong",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-3tv8tti",
-   "text": "Q1: chose “Wait for it to rain”; answer is “Dig up ice, melt it and clean it”",
-   "id": "qjymtmkh",
-   "at": 1795580208161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-3tv8tti",
-   "text": "Finished “A drink, please”",
-   "id": "g8q3opld",
-   "at": 1795582645161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-o57ayfd",
-   "text": "Finished “Design a Mars greenhouse”",
-   "id": "gsy4bj24",
-   "at": 1795585082161
-  },
-  {
-   "kind": "post",
-   "studentId": "s-yjd0k1q",
-   "moduleId": "m-husy3fv",
-   "text": "My dog Biscuit. Can dogs go to Mars?",
-   "id": "p63q7517",
-   "at": 1795587519161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-lr2nei9",
-   "text": "Finished “Your mission briefing”",
-   "id": "jx2sims1",
-   "at": 1794967156161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-706fg3x",
-   "text": "Finished “Pick your crew job”",
-   "id": "0qxmndw3",
-   "at": 1794969593161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-nnpkijh",
-   "text": "Finished “How far is Mars?”",
-   "id": "fk7fv2g4",
-   "at": 1794972030161
-  },
-  {
-   "kind": "wrong",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-yg6xo33",
-   "text": "Q1: not quite (choose all that apply)",
-   "id": "jdf77tf0",
-   "at": 1795147267161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-yg6xo33",
-   "text": "Finished “What goes on board?”",
-   "id": "a3e47tks",
-   "at": 1795149704161
-  },
-  {
-   "kind": "wrong",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-k2l2r2h",
+   "studentId": "s-maya",
+   "moduleId": "m-fw1a5r8",
    "text": "Q1: not quite (order)",
-   "id": "2wjzi0yc",
-   "at": 1795152141161
+   "id": "gj7j2nsm",
+   "at": 1795642249000
   },
   {
    "kind": "done",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-k2l2r2h",
-   "text": "Finished “Countdown”",
-   "id": "mnxs936l",
-   "at": 1795154578161
+   "studentId": "s-maya",
+   "moduleId": "m-fw1a5r8",
+   "text": "Finished “Put them in order”",
+   "id": "ib0i2ut7",
+   "at": 1795632723000
   },
   {
    "kind": "done",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-pvs61ja",
-   "text": "Finished “One word”",
-   "id": "xnyfmmik",
-   "at": 1795139015161
+   "studentId": "s-maya",
+   "moduleId": "m-u271j08",
+   "text": "Finished “Math in a card”",
+   "id": "z0gsob76",
+   "at": 1795637597000
   },
   {
    "kind": "done",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-1iizdkb",
-   "text": "Finished “Closest to the Sun”",
-   "id": "9fcqne1i",
-   "at": 1795141452161
+   "studentId": "s-maya",
+   "moduleId": "m-lh0ndx7",
+   "text": "Finished “How is it going?”",
+   "id": "u1ii1ym4",
+   "at": 1795642471000
   },
   {
    "kind": "done",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-2ckwc6d",
-   "text": "Finished “The red planet”",
-   "id": "aqq0hltn",
-   "at": 1795143889161
+   "studentId": "s-maya",
+   "moduleId": "m-4xzpupy",
+   "text": "Finished “Several questions, one card group”",
+   "id": "ad9e4stc",
+   "at": 1795632945000
   },
   {
    "kind": "done",
-   "studentId": "s-rlzns3t",
-   "moduleId": "m-ubvofxs",
-   "text": "Finished “Moons”",
-   "id": "y98rubp6",
-   "at": 1795146326161
+   "studentId": "s-omar",
+   "moduleId": "m-m2g2zh9",
+   "text": "Finished “A course is a deck of cards”",
+   "id": "olu7at2t",
+   "at": 1795205819000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-lr2nei9",
-   "text": "Finished “Your mission briefing”",
-   "id": "sftytws7",
-   "at": 1794975963161
+   "studentId": "s-omar",
+   "moduleId": "m-21h70bo",
+   "text": "Finished “Where are you starting from?”",
+   "id": "1bjqrvwq",
+   "at": 1795210693000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-706fg3x",
-   "text": "Finished “Pick your crew job”",
-   "id": "0c2phpij",
-   "at": 1794978400161
+   "studentId": "s-omar",
+   "moduleId": "m-jtj0mn6",
+   "text": "Finished “What your students see”",
+   "id": "pzwfb5fi",
+   "at": 1795201167000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-nnpkijh",
-   "text": "Finished “How far is Mars?”",
-   "id": "wilprm9p",
-   "at": 1794980837161
+   "studentId": "s-omar",
+   "moduleId": "m-0cj6cr9",
+   "text": "Finished “Quick check”",
+   "id": "xbhozfph",
+   "at": 1795206041000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-yg6xo33",
-   "text": "Finished “What goes on board?”",
-   "id": "agc4h0sk",
-   "at": 1795156074161
+   "studentId": "s-omar",
+   "moduleId": "m-cjg6wv1",
+   "text": "Finished “Two kinds of card”",
+   "id": "vvn46onu",
+   "at": 1795470115000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-k2l2r2h",
-   "text": "Finished “Countdown”",
-   "id": "5t4jmxyp",
-   "at": 1795140511161
+   "studentId": "s-omar",
+   "moduleId": "m-wrpgx4f",
+   "text": "Finished “Make a card”",
+   "id": "01t00z7s",
+   "at": 1795460589000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-pvs61ja",
-   "text": "Finished “One word”",
-   "id": "j5ntq2mw",
-   "at": 1795142948161
+   "studentId": "s-omar",
+   "moduleId": "m-xhz32yb",
+   "text": "Finished “Card quiz 1”",
+   "id": "8msvvtzx",
+   "at": 1795465463000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-1iizdkb",
-   "text": "Finished “Closest to the Sun”",
-   "id": "qfgr4eem",
-   "at": 1795145385161
+   "studentId": "s-omar",
+   "moduleId": "m-6uu5g7p",
+   "text": "Finished “Card quiz 2”",
+   "id": "dkpa862x",
+   "at": 1795470337000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-lwyavnq",
+   "text": "Finished “Card quiz 3”",
+   "id": "c3t0n0sh",
+   "at": 1795460811000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-2fen2fw",
+   "text": "Finished “Ahead of the class: card groups”",
+   "id": "n5suj5yu",
+   "at": 1795465685000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-1r438mo",
+   "text": "Finished “Your turn: plan a card”",
+   "id": "dnsxvjr1",
+   "at": 1795470559000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-e6q9aav",
+   "text": "Finished “Five ways to ask”",
+   "id": "tryxb94c",
+   "at": 1795633833000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-u7y8sea",
+   "text": "Finished “Pick all that apply”",
+   "id": "5gvs48bv",
+   "at": 1795638707000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-fw1a5r8",
+   "text": "Finished “Put them in order”",
+   "id": "uin3euv4",
+   "at": 1795643581000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-iokfr1s",
+   "text": "Finished “Type the answer”",
+   "id": "c3koihig",
+   "at": 1795634055000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-u271j08",
+   "text": "Finished “Math in a card”",
+   "id": "0lytlra1",
+   "at": 1795638929000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-lh0ndx7",
+   "text": "Finished “How is it going?”",
+   "id": "rhjdfdxo",
+   "at": 1795643803000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-4xzpupy",
+   "text": "Finished “Several questions, one card group”",
+   "id": "uvlb4mqt",
+   "at": 1795634277000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-ykerz37",
+   "text": "Finished “Why branch?”",
+   "id": "ws4sgy42",
+   "at": 1795811951000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-90jjayn",
+   "text": "Finished “Draw a branch”",
+   "id": "3a2l39iw",
+   "at": 1795802425000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-cjs4yxf",
+   "text": "Finished “Try a branch”",
+   "id": "e9owbjji",
+   "at": 1795807299000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-xybdv47",
+   "text": "Finished “Yes: a short extra example”",
+   "id": "f07pmhwk",
+   "at": 1795812173000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-4b9dd01",
+   "text": "Finished “Branch by score”",
+   "id": "xh44qv92",
+   "at": 1795802647000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-81q44sf",
+   "text": "Finished “Deal a card in a later lesson”",
+   "id": "qxl60z7m",
+   "at": 1795807521000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-cp9185j",
+   "text": "Finished “Who gets a card”",
+   "id": "vgthd1pe",
+   "at": 1795812395000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-3io6r4m",
+   "text": "Finished “Sketch your own tree”",
+   "id": "0xq7x4wb",
+   "at": 1795802869000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-m2g2zh9",
+   "text": "Finished “A course is a deck of cards”",
+   "id": "o5yoxzga",
+   "at": 1795202943000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-21h70bo",
+   "text": "Finished “Where are you starting from?”",
+   "id": "yl7en02a",
+   "at": 1795207817000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-yuwdl6f",
+   "text": "Finished “New here? Two words are enough”",
+   "id": "bjhl4i4z",
+   "at": 1795198291000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-jtj0mn6",
+   "text": "Finished “What your students see”",
+   "id": "h2310y3z",
+   "at": 1795203165000
   },
   {
    "kind": "wrong",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-2ckwc6d",
-   "text": "Q1: chose “It's very hot”; answer is “Its dust has rust in it”",
-   "id": "vlkgqzou",
-   "at": 1795147822161
+   "studentId": "s-ana",
+   "moduleId": "m-0cj6cr9",
+   "text": "Q1: chose “Settings”; answer is “The Map”",
+   "id": "cimbx4lw",
+   "at": 1795208039000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-2ckwc6d",
-   "text": "Finished “The red planet”",
-   "id": "996d51gi",
-   "at": 1795150259161
+   "studentId": "s-ana",
+   "moduleId": "m-0cj6cr9",
+   "text": "Finished “Quick check”",
+   "id": "vchexst6",
+   "at": 1795198513000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-ubvofxs",
-   "text": "Finished “Moons”",
-   "id": "wrrxf1oi",
-   "at": 1795152696161
+   "studentId": "s-ana",
+   "moduleId": "m-cjg6wv1",
+   "text": "Finished “Two kinds of card”",
+   "id": "nuqz3445",
+   "at": 1795462587000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-lmd7krb",
-   "text": "Finished “Three things to stay alive”",
-   "id": "5gg8nmk5",
-   "at": 1795587133161
+   "studentId": "s-ana",
+   "moduleId": "m-wrpgx4f",
+   "text": "Finished “Make a card”",
+   "id": "2aslom3b",
+   "at": 1795467461000
   },
   {
    "kind": "wrong",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-aem0uj4",
-   "text": "Q1: chose “Oxygen”; answer is “Carbon dioxide”",
-   "id": "1tsy6byu",
-   "at": 1795571570161
+   "studentId": "s-ana",
+   "moduleId": "m-xhz32yb",
+   "text": "Q1: chose “A Discussion card”; answer is “A Content card”",
+   "id": "zsknvjr7",
+   "at": 1795457935000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-aem0uj4",
-   "text": "Finished “Mars air”",
-   "id": "dk4jlvpy",
-   "at": 1795574007161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-8qrg8oh",
-   "text": "Finished “A walk outside”",
-   "id": "9bdgafrm",
-   "at": 1795576444161
-  },
-  {
-   "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-c03dvtj",
-   "text": "Finished “Where's the water?”",
-   "id": "e2hjukb1",
-   "at": 1795578881161
+   "studentId": "s-ana",
+   "moduleId": "m-xhz32yb",
+   "text": "Finished “Card quiz 1”",
+   "id": "2yr30dzk",
+   "at": 1795462809000
   },
   {
    "kind": "wrong",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-3tv8tti",
-   "text": "Q1: chose “Wait for it to rain”; answer is “Dig up ice, melt it and clean it”",
-   "id": "s9d08mj4",
-   "at": 1795581318161
+   "studentId": "s-ana",
+   "moduleId": "m-6uu5g7p",
+   "text": "Q1: chose “Open answer”; answer is “Choices, with Has a right answer: No”",
+   "id": "aqnl5p65",
+   "at": 1795467683000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-3tv8tti",
-   "text": "Finished “A drink, please”",
-   "id": "l5fbn9mn",
-   "at": 1795583755161
+   "studentId": "s-ana",
+   "moduleId": "m-6uu5g7p",
+   "text": "Finished “Card quiz 2”",
+   "id": "aozv6z68",
+   "at": 1795458157000
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-ana",
+   "moduleId": "m-lwyavnq",
+   "text": "Q1: chose “Choices”; answer is “Open answer”",
+   "id": "jpj38zec",
+   "at": 1795463031000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-kc97zt0",
-   "text": "Finished “Fix-it list”",
-   "id": "7hp5a5p0",
-   "at": 1795586192161
+   "studentId": "s-ana",
+   "moduleId": "m-lwyavnq",
+   "text": "Finished “Card quiz 3”",
+   "id": "vnpe2aob",
+   "at": 1795467905000
   },
   {
    "kind": "done",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-o57ayfd",
-   "text": "Finished “Design a Mars greenhouse”",
-   "id": "l90sg50e",
-   "at": 1795570629161
-  },
-  {
-   "kind": "post",
-   "studentId": "s-0gv4pys",
-   "moduleId": "m-husy3fv",
-   "text": "Rain! I never thought I'd say that.",
-   "id": "4bg9gaeq",
-   "at": 1795573066161
+   "studentId": "s-ana",
+   "moduleId": "m-6sidjy5",
+   "text": "Finished “The card kinds, side by side”",
+   "id": "e6fuk955",
+   "at": 1795458379000
   },
   {
    "kind": "done",
-   "studentId": "s-fj99uev",
-   "moduleId": "m-lr2nei9",
-   "text": "Finished “Your mission briefing”",
-   "id": "dwrwyqfs",
-   "at": 1794970703161
+   "studentId": "s-ana",
+   "moduleId": "m-1r438mo",
+   "text": "Finished “Your turn: plan a card”",
+   "id": "7pjogjfo",
+   "at": 1795463253000
   },
   {
    "kind": "done",
-   "studentId": "s-fj99uev",
-   "moduleId": "m-706fg3x",
-   "text": "Finished “Pick your crew job”",
-   "id": "cjpi3qo7",
-   "at": 1794973140161
+   "studentId": "s-ana",
+   "moduleId": "m-e6q9aav",
+   "text": "Finished “Five ways to ask”",
+   "id": "xxhbukng",
+   "at": 1795640927000
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-ana",
+   "moduleId": "m-u7y8sea",
+   "text": "Q1: not quite (choose all that apply)",
+   "id": "f8ycv0e4",
+   "at": 1795631401000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-u7y8sea",
+   "text": "Finished “Pick all that apply”",
+   "id": "m1606531",
+   "at": 1795636275000
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-ana",
+   "moduleId": "m-fw1a5r8",
+   "text": "Q1: not quite (order)",
+   "id": "swdxvwq9",
+   "at": 1795641149000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-fw1a5r8",
+   "text": "Finished “Put them in order”",
+   "id": "iyhfqigz",
+   "at": 1795631623000
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-ana",
+   "moduleId": "m-iokfr1s",
+   "text": "Q1: wrote “board”; accepted: “map”",
+   "id": "7piljwdb",
+   "at": 1795636497000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-iokfr1s",
+   "text": "Finished “Type the answer”",
+   "id": "h3rv0zge",
+   "at": 1795641371000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-u271j08",
+   "text": "Finished “Math in a card”",
+   "id": "hus2itr9",
+   "at": 1795631845000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-lh0ndx7",
+   "text": "Finished “How is it going?”",
+   "id": "4yu9e589",
+   "at": 1795636719000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-ulmtnql",
+   "text": "Finished “More help, just for you”",
+   "id": "pdwigror",
+   "at": 1795641593000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-ana",
+   "moduleId": "m-4xzpupy",
+   "text": "Finished “Several questions, one card group”",
+   "id": "xaezxkr8",
+   "at": 1795632067000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-m2g2zh9",
+   "text": "Finished “A course is a deck of cards”",
+   "id": "cqog3612",
+   "at": 1795204941000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-21h70bo",
+   "text": "Finished “Where are you starting from?”",
+   "id": "713wj9fu",
+   "at": 1795209815000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-8om0p6s",
+   "text": "Finished “Coming from another tool?”",
+   "id": "e4u9wl44",
+   "at": 1795200289000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-jtj0mn6",
+   "text": "Finished “What your students see”",
+   "id": "8iwturs9",
+   "at": 1795205163000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-0cj6cr9",
+   "text": "Finished “Quick check”",
+   "id": "f0wrfupr",
+   "at": 1795210037000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-cjg6wv1",
+   "text": "Finished “Two kinds of card”",
+   "id": "kx4ndyhe",
+   "at": 1795459711000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-wrpgx4f",
+   "text": "Finished “Make a card”",
+   "id": "2q66a5q6",
+   "at": 1795464585000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-xhz32yb",
+   "text": "Finished “Card quiz 1”",
+   "id": "g7qugkd1",
+   "at": 1795469459000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-6uu5g7p",
+   "text": "Finished “Card quiz 2”",
+   "id": "njl5oqj6",
+   "at": 1795459933000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-lwyavnq",
+   "text": "Finished “Card quiz 3”",
+   "id": "wt7nvcx2",
+   "at": 1795464807000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-2fen2fw",
+   "text": "Finished “Ahead of the class: card groups”",
+   "id": "bkdggih0",
+   "at": 1795469681000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-sam",
+   "moduleId": "m-1r438mo",
+   "text": "Finished “Your turn: plan a card”",
+   "id": "m7d6hgnr",
+   "at": 1795460155000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-m2g2zh9",
+   "text": "Finished “A course is a deck of cards”",
+   "id": "54wd5m0b",
+   "at": 1795205829000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-21h70bo",
+   "text": "Finished “Where are you starting from?”",
+   "id": "mio6ls16",
+   "at": 1795210703000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-jtj0mn6",
+   "text": "Finished “What your students see”",
+   "id": "e90xddok",
+   "at": 1795201177000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-0cj6cr9",
+   "text": "Finished “Quick check”",
+   "id": "io5tgsg1",
+   "at": 1795206051000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-cjg6wv1",
+   "text": "Finished “Two kinds of card”",
+   "id": "r3uhap3w",
+   "at": 1795470125000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-wrpgx4f",
+   "text": "Finished “Make a card”",
+   "id": "cbcsfzq8",
+   "at": 1795460599000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-xhz32yb",
+   "text": "Finished “Card quiz 1”",
+   "id": "2elh9xl3",
+   "at": 1795465473000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-6uu5g7p",
+   "text": "Finished “Card quiz 2”",
+   "id": "3zpi8jb8",
+   "at": 1795470347000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-lwyavnq",
+   "text": "Finished “Card quiz 3”",
+   "id": "auq8hkhx",
+   "at": 1795460821000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-2fen2fw",
+   "text": "Finished “Ahead of the class: card groups”",
+   "id": "8ryzfbrv",
+   "at": 1795465695000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-1r438mo",
+   "text": "Finished “Your turn: plan a card”",
+   "id": "sobki5a6",
+   "at": 1795470569000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-e6q9aav",
+   "text": "Finished “Five ways to ask”",
+   "id": "rmr8pynl",
+   "at": 1795633843000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-u7y8sea",
+   "text": "Finished “Pick all that apply”",
+   "id": "kwi3h5d9",
+   "at": 1795638717000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-fw1a5r8",
+   "text": "Finished “Put them in order”",
+   "id": "25mktbqr",
+   "at": 1795643591000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-iokfr1s",
+   "text": "Finished “Type the answer”",
+   "id": "pd47o99g",
+   "at": 1795634065000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-u271j08",
+   "text": "Finished “Math in a card”",
+   "id": "1uaks8sk",
+   "at": 1795638939000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-lh0ndx7",
+   "text": "Finished “How is it going?”",
+   "id": "ov8z60cf",
+   "at": 1795643813000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-4xzpupy",
+   "text": "Finished “Several questions, one card group”",
+   "id": "uhszmdql",
+   "at": 1795634287000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-ykerz37",
+   "text": "Finished “Why branch?”",
+   "id": "kju79y0p",
+   "at": 1795811961000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-90jjayn",
+   "text": "Finished “Draw a branch”",
+   "id": "kfoufocr",
+   "at": 1795802435000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-cjs4yxf",
+   "text": "Finished “Try a branch”",
+   "id": "8knoiwwc",
+   "at": 1795807309000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-xybdv47",
+   "text": "Finished “Yes: a short extra example”",
+   "id": "cbohtjgy",
+   "at": 1795812183000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-4b9dd01",
+   "text": "Finished “Branch by score”",
+   "id": "6plimzia",
+   "at": 1795802657000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-81q44sf",
+   "text": "Finished “Deal a card in a later lesson”",
+   "id": "kzmfv9pn",
+   "at": 1795807531000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-cp9185j",
+   "text": "Finished “Who gets a card”",
+   "id": "bpi6pjj0",
+   "at": 1795812405000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-3io6r4m",
+   "text": "Finished “Sketch your own tree”",
+   "id": "fq5dl8lz",
+   "at": 1795802879000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-kai",
+   "moduleId": "m-m2g2zh9",
+   "text": "Finished “A course is a deck of cards”",
+   "id": "imf9hx7k",
+   "at": 1795202953000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-kai",
+   "moduleId": "m-21h70bo",
+   "text": "Finished “Where are you starting from?”",
+   "id": "25xqwycz",
+   "at": 1795207827000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-kai",
+   "moduleId": "m-yuwdl6f",
+   "text": "Finished “New here? Two words are enough”",
+   "id": "j20mywmr",
+   "at": 1795198301000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-kai",
+   "moduleId": "m-jtj0mn6",
+   "text": "Finished “What your students see”",
+   "id": "us65yvus",
+   "at": 1795203175000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-kai",
+   "moduleId": "m-0cj6cr9",
+   "text": "Finished “Quick check”",
+   "id": "9djonrlc",
+   "at": 1795208049000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-maya",
+   "moduleId": "m-ykerz37",
+   "text": "Finished “Why branch?”",
+   "id": "a40vxbjf",
+   "at": 1795803323000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-maya",
+   "moduleId": "m-90jjayn",
+   "text": "Finished “Draw a branch”",
+   "id": "nrw5uso5",
+   "at": 1795808197000
+  },
+  {
+   "kind": "wrong",
+   "studentId": "s-maya",
+   "moduleId": "m-cjs4yxf",
+   "text": "Q1: chose “Nothing: move on”; answer is “Another example, explained step by step”",
+   "id": "jknbu4i8",
+   "at": 1795813071000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-maya",
+   "moduleId": "m-cjs4yxf",
+   "text": "Finished “Try a branch”",
+   "id": "y4qxadwc",
+   "at": 1795803545000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-maya",
+   "moduleId": "m-h06c29d",
+   "text": "Finished “Why not just move on?”",
+   "id": "k7udh9j4",
+   "at": 1795808419000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-maya",
+   "moduleId": "m-4b9dd01",
+   "text": "Finished “Branch by score”",
+   "id": "kuwj75jr",
+   "at": 1795813293000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-maya",
+   "moduleId": "m-81q44sf",
+   "text": "Finished “Deal a card in a later lesson”",
+   "id": "2n2ez5ks",
+   "at": 1795803767000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-maya",
+   "moduleId": "m-cp9185j",
+   "text": "Finished “Who gets a card”",
+   "id": "bkvtc3op",
+   "at": 1795808641000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-maya",
+   "moduleId": "m-3io6r4m",
+   "text": "Finished “Sketch your own tree”",
+   "id": "1lnt1lkm",
+   "at": 1795813515000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-maya",
+   "moduleId": "m-agv10hw",
+   "text": "Finished “This card waited for you”",
+   "id": "ottqwy8v",
+   "at": 1795803989000
   }
  ],
- "choices": {
-  "s-vny9yoq": {
-   "elective:l-yfy7qg3": "yes"
-  },
-  "s-yjd0k1q": {
-   "elective:l-va3hp99": "yes"
-  }
- },
+ "choices": {},
  "studio": {
   "posts": [],
   "feedback": []
@@ -2733,14 +4064,6 @@
   "hands": {}
  },
  "uptake": {},
- "nudges": [
-  {
-   "id": "n-8zttlo7",
-   "studentId": "s-fj99uev",
-   "text": "Hi Sam! Your crew needs you: try “How far is Mars?” next. 🚀",
-   "moduleId": "m-nnpkijh",
-   "at": 1795584739161
-  }
- ],
+ "nudges": [],
  "plans": {}
 }

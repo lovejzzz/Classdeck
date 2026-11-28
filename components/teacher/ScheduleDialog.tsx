@@ -19,7 +19,11 @@ export function ScheduleDialog({ lessons, start: startAt, onApply, onClose }: {
   onClose: () => void;
 }) {
   const [start, setStart] = useState(startAt ?? localDay());
-  const [days, setDays] = useState<number[]>(() => [weekday(startAt ?? localDay())]);
+  // The days class already meets (from the lessons' dates, when they have them), else the first class's day.
+  const [days, setDays] = useState<number[]>(() => {
+    const had = [...new Set(lessons.filter((l) => l.date && !l.elective).map((l) => weekday(l.date!)))].sort();
+    return had.length ? had : [weekday(startAt ?? localDay())];
+  });
   const [skip, setSkip] = useState<string[]>([]);
   const [off, setOff] = useState("");
   const dated = lessons.filter((l) => !l.elective);

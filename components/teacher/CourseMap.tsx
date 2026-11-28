@@ -433,8 +433,8 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
   // "/" opens the card search (when not typing somewhere).
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (e.key !== "/" || e.metaKey || e.ctrlKey || t.closest("input, textarea, [contenteditable=true]")) return;
+      const t = e.target instanceof Element ? e.target : null;
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || t?.closest("input, textarea, [contenteditable=true]")) return;
       e.preventDefault();
       setSearching(true);
     };
@@ -776,10 +776,12 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
     if (to && !wires.some((w) => w.to === to)) {
       const m = all.find((x) => x.m.id === to)?.m;
       const started = students.filter((st) => { const p = progress[st.id]?.[to]; return !!p && p.status !== "todo"; }).length;
+      // A score range deals by score, not by an answer picked: say it that way.
+      const byScore = port.q === SCORE;
       const ok = await ask({
-        title: `Only students who pick this get “${m?.title || "this card"}”`,
-        body: `Right now everyone gets it. Once this answer deals it, students who pick another answer won’t see it.${started ? ` ${started} student${started === 1 ? " has" : "s have"} already started it and will keep it.` : ""} You can undo this.`,
-        confirm: "Deal it by this answer",
+        title: byScore ? `Only students who score in this range get “${m?.title || "this card"}”` : `Only students who pick this get “${m?.title || "this card"}”`,
+        body: `Right now everyone gets it. Once this ${byScore ? "score range" : "answer"} deals it, students ${byScore ? "with other scores" : "who pick another answer"} won’t see it.${started ? ` ${started} student${started === 1 ? " has" : "s have"} already started it and will keep it.` : ""} You can undo this.`,
+        confirm: byScore ? "Deal it by this score" : "Deal it by this answer",
       });
       if (!ok) return;
     }
@@ -1693,7 +1695,7 @@ export function CourseMap({ lessons, weekOf, todayId, students, live = true, onS
                     <span className="absolute right-2 top-[11px] z-10 flex items-center gap-0.5">
                       <button onClick={(e) => { e.stopPropagation(); setTyping({ id: m.id, field: "title", value: m.title }); }} onPointerDown={(e) => e.stopPropagation()} aria-label={`Rename ${m.title}`} data-tip="Rename"
                         className="press grid h-6 w-6 place-items-center rounded-md text-ink-3 hover:bg-black/[0.05] hover:text-ink"><Icon name="pencil" size={12} /></button>
-                      {onSaveGroup && <button onClick={(e) => { e.stopPropagation(); onSaveGroup(m); }} onPointerDown={(e) => e.stopPropagation()} aria-label={`Save ${m.title} to My cards`} data-tip="Save to My cards"
+                      {onSaveGroup && <button onClick={(e) => { e.stopPropagation(); onSaveGroup(m); }} onPointerDown={(e) => e.stopPropagation()} aria-label={`Save ${m.title} to Saved cards`} data-tip="Save to Saved cards"
                         className="press grid h-6 w-6 place-items-center rounded-md text-ink-3 hover:bg-black/[0.05] hover:text-ink"><Icon name="star" size={12} /></button>}
                     </span>
                   )}

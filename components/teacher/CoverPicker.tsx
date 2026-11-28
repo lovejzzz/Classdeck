@@ -56,11 +56,18 @@ export function CoverPicker({ course, onChanged, readOnly }: { course: Course; o
   async function search(q = words) {
     if (!q.trim()) return;
     setBusy("photos");
-    const r = await invokeTool({ courseId: course.id, connector: "openverse", action: "search", input: { q } });
+    // Very specific words find few open photos: with fewer than four, try again with the last word left off.
+    let words = q.trim().split(/\s+/), items: Photo[] = [];
+    for (;;) {
+      const r = await invokeTool({ courseId: course.id, connector: "openverse", action: "search", input: { q: words.join(" ") } });
+      if (!r.ok) { setBusy(null); setPhotos([]); return toast(r.error, { icon: "x", tone: "bad" }); }
+      const found = ((r.result as { items?: Photo[] }).items ?? []).filter((x) => x.image);
+      if (found.length > items.length) items = found;
+      if (items.length >= 4 || words.length < 2) break;
+      words = words.slice(0, -1);
+    }
     setBusy(null);
-    if (!r.ok) { setPhotos([]); return toast(r.error, { icon: "x", tone: "bad" }); }
-    const items = (r.result as { items?: Photo[] }).items ?? [];
-    setPhotos(items.filter((x) => x.image).slice(0, 8));
+    setPhotos(items.slice(0, 8));
   }
   async function draw() {
     setBusy("draw");
@@ -133,8 +140,9 @@ export function CoverPicker({ course, onChanged, readOnly }: { course: Course; o
                   : photos.length ? photos.map((p) => (
                     <button key={p.image} type="button" onClick={() => set({ image: p.image, credit: p.credit })} title={p.credit} aria-label={`Use photo: ${p.title ?? "photo"}`}
                       className={`press aspect-[16/10] overflow-hidden rounded-[8px] border ${now.image === p.image ? "border-ink ring-2 ring-ink/80" : "border-line hover:border-line-strong"}`}>
+                      {/* A photo the site no longer serves leaves the grid instead of showing an empty box. */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.image} alt="" className="h-full w-full object-cover" />
+                      <img src={p.image} alt="" className="h-full w-full object-cover" onError={() => setPhotos((ps) => ps?.filter((x) => x.image !== p.image) ?? ps)} />
                     </button>
                   )) : <span className="col-span-4 text-[12.5px] text-ink-3">No photos for that. Try other words.</span>}
               </div>

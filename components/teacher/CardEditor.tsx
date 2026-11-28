@@ -19,7 +19,7 @@ import { RichBodyEditor } from "./RichBodyEditor";
 import { ANSWER_FORMS, FAMILIES, addNextQuestion, addToGroup, kindMeta, asKind, faceMeta, familyOf, isPoll, kindOf, newCard, type CardKind } from "@/lib/kinds";
 import type { Attachment, Course, Lesson, Module, Question, Skill, Student } from "@/lib/types";
 import { GroupingPicker, SignupGroups } from "./Groupings";
-import { parentOf, SCORE, scoreCount, sharedOnly, targetsOf, triesFor, wiresOf } from "@/lib/branching";
+import { DEFAULT_BANDS, parentOf, SCORE, scoreCount, sharedOnly, snapBands, targetsOf, triesFor, wiresOf } from "@/lib/branching";
 import { CardFace } from "../cards/CardFace";
 import { AudioPlayer } from "../cards/Media";
 import { MediaLift } from "../cards/MediaLift";
@@ -31,7 +31,7 @@ import { AttachMenu } from "../AttachMenu";
 import { GroupHand } from "./GroupHand";
 import { KindPick, copyOfSaved } from "./KindPick";
 import { useLibrary } from "./NewCardFan";
-import { groupingsOf, signupGroupingId } from "@/lib/shared";
+import { groupingsOf, signupGroupId, signupGroupingId } from "@/lib/shared";
 
 /** A card preview that tilts toward the pointer, so teachers see exactly what students will hold. */
 function TiltPreview({ m, onLook }: { m: Module; onLook?: (look: Module["look"]) => void }) {
@@ -244,7 +244,7 @@ export function CardEditor({
         {undoBar && <span className="flex items-center">{undoBar}</span>}
         <button onClick={onDuplicate} className="btn btn-quiet press h-8 gap-1 px-1.5"><Icon name="layers" size={13} /> Duplicate</button>
         {/* Collect: a copy kept in My cards, to reuse in any course. */}
-        {onSaveToLibrary && <button onClick={onSaveToLibrary} className="btn btn-quiet press h-8 gap-1 px-1.5" title="Keep a copy in My cards, to reuse in any of your courses"><Icon name="star" size={13} /> Collect</button>}
+        {onSaveToLibrary && <button onClick={onSaveToLibrary} className="btn btn-quiet press h-8 gap-1 px-1.5" title="Keep a copy in Saved cards, to reuse in any of your courses"><Icon name="star" size={13} /> Collect</button>}
         <button onClick={onDelete} className="btn btn-quiet press h-8 gap-1 px-1.5 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
         <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
       </div>
@@ -405,7 +405,8 @@ export function CardEditor({
               </div>
             ))}
             <div className="mt-3 flex flex-wrap gap-2">
-              {onTree && <button onClick={onTree} className="btn btn-ghost press h-8 px-3 text-[12.5px] text-[#4b56a8]"><Icon name="split" size={12} /> Branch by score on the map</button>}
+              {/* Shows the group on the map with its score ranges ready to wire (the usual three, if it has none yet). */}
+              {onTree && <button onClick={() => { if (!m.bands?.length) set({ bands: snapBands(DEFAULT_BANDS, scoreCount(m, lessonRef.current.modules)) }); onTree(); }} className="btn btn-ghost press h-8 px-3 text-[12.5px] text-[#4b56a8]"><Icon name="split" size={12} /> Branch by score on the map</button>}
               {/* Ungroup: the cards stay; in a group inside another, they stay in that outer group, in its place. */}
               <button onClick={() => { onChange({ ...lessonRef.current, modules: lessonRef.current.modules.filter((x) => x.id !== m.id).map((x) => (x.type === "group" && x.members?.includes(m.id) ? { ...x, members: x.members.flatMap((id) => (id === m.id ? m.members ?? [] : [id])) } : x)) }); onClose(); }} className="btn btn-ghost press h-8 px-3 text-[12.5px]">Ungroup (keep the cards)</button>
             </div>
@@ -469,7 +470,22 @@ export function CardEditor({
                 // A sign-up: each option is a group, and a student's vote puts them in it.
                 <div className="mt-3 space-y-2 rounded-xl border border-line px-3 py-2.5 text-[12.5px]">
                   <label className="flex items-center gap-2 font-medium">
-                    <input type="checkbox" checked={!!m.signup} onChange={(e) => set({ signup: e.target.checked ? { names: true } : undefined })} className="accent-[#4b56a8]" />
+                    <input type="checkbox" checked={!!m.signup} onChange={(e) => {
+                      const q = m.questions?.[0];
+                      const dealt = e.target.checked && q ? q.options.map((_, i) => targetsOf(q, i)) : [];
+                      if (!dealt.some((t) => t.length)) return set({ signup: e.target.checked ? { names: true } : undefined });
+                      // A sign-up's answers make groups instead of dealing cards: a card an answer dealt becomes a card
+                      // for that answer's group, so it still reaches the same students.
+                      const groupOf = (id: string) => dealt.flatMap((t, i) => (t.includes(id) ? [`${signupGroupingId(m.id)}~${signupGroupId(m.id, i)}`] : []));
+                      const here = lessonRef.current.modules;
+                      const elsewhere = dealt.flat().filter((id) => !here.some((x) => x.id === id)).length;
+                      onChange({ ...lessonRef.current, modules: here.map((x) => {
+                        if (x.id === m.id) return { ...x, signup: { names: true }, questions: x.questions?.map((y, k) => (k === 0 ? { ...y, next: undefined } : y)) };
+                        const gs = groupOf(x.id);
+                        return gs.length ? { ...x, audience: { kind: "student" as const, studentId: "", studentIds: [], groups: gs } } : x;
+                      }) });
+                      toast(elsewhere ? `Cards the answers dealt here now go to each answer’s group. ${elsewhere} in another lesson ${elsewhere === 1 ? "goes" : "go"} to everyone now: set who gets ${elsewhere === 1 ? "it" : "them"} under Access.` : "Cards the answers dealt now go to each answer’s group", { icon: "users" });
+                    }} className="accent-[#4b56a8]" />
                     Make groups from the answers
                   </label>
                   {m.signup ? (
@@ -684,7 +700,7 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, onGo, single
         const multi = q.kind === "multi";
         const ordered = q.kind === "order";
         return (
-          <div key={q.id} className="rise rounded-xl border border-line p-3">
+          <div key={q.id} data-options className="rise rounded-xl border border-line p-3">
             <div className="flex items-center gap-2">
               {questions.length > 1 && <span className="mono w-5">{String(qi + 1).padStart(2, "0")}</span>}
               <input value={q.text} onChange={(e) => set(q.id, { text: e.target.value })} placeholder={questions.length > 1 ? "Question" : "Question (leave empty to use the title)"} aria-label={`Question ${qi + 1}`} className="field" />
@@ -729,7 +745,7 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, onGo, single
                 </div>
                 <div className="ml-6 mt-1 flex flex-wrap gap-1">
                   {q.options.length < 6 && (
-                    <button onClick={() => set(q.id, { options: [...q.options, ""] })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>
+                    <button onClick={(e) => { focusNewOption(e.currentTarget); set(q.id, { options: [...q.options, ""] }); }} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>
                   )}
                 </div>
               </>
@@ -747,6 +763,15 @@ function QuestionsEditor({ questions, onChange, cards = [], onTree, onGo, single
 }
 
 
+/** After "+ Option": the new, empty option is where the next words go. */
+function focusNewOption(button: HTMLElement) {
+  const box = button.closest("[data-options]");
+  requestAnimationFrame(() => {
+    const fields = [...(box?.querySelectorAll<HTMLInputElement>("input[aria-label]") ?? [])].filter((x) => /^Option \d+$/.test(x.getAttribute("aria-label") ?? ""));
+    fields.at(-1)?.focus();
+  });
+}
+
 const wallDefaults = { posting: "students" as const, comments: true, reactions: "likes" as const, anonymous: false, approval: false };
 
 /** A poll: one question and its choices, none of them right. Each choice can deal a card on the map. */
@@ -754,7 +779,7 @@ function PollEditor({ question, onChange, cards = [], onTree, onGo }: { question
   const q: Question = question ?? { id: uid("q-"), text: "", options: ["", ""] };
   const titleOf = (id: string) => cards.find((c) => c.id === id)?.title || "Untitled card";
   return (
-    <div className="space-y-2">
+    <div data-options className="space-y-2">
       <input value={q.text} onChange={(e) => onChange({ ...q, text: e.target.value })} placeholder="What are you asking? (leave empty to use the title)" aria-label="Poll question" className="field" />
       <div className="space-y-1.5">
         {q.options.map((o, oi) => (
@@ -769,7 +794,7 @@ function PollEditor({ question, onChange, cards = [], onTree, onGo }: { question
         ))}
       </div>
       <div className="flex flex-wrap gap-1">
-        {q.options.length < 6 && <button onClick={() => onChange({ ...q, options: [...q.options, ""] })} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>}
+        {q.options.length < 6 && <button onClick={(e) => { focusNewOption(e.currentTarget); onChange({ ...q, options: [...q.options, ""] }); }} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="plus" size={12} /> Option</button>}
       </div>
       <p className="text-[12px] text-ink-3">No right answer. After voting, students see how the class voted.</p>
     </div>

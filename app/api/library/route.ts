@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const modules = body.modules.slice(0, 60).map((m) => clean(m, ids));
     if (!modules.length || modules.some((m) => !m)) return Response.json({ ok: false, error: "That didn’t look like a set of cards" }, { status: 400 });
     if (JSON.stringify(modules).length > MAX_BYTES * 8) return Response.json({ ok: false, error: "This is too big to save" }, { status: 400 });
-    const name = String(body.name ?? "").trim().slice(0, 60) || "My cards";
+    const name = String(body.name ?? "").trim().slice(0, 60) || "Saved cards";
     const { id: _id, ...first } = modules[0]!; // eslint-disable-line @typescript-eslint/no-unused-vars
     card = { id: uid("my-"), name, module: first, set: { kind: body.kind === "group" ? "group" : "lesson", modules: modules as Module[] }, at: Date.now() };
   } else {
@@ -77,7 +77,7 @@ export async function PUT(request: Request) {
     return Response.json({ ok: false, error: "That didn’t look like a card" }, { status: 400 });
   }
   const card = (t.cards ?? []).find((c) => c.id === String(body.id ?? ""));
-  if (!card || card.set) return Response.json({ ok: false, error: "That card isn’t in My cards any more" }, { status: 404 });
+  if (!card || card.set) return Response.json({ ok: false, error: "That card isn’t in Saved cards any more" }, { status: 404 });
   const m = clean(body.module ?? {});
   if (!m) return Response.json({ ok: false, error: "That didn’t look like a card" }, { status: 400 });
   const { id: _id, ...next } = m; // eslint-disable-line @typescript-eslint/no-unused-vars
