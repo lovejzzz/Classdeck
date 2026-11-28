@@ -105,8 +105,8 @@ export async function POST(request: Request) {
       if (!t) return fail("Sign in first", 401);
       if (verified(t)) return Response.json({ ok: true, verified: true });
       // From Settings: an older account asks to confirm its address now (the code screen then opens).
-      if (body.start) t.mustVerify = true;
       const sent = await issueCode(t);
+      if (sent.ok && body.start) t.mustVerify = true;
       save();
       return sent.ok ? Response.json({ ok: true, devCode: sent.devCode }) : fail(sent.error, 429);
     }

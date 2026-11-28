@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.32",
+    date: "2026-11-28",
+    changes: [
+      "Writing from the inbox to someone you share a course with goes through that course, so the class list’s new-message count, the course page and co-teachers all see it. Messages to people outside your courses, and shared templates, stay between the two of you.",
+      "Limits on looking people up by email and on messages per day; a template you share no longer says which of your courses it came from.",
+      "Confirming your email from Settings only asks for the code once one has actually been sent.",
+    ],
+  },
+  {
     version: "0.3.31",
     date: "2026-11-28",
     changes: [

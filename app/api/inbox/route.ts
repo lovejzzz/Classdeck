@@ -60,6 +60,20 @@ function markCourseRead(c: Course, me: string, other: string) {
   } else for (const m of d.dms[c.id] ?? []) if (m.from === other && m.to === me) m.read = true;
 }
 
+/** A message in a course conversation: to or from the teacher's side (nudges), or between classmates (dms). */
+function writeCourse(c: Course, seat: string, other: string, text: string) {
+  const d = db();
+  if (seat === "teacher" || other === "teacher") {
+    const list = (d.nudges[c.id] ??= []);
+    list.push({ id: uid("n-"), studentId: seat === "teacher" ? other : seat, text, at: Date.now(), ...(seat === "teacher" ? {} : { from: "student" as const }) });
+    if (list.length > 3000) list.splice(0, list.length - 3000);
+  } else {
+    const list = (d.dms[c.id] ??= []);
+    list.push({ id: uid("dm-"), from: seat, to: other, text, at: Date.now() } satisfies DirectMessage);
+    if (list.length > 5000) list.splice(0, list.length - 5000);
+  }
+}
+
 function allowed(c: Course, me: string, other: string): string | null {
   if (me === other) return "That's you";
   if (other !== "teacher" && !c.students.some((s) => s.id === other)) return "No such student";
@@ -94,13 +108,17 @@ function coursePairs(session: ReturnType<typeof getSession>) {
 }
 
 /** The template a message carries, for the reader: drawn small, and whether they've added it. */
-function shareView(l: Letter) {
+function shareView(l: Letter, light: boolean) {
   const s = l.share ? db().shares[l.share] : undefined;
-  return s ? info(s.template) : null;
+  if (!s) return null;
+  // The list only needs its name; a conversation draws it. Which course it came from stays with the sender.
+  if (light) return { name: s.template.name };
+  const { from: _from, ...rest } = info(s.template); // eslint-disable-line @typescript-eslint/no-unused-vars
+  return rest;
 }
 
-function letterMsgs(me: string, other: string): Msg[] {
-  return (db().letters[pairKey(me, other)] ?? []).map((l) => ({ id: l.id, letter: l.id, text: l.text, at: l.at, mine: l.from === me, read: !!l.read, ...(l.share ? { share: shareView(l), added: l.from === me ? null : l.added ?? null } : {}) }));
+function letterMsgs(me: string, other: string, light = false): Msg[] {
+  return (db().letters[pairKey(me, other)] ?? []).map((l) => ({ id: l.id, letter: l.id, text: l.text, at: l.at, mine: l.from === me, read: !!l.read, ...(l.share ? { share: shareView(l, light), added: l.from === me ? null : l.added ?? null } : {}) }));
 }
 
 const nameOf = (u?: User) => u?.name ?? "Someone";
@@ -126,6 +144,7 @@ export async function GET(request: Request) {
     // A confirmed account by its exact address (both of you confirmed): a name search never lists strangers.
     if (!me) return fail("Sign in first", 401);
     if (!verified(me)) return fail("Confirm your email first (Settings), then you can write to anyone by theirs.", 403);
+    if (throttled(`find:${me.id}`, 60, 10 * 60_000)) return fail("Too many look-ups. Try again in a few minutes.", 429);
     const email = String(q.get("find")).trim().toLowerCase();
     const u = Object.values(d.users).find((x) => x.email === email);
     if (!u || u.id === me.id || !verified(u)) return Response.json({ person: null });
@@ -175,7 +194,7 @@ export async function GET(request: Request) {
       if (a !== me.id && b !== me.id) continue;
       const t = person(a === me.id ? b : a);
       if (!t) continue;
-      const ms = letterMsgs(me.id, t.person!);
+      const ms = letterMsgs(me.id, t.person!, true);
       const last = lastOf(ms);
       if (last && (!t.last || last.at > t.last.at)) t.last = last;
       t.unread += ms.filter((m) => !m.mine && !m.read).length;
@@ -230,7 +249,16 @@ export async function POST(request: Request) {
       const known = pairs.some((p) => p.canWrite);
       if (!known && !(verified(me) && verified(them))) return fail(verified(me) ? "You can only write to people who have confirmed their email" : "Confirm your email first (Settings), then you can write to anyone by theirs.", 403);
       if (throttled(`letter:${me.id}`, 120, 10 * 60_000)) return fail("Too many messages. Try again in a few minutes.", 429);
+      if (throttled(`letter-day:${me.id}`, 400, 24 * 60 * 60_000)) return fail("That’s a lot of messages for one day. Try again tomorrow.", 429);
       if (shareId && d.shares[shareId]?.by !== me.id) return fail("That template isn’t yours to send");
+      // Someone you share a course with: it goes through that course (the course you last wrote in), so the course's
+      // own views see it too (a teacher's class list, the course page, co-teachers on the teacher's side).
+      const via = shareId ? undefined : pairs.filter((p) => p.canWrite).map((p) => ({ p, at: Math.max(0, ...courseMessages(p.c, p.me, p.other).map((m) => m.at)) })).sort((a, b) => b.at - a.at)[0]?.p;
+      if (via) {
+        writeCourse(via.c, via.me, via.other, text);
+        save(via.c.id);
+        return Response.json({ ok: true });
+      }
       const key = pairKey(me.id, other);
       const list = (d.letters[key] ??= []);
       const l: Letter = { id: uid("lt-"), from: me.id, text, at: Date.now(), ...(shareId ? { share: shareId } : {}) };
@@ -252,15 +280,7 @@ export async function POST(request: Request) {
     const text = String(body.text ?? "").trim().slice(0, 2000);
     if (!text) return fail("Write a message");
     if (throttled(`dm:${session.key}`, 120, 10 * 60_000)) return fail("Too many messages. Try again in a few minutes.", 429);
-    if (seat === "teacher" || other === "teacher") {
-      const list = (d.nudges[c.id] ??= []);
-      list.push({ id: uid("n-"), studentId: seat === "teacher" ? other : seat, text, at: Date.now(), ...(seat === "teacher" ? {} : { from: "student" as const }) });
-      if (list.length > 3000) list.splice(0, list.length - 3000);
-    } else {
-      const list = (d.dms[c.id] ??= []);
-      list.push({ id: uid("dm-"), from: seat, to: other, text, at: Date.now() } satisfies DirectMessage);
-      if (list.length > 5000) list.splice(0, list.length - 5000);
-    }
+    writeCourse(c, seat, other, text);
     save(c.id);
     return Response.json({ ok: true });
   }
