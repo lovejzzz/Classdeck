@@ -1,7 +1,7 @@
 "use client";
 
 import { MathText, hasMath, plainMath } from "../MathText";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { EarlierFeedback } from "../FeedbackHistory";
 import { op } from "@/lib/client";
 import type { ConnectorInfo } from "@/lib/connectors/types";
@@ -14,7 +14,7 @@ import { docKey, groupingOf, roleOn } from "@/lib/shared";
 import { SharedDoc } from "../SharedDoc";
 import { RichBodyEditor } from "../teacher/RichBodyEditor";
 import { DocNotes } from "./DocNotes";
-import type { AnswerValue, Attachment, Course, Lesson, Module, Post, Progress, Student } from "@/lib/types";
+import type { AnswerValue, Course, Lesson, Module, Post, Progress, Student } from "@/lib/types";
 import { MediaView } from "../cards/Media";
 import { Icon, StatusIcon } from "../Icon";
 import { ReadAloud } from "../ReadAloud";
@@ -433,9 +433,12 @@ export function CardDetail(p: DetailProps) {
         {(hasOutput || doneOnly || shared) && !m.choice && !(sharedKey?.includes(":g:solo-") && pollFor) && (
           // Stays in view at the bottom of the card while you scroll through long content.
           <div className="sticky -bottom-3 z-10 -mx-6 -mb-6 mt-7 flex flex-wrap items-center gap-3 rounded-b-[inherit] border-t border-line bg-white/95 px-6 pb-6 pt-3 backdrop-blur sm:-bottom-8 sm:-mx-8 sm:-mb-8 sm:px-8 sm:pb-11">
-            <button onClick={() => (shared ? void handInShared() : save("done"))} disabled={finishing} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>
-              <Icon name="check" size={14} /> {doneOnly ? (p.progress?.status === "done" ? "Done" : meta.doneLabel) : p.progress?.status === "done" ? "Save changes" : review?.verdict === "revise" ? "Hand in revision" : personal || (shared && m.writers === "group") ? "Hand in" : shared ? "Done" : meta.doneLabel}
-            </button>
+            {/* Once it's in, there's nothing to press: what they change still saves as they type. */}
+            {!(p.progress?.status === "done" && !doneOnly) && (
+              <button onClick={() => (shared ? void handInShared() : save("done"))} disabled={finishing} className={`btn btn-dark press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`}>
+                <Icon name="check" size={14} /> {doneOnly ? (p.progress?.status === "done" ? "Done" : meta.doneLabel) : review?.verdict === "revise" ? "Hand in revision" : personal || (shared && m.writers === "group") ? "Hand in" : shared ? "Done" : meta.doneLabel}
+              </button>
+            )}
             {p.progress?.status !== "done" && (
               // Not now: close it without finishing (anything written is kept). It stays in your hand for later.
               <button onClick={() => { if (hasOutput) save(); p.onClose(false); }} className={`btn btn-ghost press ${p.big ? "h-11 px-5 text-[15px]" : "h-9 px-4"}`} title="Close it for now; it stays in your hand, not done">
@@ -446,7 +449,12 @@ export function CardDetail(p: DetailProps) {
               <span className={`mono text-[11.5px] ${checks.length === checklist.length ? "text-ok" : ""}`}>{checks.length}/{checklist.length} steps</span>
             )}
             {p.progress?.status === "done" ? (
-              doneOnly ? null : <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3"><StatusIcon status="done" size={13} /> Done. You can still edit.</span>
+              doneOnly ? null : (
+                <span className="flex items-center gap-1.5 text-[13px] text-ink-2" aria-live="polite">
+                  <StatusIcon status="done" size={14} /> {m.type === "submit" || personal || (shared && m.writers === "group") ? "Handed in" : "Done"}
+                  <span className="text-ink-3">· {dirty || inFlight > 0 ? "Saving…" : retry ? "Not saved yet. Trying again…" : shared ? "Changes save as you type" : "Saved"}</span>
+                </span>
+              )
             ) : doneOnly ? null : (
               <span className="text-[12.5px] text-ink-3">Saves as you type<span className="[@media(pointer:coarse)]:hidden"> · {typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "⌘" : "Ctrl"}↵ to finish</span></span>
             )}

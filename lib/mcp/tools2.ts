@@ -48,10 +48,10 @@ function wav(pcm: Buffer, rate = 24000): Buffer {
 }
 async function speak(ctx: Ctx, text: string, voice?: string): Promise<{ bytes: Buffer; mime: string; by: string }> {
   const ai = aiOf(ctx.user);
-  if (!ai) throw new ToolError("Narration uses your own AI key, and none is connected. Connect Gemini or ChatGPT in Questhand → Settings → Tools for cards.");
+  if (!ai) throw new ToolError("Narration uses your own AI key, and none is connected. Connect Gemini or ChatGPT in Questhand → Settings → AI.");
   if (ai.provider === "anthropic") {
     const other = (["gemini", "openai"] as const).find((p) => ctx.user.ai?.saved?.[p]);
-    if (!other) throw new ToolError("Claude can't make speech. Add a Gemini or ChatGPT key in Settings → Tools for cards (you can keep Claude for feedback).");
+    if (!other) throw new ToolError("Claude can't make speech. Add a Gemini or ChatGPT key in Settings → AI (you can keep Claude for feedback).");
   }
   const saved = ctx.user.ai?.saved ?? {};
   const pick = ai.provider !== "anthropic" ? ai : (() => { const p = saved.gemini ? "gemini" : "openai"; return { provider: p, key: openKey(saved[p]!.key)!, model: "" }; })();
@@ -306,7 +306,7 @@ export const MORE_TOOLS: Tool[] = [
       const ai = aiOf(ctx.user);
       const g = ctx.user.ai?.saved?.gemini;
       const key = ai?.provider === "gemini" ? ai.key : g ? openKey(g.key) : null;
-      if (!key) throw new ToolError("Making video needs a Gemini key (Google Veo). Connect one in Settings → Tools for cards.");
+      if (!key) throw new ToolError("Making video needs a Gemini key (Google Veo). Connect one in Settings → AI.");
       const model = await veoModel(key);
       if (!model) throw new ToolError("Your Google key doesn't offer a video model (Veo). Check your Google AI Studio plan; until then, put an existing video on the card with a link.");
       const prompt = str(a.prompt, "prompt", 2000);
@@ -381,7 +381,7 @@ export const MORE_TOOLS: Tool[] = [
     inputSchema: obj({}),
     async run(_a, ctx) {
       const ai = ctx.user.ai;
-      if (!ai) return "No AI key connected. AI feedback, the AI tutor and narration need one: the teacher adds it in Settings → Tools for cards.";
+      if (!ai) return "No AI key connected. AI feedback, the AI tutor and narration need one: the teacher adds it in Settings → AI.";
       const saved = Object.entries(ai.saved ?? {}).map(([p, v]) => `${p}${v?.model ? ` (${v.model})` : ""}: ${v?.status?.state ?? "saved"}${v?.status?.message ? ` — ${v.status.message}` : ""}`);
       return `In use: ${ai.provider}, ${ai.model}.\nSaved keys: ${saved.join("; ") || "—"}`;
     },

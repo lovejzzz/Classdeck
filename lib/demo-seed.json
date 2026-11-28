@@ -376,7 +376,7 @@
         "id": "m-1r438mo",
         "type": "submit",
         "title": "Your turn: plan a card",
-        "body": "Think of a lesson you'll teach soon. Which card would you open it with, and why? Write a few lines, or record yourself saying it.\n\nThis card has Allow AI feedback ticked: once a teacher connects their AI, students get a few lines back the moment they hand in.",
+        "body": "Think of a lesson you'll teach soon. Which card would you open it with, and why? Write a few lines, or record yourself saying it.\n\nThis card has AI feedback turned on: once a teacher connects their AI, students get a few lines back the moment they hand in.",
         "audience": {
          "kind": "all"
         },
@@ -715,7 +715,7 @@
         "id": "m-cp9185j",
         "type": "read",
         "title": "Who gets a card",
-        "body": "A card's panel says who gets it, under **Access**:\n\n- **Everyone gets this card**: the usual.\n- **Students get it from** an answer or a score: set on the Map, by drawing the line.\n- **Only some students or groups**: pick them by name.",
+        "body": "A card's panel says who gets it, under **Who & when**:\n\n- **Everyone gets this card**: the usual.\n- **Students get it from** an answer or a score: set on the Map, by drawing the line.\n- **Only some students or groups**: pick them by name.",
         "audience": {
          "kind": "all"
         },
@@ -822,7 +822,7 @@
         "id": "m-uhe64bd",
         "type": "read",
         "title": "Use a card again",
-        "body": "Made a card you'll want again, like a weekly reflection? Press **Collect** at the top of its panel. It's in **Saved cards** the next time you press **+ Card**, in any course.\n\nA whole lesson can be saved the same way, from its **⋯** menu.",
+        "body": "Made a card you'll want again, like a weekly reflection? Open the **\u22ef** menu at the top of its panel and press **Collect**. It's in **Saved cards** the next time you press **+ Card**, in any course.\n\nA whole lesson can be saved the same way, from its **⋯** menu.",
         "audience": {
          "kind": "all"
         },
@@ -908,7 +908,7 @@
         "id": "m-za1d336",
         "type": "read",
         "title": "One undo for everything",
-        "body": "Everything saves as you go: you'll see **Saved** at the top right.\n\n**Undo** (⌘Z or Ctrl+Z) and **Redo** sit at the top of the page and of every card's panel: one undo for every change, on the Map or in a card. The clock beside them is **History**: every change, to step back to.",
+        "body": "Everything saves as you go: you'll see **Saved** at the top right.\n\n**Undo** (⌘Z or Ctrl+Z) and **Redo** sit at the top of the page and in every card's **\u22ef** menu: one undo for every change, on the Map or in a card. The clock beside them is **History**: every change, to step back to.",
         "audience": {
          "kind": "all"
         },
@@ -1035,7 +1035,7 @@
         "id": "m-yedk9j6",
         "type": "read",
         "title": "AI feedback on handed-in work",
-        "body": "Connect your own AI account once, in your account's **Settings → Tools for cards** (Claude, ChatGPT or Gemini, with your own key). Then tick **Allow AI feedback** on any Open answer card.\n\nWhen a student hands in, they get a few lines of feedback right away: what works, one thing to try next. You see it too, beside their work, and your own feedback still counts most.",
+        "body": "Connect your own AI account once, in your account's **Settings → AI** (Claude, ChatGPT or Gemini, with your own key). Then turn on **AI feedback** under **Who & when** on any Open answer, Worksheet or Discussion card.\n\nWhen a student hands in, they get a few lines of feedback right away: what works, one thing to try next. You see it too, beside their work, and your own feedback still counts most.",
         "audience": {
          "kind": "all"
         },

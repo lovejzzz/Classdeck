@@ -8,7 +8,7 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { CourseCover } from "@/components/CourseCover";
 import type { Course } from "@/lib/types";
 import { SignInPanel } from "@/components/SignInPanel";
-import { prefetchCourse, useQuery } from "@/lib/client";
+import { prefetchCourse, useConnectors, useQuery } from "@/lib/client";
 import { Icon } from "@/components/Icon";
 import { Clearable } from "@/components/Clearable";
 import { LogoMark, Wordmark } from "@/components/Logo";
@@ -225,12 +225,22 @@ function CourseCard({ c }: { c: CourseTile }) {
   );
 }
 
-/** Make a course: a name, an optional subtitle, and whether to start blank or from the standard weeks. */
+/** Make a course: a name, and how to start (blank, three ready-made weeks, or a course file). */
 function NewCourse({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [start, setStart] = useState<"blank" | "template" | "caps1" | "caps2" | "file">("blank");
+  // The site owner's own templates (the CaPS flows): only on their account, folded until wanted.
+  const mine = useConnectors().canAdd;
+  const [showMine, setShowMine] = useState(false);
+  const mineOn = start === "caps1" || start === "caps2";
+  const startRow = (k: typeof start, label: string) => (
+    <label key={k} className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-[13.5px] transition-colors ${start === k ? "border-ink" : "border-line hover:border-line-strong"}`}>
+      <input type="radio" name="start" checked={start === k} onChange={() => setStart(k)} className="accent-[#1b1b1a]" />
+      {label}
+    </label>
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // A course file picked to make the course from: its contents, and a line saying what's in it.
@@ -273,14 +283,17 @@ function NewCourse({ onClose }: { onClose: () => void }) {
       <form role="dialog" aria-modal="true" aria-label="New course" onSubmit={create} className="pop max-h-[84vh] w-full max-w-md space-y-3 overflow-y-auto rounded-2xl bg-white p-6 shadow-[0_30px_80px_-24px_rgba(20,20,18,0.45)]">
         <h2 className="text-[20px] font-medium tracking-tight">New course</h2>
         <Clearable><input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course name" aria-label="Course name" className="field h-11 text-[14px]" /></Clearable>
-        <Clearable><input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Subtitle (optional), e.g. Spring 2027 · Tuesdays" aria-label="Subtitle" className="field" /></Clearable>
         <div className="grid gap-1.5">
-          {([["blank", "Start blank", "One empty week."], ["template", "Standard weeks", "Three weeks with a ready-made rhythm: goal, example, quick check, task, discussion, reflection."], ["caps1", "CaPS Flow 1: three tracks", "Weeks 0–7. A personal pitch in Week 1, then each week students pick a track (pitch, presentation, interviewing) to practise in Virtual Speech before the Collab session."], ["caps2", "CaPS Flow 2: sequenced", "Weeks 0–7. A Speech Starter, then a set topic each week: students pick focus areas that deal their videos, practise on camera, and bring their best take to the Collab session."], ["file", "From a course file", "A Questhand course file (.json): its weeks, lessons and cards, wired as they were."]] as const).map(([k, label, hint]) => (
-            <label key={k} className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 text-[13px] transition-colors ${start === k ? "border-ink" : "border-line hover:border-line-strong"}`}>
-              <input type="radio" name="start" checked={start === k} onChange={() => setStart(k)} className="mt-0.5 accent-[#1b1b1a]" />
-              <span><span className="font-medium">{label}</span><span className="block text-[12px] text-ink-3">{hint}</span></span>
-            </label>
-          ))}
+          {/* Three ways to start, a line each. The site owner's own templates (CaPS) wait folded under them. */}
+          {([["blank", "Start blank"], ["template", "Three ready-made weeks"], ["file", "From a course file"]] as const).map(([k, label]) => startRow(k, label))}
+          {mine && (
+            <div className="mt-1 border-t border-line pt-1.5">
+              <button type="button" onClick={() => setShowMine((v) => !v)} aria-expanded={showMine || mineOn} className="press flex w-full items-center justify-between px-1 py-1 text-[12.5px] text-ink-3 hover:text-ink">
+                Your templates (2)<Icon name="chevron" size={12} className={`transition-transform ${showMine || mineOn ? "rotate-180" : "-rotate-90"}`} />
+              </button>
+              {(showMine || mineOn) && <div className="mt-1 grid gap-1.5">{([["caps1", "CaPS Flow 1: three tracks"], ["caps2", "CaPS Flow 2: sequenced"]] as const).map(([k, label]) => startRow(k, label))}</div>}
+            </div>
+          )}
           {start === "file" && (
             <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-dashed border-line-strong px-3 py-2.5 text-[13px] hover:border-ink-3">
               <Icon name="upload" size={14} className="flex-none text-ink-2" />

@@ -65,9 +65,10 @@ await unfold();
 
 // 1) Delete from the card editor.
 await page.getByRole("button", { name: "Edit Source question" }).click();
-await page.getByRole("button", { name: "Delete", exact: true }).waitFor();
+await page.getByRole("button", { name: "More actions" }).waitFor();
 await settle(600);
-await page.getByRole("button", { name: "Delete", exact: true }).click();
+await page.getByRole("button", { name: "More actions" }).click();
+await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
 // Point at the message so it stays (it pauses while pointed at) while the server is checked, however slow.
 await page.locator('[aria-live="polite"]').getByRole("button", { name: "Undo" }).first().hover();
 await settle();
@@ -131,9 +132,10 @@ await unfold();
 await page.getByRole("button", { name: "Edit Follow-up in Lesson 1" }).waitFor();
 await settle(600);
 await page.getByRole("button", { name: "Edit Follow-up in Lesson 1" }).click();
-await page.getByRole("button", { name: "Delete", exact: true }).waitFor();
+await page.getByRole("button", { name: "More actions" }).waitFor();
 await settle(600);
-await page.getByRole("button", { name: "Delete", exact: true }).click();
+await page.getByRole("button", { name: "More actions" }).click();
+await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
 await settle();
 now = await server();
 check("deleting a follow-up removes only it", now.l1.join() === "m-all1,m-src" && now.l2.join() === "m-all2,m-y,m-z", now);
@@ -231,6 +233,7 @@ await page.keyboard.press("Escape");
 await settle(800);
 check("map: the group is one node listing its cards", (await page.locator(`[data-node="${g6?.id}"]`).count()) === 1 && (await page.locator(`[data-node="m-all1"]`).count()) === 0);
 await page.locator(`[data-node="${g6?.id}"] button[aria-label^="Edit"]`).first().click();
+await page.locator('aside[aria-label="Edit card"]').getByRole("tab", { name: "Cards" }).click();
 await page.getByRole("button", { name: "Ungroup (keep the cards)" }).click();
 await settle();
 c6 = (await T.get(`/api/course/${cid}`)).course;

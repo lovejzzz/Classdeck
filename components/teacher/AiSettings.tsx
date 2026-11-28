@@ -24,7 +24,7 @@ function statusOf(status: AiStatus | undefined, busy: boolean, connected: boolea
  * its key (checked and saved as soon as it's pasted), pick a model (saved as soon as it's picked). The light says
  * whether the key has credit.
  */
-export function AiSettings() {
+export function AiSettings({ bare }: { bare?: boolean } = {}) {
   const [setup, setSetup] = useState<AiSetup | null | undefined>(undefined);
   const [teacher, setTeacher] = useState(true);
   const [provider, setProvider] = useState<AiProvider>("gemini");
@@ -108,13 +108,16 @@ export function AiSettings() {
     { text: "Covers", on: true, tip: provider === "gemini" ? "Picks paper covers from what each course teaches, and draws one" : "Picks paper covers from what each course teaches" },
   ];
   return (
-    <section id="ai" className="card p-6">
-      <div className="flex items-center gap-2">
+    <section id="ai" className={bare ? "" : "card p-6"}>
+      {/* Inside a Settings row the row already names it and says its state. */}
+      {!bare && (
+        <div className="flex items-center gap-2">
         <Icon name="sparkles" size={16} />
         <h2 className="flex-1 text-[16px] font-semibold">AI</h2>
         <span className="flex items-center gap-1.5 text-[12.5px] text-ink-2" role="status"><span className={`h-2 w-2 rounded-full ${st.dot}`} />{st.word}</span>
       </div>
-      <p className="mt-1 text-[13px] text-ink-3">Your own AI account, for AI feedback and course covers in all your courses.</p>
+      )}
+      <p className={`${bare ? "" : "mt-1 "}text-[13px] text-ink-3`}>Your own AI account, for AI feedback and course covers in all your courses.</p>
 
       {/* One switcher (each service keeps its own saved key) and, beside it, what the picked service does. */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">

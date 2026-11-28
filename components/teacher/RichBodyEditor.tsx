@@ -302,9 +302,12 @@ export function RichBodyEditor({ value = "", onChange, placeholder, collab, comp
   }, [editor, value]);
   return (
     <div className={`rich-editor overflow-hidden rounded-xl border bg-white transition-colors ${focused ? "border-[#4b56a8]/50 ring-2 ring-[#4b56a8]/15" : "border-line"}`}>
-      {editor && <Toolbar editor={editor} />}
+      {/* Until the editor is ready (a moment after the panel opens), its toolbar's and text's room is kept, so
+          nothing under it jumps down when it arrives. */}
+      {editor ? <Toolbar editor={editor} /> : <div className="h-[37px] border-b border-line" aria-hidden="true" />}
       <div className="max-h-[28rem] overflow-y-auto text-[13.5px] leading-relaxed">
         <EditorContent editor={editor} />
+        {!editor && <div className={compact ? "min-h-[3.25rem]" : "min-h-[7.5rem]"} aria-hidden="true" />}
       </div>
       {mq && hits.length > 0 && editor && createPortal(
         // On the page itself: a dialog's transform would move a fixed box inside it.

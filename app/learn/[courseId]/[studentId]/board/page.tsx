@@ -14,7 +14,7 @@ import { PreviewBar } from "@/components/student/PreviewBar";
 import { CourseRoute } from "@/components/student/CourseRoute";
 import { ago } from "@/lib/time";
 import { suitOfCard } from "@/lib/ui";
-import { faceMeta, writesOwn } from "@/lib/kinds";
+import { faceMeta, kindOf, writesOwn } from "@/lib/kinds";
 import { RichText } from "@/components/RichText";
 import { recommend } from "@/lib/coach";
 import type { Module, Progress } from "@/lib/types";
@@ -35,6 +35,7 @@ export default function BoardPage() {
   const [now] = useState(() => Date.now());
   // A lesson picked on the route: My work shows only that lesson's.
   const [picked, setPicked] = useState<string | null>(null);
+  const [showRead, setShowRead] = useState(false);
   const query = useQuery();
   if (needAuth && !state) return <SignInNeeded who="student" courseId={courseId} next={`/learn/${courseId}/${studentId}/board`} />;
   if (error && !state) return <p className="p-10 text-center text-ink-2">{error}</p>;
@@ -58,6 +59,13 @@ export default function BoardPage() {
   const hasContent = (m: Module) => {
     const p = mine[m.id];
     return !!p && (p.status === "done" || !!p.output || !!p.work?.length || state.posts.some((x) => x.moduleId === m.id && x.studentId === studentId));
+  };
+  // My work lists what the student made (answers, files, worksheets, posts) and the teacher's feedback on it; cards
+  // they only read or answered with a click are one folded line under it.
+  const hasWork = (m: Module) => {
+    const p = mine[m.id];
+    return !!p && (!!p.output?.trim() || !!p.work?.length || !!p.review || (!!p.ratings && Object.keys(p.ratings).length > 0)
+      || (kindOf(m) === "worksheet" && p.status === "done") || state.posts.some((x) => x.moduleId === m.id && x.studentId === studentId));
   };
   const done = all.filter((x) => !x.m.optional && mine[x.m.id]?.status === "done").length;
   // Cards that count: an unchosen elective's aren't the student's, and an unpicked set of paths counts once.
@@ -195,7 +203,7 @@ export default function BoardPage() {
             </div>
           )}
           {course.weeks.map((w) => {
-            const items = w.lessons.filter((l) => !picked || l.id === picked).flatMap((l) => l.modules).filter(hasContent);
+            const items = w.lessons.filter((l) => !picked || l.id === picked).flatMap((l) => l.modules).filter(hasWork);
             if (!items.length) return null;
             return (
               <div key={w.id} className="rise">
@@ -248,6 +256,31 @@ export default function BoardPage() {
               </div>
             );
           })}
+          {!picked && !all.some((x) => hasWork(x.m)) && <p className="text-[13.5px] text-ink-3">What you write, record and post shows here, with your teacher’s feedback.</p>}
+          {(() => {
+            const read = all.filter((x) => (!picked || x.l.id === picked) && hasContent(x.m) && !hasWork(x.m) && x.m.type !== "group");
+            if (!read.length) return null;
+            return (
+              <div className="rise">
+                <button onClick={() => setShowRead((v) => !v)} aria-expanded={showRead} className="press flex items-center gap-1.5 text-[13px] text-ink-3 hover:text-ink">
+                  Also finished {read.length} card{read.length === 1 ? "" : "s"} <Icon name="chevron" size={12} className={`transition-transform ${showRead ? "rotate-180" : "-rotate-90"}`} />
+                </button>
+                {showRead && (
+                  <ul className="card mt-2 divide-y divide-line overflow-hidden">
+                    {read.map(({ w, l, m }) => (
+                      <li key={m.id}>
+                        <Link href={cardLink(m.id)} className="press flex items-center gap-3 px-4 py-2.5 hover:bg-[#fafaf9]">
+                          <span style={{ color: suitOfCard(m).tint }}><Icon name={faceMeta(m).icon} size={13} /></span>
+                          <span className="min-w-0 flex-1 truncate text-[13.5px]">{m.title}</span>
+                          <span className="flex-none text-[12px] text-ink-3">{w.title.split(" · ")[0]} · {l.title}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })()}
         </section>}
       </main>
     </div>

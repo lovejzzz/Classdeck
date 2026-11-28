@@ -3,6 +3,21 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.24",
+    date: "2026-11-28",
+    changes: [
+      "A card’s panel shows one part at a time: Content, Answers (Cards for a card group) and Who & when. What students read or write is the first thing you see. The card’s front moved under its content, and switching between a Content and a Question card is under Answers.",
+      "Undo, Duplicate, Collect and Delete are in the ⋯ menu at the top of a card’s panel, so the panel fits a phone and Close is always in the corner (on a phone, Delete and Close used to fall off the screen).",
+      "Who & when is four short rows: Who, Due, Optional and AI feedback. A row opens to change it, and each explanation waits behind its ⓘ. AI feedback only shows on cards where students hand in something of their own (Open answer, Worksheet, Discussion), and no longer names the model.",
+      "Settings is one page: your account, then a row for your AI and a row for using Questhand from Claude or ChatGPT, each opening to change it. The list of free tools and adding your own API are now only on the site owner’s account.",
+      "New course offers three starts, a line each: Start blank, Three ready-made weeks, From a course file. The CaPS flows are the site owner’s own templates, folded under Your templates.",
+      "Students: once a card is handed in there is no “Save changes” button; changes save as they type, and the card says so (Saved, or Saving…).",
+      "Students’ Today is a short list: today’s lesson and how far they are, the card to play now when it’s elsewhere (to revise, to catch up), and anything else that needs them, each with one button.",
+      "My board’s My work lists what the student made (answers, worksheets, files, posts) and the teacher’s feedback on it. Cards only read or clicked through fold into one line underneath.",
+      "A card group’s tries no longer mention a Grades page that’s gone. Questhand 101 describes the new card panel and Settings.",
+    ],
+  },
+  {
     version: "0.3.23",
     date: "2026-11-27",
     changes: [

@@ -637,39 +637,63 @@ export default function LearnPage() {
                       </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1 text-center sm:text-left">
-                    {upNext ? (
-                      <>
-                        <div className="text-[12px] font-medium uppercase tracking-[0.1em] text-ink-3">
-                          <span className={revising(upNext.m.id) || dueOf(upNext.m, now)?.tone === "late" ? "text-warn" : ""}>{nextReason}</span> · {upNext.lesson.title}
-                        </div>
-                        <h1 className={`mt-2 font-semibold leading-[1.15] tracking-tight ${big ? "text-[40px]" : "text-[30px] sm:text-[36px]"}`}>{upNext.m.title}</h1>
-                        {revising(upNext.m.id) && mine[upNext.m.id]?.review?.text ? (
-                          <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-2">Your teacher: “{mine[upNext.m.id]!.review!.text}”</p>
-                        ) : upNext.lesson.goal ? <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-2">{upNext.lesson.goal}</p> : null}
-                        <div className="mt-5 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-                          <button onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)} className="btn btn-dark press h-10 px-5 text-[14px]">
-                            {revising(upNext.m.id) ? "Revise it" : statusOf(upNext.m.id) === "doing" ? "Continue" : "Play this card"} <Icon name="arrow" size={13} />
-                          </button>
-                          <span className="mono">card {upNext.lesson.modules.indexOf(upNext.m) + 1} of {upNext.lesson.modules.length}</span>
-                        </div>
-                      </>
-                    ) : nothingYet ? (
-                      <>
+                  <div className="w-full min-w-0 max-w-xl flex-1">
+                    {nothingYet ? (
+                      <div className="text-center sm:text-left">
                         <h1 className="text-[30px] font-semibold tracking-tight">No cards yet</h1>
                         <p className="mt-2 text-[15px] text-ink-2">Your teacher hasn’t added any cards. Check back soon.</p>
-                      </>
+                      </div>
                     ) : (
                       <>
-                        <h1 className="text-[30px] font-semibold tracking-tight">You’re all caught up</h1>
-                        <p className="mt-2 text-[15px] text-ink-2">Every card is done. {course.groups?.length ? "See you in class." : "Nice work."} Your work is on My board.</p>
+                        {/* Today as a short list: today's lesson, the card to play now if it's elsewhere, and anything
+                            else that needs them (to revise, overdue, to catch up, electives), a row each. */}
+                        <h1 className={`font-semibold tracking-tight ${big ? "text-[34px]" : "text-[26px] sm:text-[30px]"}`}>Today</h1>
+                        <div className="mt-4 divide-y divide-line rounded-2xl border border-line bg-white">
+                          {(() => {
+                            const total = countable(current).length, n = doneCount(current);
+                            const todayDone = total > 0 && n >= total;
+                            const here = upNext && upNext.lesson.id === current.id;
+                            const play = upNext && (
+                              <button onClick={() => heroRef.current && open(upNext.lesson.id, upNext.m.id, heroRef.current)} className="btn btn-dark press h-9 flex-none px-4 text-[13.5px]">
+                                {revising(upNext.m.id) ? "Revise it" : statusOf(upNext.m.id) === "doing" ? "Continue" : "Play"} <Icon name="arrow" size={12} />
+                              </button>
+                            );
+                            return (
+                              <>
+                                <div className="flex items-center gap-3 px-4 py-3.5">
+                                  {todayDone ? <StatusIcon status="done" size={18} /> : <span className="h-[18px] w-[18px] flex-none rounded-full border-[1.5px] border-line-strong" />}
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-[14.5px] font-medium">{current.title}</span>
+                                    <span className="block truncate text-[12.5px] text-ink-3">{todayDone ? "Today’s lesson is done" : here ? `${nextReason === "Up next" ? "Next" : nextReason}: ${upNext.m.title}` : "Today’s lesson"}</span>
+                                  </span>
+                                  <span className="mono flex-none text-[12px]">{n}/{total}</span>
+                                  {here && play}
+                                  {!here && !todayDone && playable(current)[0] && (
+                                    <button onClick={() => { const mid = playable(current)[0].id; reveal(mid, (el) => open(current.id, mid, el), heroRef.current); }} className="btn btn-ghost press h-9 flex-none px-3 text-[13px]">Start <Icon name="arrow" size={12} /></button>
+                                  )}
+                                </div>
+                                {upNext && !here && (
+                                  <div className="px-4 py-3.5">
+                                    <div className="flex items-center gap-3">
+                                      <span className={`h-[18px] w-[18px] flex-none rounded-full border-[1.5px] ${revising(upNext.m.id) || dueOf(upNext.m, now)?.tone === "late" ? "border-warn" : "border-line-strong"}`} />
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-[14.5px] font-medium">{upNext.m.title}</span>
+                                        <span className={`block truncate text-[12.5px] ${revising(upNext.m.id) || dueOf(upNext.m, now)?.tone === "late" ? "text-warn" : "text-ink-3"}`}>{nextReason} · {upNext.lesson.title}</span>
+                                      </span>
+                                      {play}
+                                    </div>
+                                    {revising(upNext.m.id) && mine[upNext.m.id]?.review?.text && <p className="mt-2 pl-[30px] text-[13px] leading-relaxed text-ink-2">Your teacher: “{mine[upNext.m.id]!.review!.text}”</p>}
+                                  </div>
+                                )}
+                                {!upNext && <p className="px-4 py-3 text-[13px] text-ink-2">Every card is done. Your work is on My board.</p>}
+                              </>
+                            );
+                          })()}
+                          <NeedsYou rows skip={upNext?.m.id} state={state} studentId={studentId} onElectives={toElectives}
+                            onOpen={(lessonId, mid) => reveal(mid, (el) => open(lessonId, mid, el), heroRef.current)} />
+                        </div>
                       </>
                     )}
-                    {/* What else needs the student, only when something does: to revise, overdue, due soon, to catch up, electives. */}
-                    <div className="flex justify-center sm:justify-start">
-                      <NeedsYou heading={upNext ? "Also needs you" : "Needs you"} skip={upNext?.m.id} state={state} studentId={studentId} onElectives={toElectives}
-                        onOpen={(lessonId, mid) => reveal(mid, (el) => open(lessonId, mid, el), heroRef.current)} />
-                    </div>
                   </div>
                 </div>
                 <div className="mt-10 border-t border-line" />
@@ -677,9 +701,6 @@ export default function LearnPage() {
               {/* Today's lesson, its cards in a row. */}
               <div className="pb-16 pt-2">
                 {lessonRow(current)}
-                <div className="mx-auto max-w-6xl px-4">
-                  <button onClick={() => goHome("all")} className="btn btn-quiet press h-8 px-2 text-[12.5px]">All cards, every week <Icon name="arrow" size={12} /></button>
-                </div>
               </div>
             </>
           )}

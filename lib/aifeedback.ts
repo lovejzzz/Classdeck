@@ -274,7 +274,7 @@ async function videoBytes(a: Attachment): Promise<Buffer | null> {
 
 /** Whether a card gives AI feedback right now: switched on for the card, and the course's owner has set up AI. */
 export type AiUse = { provider: AiProvider; key: string; model: string };
-/** The AI a person has in use (Settings → Tools for cards), with its key opened, or null. */
+/** The AI a person has in use (Settings → AI), with its key opened, or null. */
 export function aiOf(user: { ai?: { provider: AiProvider; key: string; model: string } } | undefined): AiUse | null {
   const ai = user?.ai;
   const key = ai ? openKey(ai.key) : null;

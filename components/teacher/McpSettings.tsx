@@ -49,7 +49,7 @@ const TRY = [
  * Use Questhand from your own AI (Claude, ChatGPT…), through MCP: a personal link to paste into it, and how. The AI then
  * works in your courses as you: builds courses and cards, reads work, drafts feedback (it asks before sending).
  */
-export function McpSettings() {
+export function McpSettings({ bare }: { bare?: boolean } = {}) {
   const [state, setState] = useState<{ link: string | null; used: number | null } | null>(null);
   const [where, setWhere] = useState<Where>("claude");
   const [busy, setBusy] = useState(false);
@@ -73,13 +73,16 @@ export function McpSettings() {
   const shown = state.link ? state.link.replace(/(qh_.{4}).+(.{4})$/, "$1••••••••$2") : "";
   const s = STEPS[where];
   return (
-    <section id="mcp" className="card mt-6 p-6">
-      <div className="flex items-center gap-2">
+    <section id="mcp" className={bare ? "" : "card mt-6 p-6"}>
+      {/* Inside a Settings row the row already names it and says its state. */}
+      {!bare && (
+        <div className="flex items-center gap-2">
         <Icon name="plug" size={16} />
         <h2 className="flex-1 text-[16px] font-semibold">Use your own AI</h2>
         <span className="flex items-center gap-1.5 text-[12.5px] text-ink-2"><span className={`h-2 w-2 rounded-full ${state.used ? "bg-ok" : "bg-line-strong"}`} />{state.used ? "Connected" : state.link ? "Not used yet" : "Off"}</span>
       </div>
-      <p className="mt-1 text-[13px] text-ink-3">Connect Claude or ChatGPT to Questhand, and ask it to build a course, add cards, or go through work waiting for feedback. It uses your own subscription.</p>
+      )}
+      <p className={`${bare ? "" : "mt-1 "}text-[13px] text-ink-3`}>Connect Claude or ChatGPT to Questhand, and ask it to build a course, add cards, or go through work waiting for feedback. It uses your own subscription.</p>
 
       {state.link ? (
         <div className="mt-4">

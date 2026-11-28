@@ -61,7 +61,7 @@ export async function handleMcp(request: Request, tokenFromPath?: string): Promi
   let body: unknown;
   try { body = await request.json(); } catch { return json(err(null, -32700, "Parse error"), 400); }
   // A link that was turned off (or mistyped) gets a plain answer an AI can repeat, not a sign-in flow that doesn't exist.
-  if (!user) return json(err(Array.isArray(body) ? null : (body as Rpc)?.id, -32001, "This Questhand link doesn’t work any more. Copy the current one from Questhand → Settings → Tools for cards."), 401);
+  if (!user) return json(err(Array.isArray(body) ? null : (body as Rpc)?.id, -32001, "This Questhand link doesn’t work any more. Copy the current one from Questhand → Settings → AI."), 401);
   // Plenty for an AI working through a course, not enough to hammer the site.
   if (throttled(`mcp:${user.id}`, 300, 60_000)) return json(err((body as Rpc)?.id, -32002, "Too many requests at once. Wait a minute and try again."), 429);
   const ctx: Ctx = { user, origin: publicOrigin(request) };

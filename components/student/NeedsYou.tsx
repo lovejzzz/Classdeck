@@ -24,8 +24,10 @@ const LOOK: Record<Kind, { icon: string; cls: string }> = {
  * its cards (or, for electives, goes to them in their week). A reminder from the teacher that arrives while the tab is
  * in the background pops up as a system notification (if the student turned reminders on).
  */
-export function NeedsYou({ state, studentId, onOpen, onElectives, heading, skip }: {
+export function NeedsYou({ state, studentId, onOpen, onElectives, heading, skip, rows }: {
   state: CourseState; studentId: string;
+  /** As rows of a list (Today's list) instead of chips. */
+  rows?: boolean;
   /** A card already shown on its own (the next card to play), left out here. */
   skip?: string;
   /** A small heading above the chips, when there are any. */
@@ -81,6 +83,49 @@ export function NeedsYou({ state, studentId, onOpen, onElectives, heading, skip 
 
   if (!groups.length) return null;
   const shown = groups.find((g) => g.kind === open);
+  const act = (g: (typeof groups)[number]) => (g.kind === "electives" ? onElectives() : g.items.length === 1 ? onOpen(g.items[0].lesson.id, g.items[0].m.id) : setOpen(open === g.kind ? null : g.kind));
+  const menu = (top: string) => shown && (
+    <div role="menu" className={`pop absolute left-0 ${top} z-30 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-1.5 shadow-[0_20px_50px_-18px_rgba(20,20,18,0.3)]`}>
+      <ul className="max-h-72 overflow-y-auto">
+        {shown.items.map((t) => (
+          <li key={t.m.id}>
+            <button role="menuitem" onClick={() => { setOpen(null); onOpen(t.lesson.id, t.m.id); }} className="press flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left hover:bg-lane">
+              <span style={{ color: suitOfCard(t.m).tint }}><Icon name={faceMeta(t.m).icon} size={14} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px]">{t.m.title}</span>
+                <span className="block truncate text-[11.5px] text-ink-3">{t.week.split(" · ")[0]} · {t.lesson.title}</span>
+              </span>
+              {t.due && <span className={`chip h-5 flex-none text-[11px] ${t.due.tone === "late" ? "bg-bad/10 text-bad" : t.due.tone === "soon" ? "bg-warn/10 text-warn" : ""}`}>{t.due.label}</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+  if (rows) return (
+    // A row each in Today's list: what it is, which card (or how many), and a way to open it.
+    <div ref={box} className="divide-y divide-line" aria-label="Also to do">
+      {groups.map((g) => {
+        const one = g.items.length === 1 ? g.items[0] : undefined;
+        const warn = g.kind === "revise" || g.kind === "late" || g.kind === "soon";
+        return (
+          <div key={g.kind} className="relative px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <span className={`h-[18px] w-[18px] flex-none rounded-full border-[1.5px] ${warn ? "border-warn" : "border-line-strong"}`} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14.5px] font-medium">{one ? one.m.title : g.label}</span>
+                <span className={`block truncate text-[12.5px] ${warn ? "text-warn" : "text-ink-3"}`}>{one ? `${g.label.replace(/^1 /, "").replace(/^./, (c) => c.toUpperCase())} · ${one.lesson.title}` : g.kind === "electives" ? "Pick the lessons you want" : g.items.map((t) => t.m.title).slice(0, 2).join(", ") + (g.items.length > 2 ? "…" : "")}</span>
+              </span>
+              <button onClick={() => act(g)} aria-expanded={g.items.length > 1 ? open === g.kind : undefined} className="btn btn-ghost press h-9 flex-none px-3 text-[13px]">
+                {g.kind === "electives" ? "Choose" : g.items.length > 1 ? "See them" : "Open"} <Icon name={g.items.length > 1 ? "chevron" : "arrow"} size={12} className={g.items.length > 1 && open === g.kind ? "rotate-180" : ""} />
+              </button>
+            </div>
+            {open === g.kind && menu("top-[3.6rem]")}
+          </div>
+        );
+      })}
+    </div>
+  );
   return (
     <div ref={box} className={`relative flex flex-wrap items-center gap-1.5 ${heading ? "mt-8" : "mt-3"}`} aria-label={heading ?? "Needs you"}>
       {heading && <div className="mb-0.5 w-full text-[12.5px] font-medium text-ink-3">{heading}</div>}

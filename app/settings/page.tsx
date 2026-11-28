@@ -10,6 +10,7 @@ import { toast } from "@/lib/toast";
 import { ask } from "@/components/Confirm";
 import { SiteFooter } from "@/components/SiteFooter";
 import { AiSettings } from "@/components/teacher/AiSettings";
+import { providerMeta, type AiProvider } from "@/lib/aimeta";
 import { McpSettings } from "@/components/teacher/McpSettings";
 
 const EXAMPLE = `{
@@ -40,30 +41,31 @@ const EXAMPLE = `{
   ]
 }`;
 
-type Tab = "tools" | "account";
-const TABS: [Tab, string][] = [["tools", "Tools for cards"], ["account", "Your account"]];
+type Open = "ai" | "mcp" | "tools" | null;
 
 type Studying = { id: string; title: string; studentId: string; teacher?: string; done?: number; total?: number };
 
 /**
- * Settings. Someone who teaches: the tools students can use on cards (their AI first) and their account. Someone who
- * only studies: one simple page (who they are, reminders, their classes); keys and tools are a teacher's business.
+ * Settings, on one page. Someone who teaches: their account, then one row each for their AI and for using Questhand
+ * from Claude or ChatGPT (a row opens to change it); the site owner also has the tools and APIs. Someone who only
+ * studies: one simple card (who they are, reminders, their classes).
  */
 export default function SettingsPage() {
-  const [tab, setTab] = useState<Tab>("tools");
+  const [open, setOpen] = useState<Open>(null);
   const [studying, setStudying] = useState<Studying[] | null | undefined>(undefined);
-  // The tab in the address (#account; #ai and #tools open the first), so a link can open it.
+  // A row named in the address (#ai, #mcp, #tools) opens, so a link can lead straight to it.
   useEffect(() => {
+    const h = window.location.hash.slice(1);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the address
-    if (window.location.hash === "#account") setTab("account");
+    if (h === "ai" || h === "mcp" || h === "tools") setOpen(h);
     fetch("/api/courses").then((r) => r.json()).then((j: { courses?: unknown[]; studying?: Studying[] }) => {
       setStudying(!j.courses?.length && j.studying?.length ? j.studying : null);
     }).catch(() => setStudying(null));
   }, []);
-  const go = (t: Tab) => { setTab(t); history.replaceState(null, "", t === "account" ? "#account" : "#tools"); };
+  const go = (o: Open) => { setOpen(o); history.replaceState(null, "", o ? `#${o}` : " "); };
   const student = !!studying;
   return (
-    <main className={`mx-auto min-h-screen w-full flex-1 px-4 py-8 ${student ? "max-w-2xl" : "max-w-5xl"}`}>
+    <main className={`mx-auto min-h-screen w-full flex-1 px-4 py-8 ${student ? "max-w-2xl" : "max-w-3xl"}`}>
       <Link href="/" className="inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink">
         <Icon name="back" size={13} /> {student ? "Your classes" : "Your courses"}
       </Link>
@@ -72,13 +74,8 @@ export default function SettingsPage() {
         : studying ? <StudentSettings studying={studying} />
         : (
           <>
-            <div className="rise mt-5 flex gap-1 border-b border-line" role="tablist" aria-label="Settings">
-              {TABS.map(([k, label]) => (
-                <button key={k} role="tab" aria-selected={tab === k} onClick={() => go(k)}
-                  className={`press -mb-px border-b-2 px-3 py-2 text-[14px] ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
-              ))}
-            </div>
-            {tab === "tools" ? <ToolsTab /> : <AccountTab />}
+            <AccountTab />
+            <TeachingRows open={open} onOpen={(o) => go(open === o ? null : o)} />
           </>
         )}
       <SiteFooter />
@@ -163,22 +160,55 @@ function StudentSettings({ studying }: { studying: Studying[] }) {
   );
 }
 
-/** The teacher's AI first, then every other tool, to try here. */
-function ToolsTab() {
+type AiState = { active: AiProvider | null } | null;
+
+/** A teacher's two settings beyond their account, one row each: their AI, and using Questhand from Claude or ChatGPT.
+ * The site owner also has a row for the tools and APIs. A row opens to change it. */
+function TeachingRows({ open, onOpen }: { open: Open; onOpen: (o: Exclude<Open, null>) => void }) {
+  const { canAdd } = useConnectors();
+  const [ai, setAi] = useState<AiState | undefined>(undefined);
+  const [mcp, setMcp] = useState<{ link?: string; used?: boolean } | null | undefined>(undefined);
+  // The rows' summaries; read again when a row closes, since it may have changed.
+  useEffect(() => {
+    if (open === "ai") return;
+    fetch("/api/ai").then((r) => (r.ok ? r.json() : null)).then((j) => setAi(j?.ai ? { active: j.ai.active ?? null } : null)).catch(() => setAi(null));
+  }, [open]);
+  useEffect(() => {
+    if (open === "mcp") return;
+    fetch("/api/mcp-link").then((r) => (r.ok ? r.json() : null)).then((j) => setMcp(j ? { link: j.link, used: j.used } : null)).catch(() => setMcp(null));
+  }, [open]);
+  const aiText = ai === undefined ? "" : ai?.active ? `${providerMeta(ai.active).name} · Ready` : "Not connected";
+  const mcpText = mcp === undefined ? "" : mcp?.used ? "Connected" : mcp?.link ? "Link made" : "Off";
+  const row = (id: Exclude<Open, null>, label: string, value: string, body: React.ReactNode, ok?: boolean) => (
+    <div className="border-t border-line first:border-t-0">
+      <button onClick={() => onOpen(id)} aria-expanded={open === id} className="press flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-[#fafaf9]">
+        <span className="w-48 flex-none text-[13.5px] text-ink">{label}</span>
+        <span className="flex min-w-0 flex-1 items-center justify-end gap-1.5 truncate text-[13px] text-ink-2">{ok !== undefined && value && <span className={`h-2 w-2 flex-none rounded-full ${ok ? "bg-ok" : "bg-line-strong"}`} />}{value}</span>
+        <Icon name="chevron" size={12} className={`flex-none text-ink-3 transition-transform duration-300 ${open === id ? "rotate-180" : "-rotate-90"}`} />
+      </button>
+      {open === id && <div className="rise border-t border-line bg-[#fafaf9] px-5 py-5">{body}</div>}
+    </div>
+  );
+  return (
+    <section className="card rise mt-4 overflow-hidden">
+      {row("ai", "AI", aiText, <AiSettings bare />, !!ai?.active)}
+      {row("mcp", "Use from Claude or ChatGPT", mcpText, <McpSettings bare />, !!mcp?.used)}
+      {canAdd && row("tools", "Tools and APIs · site owner", "", <ToolsList />)}
+    </section>
+  );
+}
+
+/** The site owner's tools: each free tool, to try, and adding a new API. */
+function ToolsList() {
   const { connectors, refresh, loaded, canAdd } = useConnectors();
   const others = connectors.filter((c) => !c.usesAi);
   const [shelf, setShelf] = useState<string>("All");
   const [open, setOpen] = useState<string | null>(null);
   const shown = others.filter((c) => shelf === "All" || c.category === shelf);
   return (
-    <div className="mt-6 space-y-8">
-      <AiSettings />
-
+    <div className="space-y-6">
       <section>
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="text-[16px] font-semibold">Other tools</h2>
-          <p className="text-[13px] text-ink-3">Free to use, no key needed. Try them here.</p>
-        </div>
+        <p className="text-[13px] text-ink-3">Free tools, no key needed. Try them here.</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {["All", ...CATEGORIES.filter((cat) => others.some((c) => c.category === cat))].map((cat) => (
             <button key={cat} onClick={() => setShelf(cat)} aria-pressed={shelf === cat}
@@ -194,7 +224,6 @@ function ToolsTab() {
       </section>
 
       {canAdd && <AddApi onAdded={async (id) => { await refresh(); setShelf("All"); setOpen(id); }} />}
-      <McpSettings />
     </div>
   );
 }
@@ -267,7 +296,7 @@ function AddApi({ onAdded }: { onAdded: (id: string) => void }) {
         <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-lane text-ink-2"><Icon name="plus" size={15} /></span>
         <span className="min-w-0 flex-1">
           <span className="block text-[13.5px] font-medium">Add your own API</span>
-          <span className="block text-[12.5px] text-ink-3">Site owner only. Turn any web API into a tool for cards, with a short description and no code.</span>
+          <span className="block text-[12.5px] text-ink-3">Turn any web API into a tool, with a short description and no code.</span>
         </span>
         <Icon name="chevron" size={12} className={`flex-none text-ink-3 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
@@ -326,7 +355,7 @@ function AccountTab() {
   const row = "flex flex-wrap items-center gap-x-6 gap-y-1.5 border-t border-line px-5 py-4";
   const label = "w-36 flex-none text-[13px] text-ink-3";
   return (
-    <section className="card mt-6 overflow-hidden">
+    <section className="card rise mt-6 overflow-hidden">
       <div className="flex items-center gap-4 px-5 py-5">
         <label className={`group relative flex-none cursor-pointer rounded-full ${busy ? "opacity-60" : ""}`} title="Change photo">
           {me.picture

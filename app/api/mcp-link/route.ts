@@ -1,4 +1,4 @@
-// The teacher's personal MCP link (Settings → Tools for cards → Use your own AI): see it, make a new one, turn it off.
+// The teacher's personal MCP link (Settings → AI → Use your own AI): see it, make a new one, turn it off.
 import { getSession, teacherOf, unauthorized } from "@/lib/auth";
 import { dropToken, newToken, tokenOf } from "@/lib/mcp/token";
 import { publicOrigin } from "@/lib/origin";

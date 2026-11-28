@@ -7,7 +7,6 @@ import { LookPanel, LookTrigger } from "./CardLookMenu";
 import { audienceStudents, groupByRef, groupsOf, studentsOf, uid } from "@/lib/profile";
 import { fmtTime, meetingOf, parseTime, videoEmbed } from "@/lib/media";
 import { useAiSetup } from "./AiSettings";
-import { providerMeta } from "@/lib/aimeta";
 import { DueCalendar } from "./DueCalendar";
 import { useShortcuts } from "@/lib/shortcuts";
 import { toast } from "@/lib/toast";
@@ -136,8 +135,21 @@ export function CardEditor({
   onDelete: () => void;
 }) {
 
+  // Which part of the card is showing (kept from card to card), and the ··· menu.
+  const [tab, setTab] = useState<"content" | "answers" | "who">("content");
+  const [more, setMore] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  const moreOpen = useRef(false);
+  useEffect(() => { moreOpen.current = more; });
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    if (!more) return;
+    const away = (e: PointerEvent) => { if (!moreRef.current?.contains(e.target as Node)) setMore(false); };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [more]);
+  useEffect(() => {
+    // Escape closes the ··· menu first, then the editor.
+    const onKey = (e: KeyboardEvent) => { if (e.key !== "Escape") return; if (moreOpen.current) setMore(false); else onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -211,6 +223,19 @@ export function CardEditor({
     return { from: w.from, label: `answer ${String.fromCharCode(65 + w.option)} on ${title}` };
   });
 
+  // Who and when, as short rows: a row opens to change it. Who opens by itself when it needs picking.
+  const [whoOpen, setWhoOpen] = useState(false);
+  const [dueOpen, setDueOpen] = useState(false);
+  const whoWarn = a.kind === "student" && !chosen.length && !chosenGroups.length;
+  const whoShown = whoOpen || whoWarn || a.kind === "branch";
+  const dueShown = dueOpen || (!!meeting && !!m.due && !m.dueTime);
+  const whoSummary = a.kind === "branch" ? `The “${a.variant}” path`
+    : a.kind === "student" ? (whoWarn ? "No one yet" : someLabel)
+    : dealtBy.length ? `From ${dealtBy[0].label}${dealtBy.length > 1 ? ` +${dealtBy.length - 1}` : ""}`
+    : "Everyone";
+  // Cards where students hand in something of their own (words, a recording, a worksheet, posts): AI feedback can read it.
+  const workCard = kind === "answer" || kind === "worksheet" || kind === "discussion";
+
   /** Turn the card into another kind or answer form. Its words and media stay; what only the old one used goes. */
   async function toKind(k: CardKind) {
     if (k === kind) return;
@@ -238,15 +263,33 @@ export function CardEditor({
           <button onClick={onPrev} disabled={!onPrev} aria-label="Previous card ([)" title="Previous card ([)" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white disabled:opacity-30"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
           <button onClick={onNext} disabled={!onNext} aria-label="Next card (])" title="Next card (])" className="press flex h-7 w-7 items-center justify-center rounded-md text-ink-2 hover:bg-white disabled:opacity-30"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
         </div>
-        {/* Which card this is, short ("4/9"): the header also holds undo, Duplicate, Collect and Delete. */}
+        {/* Which card this is, short ("4/9"). Undo, Duplicate, Collect and Delete wait in the ··· menu, so the
+            header fits a phone and Close is always in the corner. */}
         <span className="mono flex-none px-1 text-[12px] text-ink-2" title={position ? `Card ${position.index + 1} of ${position.total} · ${position.lesson}` : undefined}>{position ? `${position.index + 1}/${position.total}` : ""}</span>
         <span className="min-w-0 flex-1" />
-        {undoBar && <span className="flex items-center">{undoBar}</span>}
-        <button onClick={onDuplicate} className="btn btn-quiet press h-8 gap-1 px-1.5"><Icon name="layers" size={13} /> Duplicate</button>
-        {/* Collect: a copy kept in My cards, to reuse in any course. */}
-        {onSaveToLibrary && <button onClick={onSaveToLibrary} className="btn btn-quiet press h-8 gap-1 px-1.5" title="Keep a copy in Saved cards, to reuse in any of your courses"><Icon name="star" size={13} /> Collect</button>}
-        <button onClick={onDelete} className="btn btn-quiet press h-8 gap-1 px-1.5 hover:!text-bad"><Icon name="trash" size={13} /> Delete</button>
-        <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
+        <div ref={moreRef} className="relative">
+          <button onClick={() => setMore((v) => !v)} aria-label="More actions" aria-expanded={more} aria-haspopup="menu" title="Undo, duplicate, collect, delete"
+            className={`btn btn-quiet press h-8 w-8 justify-center px-0 ${more ? "bg-lane" : ""}`}><Icon name="more" size={16} /></button>
+          {more && (
+            <div role="menu" className="pop absolute right-0 top-9 z-10 w-52 rounded-xl border border-line bg-white p-1 shadow-[0_12px_32px_-12px_rgba(20,20,18,0.3)]">
+              {undoBar && <div className="flex items-center gap-0.5 border-b border-line px-1.5 pb-1 pt-0.5">{undoBar}</div>}
+              <button role="menuitem" onClick={() => { setMore(false); onDuplicate(); }} className="press flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] hover:bg-lane"><Icon name="layers" size={13} /> Duplicate</button>
+              {/* Collect: a copy kept in Saved cards, to reuse in any course. */}
+              {onSaveToLibrary && <button role="menuitem" onClick={() => { setMore(false); onSaveToLibrary(); }} title="Keep a copy in Saved cards, to reuse in any of your courses" className="press flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] hover:bg-lane"><Icon name="star" size={13} /> Collect</button>}
+              <button role="menuitem" onClick={() => { setMore(false); onDelete(); }} className="press flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] text-bad hover:bg-bad/[0.06]"><Icon name="trash" size={13} /> Delete</button>
+            </div>
+          )}
+        </div>
+        <button onClick={onClose} aria-label="Close editor" className="btn btn-quiet press h-8 w-8 flex-none justify-center px-0"><Icon name="x" size={16} /></button>
+      </div>
+      {/* Three parts of a card, one at a time: what's on it, how students answer, and who gets it when. */}
+      <div className="flex-none border-b border-line px-4 py-2">
+        <div role="tablist" aria-label="Parts of the card" className="flex rounded-lg bg-lane p-0.5">
+          {([["content", "Content"], ["answers", kind === "group" ? "Cards" : "Answers"], ["who", "Who & when"]] as const).map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+              className={`press h-7 flex-1 rounded-md text-[12.5px] ${tab === id ? "bg-white font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"}`}>{label}</button>
+          ))}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto bg-[#f7f7f5]">
@@ -258,21 +301,10 @@ export function CardEditor({
             </button>
           </div>
         )}
-        {neighbors && <div key={m.id} className="rise px-4 pt-4">{neighbors}</div>}
-        {/* The card on the table. */}
-        <div className="relative px-5 pb-4 pt-6">
-          <TiltPreview m={m} onLook={(look) => set({ look })} />
-          {kind !== "group" && (
-            <button onClick={() => toKind(other.start)} title={`Make it a ${other.name} card`} aria-label={`Make it a ${other.name} card`}
-              className="press absolute right-5 top-1/2 flex w-[4.5rem] -translate-y-1/2 flex-col items-center gap-1.5 text-[11.5px] leading-tight text-ink-2 hover:text-ink">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white shadow-sm"><Icon name="swap" size={16} /></span>
-              {other.name}
-            </button>
-          )}
-        </div>
 
-        <div className="space-y-2.5 px-4 pb-8">
-          <Panel n={1} title="Content">
+        <div className="space-y-2.5 px-4 pb-8 pt-3">
+          {tab === "content" && <>
+          <Panel title="">
             <Clearable><input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Title" className="field text-[14px] font-medium" /></Clearable>
             <div className="mt-2"><RichBodyEditor key={m.id} value={m.body} onChange={(body) => set({ body })} placeholder={kind === "worksheet" ? "The worksheet students fill in: headings, prompts, a table with empty cells…" : "What students should read, watch or do"} /></div>
             <MathPreview text={m.body} />
@@ -333,9 +365,19 @@ export function CardEditor({
           </div>
             </div>
           </Panel>
+          {/* The card's front, as students see it in their hand; its look can be changed here. */}
+          <Panel title="Card front">
+            <div className="py-2"><TiltPreview m={m} onLook={(look) => set({ look })} /></div>
+          </Panel>
+          </>}
 
-          {kind === "content" ? null : kind === "group" ? (
-          <Panel n={2} title="Cards in this group">
+          {tab === "answers" && (kind === "content" ? (
+          <Panel title="Answers">
+            <p className="text-[12.5px] text-ink-2">Students read or watch this card. There’s nothing to answer.</p>
+            <button onClick={() => toKind(other.start)} className="btn btn-ghost press mt-2.5 h-8 px-3 text-[12.5px]"><Icon name="swap" size={12} /> Make it a {other.name} card</button>
+          </Panel>
+          ) : kind === "group" ? (
+          <Panel title="Cards in this group">
             {(() => {
               // The group's cards as a fanned hand; the picked one is edited right here.
               const members = (m.members ?? []).map((id) => lesson.modules.find((x) => x.id === id)).filter((x): x is Module => !!x);
@@ -399,7 +441,7 @@ export function CardEditor({
                 </div>
                 <p className="mt-1.5 text-[12px] leading-snug text-ink-3">
                   {triesFor(m) > 1
-                    ? `Students answer each question once a try. After a try they can start the group again, up to ${triesFor(m)} tries; ${m.scoring === "average" ? "the average of the tries they take counts in Grades" : "their best try counts in Grades"}, and each try’s score deals cards (cards an earlier try dealt stay). The answers to questions they missed show after their last try.`
+                    ? `Students answer each question once a try. After a try they can start the group again, up to ${triesFor(m)} tries; ${m.scoring === "average" ? "the average of the tries they take counts" : "their best try counts"}, and each try’s score deals cards (cards an earlier try dealt stay). The answers to questions they missed show after their last try.`
                     : "Students answer each question until they get it right; their first answers make the score."}
                 </p>
               </div>
@@ -412,7 +454,7 @@ export function CardEditor({
             </div>
           </Panel>
           ) : (
-          <Panel n={2} title="How students answer">
+          <Panel title="How students answer">
             <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="How students answer">
               {ANSWER_FORMS.map((k) => (
                 <button key={k.id} role="radio" aria-checked={kind === k.id} onClick={() => toKind(k.id)}
@@ -484,7 +526,7 @@ export function CardEditor({
                         const gs = groupOf(x.id);
                         return gs.length ? { ...x, audience: { kind: "student" as const, studentId: "", studentIds: [], groups: gs } } : x;
                       }) });
-                      toast(elsewhere ? `Cards the answers dealt here now go to each answer’s group. ${elsewhere} in another lesson ${elsewhere === 1 ? "goes" : "go"} to everyone now: set who gets ${elsewhere === 1 ? "it" : "them"} under Access.` : "Cards the answers dealt now go to each answer’s group", { icon: "users" });
+                      toast(elsewhere ? `Cards the answers dealt here now go to each answer’s group. ${elsewhere} in another lesson ${elsewhere === 1 ? "goes" : "go"} to everyone now: set who gets ${elsewhere === 1 ? "it" : "them"} under Who & when.` : "Cards the answers dealt now go to each answer’s group", { icon: "users" });
                     }} className="accent-[#4b56a8]" />
                     Make groups from the answers
                   </label>
@@ -543,10 +585,24 @@ export function CardEditor({
                 </div>
               )}
             </div>
+            <div className="mt-3 border-t border-line pt-2.5">
+              <button onClick={() => toKind(other.start)} className="text-[12px] text-ink-3 underline underline-offset-2 hover:text-ink">Make it a {other.name} card instead</button>
+            </div>
           </Panel>
-          )}
+          ))}
 
-          <Panel n={kind === "content" ? 2 : 3} title="Access">
+          {tab === "who" && <>
+          {neighbors && <div key={m.id} className="rise">{neighbors}</div>}
+          <Panel title="Who and when">
+            {/* One short row each; a row opens to change it. Explanations wait behind the (i). */}
+            <div className="divide-y divide-line text-[13px]">
+              <div className="py-2">
+                <button onClick={() => setWhoOpen((v) => !v)} aria-expanded={whoShown} className="press flex w-full items-center gap-2 text-left">
+                  <span className="w-20 flex-none text-ink-2">Who</span>
+                  <span className={`min-w-0 flex-1 truncate text-right ${whoWarn ? "text-[#a0561f]" : "text-ink"}`}>{whoSummary}</span>
+                  <Icon name="chevron" size={12} className={`flex-none text-ink-3 transition-transform ${whoShown ? "rotate-180" : "-rotate-90"}`} />
+                </button>
+                {whoShown && <div className="mt-2.5">
             {/* Who gets it: set on the map (answers deal cards), so said here rather than picked; some students is the exception. */}
             <div className="flex items-start gap-2.5 text-[12.5px]">
               <span className="mt-[1px] flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name={dealtBy.length ? "split" : a.kind === "student" ? "user" : "users"} size={12} /></span>
@@ -570,9 +626,7 @@ export function CardEditor({
                   <>Students get it from {dealtBy.slice(0, 2).map((w, k) => (
                     <span key={k}>{k ? " or " : ""}<button onClick={() => (onGo ? onGo(w.from) : onTree?.())} className="font-medium text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{w.label}</button></span>
                   ))}{dealtBy.length > 2 ? ` and ${dealtBy.length - 2} more` : ""}.</>
-                ) : (
-                  <>Everyone gets this card.</>
-                )}
+                ) : null}
                 {a.kind === "all" && !dealtBy.length && !sharedOnly(m, everyCard) && (
                   <button onClick={() => set({ audience: { kind: "student", studentId: "", studentIds: [] } })} className="mt-1 block underline underline-offset-2 hover:text-ink">Only some students or groups…</button>
                 )}
@@ -612,9 +666,16 @@ export function CardEditor({
                 <button onClick={() => set({ audience: { kind: "all" } })} className="mt-2 text-[12.5px] text-ink-2 underline underline-offset-2 hover:text-ink">Give it to everyone</button>
               </div>
             )}
-            <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3 text-[12.5px]">
-              <span className="mr-1 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name="clock" size={12} /></span>
-              <span className="mr-0.5 text-ink-2">{meeting ? `${meeting} meeting` : "Due"}</span>
+                </div>}
+              </div>
+              <div className="py-2">
+                <button onClick={() => setDueOpen((v) => !v)} aria-expanded={dueShown} className="press flex w-full items-center gap-2 text-left">
+                  <span className="w-20 flex-none text-ink-2">{meeting ? "Meeting" : "Due"}</span>
+                  <span className="min-w-0 flex-1 truncate text-right text-ink">{m.due ? `${shortDay(m.due)}${m.dueTime ? ` · ${m.dueTime}` : ""}` : "None"}</span>
+                  <Icon name="chevron" size={12} className={`flex-none text-ink-3 transition-transform ${dueShown ? "rotate-180" : "-rotate-90"}`} />
+                </button>
+                {dueShown && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1 text-[12.5px]">
               {/* No due date is the default: picked until a date is set. */}
               <button onClick={() => set({ due: undefined, dueTime: undefined })} aria-pressed={!m.due}
                 className={`press inline-flex h-7 items-center whitespace-nowrap rounded-full border px-2.5 text-[12px] ${!m.due ? "border-ink bg-ink/[0.04] font-medium" : "border-line text-ink-2 hover:border-line-strong"}`}>{meeting ? "No date yet" : "No due date"}</button>
@@ -631,40 +692,32 @@ export function CardEditor({
                 <input type="time" value={m.dueTime ?? ""} onChange={(e) => set({ dueTime: e.target.value || undefined })} aria-label="Meeting time"
                   className={`field h-8 w-[104px] py-0 text-[12.5px] ${m.dueTime ? "!border-ink" : ""}`} />
               )}
-              {meeting && <span className="basis-full pl-[34px] text-[11.5px] text-ink-3">This card has a {meeting} link, so its date is the meeting’s: students see when to join, and it’s in the calendar.</span>}
+              {meeting && <span className="basis-full text-[11.5px] text-ink-3">This card has a {meeting} link, so its date is the meeting’s: students see when to join, and it’s in the calendar.</span>}
               {calendar && course && <DueCalendar course={course} moduleId={m.id} cardTitle={m.title} due={m.due} onPick={(day) => set({ due: day })} onClose={() => setCalendar(false)} />}
             </div>
-            {/* Optional: for students who want it; it doesn't count toward finishing. */}
-            <div className="mt-3 flex items-start gap-2.5 border-t border-line pt-3 text-[12.5px]">
-              <span className="mt-[1px] flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name="layers" size={12} /></span>
-              <span className="min-w-0 flex-1 pt-[3px]">
-                <label className="flex cursor-pointer items-center gap-2 text-ink">
-                  <input type="checkbox" checked={!!m.optional} onChange={(e) => set({ optional: e.target.checked || undefined })} className="h-4 w-4 accent-[#1b1b1a]" />
-                  Optional
-                </label>
-                <span className="mt-0.5 block text-[11.5px] text-ink-3">Students see it marked Optional. It doesn’t count toward finishing the lesson, catching up, or the certificate.</span>
-              </span>
-            </div>
-            {familyOf(kind) === "question" && (
-              <div className="mt-3 flex items-start gap-2.5 border-t border-line pt-3 text-[12.5px]">
-                <span className="mt-[1px] flex h-6 w-6 flex-none items-center justify-center rounded-full bg-lane text-ink-2"><Icon name="sparkles" size={12} /></span>
-                <span className="min-w-0 flex-1 pt-[3px]">
-                  <label className="flex cursor-pointer items-center gap-2 text-ink">
-                    <input type="checkbox" checked={!!m.aiFeedback} disabled={!ai && !m.aiFeedback} onChange={(e) => set({ aiFeedback: e.target.checked || undefined })} className="h-4 w-4 accent-[#1b1b1a]" />
-                    Allow AI feedback
-                  </label>
-                  <span className="mt-0.5 block text-[11.5px] text-ink-3">
-                    {ai === undefined ? "" : ai ? <>When a student hands in, {providerMeta(ai.provider).name} ({ai.model}) gives them feedback right away{providerMeta(ai.provider).watchesVideo ? ", analyzing their video too" : ", from their writing and the transcripts of their recordings"}.</>
-                      : <>Connect your AI first in <a href="/settings#ai" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">Settings → Tools for cards</a>.</>}
-                    {m.aiFeedback && ai === null && <span className="text-[#a0561f]"> Without an AI connected, students get no AI feedback on this card.</span>}
-                  </span>
-                </span>
+                )}
               </div>
-            )}
+              <label className="flex cursor-pointer items-center gap-2 py-2.5">
+                <span className="flex flex-1 items-center gap-1.5 text-ink-2">Optional <Info text="Students see it marked Optional. It doesn’t count toward finishing the lesson, catching up, or the certificate." /></span>
+                <Switch on={!!m.optional} label="Optional" onChange={(v) => set({ optional: v || undefined })} />
+              </label>
+              {(workCard || m.aiFeedback) && (
+                <div className="py-2.5">
+                  <label className={`flex items-center gap-2 ${!ai && !m.aiFeedback ? "" : "cursor-pointer"}`}>
+                    <span className="flex flex-1 items-center gap-1.5 text-ink-2">AI feedback <Info text="When a student hands in, your AI gives them a few lines of feedback right away. You still review their work." /></span>
+                    {ai === null && !m.aiFeedback
+                      ? <a href="/settings#ai" target="_blank" rel="noreferrer" className="text-[12px] text-[#4b56a8] hover:underline">Connect your AI</a>
+                      : <Switch on={!!m.aiFeedback} label="AI feedback" disabled={!ai && !m.aiFeedback} onChange={(v) => set({ aiFeedback: v || undefined })} />}
+                  </label>
+                  {m.aiFeedback && ai === null && <p className="mt-1 text-[11.5px] text-[#a0561f]">No AI is connected, so students get no AI feedback. <a href="/settings#ai" target="_blank" rel="noreferrer" className="underline underline-offset-2">Connect it</a></p>}
+                  {m.aiFeedback && !workCard && <p className="mt-1 text-[11.5px] text-ink-3">This card has nothing handed in to read, so the AI has nothing to answer.</p>}
+                </div>
+              )}
+            </div>
           </Panel>
+          </>}
 
-
-          {older.length > 0 && (
+          {tab === "who" && older.length > 0 && (
             <p className="px-1 text-[12px] text-ink-3">
               Older settings on this card still apply: {older.join(" · ")}.{" "}
               <button onClick={() => set(clearOlder(m))} className="underline underline-offset-2 hover:text-ink">Clear them</button>
@@ -679,14 +732,42 @@ export function CardEditor({
   );
 }
 
-/** One of the parts of a card, numbered in the order a teacher fills them in. */
-function Panel({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+/** One part of a card. */
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section data-sec={title} className="rounded-xl border border-line bg-white px-4 py-3.5">
-      <h3 className="mb-2.5 flex items-baseline gap-2 text-[13px] font-medium"><span className="font-mono text-[11px] font-normal text-ink-3">{n}</span>{title}</h3>
+      {title && <h3 className="mb-2.5 text-[13px] font-medium">{title}</h3>}
       {children}
     </section>
   );
+}
+
+/** An explanation kept out of the way: shown when the (i) is pointed at, tapped or focused. */
+function Info({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button type="button" aria-label={text} onClick={(e) => { e.preventDefault(); setOpen((v) => !v); }} onBlur={() => setOpen(false)}
+        onPointerEnter={() => setOpen(true)} onPointerLeave={() => setOpen(false)} className="press flex h-4 w-4 items-center justify-center text-ink-3 hover:text-ink"><Icon name="info" size={13} /></button>
+      {open && <span role="tooltip" className="pop absolute left-1/2 top-5 z-10 w-56 -translate-x-1/2 rounded-lg border border-line bg-white px-2.5 py-2 text-[11.5px] font-normal leading-snug text-ink-2 shadow-[0_8px_24px_-10px_rgba(20,20,18,0.3)]">{text}</span>}
+    </span>
+  );
+}
+
+/** An on/off switch. */
+function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => onChange(!on)}
+      className={`press relative h-[18px] w-8 flex-none rounded-full transition-colors disabled:opacity-40 ${on ? "bg-[#247b46]" : "bg-[#d6d2ca]"}`}>
+      <span className={`absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-[left] ${on ? "left-[16px]" : "left-[2px]"}`} />
+    </button>
+  );
+}
+
+/** "2026-12-04" as "Fri, Dec 4". */
+function shortDay(day: string): string {
+  const d = new Date(`${day}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? day : d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
 function QuestionsEditor({ questions, onChange, cards = [], onTree, onGo, single }: { questions: Question[]; onChange: (q: Question[]) => void; cards?: Module[]; onTree?: () => void; onGo?: (id: string) => void; single?: boolean }) {
