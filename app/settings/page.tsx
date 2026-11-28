@@ -14,6 +14,7 @@ import { providerMeta, type AiProvider } from "@/lib/aimeta";
 import { McpSettings } from "@/components/teacher/McpSettings";
 import { TemplatePreview } from "@/components/TemplatePreview";
 import type { TemplateInfo } from "@/lib/mytemplates";
+import { splitName } from "@/lib/namesplit";
 
 const EXAMPLE = `{
   "id": "holidays",
@@ -139,6 +140,12 @@ function StudentSettings({ studying }: { studying: Studying[] }) {
           <div className="truncate text-[12.5px] text-ink-3" data-tip={`Signs in with ${methods}`}>{me.email}</div>
         </div>
         <button onClick={signOut} className="btn btn-ghost press h-8 text-[12.5px]">Sign out</button>
+      </div>
+
+      <div className={row}>
+        <Icon name="user" size={15} className="text-ink-3" />
+        <span className="flex-none text-[13.5px]">Name</span>
+        <span className="flex flex-1 justify-end"><NameFields me={me} onSaved={(n) => setMe({ ...me, ...n })} /></span>
       </div>
 
       <div className={row}>
@@ -375,25 +382,40 @@ function AddApi({ onAdded }: { onAdded: (id: string) => void }) {
   );
 }
 
-type Me = { kind: "teacher"; name: string; email: string; picture: string | null; signIn?: { password: boolean; google: boolean }; since?: number };
+type Me = { kind: "teacher"; name: string; firstName?: string | null; lastName?: string | null; email: string; picture: string | null; signIn?: { password: boolean; google: boolean }; since?: number };
+
+/** First and last name, side by side; saved when you leave a field (both are needed). */
+function NameFields({ me, onSaved }: { me: { name: string; firstName?: string | null; lastName?: string | null }; onSaved: (n: { name: string; firstName: string; lastName: string }) => void }) {
+  const start = me.firstName || me.lastName ? { first: me.firstName ?? "", last: me.lastName ?? "" } : splitName(me.name);
+  const [first, setFirst] = useState(start.first);
+  const [last, setLast] = useState(start.last);
+  async function save() {
+    const f = first.trim(), l = last.trim();
+    if (f === (me.firstName ?? "") && l === (me.lastName ?? "")) return;
+    if (!f || !l) return toast(!f ? "Enter your first name" : "Enter your last name", { icon: "x", tone: "bad" });
+    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "setName", firstName: f, lastName: l }) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
+    if (!r.ok) return toast(r.error ?? "Couldn’t change your name", { icon: "x", tone: "bad" });
+    onSaved({ name: r.name, firstName: r.firstName, lastName: r.lastName });
+    toast("Name saved", { icon: "check" });
+  }
+  const enter = (e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && e.currentTarget.blur();
+  return (
+    <span className="flex w-full max-w-sm gap-2">
+      <input value={first} onChange={(e) => setFirst(e.target.value)} onBlur={save} onKeyDown={enter} placeholder="First name" aria-label="First name" autoComplete="given-name" className="field h-9 min-w-0 flex-1 py-0" />
+      <input value={last} onChange={(e) => setLast(e.target.value)} onBlur={save} onKeyDown={enter} placeholder="Last name" aria-label="Last name" autoComplete="family-name" className="field h-9 min-w-0 flex-1 py-0" />
+    </span>
+  );
+}
 
 /** The account: photo, name, email, how they sign in, and signing out. */
 function AccountTab() {
   const [me, setMe] = useState<Me | null>(null);
-  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    fetch("/api/auth").then((r) => r.json()).then((j) => { if (j.kind === "teacher") { setMe(j); setName(j.name); } }).catch(() => {});
+    fetch("/api/auth").then((r) => r.json()).then((j) => { if (j.kind === "teacher") setMe(j); }).catch(() => {});
   }, []);
   if (!me) return <div className="card skeleton mt-6 h-64" aria-busy="true" />;
   const post = (body: object) => fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
-  async function saveName() {
-    const n = name.trim();
-    if (n === me!.name) return;
-    const r = await post({ action: "setName", name: n });
-    if (!r.ok) { toast(r.error ?? "Couldn’t change your name", { icon: "x", tone: "bad" }); setName(me!.name); return; }
-    setMe({ ...me!, name: r.name }); toast("Name saved", { icon: "check" });
-  }
   async function photo(f?: File) {
     if (!f) return;
     if (!f.type.startsWith("image/")) return toast("Pick a picture (JPEG, PNG, WebP or GIF)", { icon: "x", tone: "bad" });
@@ -431,8 +453,8 @@ function AccountTab() {
       </div>
       <div className={row}>
         <span className={label}>Name</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} onBlur={saveName} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} aria-label="Your name" className="field h-9 w-full max-w-sm py-0" />
-        <span className="basis-full text-[12px] text-ink-3 sm:pl-[10.5rem]">Saved when you leave the field. Co-teachers see this name.</span>
+        <NameFields me={me} onSaved={(n) => setMe({ ...me, ...n })} />
+        <span className="basis-full text-[12px] text-ink-3 sm:pl-[10.5rem]">Saved when you leave the field. Co-teachers, students and classmates see this name.</span>
       </div>
       <div className={row}>
         <span className={label}>Email</span>

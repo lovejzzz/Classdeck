@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SkipLink } from "@/components/SkipLink";
 import { Toaster } from "@/components/Toaster";
 import { ConfirmHost } from "@/components/Confirm";
+import { NameGate } from "@/components/NameGate";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SkipLink />
         {children}
         <Toaster />
+        <NameGate />
         <ConfirmHost />
       </body>
     </html>

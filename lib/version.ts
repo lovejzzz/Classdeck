@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.28",
+    date: "2026-11-28",
+    changes: [
+      "Every account has a first and a last name. Making an account asks for both; signing in with Google takes them from Google.",
+      "An account that doesn’t have both yet is asked once, on its next visit (its current name is filled in to start from). Settings shows the two names side by side, for teachers and students alike.",
+      "A student’s name on a class list follows their account: changing it changes it in their classes, and opening an invitation link replaces the name made from their email address with their own (unless a classmate already has it).",
+    ],
+  },
+  {
     version: "0.3.27",
     date: "2026-11-28",
     changes: [

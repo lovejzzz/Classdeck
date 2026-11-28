@@ -5,6 +5,7 @@ import { verifyGoogle } from "@/lib/google";
 import { findInvite } from "@/lib/hooks";
 import { db, save } from "@/lib/store";
 import { giveStarterCourse } from "@/lib/newcourse";
+import { fullName, namePart, needsName, setAccountName, splitName } from "@/lib/names";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
   // The Google client id is public: it's what the "Sign in with Google" button needs.
   const google = process.env.GOOGLE_CLIENT_ID || null;
   // An account (it can teach some courses and be a student in others). "teacher" is its kind for older pages.
-  if (t) return Response.json({ kind: "teacher", name: t.name, email: t.email, picture: t.picture ?? null, firstRole: t.firstRole ?? null, google, signIn: { password: !!t.hash, google: !!t.google }, since: t.createdAt });
+  if (t) return Response.json({ kind: "teacher", name: t.name, firstName: t.firstName ?? null, lastName: t.lastName ?? null, needsName: needsName(t), email: t.email, picture: t.picture ?? null, firstRole: t.firstRole ?? null, google, signIn: { password: !!t.hash, google: !!t.google }, since: t.createdAt });
   if (s?.kind === "student" && s.courseId) {
     const c = db().courses[s.courseId];
     const st = c?.students.find((x) => x.id === s.studentId) ?? c?.waiting?.find((x) => x.id === s.studentId);
@@ -47,16 +48,19 @@ export async function POST(request: Request) {
   switch (body.action) {
     case "signup": {
       const email = String(body.email ?? "").trim().toLowerCase();
-      const name = String(body.name ?? "").trim().slice(0, 60);
+      // A first and a last name (scripts that send one `name` have it split at its last space).
+      const asked = body.firstName !== undefined || body.lastName !== undefined;
+      const { first, last } = asked ? { first: namePart(body.firstName), last: namePart(body.lastName) } : splitName(String(body.name ?? ""));
       const password = String(body.password ?? "");
       if (!EMAIL.test(email)) return fail("Enter a valid email address");
-      if (!name) return fail("Enter your name");
+      if (!first) return fail("Enter your first name");
+      if (asked && !last) return fail("Enter your last name");
       if (password.length < 8) return fail("Use a password of at least 8 characters");
       // A whole class often signs up at once from one school address, so the limit per address is generous.
       if (throttled(`signup:${ip}`, 80)) return fail("Too many attempts. Try again in a few minutes.", 429);
       if (Object.values(d.users).some((u) => u.email === email)) return fail("There’s already an account with that email. Sign in instead.");
       const id = uid("u-");
-      d.users[id] = { id, email, name, ...hashSecret(password), firstRole: body.as === "student" ? "student" : "teacher", createdAt: Date.now() };
+      d.users[id] = { id, email, name: fullName(first, last), ...(first ? { firstName: first } : {}), ...(last ? { lastName: last } : {}), ...hashSecret(password), firstRole: body.as === "student" ? "student" : "teacher", createdAt: Date.now() };
       // A new teacher starts with Questhand 101 in their courses: a short course on Questhand, to try and to copy from.
       if (body.as !== "student") giveStarterCourse(id);
       save();
@@ -127,6 +131,8 @@ export async function POST(request: Request) {
       const taken = nameTaken(course, chosen || st.name, st.id);
       if (taken) return taken;
       if (chosen) st.name = chosen;
+      // The place on the list takes the account's own name (rather than one made from the email), unless a classmate has it.
+      else if (u.name && !nameTaken(course, u.name, st.id)) st.name = u.name;
       st.userId = u.id;
       save();
       return Response.json({ ok: true, courseId: course.id, studentId: st.id });
@@ -141,7 +147,7 @@ export async function POST(request: Request) {
       let u = Object.values(d.users).find((x) => x.google === who.sub) ?? Object.values(d.users).find((x) => x.email === who.email);
       if (!u) {
         const id = uid("u-");
-        u = d.users[id] = { id, email: who.email, name: who.name, hash: "", salt: "", google: who.sub, picture: who.picture, firstRole: body.as === "student" ? "student" : "teacher", createdAt: Date.now() };
+        u = d.users[id] = { id, email: who.email, name: who.first && who.last ? fullName(who.first, who.last) : who.name, ...(who.first && who.last ? { firstName: who.first, lastName: who.last } : {}), hash: "", salt: "", google: who.sub, picture: who.picture, firstRole: body.as === "student" ? "student" : "teacher", createdAt: Date.now() };
         if (body.as !== "student") giveStarterCourse(id);
       } else if (u.google && u.google !== who.sub) {
         return fail("That email belongs to a different Google account here.", 401);
@@ -155,6 +161,8 @@ export async function POST(request: Request) {
       }
       u.google = who.sub;
       if (!u.pictureOwn) u.picture = who.picture;
+      // An account still without a first and last name takes Google's, if Google has both.
+      if (needsName(u) && who.first && who.last) setAccountName(u, who.first, who.last);
       save();
       return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: u.id }) } });
     }
@@ -164,11 +172,13 @@ export async function POST(request: Request) {
       // The account's own name (shown to co-teachers and on courses they make). Names in a class are set per class.
       const t = teacherOf(getSession(request));
       if (!t) return fail("Sign in first", 401);
-      const name = String(body.name ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
-      if (!name) return fail("Your name can’t be empty");
-      db().users[t.id].name = name;
+      const { first, last } = body.firstName !== undefined || body.lastName !== undefined ? { first: namePart(body.firstName), last: namePart(body.lastName) } : splitName(String(body.name ?? ""));
+      if (!first) return fail("Enter your first name");
+      if (!last) return fail("Enter your last name");
+      const u = db().users[t.id];
+      setAccountName(u, first, last);
       save();
-      return Response.json({ ok: true, name });
+      return Response.json({ ok: true, name: u.name, firstName: first, lastName: last });
     }
     case "setPicture": {
       // A photo of their own: a picture this account uploaded (or none, to go back to Google's, or the initial).

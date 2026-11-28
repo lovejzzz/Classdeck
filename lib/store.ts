@@ -16,7 +16,11 @@ import type { Manifest } from "./connectors/types";
 export interface User {
   id: string;
   email: string;
+  /** Their whole name, as shown (first and last together). */
   name: string;
+  /** Their first and last name, asked for once (at sign-up, from Google, or on their first visit after names came in). */
+  firstName?: string;
+  lastName?: string;
   /** scrypt hash and salt, hex. Empty for accounts that only sign in with Google. */
   hash: string;
   salt: string;

@@ -17,7 +17,8 @@ export function SignInPanel({ onDone, as, email: startEmail = "", startMode = "l
   note?: React.ReactNode;
 }) {
   const [mode, setMode] = useState<"login" | "signup">(startMode);
-  const [name, setName] = useState("");
+  const [first, setFirst] = useState("");
+  const [last, setLast] = useState("");
   const [email, setEmail] = useState(startEmail);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -37,8 +38,13 @@ export function SignInPanel({ onDone, as, email: startEmail = "", startMode = "l
     <div>
       {note}
       <div className="mt-5"><GoogleButton onCredential={(credential) => send({ action: "google", credential })} /></div>
-      <form onSubmit={(e) => { e.preventDefault(); send({ action: mode, name, email, password }); }} className="mt-3 space-y-2.5">
-        {mode === "signup" && <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" autoComplete="name" className="field h-10" />}
+      <form onSubmit={(e) => { e.preventDefault(); send(mode === "signup" ? { action: mode, firstName: first, lastName: last, email, password } : { action: mode, email, password }); }} className="mt-3 space-y-2.5">
+        {mode === "signup" && (
+          <div className="flex gap-2">
+            <input value={first} onChange={(e) => setFirst(e.target.value)} placeholder="First name" aria-label="First name" autoComplete="given-name" className="field h-10 min-w-0 flex-1" />
+            <input value={last} onChange={(e) => setLast(e.target.value)} placeholder="Last name" aria-label="Last name" autoComplete="family-name" className="field h-10 min-w-0 flex-1" />
+          </div>
+        )}
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" aria-label="Email" autoComplete="email" className="field h-10" />
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === "signup" ? "Password (8+ characters)" : "Password"} aria-label="Password" autoComplete={mode === "signup" ? "new-password" : "current-password"} className="field h-10" />
         {error && <p className="rise text-[13px] text-bad" role="alert">{error}</p>}
