@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.31",
+    date: "2026-11-28",
+    changes: [
+      "Share a template: in Settings → Templates, press Share, pick one or more people (from your courses by name, or anyone by email) and add a note if you like. They get a copy of it as it is now.",
+      "It arrives in their inbox drawn small, like its map, with Add to my templates. Once added, Start a course from it opens New course with the template picked.",
+    ],
+  },
+  {
     version: "0.3.30",
     date: "2026-11-28",
     changes: [

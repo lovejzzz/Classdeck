@@ -111,7 +111,7 @@ export function ConversationBody({ c, onClose, onBack, onChanged }: { c: Convers
                   {n.share && !n.mine && (
                     <div className="mt-1.5 flex items-center gap-2">
                       {n.added
-                        ? <><span className="flex items-center gap-1 text-[12.5px] text-ok"><Icon name="check" size={12} /> In your templates</span><Link href={`/?new=${encodeURIComponent(n.added)}`} className="btn btn-ghost press ml-auto h-8 px-3 text-[12.5px]">Start a course from it</Link></>
+                        ? <><span className="flex items-center gap-1 text-[12.5px] text-ok"><Icon name="check" size={12} /> In your templates</span><Link href={`/?new=${encodeURIComponent(n.added)}`} onClick={() => onClose?.()} className="btn btn-ghost press ml-auto h-8 px-3 text-[12.5px]">Start a course from it</Link></>
                         : <button onClick={() => n.letter && void addTemplate(n.letter)} className="btn btn-dark press h-8 px-3 text-[12.5px]"><Icon name="plus" size={12} /> Add to my templates</button>}
                     </div>
                   )}

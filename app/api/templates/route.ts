@@ -1,11 +1,14 @@
 import { canTeach, getSession, isAdmin, teacherOf, unauthorized } from "@/lib/auth";
 import { db, save } from "@/lib/store";
+import { uid } from "@/lib/profile";
 import { fromCourse, info, MAX_TEMPLATE_BYTES, MAX_TEMPLATES, seedCaps } from "@/lib/mytemplates";
 
 // The signed-in teacher's templates.
 //   GET                                   → { templates: TemplateInfo[] } (newest first; the files themselves stay here)
 //   POST { action: "save", courseId }     → a copy of the course as it is now, named after it
 //   POST { action: "rename", id, name }   ·   POST { action: "delete", id }
+//   POST { action: "share", id }          → { share } a copy of the template as it is now, kept once, to send in
+//                                           messages (POST /api/inbox { action: "send", person, share })
 
 const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
 
@@ -43,6 +46,14 @@ export async function POST(request: Request) {
   }
   const t = list.find((x) => x.id === String(body.id ?? ""));
   if (!t) return fail("That template isn’t there any more", 404);
+  if (body.action === "share") {
+    const d = m.d;
+    d.shares ??= {};
+    const id = uid("sh-");
+    d.shares[id] = { id, by: u.id, at: Date.now(), template: structuredClone(t) };
+    save(id);
+    return Response.json({ ok: true, share: id });
+  }
   if (body.action === "rename") {
     const name = String(body.name ?? "").trim().slice(0, 80);
     if (!name) return fail("Give the template a name");

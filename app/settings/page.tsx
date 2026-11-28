@@ -14,6 +14,7 @@ import { providerMeta, type AiProvider } from "@/lib/aimeta";
 import { McpSettings } from "@/components/teacher/McpSettings";
 import { TemplatePreview } from "@/components/TemplatePreview";
 import type { TemplateInfo } from "@/lib/mytemplates";
+import { PeoplePicker, type Contact } from "@/components/MessageThread";
 import { splitName } from "@/lib/namesplit";
 
 const EXAMPLE = `{
@@ -227,6 +228,7 @@ function TeachingRows({ open, onOpen }: { open: Open; onOpen: (o: Exclude<Open, 
 function Templates() {
   const [list, setList] = useState<TemplateInfo[] | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [sharing, setSharing] = useState<TemplateInfo | null>(null);
   const load = () => fetch("/api/templates").then((r) => r.json()).then((j) => setList(j.templates ?? [])).catch(() => setList([]));
   useEffect(() => { void load(); }, []);
   const act = async (body: Record<string, unknown>, note: string) => {
@@ -249,6 +251,7 @@ function Templates() {
             ) : (
               <>
                 <span className="flex-1 text-[12px] text-ink-3">Saved {new Date(t.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                <button onClick={() => setSharing(t)} className="btn btn-ghost press h-7 px-2.5 text-[12px]"><Icon name="send" size={12} /> Share</button>
                 <button onClick={() => setRenaming(t.id)} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="pencil" size={12} /> Rename</button>
                 <button onClick={async () => (await ask({ title: `Delete “${t.name}”?`, body: "Courses already made from it stay as they are.", confirm: "Delete", danger: true })) && act({ action: "delete", id: t.id }, `Deleted “${t.name}”`)}
                   className="btn btn-quiet press h-7 px-2 text-[12px] hover:!text-bad"><Icon name="trash" size={12} /> Delete</button>
@@ -258,6 +261,68 @@ function Templates() {
         </div>
       ))}
       <p className="text-[12px] text-ink-3">To add one, open a course’s Settings → Course and press Save as template.</p>
+      {sharing && <ShareTemplate t={sharing} onClose={() => setSharing(null)} />}
+    </div>
+  );
+}
+
+/**
+ * Send a template to one or more people: it arrives in their inbox, drawn small, with Add to my templates. They get
+ * a copy of it as it is now. People in your courses by name (their email under it); anyone else by their whole email.
+ */
+function ShareTemplate({ t, onClose }: { t: TemplateInfo; onClose: () => void }) {
+  const [contacts, setContacts] = useState<Contact[] | null>(null);
+  const [picked, setPicked] = useState<Contact[]>([]);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { fetch("/api/inbox").then((r) => r.json()).then((j) => setContacts((j.contacts ?? []).filter((c: Contact) => c.person))).catch(() => setContacts([])); }, []);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopImmediatePropagation(); onClose(); } };
+    window.addEventListener("keydown", k, true);
+    return () => window.removeEventListener("keydown", k, true);
+  }, [onClose]);
+  const toggle = (c: Contact) => { if (!c.person) return; setPicked((p) => (p.some((x) => x.person === c.person) ? p.filter((x) => x.person !== c.person) : [...p, c])); };
+  async function send() {
+    if (!picked.length || busy) return;
+    setBusy(true);
+    const post = (url: string, body: object) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
+    const sh = await post("/api/templates", { action: "share", id: t.id });
+    if (!sh.ok) { setBusy(false); return toast(sh.error ?? "Couldn’t share it", { icon: "x", tone: "bad" }); }
+    const results = await Promise.all(picked.map((c) => post("/api/inbox", { action: "send", person: c.person, text: note.trim(), share: sh.share })));
+    setBusy(false);
+    const sent = results.filter((r) => r.ok).length, failed = results.find((r) => !r.ok);
+    if (sent) toast(`Sent “${t.name}” to ${sent === 1 ? picked[results.findIndex((r) => r.ok)].name : `${sent} people`}`, { icon: "send" });
+    if (failed) toast(failed.error ?? "Some couldn’t be sent", { icon: "x", tone: "bad" });
+    if (!failed) onClose();
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/25 p-4 pt-[8vh]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label={`Share “${t.name}”`} className="pop flex max-h-[84vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-[0_30px_80px_-24px_rgba(20,20,18,0.45)]">
+        <div className="px-6 pt-6">
+          <h2 className="text-[20px] font-medium tracking-tight">Share “{t.name}”</h2>
+          <p className="mt-1 text-[13px] text-ink-2">It arrives in their inbox, and they can add it to their templates. They get a copy of it as it is now.</p>
+          {picked.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {picked.map((c) => (
+                <span key={c.key} className="chip h-7 gap-1 bg-lane pl-2.5 pr-1 text-[12.5px]" title={c.email}>
+                  {c.name}
+                  <button onClick={() => toggle(c)} aria-label={`Remove ${c.name}`} className="rounded-full p-0.5 text-ink-3 hover:text-ink"><Icon name="x" size={11} /></button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex min-h-[12rem] flex-1 flex-col">
+          {contacts === null ? <div className="skeleton m-6 h-24 rounded-xl" /> : <PeoplePicker contacts={contacts} onPick={toggle} picked={new Set(picked.map((c) => `p:${c.person}`))} />}
+        </div>
+        <div className="border-t border-line px-6 py-4">
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Add a note (optional)" aria-label="Note" className="field w-full resize-none py-2 text-[13.5px]" />
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button onClick={onClose} className="btn btn-quiet press">Cancel</button>
+            <button onClick={send} disabled={!picked.length || busy} className="btn btn-dark press">{busy ? "Sending…" : picked.length > 1 ? `Send to ${picked.length} people` : "Send"}</button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
