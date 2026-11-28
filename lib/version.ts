@@ -3,6 +3,13 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.25",
+    date: "2026-11-28",
+    changes: [
+      "Opening Settings without being signed in (for example from the demo) asks you to sign in, instead of loading forever.",
+    ],
+  },
+  {
     version: "0.3.24",
     date: "2026-11-28",
     changes: [

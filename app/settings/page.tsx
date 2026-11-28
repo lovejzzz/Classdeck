@@ -53,17 +53,26 @@ type Studying = { id: string; title: string; studentId: string; teacher?: string
 export default function SettingsPage() {
   const [open, setOpen] = useState<Open>(null);
   const [studying, setStudying] = useState<Studying[] | null | undefined>(undefined);
+  const [out, setOut] = useState(false);
   // A row named in the address (#ai, #mcp, #tools) opens, so a link can lead straight to it.
   useEffect(() => {
     const h = window.location.hash.slice(1);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the address
     if (h === "ai" || h === "mcp" || h === "tools") setOpen(h);
+    fetch("/api/auth").then((r) => r.json()).then((j: { kind?: string | null }) => setOut(!j.kind)).catch(() => {});
     fetch("/api/courses").then((r) => r.json()).then((j: { courses?: unknown[]; studying?: Studying[] }) => {
       setStudying(!j.courses?.length && j.studying?.length ? j.studying : null);
     }).catch(() => setStudying(null));
   }, []);
   const go = (o: Open) => { setOpen(o); history.replaceState(null, "", o ? `#${o}` : " "); };
   const student = !!studying;
+  // Signed out (or only visiting the demo): nothing here is theirs, so ask them to sign in rather than load forever.
+  if (out) return (
+    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-16 text-center">
+      <h1 className="text-[20px] font-semibold tracking-tight">Sign in to see your settings</h1>
+      <Link href="/login?next=%2Fsettings" className="btn btn-dark press mx-auto mt-5 h-9 px-5">Sign in</Link>
+    </main>
+  );
   return (
     <main className={`mx-auto min-h-screen w-full flex-1 px-4 py-8 ${student ? "max-w-2xl" : "max-w-3xl"}`}>
       <Link href="/" className="inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink">
