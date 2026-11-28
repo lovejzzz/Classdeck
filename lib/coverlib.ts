@@ -7,8 +7,8 @@ export type CourseCover = NonNullable<Course["cover"]>;
 
 /** The paper motifs, each with the words in a course's name that call for it. */
 export const MOTIFS: { id: string; name: string; words: RegExp }[] = [
-  { id: "leaf", name: "Leaves and sun", words: /ecolog|ecosystem|biolog|plant|nature|environment|climate|garden|earth science|life science|animal|forest/i },
-  { id: "flask", name: "Lab flask", words: /chemi|lab\b|science|experiment|molecul/i },
+  { id: "leaf", name: "Leaves and sun", words: /ecolog|ecosystem|biolog|plant|nature|environment|climate|garden|earth science|life science|animal|forest|river|wetland|ocean|marine|water|weather|field study|wildlife|farm/i },
+  { id: "flask", name: "Lab flask", words: /chemi|\blabs?\b|science|experiment|molecul/i },
   { id: "atom", name: "Atom", words: /physic|atom|quantum|energy|electric|astronom|space/i },
   { id: "code", name: "Code window", words: /python|code|coding|program|javascript|computer|software|web dev|data science|algorithm|\bai\b|machine learning/i },
   { id: "speech", name: "Speech bubbles", words: /spanish|french|german|chinese|mandarin|japanese|korean|italian|english as|esl|language|conversation|travel|communicat/i },
@@ -34,10 +34,18 @@ function hashOf(s: string) {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return h >>> 0;
 }
+/** The motif whose word comes first in a text (the name says most at its start), if any does. */
+function motifFor(text: string): string | undefined {
+  let best: { id: string; at: number } | undefined;
+  for (const m of MOTIFS.slice(0, -1)) {
+    const at = text.search(m.words);
+    if (at >= 0 && (!best || at < best.at)) best = { id: m.id, at };
+  }
+  return best?.id;
+}
 /** The cover a course gets without choosing one: its motif from its name, its colour from its id. */
 export function autoCover(c: { id: string; title: string; subtitle?: string }): Required<Pick<CourseCover, "motif" | "color" | "seed">> {
-  const text = `${c.title} ${c.subtitle ?? ""}`;
-  const motif = MOTIFS.find((m) => m.words.test(text))!.id;
+  const motif = motifFor(c.title) ?? motifFor(c.subtitle ?? "") ?? "book";
   const h = hashOf(c.id);
   return { motif, color: COVER_COLORS[h % COVER_COLORS.length], seed: h % 1000 };
 }

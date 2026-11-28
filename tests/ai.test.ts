@@ -5,7 +5,7 @@ import fs from "fs";
 import path from "path";
 import { db } from "../lib/store";
 import { makeCourse } from "../lib/newcourse";
-import { aiFor, listModels, openKey, sealKey, startAiFeedback } from "../lib/aifeedback";
+import { aiFor, isLocalCli, listModels, LOCAL_KEY, openKey, sealKey, startAiFeedback } from "../lib/aifeedback";
 import { cleanCard } from "../lib/cleancard";
 import { noteOf, rankModels } from "../lib/aimeta";
 import { probe } from "../lib/aifeedback";
@@ -250,6 +250,16 @@ async function main() {
   await until(() => d.progress[course.id].s1["m-w"].ai?.state !== "working");
   const wsent = String(calls.find((c) => c.url.includes(":generateContent"))?.init?.body ?? "");
   check("a discussion post: the AI is told replies come later", /don't mention replies/.test(wsent) && wsent.includes("open with a question"), wsent.slice(0, 200));
+
+  // The local Claude CLI stands in for a key only off the live site.
+  const env = process.env as Record<string, string | undefined>;
+  const was = env.NODE_ENV;
+  env.NODE_ENV = "development";
+  check("the local CLI key works on a local server", isLocalCli("anthropic", LOCAL_KEY) && (await listModels("anthropic", LOCAL_KEY)).some((m) => /local CLI/.test(m.name)));
+  check("the local CLI key is only for Claude", !isLocalCli("openai", LOCAL_KEY));
+  env.NODE_ENV = "production";
+  check("the local CLI key does nothing on the live site", !isLocalCli("anthropic", LOCAL_KEY));
+  env.NODE_ENV = was;
 
   console.log(`\n${passed} passed, ${failures.length} failed`);
   for (const f of failures) console.log("  ✗ " + f);

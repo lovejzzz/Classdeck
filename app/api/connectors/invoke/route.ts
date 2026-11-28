@@ -6,6 +6,7 @@ import { findLesson, visibleModules } from "@/lib/profile";
 import { db, logEvent, save } from "@/lib/store";
 import { treeView } from "@/lib/branching";
 import { aiOf, courseAi } from "@/lib/aifeedback";
+import type { Module } from "@/lib/types";
 
 // 网关：浏览器永远不直接访问外部 API。所有调用都从这里走，在这里做四件事：
 //   1. 这门课启用了这个连接器吗？
@@ -63,28 +64,34 @@ export async function POST(request: Request) {
       if (t && rateLimited(`t:${t.id}`, 30)) throw new ConnectorError("rate_limited", "Slow down a little. Try again in a minute.");
     }
     let ctx = {};
+    const lesson = findLesson(course, lessonId);
+    let mod: Module | undefined;
     if (studentId) {
       if (!course.enabledConnectors.includes(connectorId)) throw new ConnectorError("forbidden", "Your teacher hasn't turned on this tool for the course");
       if (spec.teacherOnly) throw new ConnectorError("forbidden", "Only teachers can use this tool");
       if (!course.students.some((s) => s.id === studentId)) throw new ConnectorError("forbidden", "Not a student in this course");
-      const lesson = findLesson(course, lessonId);
-      const mod = lesson && visibleModules(lesson, studentId, db().choices[courseId]?.[studentId], treeView(course.weeks, db().progress[courseId]?.[studentId]), course).find((m) => m.id === moduleId);
+      mod = lesson && visibleModules(lesson, studentId, db().choices[courseId]?.[studentId], treeView(course.weeks, db().progress[courseId]?.[studentId]), course).find((m) => m.id === moduleId);
       if (!mod) throw new ConnectorError("forbidden", "You can't see this card");
       if (!mod.tools.some((t) => t.connector === connectorId && t.action === action)) {
         throw new ConnectorError("forbidden", "This card doesn't have that tool");
       }
       if (rateLimited(`${courseId}:${studentId}`)) throw new ConnectorError("rate_limited", "Slow down a little. Try again in a minute.");
+    } else if (lesson && moduleId) {
+      // A teacher trying a tool on a card gets the same context a student would.
+      mod = lesson.modules.find((m) => m.id === moduleId);
+    }
+    if (mod && lesson) {
       // Where the card sits (unseen by the student): the course, the lesson and its goal, the next lessons.
-      const week = course.weeks.find((w) => w.lessons.some((l) => l.id === lesson!.id));
+      const week = course.weeks.find((w) => w.lessons.some((l) => l.id === lesson.id));
       const flat = course.weeks.flatMap((w) => w.lessons.map((l) => ({ w, l })));
-      const at = flat.findIndex((x) => x.l.id === lesson!.id);
+      const at = flat.findIndex((x) => x.l.id === lesson.id);
       const name = (w: { title: string }, l: { title: string; goal?: string }) => `${w.title.split(" · ")[0]} · ${l.title}${l.goal ? ` (${l.goal})` : ""}`;
       ctx = {
         moduleTitle: mod.title, moduleBody: mod.body, moduleCriteria: mod.criteria, courseTitle: course.title,
-        lesson: week ? name(week, lesson!) : lesson!.title,
+        lesson: week ? name(week, lesson) : lesson.title,
         upcoming: flat.slice(at + 1, at + 4).map((x) => name(x.w, x.l)),
       };
-    }
+    } else if (!studentId) ctx = { courseTitle: course.title };
 
     // AI tools run on the teacher's own AI: their own when they use it themselves, the course owner's for students.
     const ai = (!studentId ? aiOf(teacherOf(session)) : null) ?? courseAi(course);

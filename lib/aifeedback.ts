@@ -1,7 +1,9 @@
 // AI feedback on handed-in work, with each teacher's own key (Settings → AI): Claude, ChatGPT or Gemini. Gemini also
 // watches a video itself. Runs in the background after a student hands in; the student sees it on the card.
+import { spawn } from "child_process";
 import crypto from "crypto";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { presignGet, r2Ready } from "./blob";
@@ -84,9 +86,42 @@ async function refusal(r: Response, provider: string): Promise<AiError> {
   return new AiError(why(r.status, provider));
 }
 
+// ——— On a local server only: "claude-cli" as the Claude key runs the Claude CLI on this computer (with its own
+// sign-in), so every AI feature can be tried without a key. Never on the live site. ———
+
+export const LOCAL_KEY = "claude-cli";
+export const isLocalCli = (provider: AiProvider, key: string) => provider === "anthropic" && key === LOCAL_KEY && process.env.NODE_ENV !== "production";
+const CLI_MODELS: AiModel[] = [
+  { id: "claude-opus-5-5", name: "Claude Opus 5.5 (local CLI)" },
+  { id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5 (local CLI)" },
+  { id: "claude-haiku-5-5", name: "Claude Haiku 5.5 (local CLI)" },
+];
+function cliAsk(model: string, system: string, text: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const args = ["-p", "--model", model, "--system-prompt", system, "--tools", "", "--strict-mcp-config", "--setting-sources", "",
+      "--disable-slash-commands", "--no-session-persistence", "--output-format", "json"];
+    const child = spawn(process.env.CLAUDE_CLI || "claude", args, { cwd: os.tmpdir(), stdio: ["pipe", "pipe", "pipe"] });
+    let out = "", err = "";
+    const timer = setTimeout(() => { child.kill(); reject(new AiError("The local Claude CLI didn’t answer in time.")); }, 240_000);
+    child.stdout.on("data", (d) => { out += d; });
+    child.stderr.on("data", (d) => { err += d; });
+    child.on("error", () => { clearTimeout(timer); reject(new AiError("Couldn’t run the local Claude CLI.")); });
+    child.on("close", () => {
+      clearTimeout(timer);
+      try {
+        const j = JSON.parse(out) as { result?: string; is_error?: boolean };
+        if (j.is_error) return reject(new AiError(`The local Claude CLI had an error: ${String(j.result ?? "").slice(0, 200)}`));
+        resolve(String(j.result ?? "").trim());
+      } catch { reject(new AiError(`The local Claude CLI had an error: ${(err || out).slice(0, 200)}`)); }
+    });
+    child.stdin.end(text);
+  });
+}
+
 // ——— The models each service offers this key, newest first. ———
 
 export async function listModels(provider: AiProvider, key: string): Promise<AiModel[]> {
+  if (isLocalCli(provider, key)) return enrich(provider, CLI_MODELS);
   return enrich(provider, await serviceModels(provider, key));
 }
 
@@ -130,6 +165,7 @@ async function serviceModels(provider: AiProvider, key: string): Promise<AiModel
 export async function probe(provider: AiProvider, key: string, model: string): Promise<AiStatus> {
   const at = Date.now();
   const credit = /credit|billing|quota|insufficient|exceeded|payment|balance/i;
+  if (isLocalCli(provider, key)) return { state: "ready", at };
   try {
     if (provider === "anthropic") {
       await new Anthropic({ apiKey: key }).messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "Hi" }] });
@@ -159,6 +195,7 @@ export async function probe(provider: AiProvider, key: string, model: string): P
 type Video = { bytes: Buffer; mime: string; fps: number };
 
 export async function ask(provider: AiProvider, key: string, model: string, system: string, text: string, video?: Video): Promise<string> {
+  if (isLocalCli(provider, key)) return cliAsk(model, system, text);
   if (provider === "anthropic") {
     const client = new Anthropic({ apiKey: key, timeout: 180_000, maxRetries: 2 });
     try {

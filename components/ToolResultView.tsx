@@ -1,3 +1,4 @@
+import { RichText } from "./RichText";
 import type { ToolResult } from "@/lib/connectors/types";
 import { Icon } from "./Icon";
 
@@ -86,6 +87,7 @@ export function ToolResultView({ result }: { result: ToolResult }) {
       </div>
     );
   }
-  if (result.render === "text") return <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink">{result.text}</p>;
+  // AI answers come with bold, lists and the like.
+  if (result.render === "text") return <div className="text-[13px] leading-relaxed text-ink"><RichText text={result.text} /></div>;
   return null;
 }

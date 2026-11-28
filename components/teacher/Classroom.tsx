@@ -632,7 +632,7 @@ function WallPanel({ courseId, module: m, state, aiReady, readOnly = false }: { 
             
             {error && <p className="rise mt-3 rounded-lg border border-bad/20 bg-bad/5 px-3 py-2 text-[13px] text-bad">{error}</p>}
             {busy && <div className="skeleton mt-3 h-20" />}
-            {summary && <p className="rise mt-3 whitespace-pre-wrap rounded-lg bg-lane px-4 py-3 text-[13.5px] leading-relaxed">{summary}</p>}
+            {summary && <div className="rise mt-3 rounded-lg bg-lane px-4 py-3 text-[13.5px] leading-relaxed"><RichText text={summary} /></div>}
           </div>
         }
       />

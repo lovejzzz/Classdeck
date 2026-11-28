@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.22",
+    date: "2026-11-27",
+    changes: [
+      "AI answers show their formatting: bold labels, lists and emphasis in the AI tutor’s answers and in a wall’s summary now read as formatting instead of stray asterisks.",
+      "The AI tutor knows which course and card it is on when a teacher tries it too, so drafted quiz questions are about what the course teaches (a public speaking course gets questions on openings and closes, not a science quiz). Practice questions from “Quiz me” ask about the ideas of the lesson, not about the card’s own instructions.",
+      "Automatic covers read the course’s name better: the word that comes first in the name wins, and a word inside another (the “lab” in “Collab”) no longer counts, so a public speaking course gets the microphone rather than a lab flask. Rivers, oceans, wetlands, weather and field studies get the nature scene.",
+      "For development: on a local server, “claude-cli” as the Claude key runs the Claude command on that computer, so every AI feature can be tried without a key. It does nothing on the live site.",
+    ],
+  },
+  {
     version: "0.3.21",
     date: "2026-11-27",
     changes: [

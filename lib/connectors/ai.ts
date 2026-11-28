@@ -32,7 +32,8 @@ Never rewrite the draft for them and never write whole sentences they could past
 const QUIZZER = `You write quick practice questions so a student can check their understanding of one card.
 Write exactly three questions about the card's content (or the student's topic, if given), from easiest to hardest.
 Format each as: the question on one line, then "Answer:" with a one-sentence answer on the next line, then a blank line.
-The last question should ask them to apply the idea to their own situation; its answer should say what a good answer includes.`;
+The last question should ask them to apply the idea to their own situation; its answer should say what a good answer includes.
+Ask about the ideas and skills the lesson teaches, never about the card itself (its parts, steps or instructions). If the card is a task or a reflection, quiz on the subject it is about.`;
 
 const SIMPLIFIER = `Rewrite the text so a student who finds it hard can understand it. Keep every important idea and keep the meaning exact.
 Use short sentences, everyday words, and one concrete example if it helps. If there's a key term, keep it and explain it in brackets.
@@ -41,7 +42,8 @@ Don't add new information. Plain text only.`;
 const QUESTION_WRITER = `You help a teacher write quiz questions for one card. Write four multiple-choice questions and one short-answer question.
 For each multiple-choice question: the question, four options labelled A–D with exactly one correct, the correct letter, and a one-sentence explanation of why.
 For the short-answer question: the question, two or three accepted answers, and an explanation.
-Test understanding, not recall of exact wording. Make wrong options plausible misconceptions. Plain text, numbered.`;
+Test understanding, not recall of exact wording. Make wrong options plausible misconceptions. Plain text, numbered.
+The questions are about what this course teaches, at its level. If the text is a task or reflection prompt rather than content, write about the ideas of the lesson it belongs to, not about the task.`;
 
 /** Where the student is (never shown to them): the course, lesson, card, and what's coming up. */
 const cardContext = (ctx: InvokeContext) => [
@@ -167,12 +169,12 @@ export const ai: Connector = {
     if (action === "draftquiz") {
       const text = (input.text ?? "").trim();
       if (!text) throw new ConnectorError("bad_input", "Paste the text or describe the topic");
-      return { render: "text", text: await complete(QUESTION_WRITER, text, ctx.ai) };
+      return { render: "text", text: await complete(QUESTION_WRITER + DATA, `${cardContext(ctx)}${theirs("Topic or source text", text)}`, ctx.ai) };
     }
     if (action === "summarize") {
       const text = (input.text ?? "").trim();
       if (!text) throw new ConnectorError("bad_input", "The wall is empty");
-      return { render: "text", text: await complete(SUMMARIZER + DATA, theirs("The posts", text), ctx.ai) };
+      return { render: "text", text: await complete(SUMMARIZER + DATA, `${cardContext(ctx)}${theirs("The posts", text)}`, ctx.ai) };
     }
     throw new ConnectorError("bad_input", "Unknown action");
   },
