@@ -12,10 +12,12 @@ const COOLDOWN = 45_000;
 const PER_DAY = 10;
 const TRIES = 5;
 
-export const verified = (u: User) => !!u.google || !!u.emailVerified;
-
 /** Do new accounts on this site have to check their address? Where email can't be sent (a dev computer), only when asked. */
 export const verifyOn = () => mailReady() || process.env.QH_DEV_VERIFY === "1";
+
+/** Confirmed: by code, or by Google. (On a dev computer that can't send codes, everyone counts, so the rest can be tried.) */
+export const verified = (u: User) => !!u.google || !!u.emailVerified || (process.env.NODE_ENV !== "production" && !verifyOn());
+
 
 const hashOf = (u: { id: string }, code: string) => crypto.createHash("sha256").update(`${u.id}:${code}`).digest("hex");
 
@@ -40,7 +42,8 @@ export async function issueCode(u: Holder, extra?: NonNullable<User["verify"]>["
   u.verify = { hash: hashOf(u, code), exp: now + TTL, sent: now, tries: 0, day, n: n + 1, ...(extra ? { claim: extra } : {}) };
   const sent = await sendCode(u.email, code);
   if (!sent && process.env.NODE_ENV !== "production") return { ok: true, devCode: code };
-  if (!sent) return { ok: false, error: "We couldn’t send a code to that address. Check it, or sign in with Google." };
+  // Nothing went out: it doesn't count as a send, so asking again isn't told to wait.
+  if (!sent) { u.verify.sent = 0; u.verify.n = n; return { ok: false, error: "We couldn’t send a code to that address. Check it, or sign in with Google." }; }
   return { ok: true };
 }
 

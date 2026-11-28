@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ago } from "@/lib/time";
 import { Avatar, Icon } from "./Icon";
-import { ConversationBody, type ConversationRef, type InboxData, type Thread, type Contact } from "./MessageThread";
+import { ConversationBody, PeoplePicker, refOf, type ConversationRef, type InboxData, type Thread } from "./MessageThread";
 import type { Note, Section } from "./NotificationCenter";
 
 /** The sections someone chose not to be told about, kept in this browser. */
@@ -17,8 +17,6 @@ function readMuted(key: string, fallback: string[]): Set<string> {
 
 /** A note's text as words: an @mention ("@[Name](id)") reads as @Name, and markdown (headings, tables, bold) drops away. */
 const plain = (s: string) => s.replace(/@\[([^\]]+)\]\([^)]*\)/g, "@$1").replace(/\|?\s*:?-{3,}:?\s*/g, " ").replace(/[#*_`>|]+/g, " ").replace(/\s+/g, " ").trim();
-const roleLabel = (x: { role: "teacher" | "student"; me: string }) => (x.role === "teacher" ? "Teacher" : x.me === "teacher" ? "Your student" : "Classmate");
-const refOf = (x: Thread | Contact): ConversationRef => ({ course: x.course, me: x.me, with: x.with, name: x.name, subtitle: `${roleLabel(x)} · ${x.courseTitle}` });
 
 type View = { kind: "all" } | { kind: "messages" } | { kind: "section"; id: string } | { kind: "course"; id: string } | { kind: "settings" };
 
@@ -47,7 +45,6 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
   const [view, setView] = useState<View>({ kind: "all" });
   const [talking, setTalking] = useState<ConversationRef | null>(null);
   const [picking, setPicking] = useState(false);
-  const [find, setFind] = useState("");
   const [data, setData] = useState<InboxData | null>(null);
   const [muted, setMuted] = useState<Set<string>>(() => new Set());
   // eslint-disable-next-line react-hooks/set-state-in-effect -- read from this browser's storage after hydration
@@ -79,8 +76,9 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
   const fresh = notes.filter((n) => !read.has(n.id));
   const count = fresh.length + unreadMsgs;
   const live = sections.filter((x) => !muted.has(x.id));
-  const courses = [...new Map(threads.map((t) => [t.course, t.courseTitle])).entries()];
-  if (!courses.some(([id]) => id === courseId)) courses.unshift([courseId, courseTitle]);
+  const courses = [...new Map(threads.flatMap((t) => t.courses.map((c) => [c.id, c.title] as const))).entries()];
+  if (courseId && !courses.some(([id]) => id === courseId)) courses.unshift([courseId, courseTitle]);
+  const inCourse = (t: Thread, id: string) => t.courses.some((c) => c.id === id);
 
   // What the list shows: messages, notifications, or both (newest first).
   type Row = { at: number; thread?: Thread; note?: Note };
@@ -89,8 +87,8 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
     const n = (list: Note[]) => list.map((x) => ({ at: x.at, note: x }));
     if (view.kind === "messages") return t(threads);
     if (view.kind === "section") return n(notes.filter((x) => x.cat === view.id));
-    if (view.kind === "course") return [...t(threads.filter((x) => x.course === view.id)), ...(view.id === courseId ? n(notes) : [])].sort((a, b) => b.at - a.at);
-    return [...t(threads.filter((x) => x.unread > 0 || x.course === courseId)), ...n(notes)].sort((a, b) => b.at - a.at);
+    if (view.kind === "course") return [...t(threads.filter((x) => inCourse(x, view.id))), ...(view.id === courseId ? n(notes) : [])].sort((a, b) => b.at - a.at);
+    return [...t(threads.filter((x) => x.unread > 0 || !courseId || inCourse(x, courseId) || !x.courses.length)), ...n(notes)].sort((a, b) => b.at - a.at);
   })();
 
   function toggleMute(id: string) {
@@ -120,7 +118,6 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
     );
   };
   const title = view.kind === "messages" ? "Messages" : view.kind === "section" ? sections.find((x) => x.id === view.id)?.label ?? "" : view.kind === "course" ? courses.find(([id]) => id === view.id)?.[1] ?? "" : view.kind === "settings" ? "Notify me about" : "All";
-  const contacts = (data?.contacts ?? []).filter((x) => !find.trim() || `${x.name} ${x.courseTitle}`.toLowerCase().includes(find.trim().toLowerCase()));
 
   return (
     <>
@@ -139,7 +136,7 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
               {!noMessages && railItem({ kind: "messages" }, "Messages", unreadMsgs, "message")}
               {live.map((x) => railItem({ kind: "section", id: x.id }, x.label, fresh.filter((n) => n.cat === x.id).length))}
               {courses.length > 1 && <div className="px-2.5 pb-1 pt-3 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-ink-3 max-sm:hidden">Courses</div>}
-              {courses.length > 1 && courses.map(([id, name]) => railItem({ kind: "course", id }, name, threads.filter((t) => t.course === id).reduce((s, t) => s + t.unread, 0) + (id === courseId ? fresh.length : 0)))}
+              {courses.length > 1 && courses.map(([id, name]) => railItem({ kind: "course", id }, name, threads.filter((t) => inCourse(t, id)).reduce((s, t) => s + t.unread, 0) + (id === courseId ? fresh.length : 0)))}
               <span className="flex-1 max-sm:hidden" />
               {railItem({ kind: "settings" }, "Notify me about…", 0, "settings")}
             </nav>
@@ -152,24 +149,11 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
                   <header className="flex items-center gap-2 border-b border-line px-4 py-3">
                     {picking && <button onClick={() => setPicking(false)} aria-label="Back" className="btn btn-quiet press -ml-1 h-8 w-8 justify-center px-0"><Icon name="back" size={15} /></button>}
                     <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{picking ? "New message" : title}</span>
-                    {!picking && view.kind !== "settings" && (data?.contacts.length ?? 0) > 0 && <button onClick={() => { setPicking(true); setFind(""); }} className="btn btn-dark press h-8 px-3 text-[12.5px]"><Icon name="plus" size={12} /> New message</button>}
+                    {!picking && view.kind !== "settings" && !noMessages && data && <button onClick={() => setPicking(true)} className="btn btn-dark press h-8 px-3 text-[12.5px]"><Icon name="plus" size={12} /> New message</button>}
                     <button onClick={close} aria-label="Close inbox" className="btn btn-quiet press h-8 w-8 justify-center px-0"><Icon name="x" size={16} /></button>
                   </header>
                   {picking ? (
-                    <div className="flex min-h-0 flex-1 flex-col">
-                      <div className="p-3"><input autoFocus value={find} onChange={(e) => setFind(e.target.value)} placeholder="Find someone…" aria-label="Find someone" className="field h-9" /></div>
-                      <div className="flex-1 overflow-y-auto px-2 pb-3">
-                        {contacts.length ? contacts.map((x) => (
-                          <button key={`${x.course}:${x.me}:${x.with}`} onClick={() => { setPicking(false); setTalking(refOf(x)); }} className="press flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-lane">
-                            <Avatar name={x.name} size={28} />
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[13.5px] font-medium">{x.name}</span>
-                              <span className="block truncate text-[12px] text-ink-3">{roleLabel(x)} · {x.courseTitle}</span>
-                            </span>
-                          </button>
-                        )) : <p className="px-2 py-3 text-[13px] text-ink-3">No one to message here.</p>}
-                      </div>
-                    </div>
+                    <PeoplePicker contacts={data?.contacts ?? []} onPick={(x) => { setPicking(false); setTalking(refOf(x)); }} />
                   ) : view.kind === "settings" ? (
                     // Which kinds of notification to be told about: one turned off isn't counted or listed.
                     <div className="overflow-y-auto p-3">
@@ -198,10 +182,10 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
                             <span className="min-w-0 flex-1">
                               <span className="flex items-baseline gap-2">
                                 <span className={`truncate text-[13.5px] ${r.thread.unread ? "font-semibold" : "font-medium"}`}>{r.thread.name}</span>
-                                <span className="truncate text-[11.5px] text-ink-3">{r.thread.courseTitle}</span>
+                                <span className="truncate text-[11.5px] text-ink-3">{r.thread.context || r.thread.email}</span>
                                 <span className="mono ml-auto flex-none text-[11px]">{r.thread.last ? ago(r.thread.last.at) : ""}</span>
                               </span>
-                              <span className={`mt-0.5 block truncate text-[12.5px] ${r.thread.unread ? "text-ink" : "text-ink-3"}`}>{r.thread.last?.mine ? "You: " : ""}{r.thread.last?.text ?? "No messages yet"}</span>
+                              <span className={`mt-0.5 block truncate text-[12.5px] ${r.thread.unread ? "text-ink" : "text-ink-3"}`}>{r.thread.last?.mine ? "You: " : ""}{r.thread.last?.text || (r.thread.last?.share ? `Template: ${r.thread.last.share.name}` : "No messages yet")}</span>
                             </span>
                             {r.thread.unread > 0 && <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-[#4f7cf2]" aria-label={`${r.thread.unread} unread`} />}
                           </button>

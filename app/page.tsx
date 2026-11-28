@@ -30,7 +30,11 @@ export default function Home() {
   const [studying, setStudying] = useState<Studying[]>([]);
   const [firstRole, setFirstRole] = useState<"teacher" | "student" | null>(null);
   const [unclaimed, setUnclaimed] = useState<{ id: string; title: string; students: number }[]>([]);
-  const [creating, setCreating] = useState(false);
+  // /?new=<template id> (from a template someone sent): New course opens with it picked.
+  const newFrom = query?.get("new") ?? "";
+  const [creatingAsked, setCreating] = useState(false);
+  const [newClosed, setNewClosed] = useState(false);
+  const creating = creatingAsked || (!!newFrom && !newClosed);
   const [joining, setJoining] = useState(false);
   const [me, setMe] = useState<{ kind: string | null; name?: string; courseId?: string; studentId?: string; courseTitle?: string } | null>(null);
   const load = () => {
@@ -140,7 +144,7 @@ export default function Home() {
           </div>
         </section>
       )}
-      {creating && <NewCourse onClose={() => setCreating(false)} />}
+      {creating && <NewCourse from={newFrom || undefined} onClose={() => { setCreating(false); setNewClosed(true); if (newFrom) router.replace("/"); }} />}
     </main>
     <SiteFooter />
     </>
@@ -228,15 +232,23 @@ function CourseCard({ c }: { c: CourseTile }) {
 }
 
 /** Make a course: a name, and how to start (blank, three ready-made weeks, or a course file). */
-function NewCourse({ onClose }: { onClose: () => void }) {
+function NewCourse({ onClose, from }: { onClose: () => void; from?: string }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   // How to start: blank, three ready-made weeks, a course file, or one of the teacher's templates ("tpl:<id>").
-  const [start, setStart] = useState<string>("blank");
+  const [start, setStart] = useState<string>(from ? `tpl:${from}` : "blank");
   // The teacher's own templates (Settings → Templates), folded under the three starts until wanted.
   const [mine, setMine] = useState<TemplateInfo[]>([]);
-  useEffect(() => { fetch("/api/templates").then((r) => (r.ok ? r.json() : null)).then((j) => setMine(j?.templates ?? [])).catch(() => {}); }, []);
+  useEffect(() => {
+    fetch("/api/templates").then((r) => (r.ok ? r.json() : null)).then((j) => {
+      const list: TemplateInfo[] = j?.templates ?? [];
+      setMine(list);
+      // Opened for one template: its name to start from.
+      const t = from && list.find((x) => x.id === from);
+      if (t) setTitle((v) => v || t.name);
+    }).catch(() => {});
+  }, [from]);
   const [showMine, setShowMine] = useState(false);
   const picked = start.startsWith("tpl:") ? mine.find((t) => `tpl:${t.id}` === start) : undefined;
   const startRow = (k: string, label: React.ReactNode, onPick?: () => void) => (

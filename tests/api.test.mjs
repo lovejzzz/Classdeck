@@ -823,14 +823,16 @@ async function main() {
     check("a student writes to a classmate", (await send(rae.c, rae.id, sol.id, "Want to work together?")).ok);
     check("a student can't write as someone else", (await send(rae.c, sol.id, tam.id, "fake")).ok !== true);
     const solBox = await sol.c.get("/api/inbox");
-    const t = solBox.threads?.find((x) => x.course === ic && x.with === rae.id);
+    // One thread per person now: the course is listed on it, and its messages carry the course.
+    const inIc = (x) => x.courses?.some((c) => c.id === ic);
+    const t = solBox.threads?.find((x) => inIc(x) && x.name === "Rae");
     check("the classmate sees it, unread", t?.unread === 1 && t.last?.text === "Want to work together?", solBox.threads);
-    check("classmates are contacts", solBox.contacts?.some((x) => x.course === ic && x.with === tam.id) && solBox.contacts?.some((x) => x.course === ic && x.with === "teacher"));
+    check("classmates are contacts", solBox.contacts?.some((x) => inIc(x) && x.name === "Tam") && solBox.contacts?.some((x) => inIc(x) && /^Teacher/.test(x.context)));
     check("a third student can't read their conversation", (await tam.c.get(`/api/inbox?course=${ic}&me=${rae.id}&with=${sol.id}`)).status === 403);
     await sol.c.post("/api/inbox", { action: "read", course: ic, me: sol.id, with: rae.id });
-    check("reading clears the unread count", ((await sol.c.get("/api/inbox")).threads.find((x) => x.course === ic && x.with === rae.id))?.unread === 0);
+    check("reading clears the unread count", ((await sol.c.get("/api/inbox")).threads.find((x) => inIc(x) && x.name === "Rae"))?.unread === 0);
     const tBox = await A.get("/api/inbox");
-    check("the teacher's inbox has the student's message", tBox.threads?.some((x) => x.course === ic && x.me === "teacher" && x.with === rae.id && x.unread === 1));
+    check("the teacher's inbox has the student's message", tBox.threads?.some((x) => inIc(x) && x.name === "Rae" && /^Student/.test(x.context) && x.unread === 1));
     check("the teacher doesn't see messages between students", !tBox.threads?.some((x) => x.course === ic && x.with === sol.id && x.last?.text === "Want to work together?"));
     check("the teacher replies from the inbox", (await A.post("/api/inbox", { action: "send", course: ic, me: "teacher", with: rae.id, text: "Ask me in class" })).ok);
     check("the student gets the reply", ((await rae.c.get(`/api/inbox?course=${ic}&me=${rae.id}&with=teacher`)).messages ?? []).some((m) => m.text === "Ask me in class" && !m.mine));

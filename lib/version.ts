@@ -3,6 +3,16 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.30",
+    date: "2026-11-28",
+    changes: [
+      "The inbox is one conversation per person: what you wrote each other in any of your courses is there together, each message marked with its course, and the list says how you know them (Student, Teacher or Classmate, and the course).",
+      "New message finds people in your courses by name, with their email under it. When two people have the same name, a line says so: check the email before you pick.",
+      "Type someone’s whole email address to write to anyone with a confirmed account, in a course with you or not (your own email needs to be confirmed too).",
+      "A code that couldn’t be sent no longer makes you wait before asking for another.",
+    ],
+  },
+  {
     version: "0.3.29",
     date: "2026-11-28",
     changes: [

@@ -86,6 +86,21 @@ export interface Template {
   from?: string;
 }
 
+/** A message from one account to another, outside any course (the inbox's own). `share` points at a shared template. */
+export interface Letter {
+  id: string;
+  from: string;
+  text: string;
+  at: number;
+  read?: boolean;
+  share?: string;
+  /** The template the reader made from the shared one (Add to my templates), so it isn't added twice. */
+  added?: string;
+}
+
+/** A template as it was when someone shared it: kept once, however many people it went to. */
+export interface Share { id: string; by: string; at: number; template: Template }
+
 export interface Session {
   kind: "teacher" | "student" | "demo";
   userId?: string;
@@ -113,6 +128,10 @@ export interface DB {
   dms: Record<string, DirectMessage[]>;
   /** Each teacher's templates, by user id (kept one row per teacher, the same way as a course's collections). */
   templates: Record<string, Template[]>;
+  /** Messages between two accounts, by the pair of user ids ("u-a~u-b", sorted). */
+  letters: Record<string, Letter[]>;
+  /** Templates sent in messages, by share id. */
+  shares: Record<string, Share>;
   /** Shared Text cards' documents (lib/collab.ts), by course, then by document. */
   collab: Record<string, Record<string, unknown>>;
   /** Student PIN hashes: course → student → "salt:hash". Never sent to a browser. */
@@ -132,8 +151,9 @@ const FILE = path.join(DIR, "questhand.db");
 /** The database's name before the product was renamed Questhand; moved to FILE on first start. */
 const OLD_FILE = path.join(DIR, "classdeck.db");
 const LEGACY = path.join(DIR, "db.json");
-// One row per id. Mostly per course; "templates" is per teacher (keyed by user id, which never matches a course id).
-const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo", "dms", "collab", "templates"] as const;
+// One row per id. Mostly per course; "templates" is per teacher (by user id), "letters" per pair of accounts, "shares"
+// per shared template (none of those ids can match a course id).
+const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo", "dms", "collab", "templates", "letters", "shares"] as const;
 const GLOBAL = ["users", "sessions", "customConnectors", "uploads"] as const;
 
 const g = globalThis as unknown as { __lmsdb?: DB; __lmsfilled?: boolean; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string>; __preview?: DB; __previews?: Map<string, { at: number; data: Record<string, unknown> }> };
@@ -158,6 +178,8 @@ function fresh(custom: Manifest[] = []): DB {
     dms: { [course.id]: [] },
     collab: { [course.id]: {} },
     templates: {},
+    letters: {},
+    shares: {},
     pins: {},
     users: {},
     sessions: {},
