@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ago } from "@/lib/time";
 import { Avatar, Icon } from "./Icon";
-import { ConversationBody, PeoplePicker, refOf, type ConversationRef, type InboxData, type Thread } from "./MessageThread";
+import { ConversationBody, PeoplePicker, emptyTrash, refOf, type ConversationRef, type InboxData, type Thread } from "./MessageThread";
 import type { Note, Section } from "./NotificationCenter";
 
 /** The sections someone chose not to be told about, kept in this browser. */
@@ -18,7 +18,7 @@ function readMuted(key: string, fallback: string[]): Set<string> {
 /** A note's text as words: an @mention ("@[Name](id)") reads as @Name, and markdown (headings, tables, bold) drops away. */
 const plain = (s: string) => s.replace(/@\[([^\]]+)\]\([^)]*\)/g, "@$1").replace(/\|?\s*:?-{3,}:?\s*/g, " ").replace(/[#*_`>|]+/g, " ").replace(/\s+/g, " ").trim();
 
-type View = { kind: "all" } | { kind: "messages" } | { kind: "section"; id: string } | { kind: "course"; id: string } | { kind: "settings" };
+type View = { kind: "all" } | { kind: "messages" } | { kind: "section"; id: string } | { kind: "course"; id: string } | { kind: "settings" } | { kind: "trash" };
 
 /**
  * The Inbox: one button in a course's top bar (in place of the bell), with everything that's new in one count. It
@@ -86,6 +86,7 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
     const t = (list: Thread[]) => list.map((x) => ({ at: x.last?.at ?? 0, thread: x }));
     const n = (list: Note[]) => list.map((x) => ({ at: x.at, note: x }));
     if (view.kind === "messages") return t(threads);
+    if (view.kind === "trash") return t(data?.trash ?? []);
     if (view.kind === "section") return n(notes.filter((x) => x.cat === view.id));
     if (view.kind === "course") return [...t(threads.filter((x) => inCourse(x, view.id))), ...(view.id === courseId ? n(notes) : [])].sort((a, b) => b.at - a.at);
     return [...t(threads.filter((x) => x.unread > 0 || !courseId || inCourse(x, courseId) || !x.courses.length)), ...n(notes)].sort((a, b) => b.at - a.at);
@@ -117,7 +118,7 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
       </button>
     );
   };
-  const title = view.kind === "messages" ? "Messages" : view.kind === "section" ? sections.find((x) => x.id === view.id)?.label ?? "" : view.kind === "course" ? courses.find(([id]) => id === view.id)?.[1] ?? "" : view.kind === "settings" ? "Notify me about" : "All";
+  const title = view.kind === "trash" ? "Trash" : view.kind === "messages" ? "Messages" : view.kind === "section" ? sections.find((x) => x.id === view.id)?.label ?? "" : view.kind === "course" ? courses.find(([id]) => id === view.id)?.[1] ?? "" : view.kind === "settings" ? "Notify me about" : "All";
 
   return (
     <>
@@ -138,6 +139,7 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
               {courses.length > 1 && <div className="px-2.5 pb-1 pt-3 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-ink-3 max-sm:hidden">Courses</div>}
               {courses.length > 1 && courses.map(([id, name]) => railItem({ kind: "course", id }, name, threads.filter((t) => inCourse(t, id)).reduce((s, t) => s + t.unread, 0) + (id === courseId ? fresh.length : 0)))}
               <span className="flex-1 max-sm:hidden" />
+              {!noMessages && railItem({ kind: "trash" }, "Trash", 0, "trash")}
               {railItem({ kind: "settings" }, "Notify me about…", 0, "settings")}
             </nav>
 
@@ -175,9 +177,9 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
                   ) : (
                     <>
                       <div className="min-h-0 flex-1 overflow-y-auto py-1">
-                        {rows.length === 0 && <p className="mt-14 px-6 text-center text-[13px] text-ink-3">{view.kind === "messages" ? "No messages yet. Press New message to write to someone." : emptyText}</p>}
+                        {rows.length === 0 && <p className="mt-14 px-6 text-center text-[13px] text-ink-3">{view.kind === "trash" ? "The trash is empty. Deleted conversations wait here for 30 days." : view.kind === "messages" ? "No messages yet. Press New message to write to someone." : emptyText}</p>}
                         {rows.map((r) => r.thread ? (
-                          <button key={`t:${r.thread.key}`} onClick={() => setTalking(refOf(r.thread!))} className="press flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-[#fafaf9]">
+                          <button key={`t:${r.thread.key}`} onClick={() => setTalking(refOf(r.thread!, view.kind === "trash"))} className="press flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-[#fafaf9]">
                             <Avatar name={r.thread.name} size={30} />
                             <span className="min-w-0 flex-1">
                               <span className="flex items-baseline gap-2">
@@ -204,7 +206,13 @@ export function InboxCenter({ notes: allNotes, sections, muteKey, courseId, cour
                           </button>
                         ))}
                       </div>
-                      {notes.length > 0 && view.kind !== "messages" && (
+                      {view.kind === "trash" && !!data?.trash?.length && (
+                        <footer className="flex items-center border-t border-line px-4 py-2.5 text-[12.5px] text-ink-3">
+                          <span className="flex-1">Deleted conversations wait here for 30 days. Only your inbox: the other person keeps theirs.</span>
+                          <button onClick={() => void emptyTrash(load)} className="btn press h-7 rounded-full bg-lane px-3 text-[12px] text-ink-2 hover:bg-[#e8e8e5] hover:!text-bad">Empty trash</button>
+                        </footer>
+                      )}
+                      {notes.length > 0 && view.kind !== "messages" && view.kind !== "trash" && (
                         <footer className="flex items-center border-t border-line px-4 py-2.5 text-[12.5px] text-ink-3">
                           <span className="flex-1"><span className="font-medium text-ink">{fresh.length}</span> new notification{fresh.length === 1 ? "" : "s"}{unreadMsgs ? <> · <span className="font-medium text-ink">{unreadMsgs}</span> unread message{unreadMsgs === 1 ? "" : "s"}</> : null}</span>
                           <button onClick={() => { onClear(); setRead(new Set()); try { localStorage.removeItem(readKey); } catch {} }} className="btn press h-7 rounded-full bg-lane px-3 text-[12px] text-ink-2 hover:bg-[#e8e8e5] hover:text-ink">Clear notifications</button>

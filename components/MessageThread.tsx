@@ -14,7 +14,7 @@ export type ThreadMessage = { id: string; text: string; at: number; mine: boolea
  * A conversation: with a person (`person`, their account), or, for someone without an account yet, one course
  * conversation (`course`, the reader `me`: "teacher" or their student id, and the other side `with`).
  */
-export type ConversationRef = { person?: string; course?: string; me?: string; with?: string; name: string; subtitle?: string };
+export type ConversationRef = { person?: string; course?: string; me?: string; with?: string; name: string; subtitle?: string; key?: string; trashed?: boolean };
 
 /** A side panel on the right, over the page. */
 function Drawer({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
@@ -49,6 +49,8 @@ export function ConversationBody({ c, onClose, onBack, onChanged }: { c: Convers
   const [messages, setMessages] = useState<ThreadMessage[] | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  // In the trash (opened from it, or every message in it was deleted): Restore or Delete forever instead of Delete.
+  const [trashed, setTrashed] = useState(!!c.trashed);
   const list = useRef<HTMLDivElement>(null);
   const q = c.person ? `person=${encodeURIComponent(c.person)}` : `course=${encodeURIComponent(c.course ?? "")}&me=${encodeURIComponent(c.me ?? "")}&with=${encodeURIComponent(c.with ?? "")}`;
   const who = c.person ? { person: c.person } : { course: c.course, me: c.me, with: c.with };
@@ -57,6 +59,7 @@ export function ConversationBody({ c, onClose, onBack, onChanged }: { c: Convers
     const r = await fetch(`/api/inbox?${q}`).then((x) => x.json()).catch(() => null);
     if (!r?.messages) return;
     setMessages(r.messages);
+    if (typeof r.trashed === "boolean") setTrashed(r.trashed);
     // Read now: the other side's unread ones.
     if (r.messages.some((m: ThreadMessage) => !m.mine && !m.read)) { await post({ action: "read" }); onChanged?.(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,6 +79,14 @@ export function ConversationBody({ c, onClose, onBack, onChanged }: { c: Convers
     setBusy(false);
   }
   const toTeacher = c.with === "teacher", asTeacher = c.me === "teacher";
+  /** Trash, restore or delete for good: this account's inbox only. Back to the list afterwards. */
+  async function bin(action: "trash" | "restore" | "forget", note: string) {
+    const r = await fetch("/api/inbox", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, key: c.key, everything: action === "forget" && !trashed }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+    if (!r.ok) return toast(r.error ?? "That didn’t work", { icon: "x", tone: "bad" });
+    toast(note, { icon: action === "restore" ? "reset" : "trash", ...(action === "trash" ? { action: { label: "Undo", run: () => void fetch("/api/inbox", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "restore", key: c.key }) }).then(() => onChanged?.()) } } : {}) });
+    onChanged?.();
+    (onBack ?? onClose)?.();
+  }
   async function addTemplate(letter: string) {
     const r = await post({ action: "addTemplate", letter });
     if (r.ok) { toast(`Added “${r.name ?? "the template"}” to your templates`, { icon: "star" }); await load(); }
@@ -90,6 +101,14 @@ export function ConversationBody({ c, onClose, onBack, onChanged }: { c: Convers
           <span className="block truncate text-[14.5px] font-semibold">{c.name}</span>
           {c.subtitle && <span className="block truncate text-[12px] text-ink-3">{c.subtitle}</span>}
         </span>
+        {c.key && (trashed ? (
+          <>
+            <button onClick={() => void bin("restore", "Moved back to your inbox")} className="btn btn-ghost press h-8 px-2.5 text-[12.5px]"><Icon name="reset" size={12} /> Restore</button>
+            <button onClick={() => void bin("forget", "Deleted for good")} className="btn btn-quiet press h-8 px-2.5 text-[12.5px] hover:!text-bad"><Icon name="trash" size={12} /> Delete forever</button>
+          </>
+        ) : (
+          <button onClick={() => void bin("trash", "Moved to the trash")} aria-label="Delete conversation" title="Move to the trash (only from your inbox)" className="btn btn-quiet press h-9 w-9 justify-center px-0 hover:!text-bad"><Icon name="trash" size={15} /></button>
+        ))}
         {onClose && <button onClick={onClose} aria-label="Close messages" className="btn btn-quiet press h-9 w-9 justify-center px-0"><Icon name="x" size={16} /></button>}
       </header>
       <div ref={list} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
@@ -146,19 +165,30 @@ export type Thread = {
   person?: string; email?: string; course?: string; me?: string; with?: string;
 };
 export type Contact = Omit<Thread, "last" | "unread">;
-export type InboxData = { threads: Thread[]; contacts: Contact[]; unread: number; verified?: boolean };
+export type InboxData = { threads: Thread[]; trash?: Thread[]; contacts: Contact[]; unread: number; verified?: boolean };
+
+/** Empty the trash: everything in it is deleted for good (from this inbox only). */
+export async function emptyTrash(onDone: () => void) {
+  const r = await fetch("/api/inbox", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "emptyTrash" }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+  if (r.ok) toast("Trash emptied", { icon: "trash" }); else toast("Couldn’t empty the trash", { icon: "x", tone: "bad" });
+  onDone();
+}
 
 /** How a conversation opens: with a person, or the course conversation. Its subtitle: how you know them, and their email. */
-export const refOf = (x: Thread | Contact): ConversationRef => x.person
-  ? { person: x.person, name: x.name, subtitle: [x.context, x.email].filter(Boolean).join(" · ") }
-  : { course: x.course, me: x.me, with: x.with, name: x.name, subtitle: x.context };
+export const refOf = (x: Thread | Contact, trashed = false): ConversationRef => x.person
+  ? { person: x.person, name: x.name, subtitle: [x.context, x.email].filter(Boolean).join(" · "), key: x.key, trashed }
+  : { course: x.course, me: x.me, with: x.with, name: x.name, subtitle: x.context, key: x.key, trashed };
 
 /**
  * Pick who to write to: people you share a course with, by name (their email under it), or anyone with a confirmed
  * account, by typing their whole email address. Two people with the same name get a line saying so: the email is
  * what tells them apart. `picked` (for sending to several) shows a tick on the ones chosen.
  */
-export function PeoplePicker({ contacts, onPick, picked, autoFocus = true }: { contacts: Contact[]; onPick: (c: Contact) => void; picked?: Set<string>; autoFocus?: boolean }) {
+export function PeoplePicker({ contacts, onPick, picked, autoFocus = true, invite = false }: {
+  contacts: Contact[]; onPick: (c: Contact) => void; picked?: Set<string>; autoFocus?: boolean;
+  /** Sending a template: an address with no account can be picked too (they're emailed an invitation with it). */
+  invite?: boolean;
+}) {
   const [find, setFind] = useState("");
   // The account found by a whole email address (kept with the address it answers).
   const [lookup, setLookup] = useState<{ term: string; person: Contact | null; error?: string } | null>(null);
@@ -177,10 +207,12 @@ export function PeoplePicker({ contacts, onPick, picked, autoFocus = true }: { c
     return () => clearTimeout(t);
   }, [term, isEmail, exact]);
   const found = isEmail && !exact && lookup?.term === term ? lookup : null;
-  const list = found?.person && !shown.some((x) => x.person === found.person!.person) ? [...shown, found.person] : shown;
+  // No confirmed account with that address: when sending a template, they can still be picked (and invited by email).
+  const invitee: Contact | null = invite && found && !found.person && !found.error ? { key: `e:${term}`, kind: "person", name: term, email: term, context: "Not on Questhand yet: they’ll get an email with it", courses: [] } : null;
+  const list = found?.person && !shown.some((x) => x.person === found.person!.person) ? [...shown, found.person] : invitee ? [...shown, invitee] : shown;
   // Names shared by more than one person in what's listed.
   const counts = new Map<string, number>();
-  for (const x of list) counts.set(x.name.trim().toLowerCase(), (counts.get(x.name.trim().toLowerCase()) ?? 0) + 1);
+  for (const x of list.filter((y) => y.person)) counts.set(x.name.trim().toLowerCase(), (counts.get(x.name.trim().toLowerCase()) ?? 0) + 1);
   const twins = [...counts.entries()].filter(([, n]) => n > 1);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -219,14 +251,16 @@ export function PeoplePicker({ contacts, onPick, picked, autoFocus = true }: { c
 export function Inbox({ data, onClose, onChanged }: { data: InboxData | null; onClose: () => void; onChanged: () => void }) {
   const [open, setOpen] = useState<ConversationRef | null>(null);
   const [picking, setPicking] = useState(false);
+  const [binView, setBinView] = useState(false);
   const [now] = useState(() => Date.now());
   if (open) return <Conversation c={open} onClose={onClose} onBack={() => { setOpen(null); onChanged(); }} onChanged={onChanged} />;
   return (
     <Drawer label="Inbox" onClose={onClose}>
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
-        {picking && <button onClick={() => setPicking(false)} aria-label="Back to your inbox" className="btn btn-quiet press -ml-1 h-9 w-9 justify-center px-0"><Icon name="back" size={16} /></button>}
-        <span className="flex-1 text-[15px] font-semibold">{picking ? "New message" : "Inbox"}</span>
-        {!picking && data && <button onClick={() => setPicking(true)} className="btn btn-dark press h-8 px-3 text-[12.5px]"><Icon name="plus" size={12} /> New message</button>}
+        {(picking || binView) && <button onClick={() => { setPicking(false); setBinView(false); }} aria-label="Back to your inbox" className="btn btn-quiet press -ml-1 h-9 w-9 justify-center px-0"><Icon name="back" size={16} /></button>}
+        <span className="flex-1 text-[15px] font-semibold">{picking ? "New message" : binView ? "Trash" : "Inbox"}</span>
+        {binView && !!data?.trash?.length && <button onClick={() => void emptyTrash(onChanged)} className="btn btn-quiet press h-8 px-2.5 text-[12.5px] hover:!text-bad">Empty trash</button>}
+        {!picking && !binView && data && <button onClick={() => setPicking(true)} className="btn btn-dark press h-8 px-3 text-[12.5px]"><Icon name="plus" size={12} /> New message</button>}
         <button onClick={onClose} aria-label="Close inbox" className="btn btn-quiet press h-9 w-9 justify-center px-0"><Icon name="x" size={16} /></button>
       </header>
       {picking ? (
@@ -234,9 +268,10 @@ export function Inbox({ data, onClose, onChanged }: { data: InboxData | null; on
       ) : (
         <div className="flex-1 overflow-y-auto px-2 py-2">
           {!data && <p className="px-2 py-3 text-[13px] text-ink-3">Loading…</p>}
-          {data && !data.threads.length && <p className="mt-10 px-6 text-center text-[13px] text-ink-3">No messages yet. Press New message to write to someone in your courses, or to anyone by their email.</p>}
-          {data?.threads.map((t) => (
-            <button key={t.key} onClick={() => setOpen(refOf(t))} className="press flex w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left hover:bg-lane">
+          {data && !binView && !data.threads.length && <p className="mt-10 px-6 text-center text-[13px] text-ink-3">No messages yet. Press New message to write to someone in your courses, or to anyone by their email.</p>}
+          {data && binView && !data.trash?.length && <p className="mt-10 px-6 text-center text-[13px] text-ink-3">The trash is empty. Deleted conversations wait here for 30 days.</p>}
+          {(binView ? data?.trash ?? [] : data?.threads ?? []).map((t) => (
+            <button key={t.key} onClick={() => setOpen(refOf(t, binView))} className="press flex w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left hover:bg-lane">
               <Avatar name={t.name} size={32} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2">
@@ -251,6 +286,11 @@ export function Inbox({ data, onClose, onChanged }: { data: InboxData | null; on
               </span>
             </button>
           ))}
+          {data && !binView && (
+            <button onClick={() => setBinView(true)} className="press mt-2 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12.5px] text-ink-3 hover:bg-lane hover:text-ink">
+              <Icon name="trash" size={13} /> Trash{data.trash?.length ? <span className="mono ml-auto text-[11px]">{data.trash.length}</span> : null}
+            </button>
+          )}
         </div>
       )}
     </Drawer>

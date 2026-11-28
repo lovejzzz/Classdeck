@@ -7,6 +7,7 @@ import { db, save } from "@/lib/store";
 import { giveStarterCourse } from "@/lib/newcourse";
 import { fullName, namePart, needsName, setAccountName, splitName } from "@/lib/names";
 import { checkCode, issueCode, verified, verifyOn } from "@/lib/verify";
+import { deliverPending } from "@/lib/pending";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -32,6 +33,8 @@ export async function GET(request: Request) {
   // The Google client id is public: it's what the "Sign in with Google" button needs.
   const google = process.env.GOOGLE_CLIENT_ID || null;
   // An account (it can teach some courses and be a student in others). "teacher" is its kind for older pages.
+  // Templates sent to this address before it had a confirmed account arrive in the inbox now.
+  if (t) deliverPending(t);
   if (t) return Response.json({ kind: "teacher", name: t.name, firstName: t.firstName ?? null, lastName: t.lastName ?? null, needsName: needsName(t), email: t.email, verified: verified(t), verifyNeeded: !!t.mustVerify && !verified(t), picture: t.picture ?? null, firstRole: t.firstRole ?? null, google, signIn: { password: !!t.hash, google: !!t.google }, since: t.createdAt });
   if (s?.kind === "student" && s.courseId) {
     const c = db().courses[s.courseId];

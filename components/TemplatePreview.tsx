@@ -5,6 +5,7 @@ import { Icon } from "./Icon";
 import { kindMeta, type CardKind } from "@/lib/kinds";
 import { suitOfKind } from "@/lib/ui";
 import type { Outline, OutlineCard, TemplateInfo } from "@/lib/mytemplates";
+import { size } from "@/lib/templatesize";
 
 /**
  * A template drawn small, the way its map looks: the cover and name, how big it is, and each lesson as a row of little
@@ -28,7 +29,7 @@ export function TemplatePreview({ t, rows = 6, compact = false }: { t: TemplateI
   );
 }
 
-export const size = (o: Outline) => `${o.weeks} week${o.weeks === 1 ? "" : "s"} · ${o.lessons} lesson${o.lessons === 1 ? "" : "s"} · ${o.cards} card${o.cards === 1 ? "" : "s"}`;
+export { size } from "@/lib/templatesize";
 
 /** The lessons, a row each, as little cards. */
 export function Rows({ o, rows }: { o: Outline; rows: number }) {

@@ -281,17 +281,22 @@ function ShareTemplate({ t, onClose }: { t: TemplateInfo; onClose: () => void })
     window.addEventListener("keydown", k, true);
     return () => window.removeEventListener("keydown", k, true);
   }, [onClose]);
-  const toggle = (c: Contact) => { if (!c.person) return; setPicked((p) => (p.some((x) => x.person === c.person) ? p.filter((x) => x.person !== c.person) : [...p, c])); };
+  // People on Questhand (by account), or an address with no account yet (key "e:<email>": invited by email).
+  const toggle = (c: Contact) => { if (!c.person && !c.key.startsWith("e:")) return; setPicked((p) => (p.some((x) => x.key === c.key) ? p.filter((x) => x.key !== c.key) : [...p, c])); };
   async function send() {
     if (!picked.length || busy) return;
     setBusy(true);
     const post = (url: string, body: object) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
     const sh = await post("/api/templates", { action: "share", id: t.id });
     if (!sh.ok) { setBusy(false); return toast(sh.error ?? "Couldn’t share it", { icon: "x", tone: "bad" }); }
-    const results = await Promise.all(picked.map((c) => post("/api/inbox", { action: "send", person: c.person, text: note.trim(), share: sh.share })));
+    const results = await Promise.all(picked.map((c) => (c.person
+      ? post("/api/inbox", { action: "send", person: c.person, text: note.trim(), share: sh.share })
+      : post("/api/inbox", { action: "invite", email: c.email, text: note.trim(), share: sh.share }))));
     setBusy(false);
     const sent = results.filter((r) => r.ok).length, failed = results.find((r) => !r.ok);
     if (sent) toast(`Sent “${t.name}” to ${sent === 1 ? picked[results.findIndex((r) => r.ok)].name : `${sent} people`}`, { icon: "send" });
+    const invited = picked.filter((c, i) => !c.person && results[i].ok && results[i].waiting).length;
+    if (invited) toast(`${invited === 1 ? "They’re" : `${invited} people are`} not on Questhand yet: we emailed an invitation, and the template waits for them.`, { icon: "message" });
     if (failed) toast(failed.error ?? "Some couldn’t be sent", { icon: "x", tone: "bad" });
     if (!failed) onClose();
   }
@@ -304,7 +309,7 @@ function ShareTemplate({ t, onClose }: { t: TemplateInfo; onClose: () => void })
           {picked.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {picked.map((c) => (
-                <span key={c.key} className="chip h-7 gap-1 bg-lane pl-2.5 pr-1 text-[12.5px]" title={c.email}>
+                <span key={c.key} className={`chip h-7 gap-1 pl-2.5 pr-1 text-[12.5px] ${c.person ? "bg-lane" : "border border-dashed border-line-strong bg-white"}`} title={c.person ? c.email : "Not on Questhand yet: they’ll get an email"}>
                   {c.name}
                   <button onClick={() => toggle(c)} aria-label={`Remove ${c.name}`} className="rounded-full p-0.5 text-ink-3 hover:text-ink"><Icon name="x" size={11} /></button>
                 </span>
@@ -313,7 +318,7 @@ function ShareTemplate({ t, onClose }: { t: TemplateInfo; onClose: () => void })
           )}
         </div>
         <div className="flex min-h-[12rem] flex-1 flex-col">
-          {contacts === null ? <div className="skeleton m-6 h-24 rounded-xl" /> : <PeoplePicker contacts={contacts} onPick={toggle} picked={new Set(picked.map((c) => `p:${c.person}`))} />}
+          {contacts === null ? <div className="skeleton m-6 h-24 rounded-xl" /> : <PeoplePicker contacts={contacts} onPick={toggle} picked={new Set(picked.map((c) => c.key))} invite />}
         </div>
         <div className="border-t border-line px-6 py-4">
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Add a note (optional)" aria-label="Note" className="field w-full resize-none py-2 text-[13.5px]" />

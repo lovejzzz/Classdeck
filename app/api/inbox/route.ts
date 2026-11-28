@@ -3,6 +3,10 @@ import { uid } from "@/lib/profile";
 import { db, save, type Letter, type User } from "@/lib/store";
 import { verified } from "@/lib/verify";
 import { info, MAX_TEMPLATES } from "@/lib/mytemplates";
+import { deliverPending } from "@/lib/pending";
+import { sendShareInvite, takeAllowance } from "@/lib/mail";
+import { publicOrigin } from "@/lib/origin";
+import { size } from "@/lib/templatesize";
 import type { Course, DirectMessage, Nudge } from "@/lib/types";
 
 // The inbox: the account's conversations, one per person. A conversation with someone you share a course with also
@@ -123,12 +127,28 @@ function letterMsgs(me: string, other: string, light = false): Msg[] {
 
 const nameOf = (u?: User) => u?.name ?? "Someone";
 
+/** The trash keeps a conversation for 30 days; after that it's as if it were deleted for good. */
+const TRASH_DAYS = 30;
+/**
+ * What the account deleted from a conversation (only from its own inbox; the other side keeps theirs): messages up to
+ * `trash` wait in the trash, messages up to `gone` are deleted for good. A new message brings the conversation back.
+ */
+function hiddenOf(u: User, key: string): { trash: number; gone: number } {
+  const h = u.inboxHidden?.[key];
+  if (!h) return { trash: 0, gone: 0 };
+  const trash = h.trash ?? 0;
+  const expired = trash && Date.now() - (h.binnedAt ?? trash) > TRASH_DAYS * 86400_000;
+  return { trash: expired ? 0 : trash, gone: Math.max(h.gone ?? 0, expired ? trash : 0) };
+}
+
 export async function GET(request: Request) {
   const session = getSession(request);
   if (!session) return fail("Sign in first", 401);
   const d = db();
-  d.letters ??= {}; d.shares ??= {};
+  d.letters ??= {}; d.shares ??= {}; d.pending ??= {};
   const me = teacherOf(session);
+  // Templates sent to this address before it had a (confirmed) account arrive now.
+  if (me) deliverPending(me);
   const q = new URL(request.url).searchParams;
 
   if (q.get("course")) {
@@ -156,7 +176,8 @@ export async function GET(request: Request) {
     const other = q.get("person")!;
     const msgs: Msg[] = letterMsgs(me.id, other);
     for (const p of coursePairs(session)) if (p.account === other) msgs.push(...courseMessages(p.c, p.me, p.other).map((m) => ({ ...m, course: { id: p.c.id, title: p.c.title } })));
-    return Response.json({ messages: msgs.sort((a, b) => a.at - b.at) });
+    const h = hiddenOf(me, `p:${other}`);
+    return Response.json({ messages: msgs.filter((m) => m.at > h.gone).sort((a, b) => a.at - b.at), trashed: h.trash > h.gone && !msgs.some((m) => m.at > h.trash) });
   }
 
   // The list: one thread per person (course history and letters together), and who you can write to.
@@ -164,6 +185,9 @@ export async function GET(request: Request) {
   const legacy: Thread[] = [];
   const contacts: Contact[] = [];
   const lastOf = (ms: Msg[]) => (ms.length ? ms.reduce((a, b) => (b.at > a.at ? b : a)) : undefined);
+  // Every thread's messages, gathered first: what's in the inbox and what's in the trash depends on when it was deleted.
+  const bag = new Map<string, Msg[]>();
+  const add = (key: string, ms: Msg[]) => bag.set(key, [...(bag.get(key) ?? []), ...ms]);
   const person = (id: string): Thread | undefined => {
     if (!me || id === me.id || !d.users[id]) return undefined;
     let t = people.get(id);
@@ -177,15 +201,13 @@ export async function GET(request: Request) {
       if (!t.courses.some((x) => x.id === p.c.id)) t.courses.push({ id: p.c.id, title: p.c.title });
       if (!t.context) t.context = `${p.role} · ${p.c.title}`;
       else if (!t.context.includes(p.c.title)) t.context = `${t.context.split(" · ")[0]} · ${t.courses.length} courses`;
-      const last = lastOf(ms);
-      if (last && (!t.last || last.at > t.last.at)) t.last = { ...last, course: { id: p.c.id, title: p.c.title } };
-      t.unread += ms.filter((m) => !m.mine && !m.read).length;
+      add(t.key, ms.map((m) => ({ ...m, course: { id: p.c.id, title: p.c.title } })));
       if (p.canWrite && !contacts.some((x) => x.person === t.person)) contacts.push({ key: t.key, kind: "person", person: t.person, name: t.name, email: t.email, context: "", courses: [] });
     } else {
       // No account on the other side yet (a student added by name): the course conversation, as before.
       const base = { key: `c:${p.c.id}:${p.me}:${p.other}`, kind: "course" as const, course: p.c.id, me: p.me, with: p.other, name: p.name, context: `${p.role} · ${p.c.title}`, courses: [{ id: p.c.id, title: p.c.title }] };
       if (p.canWrite) contacts.push(base);
-      if (ms.length) legacy.push({ ...base, last: lastOf(ms), unread: ms.filter((m) => !m.mine && !m.read).length });
+      if (ms.length) { legacy.push({ ...base, unread: 0 }); add(base.key, ms); }
     }
   }
   if (me) {
@@ -194,16 +216,24 @@ export async function GET(request: Request) {
       if (a !== me.id && b !== me.id) continue;
       const t = person(a === me.id ? b : a);
       if (!t) continue;
-      const ms = letterMsgs(me.id, t.person!, true);
-      const last = lastOf(ms);
-      if (last && (!t.last || last.at > t.last.at)) t.last = last;
-      t.unread += ms.filter((m) => !m.mine && !m.read).length;
+      add(t.key, letterMsgs(me.id, t.person!, true));
     }
   }
   // Contacts carry the same context line as their thread.
   for (const c of contacts) { const t = c.person ? people.get(c.person) : undefined; if (t) { c.context = t.context; c.courses = t.courses; } }
-  const threads = [...[...people.values()].filter((t) => t.last), ...legacy].sort((a, b) => (b.last?.at ?? 0) - (a.last?.at ?? 0));
-  return Response.json({ threads, contacts, unread: threads.reduce((n, t) => n + t.unread, 0), verified: me ? verified(me) : false });
+  // In the inbox: what came after it was deleted. In the trash: what was deleted (not for good), newest first.
+  const threads: Thread[] = [], trash: Thread[] = [];
+  for (const t of [...people.values(), ...legacy]) {
+    const ms = bag.get(t.key) ?? [];
+    const h = me ? hiddenOf(me, t.key) : { trash: 0, gone: 0 };
+    const live = ms.filter((m) => m.at > Math.max(h.trash, h.gone));
+    const binned = ms.filter((m) => m.at > h.gone && m.at <= h.trash);
+    if (live.length) threads.push({ ...t, last: lastOf(live), unread: live.filter((m) => !m.mine && !m.read).length });
+    else if (binned.length) trash.push({ ...t, last: lastOf(binned), unread: 0 });
+  }
+  threads.sort((a, b) => (b.last?.at ?? 0) - (a.last?.at ?? 0));
+  trash.sort((a, b) => (b.last?.at ?? 0) - (a.last?.at ?? 0));
+  return Response.json({ threads, trash, contacts, unread: threads.reduce((n, t) => n + t.unread, 0), verified: me ? verified(me) : false });
 }
 
 export async function POST(request: Request) {
@@ -211,8 +241,64 @@ export async function POST(request: Request) {
   if (!session) return fail("Sign in first", 401);
   const body = await request.json().catch(() => ({}));
   const d = db();
-  d.letters ??= {}; d.shares ??= {};
+  d.letters ??= {}; d.shares ??= {}; d.pending ??= {};
   const me = teacherOf(session);
+
+  if (["trash", "restore", "forget", "emptyTrash"].includes(body.action)) {
+    // Deleting is for this account's inbox only. "trash" moves a conversation (as it is now) to the trash; "restore"
+    // brings it back; "forget" deletes it for good; "emptyTrash" does that to everything in the trash.
+    if (!me) return fail("Sign in first", 401);
+    const all = (me.inboxHidden ??= {});
+    const now = Date.now();
+    if (body.action === "emptyTrash") {
+      for (const [k, h] of Object.entries(all)) if (h.trash && (h.trash > (h.gone ?? 0))) all[k] = { gone: h.trash };
+    } else {
+      const key = String(body.key ?? "");
+      if (!/^(p:u-|c:)/.test(key)) return fail("Which conversation?");
+      const h = all[key] ?? {};
+      if (body.action === "trash") all[key] = { ...h, trash: now, binnedAt: now };
+      else if (body.action === "restore") all[key] = { gone: h.gone };
+      else all[key] = { gone: Math.max(h.gone ?? 0, h.trash ?? 0, body.everything ? now : 0) };
+      if (!all[key].trash && !all[key].gone) delete all[key];
+    }
+    save();
+    return Response.json({ ok: true });
+  }
+
+  if (body.action === "invite") {
+    // A template to an address with no confirmed account: kept for it, and (once a day per sender at most) an email
+    // inviting them to join. An address that is someone's confirmed account just gets the message.
+    if (!me) return fail("Sign in first", 401);
+    if (!verified(me)) return fail("Confirm your email first (Settings), then you can send to anyone by theirs.", 403);
+    const email = String(body.email ?? "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) return fail("That isn’t an email address");
+    if (email === me.email) return fail("That’s your own address");
+    const shareId = String(body.share ?? "");
+    const sh = d.shares[shareId];
+    if (!sh || sh.by !== me.id) return fail("That template isn’t yours to send");
+    if (throttled(`invite-share:${me.id}`, 60, 60 * 60_000)) return fail("Too many invitations. Try again later.", 429);
+    const text = String(body.text ?? "").trim().slice(0, 2000);
+    const them = Object.values(d.users).find((u) => u.email === email);
+    if (them && verified(them)) {
+      const key = pairKey(me.id, them.id);
+      (d.letters[key] ??= []).push({ id: uid("lt-"), from: me.id, text, at: Date.now(), share: shareId });
+      save(key);
+      return Response.json({ ok: true, delivered: true });
+    }
+    const list = (d.pending[email] ??= []);
+    if (list.length >= 50) return fail("That address has a lot of templates waiting already");
+    const recent = list.some((x) => x.from === me.id && x.emailed && Date.now() - x.emailed < 24 * 60 * 60_000);
+    const item = { from: me.id, share: shareId, text, at: Date.now() } as (typeof list)[number];
+    let emailed = false;
+    if (!recent && takeAllowance(me.id, 1)) {
+      const o = info(sh.template).outline;
+      emailed = await sendShareInvite(email, { from: me.name, name: sh.template.name, size: size(o), note: text, rows: o.rows, link: `${publicOrigin(request)}/?shared=1` });
+      if (emailed) item.emailed = Date.now();
+    }
+    list.push(item);
+    save(email);
+    return Response.json({ ok: true, waiting: true, emailed: emailed || recent });
+  }
 
   if (body.person !== undefined || body.action === "addTemplate") {
     if (!me) return fail("Sign in first", 401);

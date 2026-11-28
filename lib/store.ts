@@ -44,6 +44,9 @@ export interface User {
   /** How they first came to Questhand: to teach (made an account themselves) or to learn (from an invitation or a
    *  class code). Their course list puts that side first. */
   firstRole?: "teacher" | "student";
+  /** What they deleted from their inbox, by conversation: up to `trash` in the trash (since `binnedAt`), up to `gone`
+   *  deleted for good. Only their own view; the other person keeps their copy. */
+  inboxHidden?: Record<string, { trash?: number; binnedAt?: number; gone?: number }>;
   /** The site owner's two CaPS flows were put into their templates (once; after that they're ordinary templates). */
   capsSeeded?: boolean;
   /** Their AI for feedback (Settings → AI): which service, which model, and the key, encrypted (lib/aifeedback). */
@@ -98,6 +101,9 @@ export interface Letter {
   added?: string;
 }
 
+/** A template sent to an address with no (confirmed) account yet: delivered as a message once that address is confirmed. */
+export interface Pending { from: string; share: string; text: string; at: number; emailed?: number }
+
 /** A template as it was when someone shared it: kept once, however many people it went to. */
 export interface Share { id: string; by: string; at: number; template: Template }
 
@@ -132,6 +138,8 @@ export interface DB {
   letters: Record<string, Letter[]>;
   /** Templates sent in messages, by share id. */
   shares: Record<string, Share>;
+  /** Templates waiting for someone to join, by their email address. */
+  pending: Record<string, Pending[]>;
   /** Shared Text cards' documents (lib/collab.ts), by course, then by document. */
   collab: Record<string, Record<string, unknown>>;
   /** Student PIN hashes: course → student → "salt:hash". Never sent to a browser. */
@@ -152,8 +160,8 @@ const FILE = path.join(DIR, "questhand.db");
 const OLD_FILE = path.join(DIR, "classdeck.db");
 const LEGACY = path.join(DIR, "db.json");
 // One row per id. Mostly per course; "templates" is per teacher (by user id), "letters" per pair of accounts, "shares"
-// per shared template (none of those ids can match a course id).
-const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo", "dms", "collab", "templates", "letters", "shares"] as const;
+// per shared template, "pending" per email address (none of those ids can match a course id).
+const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo", "dms", "collab", "templates", "letters", "shares", "pending"] as const;
 const GLOBAL = ["users", "sessions", "customConnectors", "uploads"] as const;
 
 const g = globalThis as unknown as { __lmsdb?: DB; __lmsfilled?: boolean; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string>; __preview?: DB; __previews?: Map<string, { at: number; data: Record<string, unknown> }> };
@@ -180,6 +188,7 @@ function fresh(custom: Manifest[] = []): DB {
     templates: {},
     letters: {},
     shares: {},
+    pending: {},
     pins: {},
     users: {},
     sessions: {},

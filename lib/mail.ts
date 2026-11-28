@@ -131,3 +131,53 @@ export async function sendCode(to: string, code: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * A template someone shared with an address that isn't on Questhand yet: who sent it, their note (one short line,
+ * plain), the template drawn as rows of little cards in its suits' colours, and one button to join.
+ */
+type ShareMail = { from: string; name: string; size: string; note?: string; rows: { lesson: string; cards: { kind: string }[] }[]; link: string };
+
+export async function sendShareInvite(to: string, p: ShareMail): Promise<boolean> {
+  if (!mailReady() || undeliverable(to)) return false;
+  const { subject, text, html } = shareInviteMail(p);
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: process.env.MAIL_FROM, to: [to], subject, text, html }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** The share invitation's subject, plain text and HTML (kept apart from sending, so it can be looked at). */
+export function shareInviteMail(p: ShareMail): { subject: string; text: string; html: string } {
+  const from = plain(p.from, 60), name = plain(p.name, 80), note = p.note ? plain(p.note, 300) : "";
+  const origin = new URL(p.link).origin;
+  const font = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
+  const tint = (k: string) => (k === "content" ? "#3d68a6" : "#a0561f");
+  const rows = p.rows.slice(0, 6).map((r) => `<tr><td style="padding:3px 10px 3px 0;font:400 12px/1.3 ${font};color:#6b6b66;white-space:nowrap;max-width:160px;overflow:hidden">${esc(plain(r.lesson, 32))}</td><td style="padding:3px 0">${r.cards.slice(0, 12).map((c) => `<span style="display:inline-block;width:13px;height:18px;margin-right:3px;border:1px solid #e4e2dc;border-top:3px solid ${tint(c.kind)};border-radius:3px;background:#ffffff"></span>`).join("")}</td></tr>`).join("");
+  const more = p.rows.length > 6 ? `<tr><td colspan="2" style="padding:4px 0 0;font:400 12px/1.3 ${font};color:#6b6b66">and ${p.rows.length - 6} more lessons</td></tr>` : "";
+  const subject = `${from} shared a Questhand template with you: ${name}`;
+  const text = [`${from} shared a template with you on Questhand: ${name} (${p.size}).`, ...(note ? [``, `“${note}”`] : []), ``, `Make a free account with this email address (or sign in with Google using it), and the template is waiting in your inbox, ready to add to your templates:`, p.link, ``, `Not expecting this? Ignore it, and nothing happens.`].join("\n");
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#f6f6f4"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f6f4"><tr><td align="center" style="padding:40px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px">
+<tr><td align="center" style="padding:0 0 22px"><a href="${origin}" style="text-decoration:none;color:#1b1b1a;font:600 17px/1 ${font}"><img src="${origin}/email/mark.png" width="40" height="28" alt="" style="display:inline-block;vertical-align:middle;border:0;margin-right:8px">Questhand</a></td></tr>
+<tr><td style="background:#ffffff;border:1px solid #e6e6e3;border-radius:18px;padding:32px 32px 30px">
+<div style="font:600 12px/1.4 ${font};letter-spacing:0.08em;text-transform:uppercase;color:#6b6b66">A template for you</div>
+<div style="padding-top:8px;font:400 16px/1.55 ${font};color:#3f3f3c"><strong style="color:#1b1b1a">${esc(from)}</strong> shared a course template with you on Questhand.</div>
+${note ? `<div style="margin-top:14px;padding:12px 14px;background:#f6f6f4;border-radius:12px;font:400 14.5px/1.5 ${font};color:#1b1b1a">“${esc(note)}”</div>` : ""}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;border:1px solid #e6e6e3;border-radius:12px"><tr><td style="padding:14px 16px 6px;font:600 16px/1.3 ${font};color:#1b1b1a">${esc(name)}<div style="font:400 12.5px/1.5 ${font};color:#6b6b66">${esc(p.size)}</div></td></tr>
+<tr><td style="padding:6px 16px 14px;background:#f7f6f3;border-radius:0 0 12px 12px"><table role="presentation" cellpadding="0" cellspacing="0" border="0">${rows}${more}</table></td></tr></table>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px"><tr><td style="border-radius:12px;background:#1b1b1a"><a href="${esc(p.link)}" style="display:inline-block;padding:14px 24px;font:600 15px/1 ${font};color:#ffffff;text-decoration:none;border-radius:12px">Get the template &rarr;</a></td></tr></table>
+<div style="padding-top:18px;font:400 13px/1.55 ${font};color:#5f5f5c">Make a free account with <strong style="color:#1b1b1a">this email address</strong> (or sign in with Google using it), and the template is waiting in your inbox, ready to add to your templates.</div>
+</td></tr>
+<tr><td align="center" style="padding:22px 24px 0;font:400 12.5px/1.6 ${font};color:#6b6b66">Not expecting this? Ignore it, and nothing happens.</td></tr>
+</table></td></tr></table></body></html>`;
+  return { subject, text, html };
+}

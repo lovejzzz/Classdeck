@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.33",
+    date: "2026-11-28",
+    changes: [
+      "The inbox has a trash: delete a conversation (the bin at the top of it) and it waits in Trash for 30 days, to Restore or Delete forever; Empty trash clears it. It’s only your inbox: the other person keeps theirs. A new message brings a deleted conversation back.",
+      "Share a template with someone who isn’t on Questhand yet: type their email in the share box and pick “Not on Questhand yet”. They get an email from Questhand with your note and the template drawn small; once they make an account with that address (or sign in with Google using it), the template is waiting in their inbox, ready to add.",
+    ],
+  },
+  {
     version: "0.3.32",
     date: "2026-11-28",
     changes: [

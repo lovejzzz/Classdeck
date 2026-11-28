@@ -26,6 +26,8 @@ export default function Home() {
   const query = useQuery();
   // A class link (/?code=…) or the class code on a slide: sign in, then it's ready under As Student.
   const codeParam = (query?.get("code") ?? "").trim().toUpperCase();
+  // From the email sent with a template to someone not on Questhand yet: they make an account, and it's in their inbox.
+  const sharedParam = query?.get("shared") === "1";
   const [courses, setCourses] = useState<CourseTile[] | null>(null);
   const [studying, setStudying] = useState<Studying[]>([]);
   const [firstRole, setFirstRole] = useState<"teacher" | "student" | null>(null);
@@ -67,8 +69,10 @@ export default function Home() {
           Every answer opens a different door.
         </p>
         <div className="rise mt-8 w-full max-w-sm" style={{ "--i": 2 } as React.CSSProperties}>
-          <SignInPanel as={codeParam ? "student" : undefined} startMode={codeParam ? "signup" : "login"} onDone={() => window.location.reload()}
-            note={codeParam
+          <SignInPanel as={codeParam ? "student" : undefined} startMode={codeParam || sharedParam ? "signup" : "login"} onDone={() => window.location.reload()}
+            note={sharedParam && !codeParam
+              ? <p className="rounded-xl bg-white px-4 py-3 text-[13.5px] text-ink-2 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">Someone shared a template with you. Make an account with <span className="font-medium text-ink">the email address it was sent to</span> (or sign in with Google using it), and it’s waiting in your inbox.</p>
+              : codeParam
               ? <p className="rounded-xl bg-white px-4 py-3 text-[13.5px] text-ink-2 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">Sign in, or make an account, to join the class with code <span className="font-mono font-medium tracking-[0.15em] text-ink">{codeParam}</span>.</p>
               : <p className="text-center text-[13.5px] text-ink-2">Sign in to your courses, or make an account to start one. Invited to a class? Open the link in your invitation email.</p>} />
           <Link href="/teach/demo" className="mt-6 block text-center text-[12.5px] text-ink-3 hover:text-ink">How to use Questhand →</Link>
