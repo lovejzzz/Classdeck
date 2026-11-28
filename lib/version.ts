@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.27",
+    date: "2026-11-28",
+    changes: [
+      "Templates for every teacher: in a course’s Settings → Course, Save as template keeps a copy of the course as it is now (its cards and cover, no students). Start a new course from it under Your templates in New course.",
+      "Settings has a Templates row: each template drawn small, like its map (each lesson a row of little cards, a card group as a stack, a card dealt by an answer with a dashed edge), to rename or delete.",
+      "The site owner’s CaPS flows are no longer built into New course: they’re two ordinary templates in the owner’s account, to rename, change or delete like any other.",
+    ],
+  },
+  {
     version: "0.3.26",
     date: "2026-11-28",
     changes: [

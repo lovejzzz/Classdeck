@@ -223,6 +223,17 @@ function SettingsPage({ course, onChanged, readOnly, me, owner, info, access, gu
                 <Clearable className="mt-1"><input key={course.subtitle} defaultValue={course.subtitle ?? ""} disabled={readOnly} placeholder="e.g. Spring 2027 · Tuesdays" onBlur={(e) => e.target.value !== (course.subtitle ?? "") && info({ subtitle: e.target.value })} className="field" /></Clearable>
               </label>
             </div>
+            {!readOnly && course.id !== "demo" && (
+              // A copy of the course as it is now (no students), to start new courses from: New course → Your templates.
+              <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+                <span className="min-w-0 flex-1 text-[12.5px] text-ink-3">Start new courses from a copy of this one, without its students.</span>
+                <button type="button" onClick={async () => {
+                  const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save", courseId: course.id }) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
+                  if (r.ok) toast(`Saved “${r.template.name}” as a template. Start a course from it in New course.`, { icon: "star" });
+                  else toast(r.error ?? "That didn’t save", { icon: "x", tone: "bad" });
+                }} className="btn btn-ghost press h-8"><Icon name="star" size={13} /> Save as template</button>
+              </div>
+            )}
           </section>
         )}
 

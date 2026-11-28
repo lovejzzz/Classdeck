@@ -33,6 +33,8 @@ export interface User {
   /** How they first came to Questhand: to teach (made an account themselves) or to learn (from an invitation or a
    *  class code). Their course list puts that side first. */
   firstRole?: "teacher" | "student";
+  /** The site owner's two CaPS flows were put into their templates (once; after that they're ordinary templates). */
+  capsSeeded?: boolean;
   /** Their AI for feedback (Settings → AI): which service, which model, and the key, encrypted (lib/aifeedback). */
   /** The personal link for using Questhand from the teacher's own AI (MCP): its hash (to find it) and, sealed, the
    * link itself (so Settings can show it again). */
@@ -55,6 +57,22 @@ export interface SavedCard {
    *  scores that deal cards inside the set still wired. Their ids only tie the set together; copies get new ones. */
   set?: { kind: "lesson" | "group"; modules: Module[] };
   at: number;
+}
+
+/**
+ * A teacher's template: a course as it was when they saved it (a course file: weeks, lessons, cards, no students),
+ * to start new courses from. A copy: changing the course afterwards doesn't change the template.
+ */
+export interface Template {
+  id: string;
+  name: string;
+  subtitle?: string;
+  cover?: { image?: string; credit?: string; motif?: string; color?: string; seed?: number };
+  /** The course file (lib/coursefile). */
+  file: { title: string; subtitle?: string; electiveMin?: number; weeks: { title: string; lessons: { title: string; goal?: string; elective?: boolean; modules: Module[] }[] }[] } & Record<string, unknown>;
+  at: number;
+  /** The course it was saved from, if any. */
+  from?: string;
 }
 
 export interface Session {
@@ -82,6 +100,8 @@ export interface DB {
   demo: Record<string, Record<string, Progress>>;
   /** Messages between two students of a course (teacher ↔ student messages are in nudges). */
   dms: Record<string, DirectMessage[]>;
+  /** Each teacher's templates, by user id (kept one row per teacher, the same way as a course's collections). */
+  templates: Record<string, Template[]>;
   /** Shared Text cards' documents (lib/collab.ts), by course, then by document. */
   collab: Record<string, Record<string, unknown>>;
   /** Student PIN hashes: course → student → "salt:hash". Never sent to a browser. */
@@ -101,7 +121,8 @@ const FILE = path.join(DIR, "questhand.db");
 /** The database's name before the product was renamed Questhand; moved to FILE on first start. */
 const OLD_FILE = path.join(DIR, "classdeck.db");
 const LEGACY = path.join(DIR, "db.json");
-const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo", "dms", "collab"] as const;
+// One row per id. Mostly per course; "templates" is per teacher (keyed by user id, which never matches a course id).
+const PER_COURSE = ["courses", "progress", "posts", "toolLog", "events", "choices", "studio", "marks", "live", "pins", "uptake", "nudges", "plans", "demo", "dms", "collab", "templates"] as const;
 const GLOBAL = ["users", "sessions", "customConnectors", "uploads"] as const;
 
 const g = globalThis as unknown as { __lmsdb?: DB; __lmsfilled?: boolean; __lmssql?: DatabaseSync; __lmswritten?: Map<string, string>; __preview?: DB; __previews?: Map<string, { at: number; data: Record<string, unknown> }> };
@@ -125,6 +146,7 @@ function fresh(custom: Manifest[] = []): DB {
     demo: {},
     dms: { [course.id]: [] },
     collab: { [course.id]: {} },
+    templates: {},
     pins: {},
     users: {},
     sessions: {},

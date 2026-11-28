@@ -87,7 +87,15 @@ export async function POST(request: Request) {
     save();
     return Response.json({ ok: true, id: c.id });
   }
-  // A CaPS V4 program flow: built as a course file, so it goes in the same way (ids made fresh, links kept).
+  // One of the teacher's templates: a course file, so it goes in the same way (ids made fresh, links kept), cover too.
+  let cover: Course["cover"] | undefined;
+  if (body.template !== undefined) {
+    const tp = (db().templates?.[t.id] ?? []).find((x) => x.id === String(body.template));
+    if (!tp) return Response.json({ ok: false, error: "That template isn’t there any more" }, { status: 404 });
+    body.file = tp.file;
+    cover = tp.cover;
+  }
+  // The CaPS V4 flows by name, for the tests that build them (people start them from their templates now).
   if (body.start === "caps1" || body.start === "caps2") body.file = body.start === "caps1" ? capsFlow1() : capsFlow2();
   // From a course file: its weeks, lessons and cards, wired as they were (a name typed here wins over the file's).
   if (body.file !== undefined) {
@@ -95,7 +103,7 @@ export async function POST(request: Request) {
     if (!f.ok) return Response.json({ ok: false, error: f.error }, { status: 400 });
     const name = String(body.title ?? "").trim().slice(0, 80) || f.title;
     if (!name) return Response.json({ ok: false, error: "Give the course a name" }, { status: 400 });
-    const course = makeCourse(t.id, name, f.weeks, { subtitle: String(body.subtitle ?? "").trim().slice(0, 120) || f.subtitle, electiveMin: f.electiveMin });
+    const course = makeCourse(t.id, name, f.weeks, { subtitle: String(body.subtitle ?? "").trim().slice(0, 120) || f.subtitle, electiveMin: f.electiveMin, ...(cover ? { cover: structuredClone(cover) } : {}) });
     cleanCourseWiring(course.weeks);
     for (const w of course.weeks) for (const l of w.lessons) for (const m of l.modules) syncSignup(course, m);
     save();

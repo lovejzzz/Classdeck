@@ -12,6 +12,8 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { AiSettings } from "@/components/teacher/AiSettings";
 import { providerMeta, type AiProvider } from "@/lib/aimeta";
 import { McpSettings } from "@/components/teacher/McpSettings";
+import { TemplatePreview } from "@/components/TemplatePreview";
+import type { TemplateInfo } from "@/lib/mytemplates";
 
 const EXAMPLE = `{
   "id": "holidays",
@@ -41,7 +43,7 @@ const EXAMPLE = `{
   ]
 }`;
 
-type Open = "ai" | "mcp" | "tools" | null;
+type Open = "ai" | "mcp" | "templates" | "tools" | null;
 
 type Studying = { id: string; title: string; studentId: string; teacher?: string; done?: number; total?: number };
 
@@ -58,7 +60,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const h = window.location.hash.slice(1);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the address
-    if (h === "ai" || h === "mcp" || h === "tools") setOpen(h);
+    if (h === "ai" || h === "mcp" || h === "templates" || h === "tools") setOpen(h);
     fetch("/api/auth").then((r) => r.json()).then((j: { kind?: string | null }) => setOut(!j.kind)).catch(() => {});
     fetch("/api/courses").then((r) => r.json()).then((j: { courses?: unknown[]; studying?: Studying[] }) => {
       setStudying(!j.courses?.length && j.studying?.length ? j.studying : null);
@@ -186,6 +188,12 @@ function TeachingRows({ open, onOpen }: { open: Open; onOpen: (o: Exclude<Open, 
     if (open === "mcp") return;
     fetch("/api/mcp-link").then((r) => (r.ok ? r.json() : null)).then((j) => setMcp(j ? { link: j.link, used: j.used } : null)).catch(() => setMcp(null));
   }, [open]);
+  // The templates row's summary: how many there are (read again when the row closes).
+  const [tplCount, setTplCount] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    if (open === "templates") return;
+    fetch("/api/templates").then((r) => (r.ok ? r.json() : null)).then((j) => setTplCount(j?.templates?.length ?? 0)).catch(() => {});
+  }, [open]);
   const aiText = ai === undefined ? "" : ai?.active ? `${providerMeta(ai.active).name} · Ready` : "Not connected";
   const mcpText = mcp === undefined ? "" : mcp?.used ? "Connected" : mcp?.link ? "Link made" : "Off";
   const row = (id: Exclude<Open, null>, label: string, value: string, body: React.ReactNode, ok?: boolean) => (
@@ -202,8 +210,48 @@ function TeachingRows({ open, onOpen }: { open: Open; onOpen: (o: Exclude<Open, 
     <section className="card rise mt-4 overflow-hidden">
       {row("ai", "AI", aiText, <AiSettings bare />, !!ai?.active)}
       {row("mcp", "Use from Claude or ChatGPT", mcpText, <McpSettings bare />, !!mcp?.used)}
+      {row("templates", "Templates", tplCount === undefined ? "" : tplCount ? `${tplCount} template${tplCount === 1 ? "" : "s"}` : "None yet", <Templates />)}
       {canAdd && row("tools", "Tools and APIs · site owner", "", <ToolsList />)}
     </section>
+  );
+}
+
+/** The teacher's templates: each drawn small, to rename or delete. New ones come from a course's Settings. */
+function Templates() {
+  const [list, setList] = useState<TemplateInfo[] | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const load = () => fetch("/api/templates").then((r) => r.json()).then((j) => setList(j.templates ?? [])).catch(() => setList([]));
+  useEffect(() => { void load(); }, []);
+  const act = async (body: Record<string, unknown>, note: string) => {
+    const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
+    if (r.ok) { toast(note); await load(); } else toast(r.error ?? "That didn’t work", { icon: "x", tone: "bad" });
+  };
+  if (list === null) return <div className="skeleton h-24 rounded-xl" aria-busy="true" />;
+  if (!list.length) return <p className="text-[13px] text-ink-2">No templates yet. In a course, open Settings → Course and press Save as template: a copy of it waits here, and in New course.</p>;
+  return (
+    <div className="space-y-4">
+      {list.map((t) => (
+        <div key={t.id}>
+          <TemplatePreview t={t} />
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {renaming === t.id ? (
+              <form className="flex flex-1 gap-1.5" onSubmit={(e) => { e.preventDefault(); const name = String(new FormData(e.currentTarget).get("name") ?? ""); setRenaming(null); if (name.trim() && name.trim() !== t.name) void act({ action: "rename", id: t.id, name }, "Renamed"); }}>
+                <input name="name" defaultValue={t.name} autoFocus aria-label="Template name" onKeyDown={(e) => e.key === "Escape" && setRenaming(null)} className="field h-8 min-w-0 flex-1 text-[13px]" />
+                <button className="btn btn-dark press h-8 px-3 text-[12.5px]">Save</button>
+              </form>
+            ) : (
+              <>
+                <span className="flex-1 text-[12px] text-ink-3">Saved {new Date(t.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                <button onClick={() => setRenaming(t.id)} className="btn btn-quiet press h-7 px-2 text-[12px]"><Icon name="pencil" size={12} /> Rename</button>
+                <button onClick={async () => (await ask({ title: `Delete “${t.name}”?`, body: "Courses already made from it stay as they are.", confirm: "Delete", danger: true })) && act({ action: "delete", id: t.id }, `Deleted “${t.name}”`)}
+                  className="btn btn-quiet press h-7 px-2 text-[12px] hover:!text-bad"><Icon name="trash" size={12} /> Delete</button>
+              </>
+            )}
+          </div>
+        </div>
+      ))}
+      <p className="text-[12px] text-ink-3">To add one, open a course’s Settings → Course and press Save as template.</p>
+    </div>
   );
 }
 

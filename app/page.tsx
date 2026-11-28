@@ -8,7 +8,9 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { CourseCover } from "@/components/CourseCover";
 import type { Course } from "@/lib/types";
 import { SignInPanel } from "@/components/SignInPanel";
-import { prefetchCourse, useConnectors, useQuery } from "@/lib/client";
+import { prefetchCourse, useQuery } from "@/lib/client";
+import { TemplatePreview, size as tplSize } from "@/components/TemplatePreview";
+import type { TemplateInfo } from "@/lib/mytemplates";
 import { Icon } from "@/components/Icon";
 import { Clearable } from "@/components/Clearable";
 import { LogoMark, Wordmark } from "@/components/Logo";
@@ -230,14 +232,16 @@ function NewCourse({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
-  const [start, setStart] = useState<"blank" | "template" | "caps1" | "caps2" | "file">("blank");
-  // The site owner's own templates (the CaPS flows): only on their account, folded until wanted.
-  const mine = useConnectors().canAdd;
+  // How to start: blank, three ready-made weeks, a course file, or one of the teacher's templates ("tpl:<id>").
+  const [start, setStart] = useState<string>("blank");
+  // The teacher's own templates (Settings → Templates), folded under the three starts until wanted.
+  const [mine, setMine] = useState<TemplateInfo[]>([]);
+  useEffect(() => { fetch("/api/templates").then((r) => (r.ok ? r.json() : null)).then((j) => setMine(j?.templates ?? [])).catch(() => {}); }, []);
   const [showMine, setShowMine] = useState(false);
-  const mineOn = start === "caps1" || start === "caps2";
-  const startRow = (k: typeof start, label: string) => (
+  const picked = start.startsWith("tpl:") ? mine.find((t) => `tpl:${t.id}` === start) : undefined;
+  const startRow = (k: string, label: React.ReactNode, onPick?: () => void) => (
     <label key={k} className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-[13.5px] transition-colors ${start === k ? "border-ink" : "border-line hover:border-line-strong"}`}>
-      <input type="radio" name="start" checked={start === k} onChange={() => setStart(k)} className="accent-[#1b1b1a]" />
+      <input type="radio" name="start" checked={start === k} onChange={() => { setStart(k); onPick?.(); }} className="accent-[#1b1b1a]" />
       {label}
     </label>
   );
@@ -272,7 +276,7 @@ function NewCourse({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     if (!title.trim() || (start === "file" && !file)) return;
     setBusy(true);
-    const r = await fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(start === "file" ? { title, subtitle, file: file!.data } : { title, subtitle, start }) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
+    const r = await fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(start === "file" ? { title, subtitle, file: file!.data } : picked ? { title, subtitle, template: picked.id } : { title, subtitle, start }) }).then((x) => x.json()).catch(() => ({ ok: false, error: "Can’t reach the server" }));
     // What a file made, and anything that had to change on the way in, said once the course opens.
     if (r.ok && start === "file") { try { sessionStorage.setItem(`questhand:made:${r.id}`, [`Made “${title.trim()}” from ${file!.name}: ${r.cards} card${r.cards === 1 ? "" : "s"}.`, ...(r.notes ?? [])].join(" ")); } catch { /* storage blocked */ } }
     if (r.ok) router.push(`/teach/${r.id}`);
@@ -284,14 +288,21 @@ function NewCourse({ onClose }: { onClose: () => void }) {
         <h2 className="text-[20px] font-medium tracking-tight">New course</h2>
         <Clearable><input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Course name" aria-label="Course name" className="field h-11 text-[14px]" /></Clearable>
         <div className="grid gap-1.5">
-          {/* Three ways to start, a line each. The site owner's own templates (CaPS) wait folded under them. */}
+          {/* Three ways to start, a line each. The teacher's own templates wait folded under them. */}
           {([["blank", "Start blank"], ["template", "Three ready-made weeks"], ["file", "From a course file"]] as const).map(([k, label]) => startRow(k, label))}
-          {mine && (
+          {mine.length > 0 && (
             <div className="mt-1 border-t border-line pt-1.5">
-              <button type="button" onClick={() => setShowMine((v) => !v)} aria-expanded={showMine || mineOn} className="press flex w-full items-center justify-between px-1 py-1 text-[12.5px] text-ink-3 hover:text-ink">
-                Your templates (2)<Icon name="chevron" size={12} className={`transition-transform ${showMine || mineOn ? "rotate-180" : "-rotate-90"}`} />
+              <button type="button" onClick={() => setShowMine((v) => !v)} aria-expanded={showMine || !!picked} className="press flex w-full items-center justify-between px-1 py-1 text-[12.5px] text-ink-3 hover:text-ink">
+                Your templates ({mine.length})<Icon name="chevron" size={12} className={`transition-transform ${showMine || picked ? "rotate-180" : "-rotate-90"}`} />
               </button>
-              {(showMine || mineOn) && <div className="mt-1 grid gap-1.5">{([["caps1", "CaPS Flow 1: three tracks"], ["caps2", "CaPS Flow 2: sequenced"]] as const).map(([k, label]) => startRow(k, label))}</div>}
+              {(showMine || picked) && (
+                <div className="mt-1 grid gap-1.5">
+                  {mine.map((t) => startRow(`tpl:${t.id}`,
+                    <span className="min-w-0 flex-1"><span className="block truncate">{t.name}</span><span className="block truncate text-[11.5px] text-ink-3">{tplSize(t.outline)}</span></span>,
+                    () => { if (!title.trim()) setTitle(t.name); }))}
+                  {picked && <TemplatePreview t={picked} compact />}
+                </div>
+              )}
             </div>
           )}
           {start === "file" && (
