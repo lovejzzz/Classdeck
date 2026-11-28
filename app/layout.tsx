@@ -4,6 +4,7 @@ import { SkipLink } from "@/components/SkipLink";
 import { Toaster } from "@/components/Toaster";
 import { ConfirmHost } from "@/components/Confirm";
 import { NameGate } from "@/components/NameGate";
+import { VerifyGate } from "@/components/VerifyGate";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Toaster />
         <NameGate />
+        <VerifyGate />
         <ConfirmHost />
       </body>
     </html>

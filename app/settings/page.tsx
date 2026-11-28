@@ -382,7 +382,7 @@ function AddApi({ onAdded }: { onAdded: (id: string) => void }) {
   );
 }
 
-type Me = { kind: "teacher"; name: string; firstName?: string | null; lastName?: string | null; email: string; picture: string | null; signIn?: { password: boolean; google: boolean }; since?: number };
+type Me = { kind: "teacher"; verified?: boolean; name: string; firstName?: string | null; lastName?: string | null; email: string; picture: string | null; signIn?: { password: boolean; google: boolean }; since?: number };
 
 /** First and last name, side by side; saved when you leave a field (both are needed). */
 function NameFields({ me, onSaved }: { me: { name: string; firstName?: string | null; lastName?: string | null }; onSaved: (n: { name: string; firstName: string; lastName: string }) => void }) {
@@ -459,6 +459,9 @@ function AccountTab() {
       <div className={row}>
         <span className={label}>Email</span>
         <span className="text-[13.5px]">{me.email}</span>
+        {me.verified
+          ? <span className="flex items-center gap-1 text-[12.5px] text-ok"><Icon name="check" size={12} /> Confirmed</span>
+          : <button onClick={async () => { const r = await post({ action: "sendCode", start: true }); if (r.ok) window.location.reload(); else toast(r.error ?? "Couldn’t send a code", { icon: "x", tone: "bad" }); }} className="btn btn-ghost press h-7 px-2.5 text-[12px]">Confirm it</button>}
       </div>
       <div className={row}>
         <span className={label}>Signs in with</span>

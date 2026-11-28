@@ -24,6 +24,13 @@ export interface User {
   /** scrypt hash and salt, hex. Empty for accounts that only sign in with Google. */
   hash: string;
   salt: string;
+  /** Their email address is theirs: they typed the code sent to it (a Google sign-in counts too, see lib/verify). */
+  emailVerified?: boolean;
+  /** Made after sign-up started checking addresses: they're asked for the code before going on. */
+  mustVerify?: boolean;
+  /** The code sent to their address, hashed, while one is out; `claim` is a sign-up waiting to take over an address
+   *  someone else signed up with but never confirmed (its password hash and name). */
+  verify?: { hash: string; exp: number; sent: number; tries: number; day: string; n: number; claim?: { hash: string; salt: string; first: string; last: string } };
   /** Google account id, once they've signed in with Google. */
   google?: string;
   /** Their profile photo: Google's, refreshed at each Google sign-in, or one they uploaded (then kept). */

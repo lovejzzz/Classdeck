@@ -101,3 +101,33 @@ export async function sendInvite(to: string, p: { course: string; teacher: strin
     return false;
   }
 }
+
+/** Addresses that can never receive mail (tests use these): never handed to the provider. */
+export const undeliverable = (to: string) => /@(example\.(test|com|org|net)|[^@]+\.(test|invalid|localhost))$/i.test(to);
+
+/** The sign-up code: six digits, fixed wording, nothing from anyone else in it. */
+export async function sendCode(to: string, code: string): Promise<boolean> {
+  if (!mailReady() || undeliverable(to)) return false;
+  const font = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
+  const subject = `${code} is your Questhand code`;
+  const text = [`Your Questhand code is ${code}`, ``, `Type it on the page that asked for it. It works for 15 minutes.`, ``, `Didn’t make a Questhand account? Ignore this email and nothing happens.`].join("\n");
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
+<body style="margin:0;padding:0;background:#f6f6f4"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f6f4"><tr><td align="center" style="padding:40px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:440px;background:#ffffff;border:1px solid #e6e6e3;border-radius:18px">
+<tr><td style="padding:32px 32px 0;font:600 17px/1.3 ${font};color:#1b1b1a">Your Questhand code</td></tr>
+<tr><td style="padding:18px 32px 0;font:600 34px/1 ${font};letter-spacing:0.18em;color:#1b1b1a">${code}</td></tr>
+<tr><td style="padding:18px 32px 0;font:400 15px/1.6 ${font};color:#3f3f3c">Type it on the page that asked for it. It works for 15 minutes.</td></tr>
+<tr><td style="padding:18px 32px 30px;font:400 12.5px/1.6 ${font};color:#6b6b66">Didn’t make a Questhand account? Ignore this email and nothing happens.</td></tr>
+</table></td></tr></table></body></html>`;
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: process.env.MAIL_FROM, to: [to], subject, text, html }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}

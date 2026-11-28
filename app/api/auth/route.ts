@@ -6,6 +6,7 @@ import { findInvite } from "@/lib/hooks";
 import { db, save } from "@/lib/store";
 import { giveStarterCourse } from "@/lib/newcourse";
 import { fullName, namePart, needsName, setAccountName, splitName } from "@/lib/names";
+import { checkCode, issueCode, verified, verifyOn } from "@/lib/verify";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
   // The Google client id is public: it's what the "Sign in with Google" button needs.
   const google = process.env.GOOGLE_CLIENT_ID || null;
   // An account (it can teach some courses and be a student in others). "teacher" is its kind for older pages.
-  if (t) return Response.json({ kind: "teacher", name: t.name, firstName: t.firstName ?? null, lastName: t.lastName ?? null, needsName: needsName(t), email: t.email, picture: t.picture ?? null, firstRole: t.firstRole ?? null, google, signIn: { password: !!t.hash, google: !!t.google }, since: t.createdAt });
+  if (t) return Response.json({ kind: "teacher", name: t.name, firstName: t.firstName ?? null, lastName: t.lastName ?? null, needsName: needsName(t), email: t.email, verified: verified(t), verifyNeeded: !!t.mustVerify && !verified(t), picture: t.picture ?? null, firstRole: t.firstRole ?? null, google, signIn: { password: !!t.hash, google: !!t.google }, since: t.createdAt });
   if (s?.kind === "student" && s.courseId) {
     const c = db().courses[s.courseId];
     const st = c?.students.find((x) => x.id === s.studentId) ?? c?.waiting?.find((x) => x.id === s.studentId);
@@ -58,13 +59,66 @@ export async function POST(request: Request) {
       if (password.length < 8) return fail("Use a password of at least 8 characters");
       // A whole class often signs up at once from one school address, so the limit per address is generous.
       if (throttled(`signup:${ip}`, 80)) return fail("Too many attempts. Try again in a few minutes.", 429);
-      if (Object.values(d.users).some((u) => u.email === email)) return fail("There’s already an account with that email. Sign in instead.");
+      const taken = Object.values(d.users).find((u) => u.email === email);
+      if (taken && (verified(taken) || !verifyOn() || taken.google)) return fail("There’s already an account with that email. Sign in instead.");
+      if (taken) {
+        // Someone signed up with this address but never confirmed it: whoever can read its email may take it over.
+        if (!first || !last) return fail("Enter your first and last name");
+        const sent = await issueCode(taken, { ...hashSecret(password), first, last });
+        save();
+        if (!sent.ok) return fail(sent.error, 429);
+        return Response.json({ ok: false, needCode: true, email, devCode: sent.devCode, error: "This email already has an account that was never confirmed. We sent a code to it: type it here to make the account yours." }, { status: 409 });
+      }
       const id = uid("u-");
       d.users[id] = { id, email, name: fullName(first, last), ...(first ? { firstName: first } : {}), ...(last ? { lastName: last } : {}), ...hashSecret(password), firstRole: body.as === "student" ? "student" : "teacher", createdAt: Date.now() };
       // A new teacher starts with Questhand 101 in their courses: a short course on Questhand, to try and to copy from.
       if (body.as !== "student") giveStarterCourse(id);
+      // A new account confirms its address with a code before going on (lib/verify).
+      let devCode: string | undefined;
+      if (verifyOn()) {
+        d.users[id].mustVerify = true;
+        const sent = await issueCode(d.users[id]);
+        if (sent.ok) devCode = sent.devCode;
+      }
       save();
-      return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: id }) } });
+      return Response.json({ ok: true, verify: !!d.users[id].mustVerify, devCode }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: id }) } });
+    }
+    case "claim": {
+      // The code from a sign-up on an address whose account was never confirmed: the account becomes the new sign-up's
+      // (its password and name), and whoever was signed in to it before is signed out.
+      const email = String(body.email ?? "").trim().toLowerCase();
+      if (throttled(`claim:${ip}`, 30)) return fail("Too many attempts. Try again in a few minutes.", 429);
+      const u = Object.values(d.users).find((x) => x.email === email);
+      if (!u || verified(u) || !u.verify?.claim) return fail("Start again: make the account once more.", 400);
+      const ok = checkCode(u, String(body.code ?? ""));
+      if (!ok.ok) { save(); return fail(ok.error); }
+      const c = u.verify.claim;
+      u.hash = c.hash; u.salt = c.salt;
+      setAccountName(u, c.first, c.last);
+      u.emailVerified = true; u.mustVerify = undefined; u.verify = undefined;
+      for (const [k, s] of Object.entries(d.sessions)) if (s.userId === u.id) delete d.sessions[k];
+      save();
+      return Response.json({ ok: true }, { headers: { "Set-Cookie": startSession({ kind: "teacher", userId: u.id }) } });
+    }
+    case "sendCode": {
+      const t = teacherOf(getSession(request));
+      if (!t) return fail("Sign in first", 401);
+      if (verified(t)) return Response.json({ ok: true, verified: true });
+      // From Settings: an older account asks to confirm its address now (the code screen then opens).
+      if (body.start) t.mustVerify = true;
+      const sent = await issueCode(t);
+      save();
+      return sent.ok ? Response.json({ ok: true, devCode: sent.devCode }) : fail(sent.error, 429);
+    }
+    case "verifyCode": {
+      const t = teacherOf(getSession(request));
+      if (!t) return fail("Sign in first", 401);
+      if (throttled(`verify:${t.id}`, 30)) return fail("Too many attempts. Try again in a few minutes.", 429);
+      const ok = checkCode(t, String(body.code ?? ""));
+      if (!ok.ok) { save(); return fail(ok.error); }
+      t.emailVerified = true; t.mustVerify = undefined; t.verify = undefined;
+      save();
+      return Response.json({ ok: true });
     }
     case "login": {
       const email = String(body.email ?? "").trim().toLowerCase();
@@ -160,6 +214,8 @@ export async function POST(request: Request) {
         for (const [k, s] of Object.entries(d.sessions)) if (s.userId === u.id) delete d.sessions[k];
       }
       u.google = who.sub;
+      // Google has checked the address: nothing left to confirm.
+      u.emailVerified = true; u.mustVerify = undefined; u.verify = undefined;
       if (!u.pictureOwn) u.picture = who.picture;
       // An account still without a first and last name takes Google's, if Google has both.
       if (needsName(u) && who.first && who.last) setAccountName(u, who.first, who.last);

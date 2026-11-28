@@ -23,16 +23,38 @@ export function SignInPanel({ onDone, as, email: startEmail = "", startMode = "l
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Signing up on an address whose account was never confirmed: the code sent to it makes the account theirs.
+  const [claim, setClaim] = useState<{ email: string; note: string } | null>(null);
+  const [code, setCode] = useState("");
 
   async function send(body: object) {
     setBusy(true);
     setError("");
     const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, as }) })
       .then((x) => x.json()).catch(() => ({ ok: false, error: "Couldn’t reach Questhand. Check your connection." }));
-    if (r.ok) { await onDone(); return; }
+    // Off the live site no email goes out: the code comes back to type in.
+    if (r.devCode) console.info(`[dev] Questhand code: ${r.devCode}`);
+    if (r.ok) {
+      // A new account confirms its email next: the code screen (VerifyGate) opens over the page.
+      await onDone(); return;
+    }
     setBusy(false);
+    if (r.needCode) { setClaim({ email: r.email, note: r.error }); setError(""); return; }
     setError(r.error ?? "That didn’t work. Try again.");
   }
+
+  if (claim) return (
+    <div>
+      {note}
+      <form onSubmit={(e) => { e.preventDefault(); void send({ action: "claim", email: claim.email, code }); }} className="mt-5 space-y-2.5">
+        <p className="text-[13.5px] text-ink-2">{claim.note}</p>
+        <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" aria-label="Code from your email" autoFocus className="field h-11 text-center font-mono text-[18px] tracking-[0.3em]" />
+        {error && <p className="rise text-[13px] text-bad" role="alert">{error}</p>}
+        <button disabled={busy || code.length !== 6} className="btn btn-dark press h-10 w-full justify-center">{busy ? "One moment…" : "Make the account mine"}</button>
+      </form>
+      <button onClick={() => { setClaim(null); setCode(""); setError(""); }} className="mt-4 text-left text-[13px] text-ink-2 hover:text-ink"><Icon name="back" size={12} className="inline" /> Back</button>
+    </div>
+  );
 
   return (
     <div>

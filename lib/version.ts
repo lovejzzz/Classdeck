@@ -3,6 +3,15 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.29",
+    date: "2026-11-28",
+    changes: [
+      "Making an account with an email and password now asks for a 6-digit code sent to that address, so everyone’s email is really theirs. Nothing came? Send a new code, or sign in with Google instead (Google has already checked the address).",
+      "If someone signed up with your address and never confirmed it, signing up with it sends the code to you: type it and the account becomes yours (with your password and name), and whoever was in it is signed out.",
+      "Settings shows whether your email is confirmed; an older account can confirm it there.",
+    ],
+  },
+  {
     version: "0.3.28",
     date: "2026-11-28",
     changes: [
