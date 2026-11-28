@@ -181,7 +181,8 @@ export default function TeachPage() {
           <span className="text-line-strong">/</span>
           <h1 className="truncate text-[14px] font-medium">{course.title}</h1>
           <span className="flex-1" />
-          <button
+          {/* The class code only while it lets students in (not when access is Restricted, or joining is turned off). */}
+          {course.access?.joinOpen !== false && !!course.access?.selfJoin && <button
             onClick={() => {
               navigator.clipboard?.writeText(course.joinCode).catch(() => {});
               toast("Class code copied");
@@ -190,7 +191,7 @@ export default function TeachPage() {
             title="Copy class code"
           >
             <span className="text-ink-3">Class code</span><span className="font-mono tracking-[0.15em]">{course.joinCode}</span>
-          </button>
+          </button>}
           {!viewer && <StudentViewButton courseId={courseId} students={course.students} />}
           <Shortcuts
             list={[
@@ -282,7 +283,7 @@ export default function TeachPage() {
           {viewer && (
             <p className="mb-5 rounded-xl bg-lane px-4 py-2.5 text-[13px] text-ink-2">You can view this course. Only its owner and editors can change it.</p>
           )}
-          {course.students.length === 0 && courseId !== "demo" && tab !== "settings" && (!hideStart || !!course.waiting?.length) && (
+          {course.students.length === 0 && courseId !== "demo" && tab !== "settings" && !viewer && (!hideStart || !!course.waiting?.length) && (
             <section aria-label="Getting started" className="card relative mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 p-5 pr-12">
               {!course.waiting?.length && (
                 // Closed for this course on this device; anyone waiting to be let in still shows.

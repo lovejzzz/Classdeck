@@ -3,6 +3,14 @@
 
 export const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
   {
+    version: "0.3.26",
+    date: "2026-11-28",
+    changes: [
+      "The class code at the top of a course only shows while it lets students in. With access set to Restricted it’s hidden, since students typing it would be turned away.",
+      "A teacher who can only view a course no longer sees the “Invite students” box or the Saved light: there’s nothing for them to invite or save.",
+    ],
+  },
+  {
     version: "0.3.25",
     date: "2026-11-28",
     changes: [

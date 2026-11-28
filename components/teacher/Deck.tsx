@@ -642,7 +642,8 @@ export function Deck({ course, onRefresh, progress = {}, choices = {}, readOnly 
         <span className="flex items-center gap-1 text-[12.5px] text-ink-3">
           {/* While the card panel is open, its own undo, redo and history are the ones to use: not shown twice. */}
           {!readOnly && !editorOpen && undoBar("bar")}
-          <span className="ml-1 flex items-center gap-1.5" aria-live="polite">
+          {/* Someone who can only look has nothing of theirs being saved. */}
+          {!readOnly && <span className="ml-1 flex items-center gap-1.5" aria-live="polite">
             <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${saveError ? "bg-bad" : saving ? "bg-warn" : "bg-ok"}`} />
             {saveError && !saving ? (
               // Changes stay on screen; saving is tried again by itself. The server's reason is in the tooltip.
@@ -651,7 +652,7 @@ export function Deck({ course, onRefresh, progress = {}, choices = {}, readOnly 
                 <button onClick={() => void retryNow()} className="underline underline-offset-2 hover:text-ink">Try now</button>
               </span>
             ) : saving ? "Saving" : "Saved"}
-          </span>
+          </span>}
         </span>,
         statusSlot,
       )}
