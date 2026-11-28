@@ -294,7 +294,7 @@
        "id": "m-1r438mo",
        "type": "submit",
        "title": "Your turn: plan a card",
-       "body": "Think of a lesson you'll teach soon. Which card would you open it with, and why? Write a few lines, or record yourself saying it.\n\nThis card has AI feedback on, so you'll get a few words back as soon as you hand it in.",
+       "body": "Think of a lesson you'll teach soon. Which card would you open it with, and why? Write a few lines, or record yourself saying it.\n\nThis card has Allow AI feedback ticked: once a teacher connects their AI, students get a few lines back the moment they hand in.",
        "audience": {
         "kind": "all"
        },

@@ -1,5 +1,5 @@
 {
- "exportedAt": 1795832251654,
+ "exportedAt": 1795834363586,
  "courses": {
   "id": "demo",
   "title": "Questhand 101",
@@ -376,7 +376,7 @@
         "id": "m-1r438mo",
         "type": "submit",
         "title": "Your turn: plan a card",
-        "body": "Think of a lesson you'll teach soon. Which card would you open it with, and why? Write a few lines, or record yourself saying it.\n\nThis card has AI feedback on, so you'll get a few words back as soon as you hand it in.",
+        "body": "Think of a lesson you'll teach soon. Which card would you open it with, and why? Write a few lines, or record yourself saying it.\n\nThis card has Allow AI feedback ticked: once a teacher connects their AI, students get a few lines back the moment they hand in.",
         "audience": {
          "kind": "all"
         },
@@ -1702,7 +1702,9 @@
      {
       "id": "m-0bi7gr8-o0",
       "name": "Short units Group",
-      "studentIds": []
+      "studentIds": [
+       "s-omar"
+      ]
      },
      {
       "id": "m-0bi7gr8-o1",
@@ -1712,7 +1714,9 @@
      {
       "id": "m-0bi7gr8-o2",
       "name": "Just exploring Group",
-      "studentIds": []
+      "studentIds": [
+       "s-lena"
+      ]
      }
     ]
    }
@@ -2001,18 +2005,22 @@
     "updatedAt": 1795811709000,
     "handedAt": 1795832082661,
     "output": ""
+   },
+   "m-9zo401p": {
+    "status": "doing",
+    "updatedAt": 1795832886086
    }
   },
   "s-omar": {
    "m-m2g2zh9": {
     "status": "done",
-    "updatedAt": 1795211783000,
+    "updatedAt": 1795202257000,
     "handedAt": 1795830916889,
     "output": ""
    },
    "m-21h70bo": {
     "status": "done",
-    "updatedAt": 1795202257000,
+    "updatedAt": 1795207131000,
     "answers": {
      "q-1": 1
     },
@@ -2029,13 +2037,13 @@
    },
    "m-jtj0mn6": {
     "status": "done",
-    "updatedAt": 1795207131000,
+    "updatedAt": 1795197605000,
     "handedAt": 1795830922273,
     "output": ""
    },
    "m-0cj6cr9": {
     "status": "done",
-    "updatedAt": 1795197605000,
+    "updatedAt": 1795202479000,
     "answers": {
      "q-2": 2
     },
@@ -2052,19 +2060,19 @@
    },
    "m-cjg6wv1": {
     "status": "done",
-    "updatedAt": 1795461679000,
+    "updatedAt": 1795466553000,
     "handedAt": 1795830927750,
     "output": ""
    },
    "m-wrpgx4f": {
     "status": "done",
-    "updatedAt": 1795466553000,
+    "updatedAt": 1795457027000,
     "handedAt": 1795830929651,
     "output": ""
    },
    "m-xhz32yb": {
     "status": "done",
-    "updatedAt": 1795457027000,
+    "updatedAt": 1795461901000,
     "answers": {
      "q-3": 1
     },
@@ -2081,7 +2089,7 @@
    },
    "m-6g7dpej": {
     "status": "done",
-    "updatedAt": 1795461901000,
+    "updatedAt": 1795466775000,
     "dealt": {
      "#score": 100
     },
@@ -2089,7 +2097,7 @@
    },
    "m-6uu5g7p": {
     "status": "done",
-    "updatedAt": 1795466775000,
+    "updatedAt": 1795457249000,
     "answers": {
      "q-4": 0
     },
@@ -2106,7 +2114,7 @@
    },
    "m-lwyavnq": {
     "status": "done",
-    "updatedAt": 1795457249000,
+    "updatedAt": 1795462123000,
     "answers": {
      "q-5": 1
     },
@@ -2123,18 +2131,18 @@
    },
    "m-2fen2fw": {
     "status": "done",
-    "updatedAt": 1795462123000,
+    "updatedAt": 1795466997000,
     "handedAt": 1795830942179,
     "output": ""
    },
    "m-1r438mo": {
     "status": "done",
-    "updatedAt": 1795466997000,
+    "updatedAt": 1795457471000,
     "output": "My plan: start the lesson with a short story card, then one question that branches, so students who aren't sure get an extra example.",
     "handedAt": 1795830944150,
     "ai": {
      "state": "done",
-     "at": 1795467057000,
+     "at": 1795457531000,
      "model": "claude-sonnet-5-5",
      "text": "Works well: You're already thinking about the student's experience, not just the content. Your line \"students who aren't sure get an extra example\" gives the branching question a clear purpose, which is exactly why a card tree is worth building.\n\nTry next: The card asks which card you'd open with and why. You've named a story card, but you haven't said why a story is the right way to begin. One sentence on what you want it to do for students (grab attention, set up the question, connect to something they know) would complete your answer. It would also help to name the lesson, so the story has something to be about.\n\nYour next step: Write two or three sentences of your story card, as if you were typing it into the card. Then note what the question that follows should check. That will make the branch easier to plan when you reach \"Every kind of question\" and, in Week 2, \"Card trees.\"",
      "watched": false,
@@ -2143,13 +2151,13 @@
    },
    "m-e6q9aav": {
     "status": "done",
-    "updatedAt": 1795630271000,
+    "updatedAt": 1795635145000,
     "handedAt": 1795830946745,
     "output": ""
    },
    "m-u7y8sea": {
     "status": "done",
-    "updatedAt": 1795635145000,
+    "updatedAt": 1795640019000,
     "answers": {
      "q-6": [
       0,
@@ -2174,7 +2182,7 @@
    },
    "m-fw1a5r8": {
     "status": "done",
-    "updatedAt": 1795640019000,
+    "updatedAt": 1795630493000,
     "answers": {
      "q-7": [
       "Make a Question card",
@@ -2193,7 +2201,7 @@
    },
    "m-iokfr1s": {
     "status": "done",
-    "updatedAt": 1795630493000,
+    "updatedAt": 1795635367000,
     "answers": {
      "q-8": "map"
     },
@@ -2207,13 +2215,13 @@
    },
    "m-u271j08": {
     "status": "done",
-    "updatedAt": 1795635367000,
+    "updatedAt": 1795640241000,
     "handedAt": 1795830960138,
     "output": ""
    },
    "m-lh0ndx7": {
     "status": "done",
-    "updatedAt": 1795640241000,
+    "updatedAt": 1795630715000,
     "answers": {
      "q-9": 1
     },
@@ -2230,25 +2238,25 @@
    },
    "m-4xzpupy": {
     "status": "done",
-    "updatedAt": 1795630715000,
+    "updatedAt": 1795635589000,
     "handedAt": 1795830965760,
     "output": ""
    },
    "m-ykerz37": {
     "status": "done",
-    "updatedAt": 1795808389000,
+    "updatedAt": 1795813263000,
     "handedAt": 1795830967640,
     "output": ""
    },
    "m-90jjayn": {
     "status": "done",
-    "updatedAt": 1795813263000,
+    "updatedAt": 1795803737000,
     "handedAt": 1795830969701,
     "output": ""
    },
    "m-cjs4yxf": {
     "status": "done",
-    "updatedAt": 1795803737000,
+    "updatedAt": 1795808611000,
     "answers": {
      "q-10": 1
     },
@@ -2265,45 +2273,232 @@
    },
    "m-xybdv47": {
     "status": "done",
-    "updatedAt": 1795808611000,
+    "updatedAt": 1795813485000,
     "handedAt": 1795830975144,
     "output": ""
    },
    "m-4b9dd01": {
     "status": "done",
-    "updatedAt": 1795813485000,
+    "updatedAt": 1795803959000,
     "handedAt": 1795830977051,
     "output": ""
    },
    "m-81q44sf": {
     "status": "done",
-    "updatedAt": 1795803959000,
+    "updatedAt": 1795808833000,
     "handedAt": 1795830979041,
     "output": ""
    },
    "m-cp9185j": {
     "status": "done",
-    "updatedAt": 1795808833000,
+    "updatedAt": 1795813707000,
     "handedAt": 1795830981060,
     "output": ""
    },
    "m-3io6r4m": {
     "status": "done",
-    "updatedAt": 1795813707000,
+    "updatedAt": 1795804181000,
     "output": "My plan: start the lesson with a short story card, then one question that branches, so students who aren't sure get an extra example.",
     "handedAt": 1795830983028
+   },
+   "m-sngrq1t": {
+    "status": "done",
+    "updatedAt": 1795832027086,
+    "handedAt": 1795833799223,
+    "output": ""
+   },
+   "m-owzvczp": {
+    "status": "done",
+    "updatedAt": 1795831417836,
+    "handedAt": 1795833801079,
+    "output": ""
+   },
+   "m-tigz0eu": {
+    "status": "done",
+    "updatedAt": 1795832608586,
+    "handedAt": 1795833803060,
+    "output": ""
+   },
+   "m-bdrncuh": {
+    "status": "done",
+    "updatedAt": 1795831999336,
+    "handedAt": 1795833804923,
+    "output": ""
+   },
+   "m-uhe64bd": {
+    "status": "done",
+    "updatedAt": 1795831390086,
+    "handedAt": 1795833806859,
+    "output": ""
+   },
+   "m-3cvye2y": {
+    "status": "done",
+    "updatedAt": 1795832580836,
+    "handedAt": 1795833808646,
+    "output": ""
+   },
+   "m-5e7mmwu": {
+    "status": "done",
+    "updatedAt": 1795831971586,
+    "answers": {
+     "q-11": 1
+    },
+    "first": {
+     "q-11": true
+    },
+    "dealt": {
+     "q-11": 1
+    },
+    "results": {
+     "q-11": true
+    },
+    "score": 1
+   },
+   "m-e6i7b47": {
+    "status": "done",
+    "updatedAt": 1795833162336,
+    "handedAt": 1795833814039,
+    "output": ""
+   },
+   "m-om0fkk3": {
+    "status": "done",
+    "updatedAt": 1795832553086,
+    "handedAt": 1795833815930,
+    "output": ""
+   },
+   "m-za1d336": {
+    "status": "done",
+    "updatedAt": 1795831943836,
+    "handedAt": 1795833817752,
+    "output": ""
+   },
+   "m-ideud03": {
+    "status": "done",
+    "updatedAt": 1795833134586,
+    "handedAt": 1795833819684,
+    "output": ""
+   },
+   "m-85ntsog": {
+    "status": "done",
+    "updatedAt": 1795832525336,
+    "answers": {
+     "q-12": [
+      "Drag a box around the cards",
+      "Press Make a card group",
+      "Drag a score range's dot to a card",
+      "Try it in Student View"
+     ]
+    },
+    "first": {
+     "q-12": true
+    },
+    "results": {
+     "q-12": true
+    },
+    "score": 1
+   },
+   "m-6ucw0lv": {
+    "status": "done",
+    "updatedAt": 1795831916086,
+    "handedAt": 1795833825356,
+    "output": ""
+   },
+   "m-g6mhcbe": {
+    "status": "done",
+    "updatedAt": 1795833106836,
+    "handedAt": 1795833827197,
+    "output": ""
+   },
+   "m-lnmh1zt": {
+    "status": "done",
+    "updatedAt": 1795832497586,
+    "output": "## My first lesson\n\n**Topic:** \n\n**By the end, students can:** \n\n\n| Card | What students do Fractions with pizza |\n| ---- | ------------------------------------- |\n| 1    |                                       |\n| 2    |                                       |\n| 3    |                                       |\n\n\n**The question that branches, and what each answer deals:** ",
+    "handedAt": 1795833830826
+   },
+   "m-dwg69f0": {
+    "status": "done",
+    "updatedAt": 1795831888336,
+    "handedAt": 1795833832959,
+    "output": ""
+   },
+   "m-tcdl4jd": {
+    "status": "done",
+    "updatedAt": 1795833079086,
+    "output": "Hi, I'm Omar. I teach maths and the first lesson is about fractions.",
+    "handedAt": 1795833834837
+   },
+   "m-yedk9j6": {
+    "status": "done",
+    "updatedAt": 1795832469836,
+    "handedAt": 1795833837325,
+    "output": ""
+   },
+   "m-a7gki7f": {
+    "status": "done",
+    "updatedAt": 1795831860586,
+    "handedAt": 1795833839181,
+    "output": ""
+   },
+   "m-k2mxd74": {
+    "status": "done",
+    "updatedAt": 1795833051336,
+    "handedAt": 1795833840978,
+    "output": ""
+   },
+   "m-0bi7gr8": {
+    "status": "done",
+    "updatedAt": 1795832442086,
+    "answers": {
+     "q-13": 0
+    },
+    "first": {
+     "q-13": true
+    },
+    "dealt": {
+     "q-13": 0
+    },
+    "results": {
+     "q-13": true
+    },
+    "score": 1
+   },
+   "m-06ywa2d": {
+    "status": "done",
+    "updatedAt": 1795831832836,
+    "output": "Fill this in together: everyone in your group writes in the same copy, live.\n\n**Topic:** \n\n\n| Card | Kind                                | What students do |\n| ---- | ----------------------------------- | ---------------- |\n| 1    | Content Fractions with pizza slices |                  |\n| 2    | Question                            |                  |\n| 3    |                                     |                  |\n\n\n**Who builds which card:** ",
+    "handedAt": 1795833847980
+   },
+   "m-tulgh7b": {
+    "status": "done",
+    "updatedAt": 1795833023586,
+    "output": "## How long did this course take you?\n\nAdd a row with your name and about how many minutes you've spent on Questhand 101 so far. Everyone writes in this one table.\n\n\n| Name    | Minutes Lena 45 Fractions with pizza slices |\n| ------- | ------------------------------------------- |\n| Example | 40                                          |\n\n\n",
+    "handedAt": 1795833851700
+   },
+   "m-squ1508": {
+    "status": "done",
+    "updatedAt": 1795832414336,
+    "handedAt": 1795833853815,
+    "output": ""
+   },
+   "m-9zo401p": {
+    "status": "doing",
+    "updatedAt": 1795831805086
+   },
+   "m-q6bt9zi": {
+    "status": "doing",
+    "updatedAt": 1795832995836
    }
   },
   "s-ana": {
    "m-m2g2zh9": {
     "status": "done",
-    "updatedAt": 1795199381000,
+    "updatedAt": 1795201379000,
     "handedAt": 1795831849027,
     "output": ""
    },
    "m-21h70bo": {
     "status": "done",
-    "updatedAt": 1795204255000,
+    "updatedAt": 1795206253000,
     "answers": {
      "q-1": 0
     },
@@ -2320,19 +2515,19 @@
    },
    "m-yuwdl6f": {
     "status": "done",
-    "updatedAt": 1795209129000,
+    "updatedAt": 1795211127000,
     "handedAt": 1795831854402,
     "output": ""
    },
    "m-jtj0mn6": {
     "status": "done",
-    "updatedAt": 1795199603000,
+    "updatedAt": 1795201601000,
     "handedAt": 1795831856207,
     "output": ""
    },
    "m-0cj6cr9": {
     "status": "done",
-    "updatedAt": 1795204477000,
+    "updatedAt": 1795206475000,
     "answers": {
      "q-2": 0
     },
@@ -2349,19 +2544,19 @@
    },
    "m-cjg6wv1": {
     "status": "done",
-    "updatedAt": 1795468551000,
+    "updatedAt": 1795470549000,
     "handedAt": 1795831861684,
     "output": ""
    },
    "m-wrpgx4f": {
     "status": "done",
-    "updatedAt": 1795459025000,
+    "updatedAt": 1795461023000,
     "handedAt": 1795831863500,
     "output": ""
    },
    "m-xhz32yb": {
     "status": "done",
-    "updatedAt": 1795463899000,
+    "updatedAt": 1795465897000,
     "answers": {
      "q-3": 2
     },
@@ -2378,7 +2573,7 @@
    },
    "m-6g7dpej": {
     "status": "done",
-    "updatedAt": 1795468773000,
+    "updatedAt": 1795470771000,
     "dealt": {
      "#score": 0
     },
@@ -2386,7 +2581,7 @@
    },
    "m-6uu5g7p": {
     "status": "done",
-    "updatedAt": 1795459247000,
+    "updatedAt": 1795461245000,
     "answers": {
      "q-4": 1
     },
@@ -2403,7 +2598,7 @@
    },
    "m-lwyavnq": {
     "status": "done",
-    "updatedAt": 1795464121000,
+    "updatedAt": 1795466119000,
     "answers": {
      "q-5": 2
     },
@@ -2420,19 +2615,19 @@
    },
    "m-6sidjy5": {
     "status": "done",
-    "updatedAt": 1795468995000,
+    "updatedAt": 1795470993000,
     "handedAt": 1795831875806,
     "output": ""
    },
    "m-1r438mo": {
     "status": "doing",
-    "updatedAt": 1795459469000,
+    "updatedAt": 1795461467000,
     "output": "I teach Year 8 science. I'd open the water cycle lesson with a short video of a puddle drying up, because it's something they've all seen and it makes them ask where the water went.",
     "handedAt": 1795831877716,
     "reopened": true,
     "ai": {
      "state": "done",
-     "at": 1795459529000,
+     "at": 1795461527000,
      "model": "claude-sonnet-5-5",
      "text": "Works well: You chose an opening that does real work. A puddle drying up is something every Year 8 student has seen, and you say why it matters: it makes them ask \"where the water went.\" That's a hook that starts the thinking before you've explained anything.\n\nTry next: The card asks which card you'd open with, and you've described the content but not named the type. Decide whether your video would sit in a Content card (they watch, then you move on) or lead into a Question card (they predict \"where did the water go?\" before they see the answer). Your reason, getting them to ask, suggests the second might fit well. Say which one you'd pick and why.\n\nYour next step: Write the one question you'd put right after the puddle video, in your own words. Then try it as a Question card in \"Every kind of question,\" where you'll practise picking the right kind of question for it.",
      "watched": false,
@@ -2441,19 +2636,19 @@
     "review": {
      "verdict": "revise",
      "text": "The puddle is a great hook. Before you hand it in again: add the question you'd ask right after the video, so the card leads somewhere.",
-     "at": 1795477469000,
+     "at": 1795479467000,
      "on": "I teach Year 8 science. I'd open the water cycle lesson with a short video of a puddle drying up, because it's something they've all seen and it makes them ask where the water went."
     }
    },
    "m-e6q9aav": {
     "status": "done",
-    "updatedAt": 1795637143000,
+    "updatedAt": 1795639141000,
     "handedAt": 1795831880245,
     "output": ""
    },
    "m-u7y8sea": {
     "status": "done",
-    "updatedAt": 1795642017000,
+    "updatedAt": 1795629615000,
     "answers": {
      "q-6": [
       0,
@@ -2476,7 +2671,7 @@
    },
    "m-fw1a5r8": {
     "status": "done",
-    "updatedAt": 1795632491000,
+    "updatedAt": 1795634489000,
     "answers": {
      "q-7": [
       "Give it some answers",
@@ -2495,7 +2690,7 @@
    },
    "m-iokfr1s": {
     "status": "done",
-    "updatedAt": 1795637365000,
+    "updatedAt": 1795639363000,
     "answers": {
      "q-8": "board"
     },
@@ -2509,13 +2704,13 @@
    },
    "m-u271j08": {
     "status": "done",
-    "updatedAt": 1795642239000,
+    "updatedAt": 1795629837000,
     "handedAt": 1795831892806,
     "output": ""
    },
    "m-lh0ndx7": {
     "status": "done",
-    "updatedAt": 1795632713000,
+    "updatedAt": 1795634711000,
     "answers": {
      "q-9": 2
     },
@@ -2532,13 +2727,13 @@
    },
    "m-ulmtnql": {
     "status": "done",
-    "updatedAt": 1795637587000,
+    "updatedAt": 1795639585000,
     "handedAt": 1795831898394,
     "output": ""
    },
    "m-4xzpupy": {
     "status": "done",
-    "updatedAt": 1795642461000,
+    "updatedAt": 1795630059000,
     "handedAt": 1795831900303,
     "output": ""
    }
@@ -2546,13 +2741,13 @@
   "s-sam": {
    "m-m2g2zh9": {
     "status": "done",
-    "updatedAt": 1795200935000,
+    "updatedAt": 1795202933000,
     "handedAt": 1795831918542,
     "output": ""
    },
    "m-21h70bo": {
     "status": "done",
-    "updatedAt": 1795205809000,
+    "updatedAt": 1795207807000,
     "answers": {
      "q-1": 2
     },
@@ -2569,19 +2764,19 @@
    },
    "m-8om0p6s": {
     "status": "done",
-    "updatedAt": 1795210683000,
+    "updatedAt": 1795198281000,
     "handedAt": 1795831923910,
     "output": ""
    },
    "m-jtj0mn6": {
     "status": "done",
-    "updatedAt": 1795201157000,
+    "updatedAt": 1795203155000,
     "handedAt": 1795831925735,
     "output": ""
    },
    "m-0cj6cr9": {
     "status": "done",
-    "updatedAt": 1795206031000,
+    "updatedAt": 1795208029000,
     "answers": {
      "q-2": 2
     },
@@ -2598,19 +2793,19 @@
    },
    "m-cjg6wv1": {
     "status": "done",
-    "updatedAt": 1795470105000,
+    "updatedAt": 1795457703000,
     "handedAt": 1795831931183,
     "output": ""
    },
    "m-wrpgx4f": {
     "status": "done",
-    "updatedAt": 1795460579000,
+    "updatedAt": 1795462577000,
     "handedAt": 1795831933027,
     "output": ""
    },
    "m-xhz32yb": {
     "status": "done",
-    "updatedAt": 1795465453000,
+    "updatedAt": 1795467451000,
     "answers": {
      "q-3": 1
     },
@@ -2627,7 +2822,7 @@
    },
    "m-6g7dpej": {
     "status": "done",
-    "updatedAt": 1795470327000,
+    "updatedAt": 1795457925000,
     "dealt": {
      "#score": 100
     },
@@ -2635,7 +2830,7 @@
    },
    "m-6uu5g7p": {
     "status": "done",
-    "updatedAt": 1795460801000,
+    "updatedAt": 1795462799000,
     "answers": {
      "q-4": 0
     },
@@ -2652,7 +2847,7 @@
    },
    "m-lwyavnq": {
     "status": "done",
-    "updatedAt": 1795465675000,
+    "updatedAt": 1795467673000,
     "answers": {
      "q-5": 1
     },
@@ -2669,350 +2864,57 @@
    },
    "m-2fen2fw": {
     "status": "done",
-    "updatedAt": 1795470549000,
+    "updatedAt": 1795458147000,
     "handedAt": 1795831945360,
     "output": ""
    },
    "m-1r438mo": {
     "status": "done",
-    "updatedAt": 1795461023000,
+    "updatedAt": 1795463021000,
     "output": "History, Year 10. First card: a photo of a 1920s street with no caption. Students guess the year. It gets them looking closely before I say anything.",
     "handedAt": 1795831947249,
     "ai": {
      "state": "done",
-     "at": 1795461083000,
+     "at": 1795463081000,
      "model": "claude-sonnet-5-5",
      "text": "Works well: You chose a photo with no caption and asked students to guess the year. That's a clear reason, not just a pick: it gets them \"looking closely before I say anything.\" It also gives every student something to say, even if they know little about the 1920s.\n\nTry next: Your plan fits a Content card (the photo) followed by a Question card (the guess). Say which card does which job, and what kind of question the guess is. A year is a typed number, but you might also ask \"What clues made you choose that year?\" Which format suits each? You'll practise this in \"Every kind of question\" next.\n\nYour next step: Write the exact question that goes under your photo, then note what you'd want a student to see or say once they've answered. Having that ready will make building the card in Week 1 much quicker.",
      "watched": false,
      "input": "9pEBgz_6rxNus5rG"
     }
+   },
+   "m-9zo401p": {
+    "status": "doing",
+    "updatedAt": 1795831472086
    }
   },
   "s-lena": {
    "m-m2g2zh9": {
     "status": "done",
-    "updatedAt": 1795206697000,
+    "updatedAt": 1795199169000,
     "handedAt": 1795831964931,
     "output": ""
    },
    "m-21h70bo": {
     "status": "done",
-    "updatedAt": 1795211571000,
-    "answers": {
-     "q-1": 1
-    },
-    "first": {
-     "q-1": true
-    },
-    "dealt": {
-     "q-1": 1
-    },
-    "results": {
-     "q-1": true
-    },
-    "score": 1
-   },
-   "m-jtj0mn6": {
-    "status": "done",
-    "updatedAt": 1795202045000,
-    "handedAt": 1795831970248,
-    "output": ""
-   },
-   "m-0cj6cr9": {
-    "status": "done",
-    "updatedAt": 1795206919000,
-    "answers": {
-     "q-2": 2
-    },
-    "first": {
-     "q-2": true
-    },
-    "dealt": {
-     "q-2": 2
-    },
-    "results": {
-     "q-2": true
-    },
-    "score": 1
-   },
-   "m-cjg6wv1": {
-    "status": "done",
-    "updatedAt": 1795470993000,
-    "handedAt": 1795831975522,
-    "output": ""
-   },
-   "m-wrpgx4f": {
-    "status": "done",
-    "updatedAt": 1795461467000,
-    "handedAt": 1795831977436,
-    "output": ""
-   },
-   "m-xhz32yb": {
-    "status": "done",
-    "updatedAt": 1795466341000,
-    "answers": {
-     "q-3": 1
-    },
-    "first": {
-     "q-3": true
-    },
-    "dealt": {
-     "q-3": 1
-    },
-    "results": {
-     "q-3": true
-    },
-    "score": 1
-   },
-   "m-6g7dpej": {
-    "status": "done",
-    "updatedAt": 1795456815000,
-    "dealt": {
-     "#score": 100
-    },
-    "score": 3
-   },
-   "m-6uu5g7p": {
-    "status": "done",
-    "updatedAt": 1795461689000,
-    "answers": {
-     "q-4": 0
-    },
-    "first": {
-     "q-4": true
-    },
-    "dealt": {
-     "q-4": 0
-    },
-    "results": {
-     "q-4": true
-    },
-    "score": 1
-   },
-   "m-lwyavnq": {
-    "status": "done",
-    "updatedAt": 1795466563000,
-    "answers": {
-     "q-5": 1
-    },
-    "first": {
-     "q-5": true
-    },
-    "dealt": {
-     "q-5": 1
-    },
-    "results": {
-     "q-5": true
-    },
-    "score": 1
-   },
-   "m-2fen2fw": {
-    "status": "done",
-    "updatedAt": 1795457037000,
-    "handedAt": 1795831989614,
-    "output": ""
-   },
-   "m-1r438mo": {
-    "status": "done",
-    "updatedAt": 1795461911000,
-    "output": "For my Spanish class I'd start with a 30-second voice note of me ordering coffee, then a question: what did I order? It's real listening from the first minute.",
-    "handedAt": 1795831991504,
-    "ai": {
-     "state": "done",
-     "at": 1795461971000,
-     "model": "claude-sonnet-5-5",
-     "text": "Works well: You've picked a plan that fits your lesson. A 30-second voice note of you ordering coffee, followed by \"what did I order?\", gives students something real to listen to straight away. Your line \"real listening from the first minute\" says exactly why it works, and it's a clear reason for opening with that card.\n\nTry next: Tell us which card is which. It sounds like the voice note is a Content card and the \"what did I order?\" part is a Question card. Say that in your plan so it's clear you've matched each idea to a card. Then think about what a student sees if they get the answer wrong. Would they hear the note again, or move on? You don't have to build that yet, just have an idea.\n\nYour next step: Write down one thing you'd want a student to hear in the voice note, such as the drink, the size or the price. That will help you choose the right kind of question in \"Every kind of question,\" coming up next in Week 1.",
-     "watched": false,
-     "input": "fx-XQoIKpMCAZDaD"
-    }
-   },
-   "m-e6q9aav": {
-    "status": "done",
-    "updatedAt": 1795639585000,
-    "handedAt": 1795831993963,
-    "output": ""
-   },
-   "m-u7y8sea": {
-    "status": "done",
-    "updatedAt": 1795630059000,
-    "answers": {
-     "q-6": [
-      0,
-      1,
-      2
-     ]
-    },
-    "first": {
-     "q-6": true
-    },
-    "dealt": {
-     "q-6": [
-      0,
-      1,
-      2
-     ]
-    },
-    "results": {
-     "q-6": true
-    },
-    "score": 1
-   },
-   "m-fw1a5r8": {
-    "status": "done",
-    "updatedAt": 1795634933000,
-    "answers": {
-     "q-7": [
-      "Make a Question card",
-      "Give it some answers",
-      "Drag an answer's dot to a card",
-      "Try it in Student View"
-     ]
-    },
-    "first": {
-     "q-7": true
-    },
-    "results": {
-     "q-7": true
-    },
-    "score": 1
-   },
-   "m-iokfr1s": {
-    "status": "done",
-    "updatedAt": 1795639807000,
-    "answers": {
-     "q-8": "map"
-    },
-    "first": {
-     "q-8": true
-    },
-    "results": {
-     "q-8": true
-    },
-    "score": 1
-   },
-   "m-u271j08": {
-    "status": "done",
-    "updatedAt": 1795630281000,
-    "handedAt": 1795832007007,
-    "output": ""
-   },
-   "m-lh0ndx7": {
-    "status": "done",
-    "updatedAt": 1795635155000,
-    "answers": {
-     "q-9": 0
-    },
-    "first": {
-     "q-9": true
-    },
-    "dealt": {
-     "q-9": 0
-    },
-    "results": {
-     "q-9": true
-    },
-    "score": 1
-   },
-   "m-4xzpupy": {
-    "status": "done",
-    "updatedAt": 1795640029000,
-    "handedAt": 1795832012463,
-    "output": ""
-   },
-   "m-ykerz37": {
-    "status": "done",
-    "updatedAt": 1795803303000,
-    "handedAt": 1795832014300,
-    "output": ""
-   },
-   "m-90jjayn": {
-    "status": "done",
-    "updatedAt": 1795808177000,
-    "handedAt": 1795832016203,
-    "output": ""
-   },
-   "m-cjs4yxf": {
-    "status": "done",
-    "updatedAt": 1795813051000,
-    "answers": {
-     "q-10": 1
-    },
-    "first": {
-     "q-10": true
-    },
-    "dealt": {
-     "q-10": 1
-    },
-    "results": {
-     "q-10": true
-    },
-    "score": 1
-   },
-   "m-xybdv47": {
-    "status": "done",
-    "updatedAt": 1795803525000,
-    "handedAt": 1795832021494,
-    "output": ""
-   },
-   "m-4b9dd01": {
-    "status": "done",
-    "updatedAt": 1795808399000,
-    "handedAt": 1795832023409,
-    "output": ""
-   },
-   "m-81q44sf": {
-    "status": "done",
-    "updatedAt": 1795813273000,
-    "handedAt": 1795832025226,
-    "output": ""
-   },
-   "m-cp9185j": {
-    "status": "done",
-    "updatedAt": 1795803747000,
-    "handedAt": 1795832027165,
-    "output": ""
-   },
-   "m-3io6r4m": {
-    "status": "done",
-    "updatedAt": 1795808621000,
-    "output": "Question: Which word means 'tomorrow'? A) mañana B) ayer. A -> next card, a short dialogue. B -> a card with a calendar picture showing ayer / hoy / mañana.",
-    "handedAt": 1795832029093
-   }
-  },
-  "s-kai": {
-   "m-m2g2zh9": {
-    "status": "done",
-    "updatedAt": 1795208695000,
-    "handedAt": 1795832035805,
-    "output": ""
-   },
-   "m-21h70bo": {
-    "status": "done",
-    "updatedAt": 1795199169000,
-    "answers": {
-     "q-1": 0
-    },
-    "first": {
-     "q-1": true
-    },
-    "dealt": {
-     "q-1": 0
-    },
-    "results": {
-     "q-1": true
-    },
-    "score": 1
-   },
-   "m-yuwdl6f": {
-    "status": "done",
     "updatedAt": 1795204043000,
-    "handedAt": 1795832041156,
-    "output": ""
+    "answers": {
+     "q-1": 1
+    },
+    "first": {
+     "q-1": true
+    },
+    "dealt": {
+     "q-1": 1
+    },
+    "results": {
+     "q-1": true
+    },
+    "score": 1
    },
    "m-jtj0mn6": {
     "status": "done",
     "updatedAt": 1795208917000,
-    "handedAt": 1795832043098,
+    "handedAt": 1795831970248,
     "output": ""
    },
    "m-0cj6cr9": {
@@ -3031,10 +2933,730 @@
      "q-2": true
     },
     "score": 1
+   },
+   "m-cjg6wv1": {
+    "status": "done",
+    "updatedAt": 1795463465000,
+    "handedAt": 1795831975522,
+    "output": ""
+   },
+   "m-wrpgx4f": {
+    "status": "done",
+    "updatedAt": 1795468339000,
+    "handedAt": 1795831977436,
+    "output": ""
+   },
+   "m-xhz32yb": {
+    "status": "done",
+    "updatedAt": 1795458813000,
+    "answers": {
+     "q-3": 1
+    },
+    "first": {
+     "q-3": true
+    },
+    "dealt": {
+     "q-3": 1
+    },
+    "results": {
+     "q-3": true
+    },
+    "score": 1
+   },
+   "m-6g7dpej": {
+    "status": "done",
+    "updatedAt": 1795463687000,
+    "dealt": {
+     "#score": 100
+    },
+    "score": 3
+   },
+   "m-6uu5g7p": {
+    "status": "done",
+    "updatedAt": 1795468561000,
+    "answers": {
+     "q-4": 0
+    },
+    "first": {
+     "q-4": true
+    },
+    "dealt": {
+     "q-4": 0
+    },
+    "results": {
+     "q-4": true
+    },
+    "score": 1
+   },
+   "m-lwyavnq": {
+    "status": "done",
+    "updatedAt": 1795459035000,
+    "answers": {
+     "q-5": 1
+    },
+    "first": {
+     "q-5": true
+    },
+    "dealt": {
+     "q-5": 1
+    },
+    "results": {
+     "q-5": true
+    },
+    "score": 1
+   },
+   "m-2fen2fw": {
+    "status": "done",
+    "updatedAt": 1795463909000,
+    "handedAt": 1795831989614,
+    "output": ""
+   },
+   "m-1r438mo": {
+    "status": "done",
+    "updatedAt": 1795468783000,
+    "output": "For my Spanish class I'd start with a 30-second voice note of me ordering coffee, then a question: what did I order? It's real listening from the first minute.",
+    "handedAt": 1795831991504,
+    "ai": {
+     "state": "done",
+     "at": 1795468843000,
+     "model": "claude-sonnet-5-5",
+     "text": "Works well: You've picked a plan that fits your lesson. A 30-second voice note of you ordering coffee, followed by \"what did I order?\", gives students something real to listen to straight away. Your line \"real listening from the first minute\" says exactly why it works, and it's a clear reason for opening with that card.\n\nTry next: Tell us which card is which. It sounds like the voice note is a Content card and the \"what did I order?\" part is a Question card. Say that in your plan so it's clear you've matched each idea to a card. Then think about what a student sees if they get the answer wrong. Would they hear the note again, or move on? You don't have to build that yet, just have an idea.\n\nYour next step: Write down one thing you'd want a student to hear in the voice note, such as the drink, the size or the price. That will help you choose the right kind of question in \"Every kind of question,\" coming up next in Week 1.",
+     "watched": false,
+     "input": "fx-XQoIKpMCAZDaD"
+    }
+   },
+   "m-e6q9aav": {
+    "status": "done",
+    "updatedAt": 1795632057000,
+    "handedAt": 1795831993963,
+    "output": ""
+   },
+   "m-u7y8sea": {
+    "status": "done",
+    "updatedAt": 1795636931000,
+    "answers": {
+     "q-6": [
+      0,
+      1,
+      2
+     ]
+    },
+    "first": {
+     "q-6": true
+    },
+    "dealt": {
+     "q-6": [
+      0,
+      1,
+      2
+     ]
+    },
+    "results": {
+     "q-6": true
+    },
+    "score": 1
+   },
+   "m-fw1a5r8": {
+    "status": "done",
+    "updatedAt": 1795641805000,
+    "answers": {
+     "q-7": [
+      "Make a Question card",
+      "Give it some answers",
+      "Drag an answer's dot to a card",
+      "Try it in Student View"
+     ]
+    },
+    "first": {
+     "q-7": true
+    },
+    "results": {
+     "q-7": true
+    },
+    "score": 1
+   },
+   "m-iokfr1s": {
+    "status": "done",
+    "updatedAt": 1795632279000,
+    "answers": {
+     "q-8": "map"
+    },
+    "first": {
+     "q-8": true
+    },
+    "results": {
+     "q-8": true
+    },
+    "score": 1
+   },
+   "m-u271j08": {
+    "status": "done",
+    "updatedAt": 1795637153000,
+    "handedAt": 1795832007007,
+    "output": ""
+   },
+   "m-lh0ndx7": {
+    "status": "done",
+    "updatedAt": 1795642027000,
+    "answers": {
+     "q-9": 0
+    },
+    "first": {
+     "q-9": true
+    },
+    "dealt": {
+     "q-9": 0
+    },
+    "results": {
+     "q-9": true
+    },
+    "score": 1
+   },
+   "m-4xzpupy": {
+    "status": "done",
+    "updatedAt": 1795632501000,
+    "handedAt": 1795832012463,
+    "output": ""
+   },
+   "m-ykerz37": {
+    "status": "done",
+    "updatedAt": 1795810175000,
+    "handedAt": 1795832014300,
+    "output": ""
+   },
+   "m-90jjayn": {
+    "status": "done",
+    "updatedAt": 1795815049000,
+    "handedAt": 1795832016203,
+    "output": ""
+   },
+   "m-cjs4yxf": {
+    "status": "done",
+    "updatedAt": 1795805523000,
+    "answers": {
+     "q-10": 1
+    },
+    "first": {
+     "q-10": true
+    },
+    "dealt": {
+     "q-10": 1
+    },
+    "results": {
+     "q-10": true
+    },
+    "score": 1
+   },
+   "m-xybdv47": {
+    "status": "done",
+    "updatedAt": 1795810397000,
+    "handedAt": 1795832021494,
+    "output": ""
+   },
+   "m-4b9dd01": {
+    "status": "done",
+    "updatedAt": 1795815271000,
+    "handedAt": 1795832023409,
+    "output": ""
+   },
+   "m-81q44sf": {
+    "status": "done",
+    "updatedAt": 1795805745000,
+    "handedAt": 1795832025226,
+    "output": ""
+   },
+   "m-cp9185j": {
+    "status": "done",
+    "updatedAt": 1795810619000,
+    "handedAt": 1795832027165,
+    "output": ""
+   },
+   "m-3io6r4m": {
+    "status": "done",
+    "updatedAt": 1795815493000,
+    "output": "Question: Which word means 'tomorrow'? A) mañana B) ayer. A -> next card, a short dialogue. B -> a card with a calendar picture showing ayer / hoy / mañana.",
+    "handedAt": 1795832029093
+   },
+   "m-sngrq1t": {
+    "status": "done",
+    "updatedAt": 1795832413086,
+    "handedAt": 1795833629750,
+    "output": ""
+   },
+   "m-owzvczp": {
+    "status": "done",
+    "updatedAt": 1795831803836,
+    "handedAt": 1795833631680,
+    "output": ""
+   },
+   "m-tigz0eu": {
+    "status": "done",
+    "updatedAt": 1795832994586,
+    "handedAt": 1795833633716,
+    "output": ""
+   },
+   "m-bdrncuh": {
+    "status": "done",
+    "updatedAt": 1795832385336,
+    "handedAt": 1795833635756,
+    "output": ""
+   },
+   "m-uhe64bd": {
+    "status": "done",
+    "updatedAt": 1795831776086,
+    "handedAt": 1795833637663,
+    "output": ""
+   },
+   "m-3cvye2y": {
+    "status": "done",
+    "updatedAt": 1795832966836,
+    "handedAt": 1795833639658,
+    "output": ""
+   },
+   "m-5e7mmwu": {
+    "status": "done",
+    "updatedAt": 1795832357586,
+    "answers": {
+     "q-11": 1
+    },
+    "first": {
+     "q-11": true
+    },
+    "dealt": {
+     "q-11": 1
+    },
+    "results": {
+     "q-11": true
+    },
+    "score": 1
+   },
+   "m-e6i7b47": {
+    "status": "done",
+    "updatedAt": 1795831748336,
+    "handedAt": 1795833645121,
+    "output": ""
+   },
+   "m-om0fkk3": {
+    "status": "done",
+    "updatedAt": 1795832939086,
+    "handedAt": 1795833647018,
+    "output": ""
+   },
+   "m-za1d336": {
+    "status": "done",
+    "updatedAt": 1795832329836,
+    "handedAt": 1795833649007,
+    "output": ""
+   },
+   "m-ideud03": {
+    "status": "done",
+    "updatedAt": 1795831720586,
+    "handedAt": 1795833650989,
+    "output": ""
+   },
+   "m-85ntsog": {
+    "status": "done",
+    "updatedAt": 1795832911336,
+    "answers": {
+     "q-12": [
+      "Drag a box around the cards",
+      "Press Make a card group",
+      "Drag a score range's dot to a card",
+      "Try it in Student View"
+     ]
+    },
+    "first": {
+     "q-12": true
+    },
+    "results": {
+     "q-12": true
+    },
+    "score": 1
+   },
+   "m-6ucw0lv": {
+    "status": "done",
+    "updatedAt": 1795832302086,
+    "handedAt": 1795833656837,
+    "output": ""
+   },
+   "m-g6mhcbe": {
+    "status": "done",
+    "updatedAt": 1795831692836,
+    "handedAt": 1795833658702,
+    "output": ""
+   },
+   "m-lnmh1zt": {
+    "status": "done",
+    "updatedAt": 1795832883586,
+    "output": "## My first lesson\n\n**Topic:** Ordering at a café\n\n**By the end, students can:** order a drink and a snack in Spanish, and understand the price.\n\n| Card | What students do |\n| --- | --- |\n| 1 | Listen to a 30-second café dialogue |\n| 2 | Answer: what did the customer order? |\n| 3 | Record their own order |\n\n**The question that branches, and what each answer deals:** Card 2. The right answer goes on to card 3; a wrong one deals a card with the dialogue written out.",
+    "handedAt": 1795833662333
+   },
+   "m-dwg69f0": {
+    "status": "done",
+    "updatedAt": 1795832274336,
+    "handedAt": 1795833664596,
+    "output": ""
+   },
+   "m-tcdl4jd": {
+    "status": "done",
+    "updatedAt": 1795831665086,
+    "output": "Hola! I'm Lena. I teach Spanish to Year 9, and our first lesson is ordering food at a café.",
+    "handedAt": 1795833666577
+   },
+   "m-yedk9j6": {
+    "status": "done",
+    "updatedAt": 1795832855836,
+    "handedAt": 1795833669060,
+    "output": ""
+   },
+   "m-a7gki7f": {
+    "status": "done",
+    "updatedAt": 1795832246586,
+    "handedAt": 1795833671061,
+    "output": ""
+   },
+   "m-k2mxd74": {
+    "status": "done",
+    "updatedAt": 1795831637336,
+    "handedAt": 1795833672975,
+    "output": ""
+   },
+   "m-0bi7gr8": {
+    "status": "done",
+    "updatedAt": 1795832828086,
+    "answers": {
+     "q-13": 2
+    },
+    "first": {
+     "q-13": true
+    },
+    "dealt": {
+     "q-13": 2
+    },
+    "results": {
+     "q-13": true
+    },
+    "score": 1
+   },
+   "m-06ywa2d": {
+    "status": "done",
+    "updatedAt": 1795832218836,
+    "output": "Fill this in together: everyone in your group writes in the same copy, live.\n\n**Topic:** Fractions of a pizza\n\n| Card | Kind | What students do |\n| --- | --- | --- |\n| 1 | Content | Watch a pizza cut into quarters |\n| 2 | Question | Which is bigger: 1/3 or 1/4? |\n| 3 | Content | For a wrong answer: both pizzas side by side |\n\n**Who builds which card:** Lena 1, Omar 2 and 3.",
+    "handedAt": 1795833708812
+   },
+   "m-dmk06py": {
+    "status": "done",
+    "updatedAt": 1795831609586,
+    "handedAt": 1795833711035,
+    "output": ""
+   },
+   "m-tulgh7b": {
+    "status": "done",
+    "updatedAt": 1795832800336,
+    "output": "## How long did this course take you?\n\nAdd a row with your name and about how many minutes you've spent on Questhand 101 so far. Everyone writes in this one table.\n\n| Name | Minutes |\n| --- | --- |\n| Example | 40 |\n| Lena | 45 |",
+    "handedAt": 1795833714495
+   },
+   "m-squ1508": {
+    "status": "done",
+    "updatedAt": 1795832191086,
+    "handedAt": 1795833716706,
+    "output": ""
+   },
+   "m-9zo401p": {
+    "status": "done",
+    "updatedAt": 1795831581836
+   },
+   "m-q6bt9zi": {
+    "status": "doing",
+    "updatedAt": 1795832772586
+   },
+   "m-mibclyr": {
+    "status": "done",
+    "updatedAt": 1795832163336,
+    "handedAt": 1795833722449,
+    "output": ""
+   },
+   "m-qq27rxc": {
+    "status": "done",
+    "updatedAt": 1795831554086,
+    "handedAt": 1795833724351,
+    "output": ""
+   },
+   "m-9n1inc5": {
+    "status": "done",
+    "updatedAt": 1795832744836,
+    "handedAt": 1795833726257,
+    "output": ""
+   },
+   "m-19f3ot7": {
+    "status": "done",
+    "updatedAt": 1795832135586,
+    "handedAt": 1795833728215,
+    "output": ""
+   },
+   "m-mp0ao67": {
+    "status": "done",
+    "updatedAt": 1795831526336,
+    "handedAt": 1795833730139,
+    "output": ""
+   },
+   "m-hj7wdr0": {
+    "status": "done",
+    "updatedAt": 1795832717086,
+    "handedAt": 1795833732051,
+    "output": ""
+   },
+   "m-43p896z": {
+    "status": "done",
+    "updatedAt": 1795832107836,
+    "handedAt": 1795833734013,
+    "output": ""
+   },
+   "m-bfxddzc": {
+    "status": "done",
+    "updatedAt": 1795831498586,
+    "handedAt": 1795833736030,
+    "output": ""
+   },
+   "m-ciwkbm1": {
+    "status": "doing",
+    "updatedAt": 1795832689336
+   },
+   "m-0hsuet3": {
+    "status": "done",
+    "updatedAt": 1795832080086,
+    "answers": {
+     "q-15": 1
+    },
+    "first": {
+     "q-15": true
+    },
+    "dealt": {
+     "q-15": 1
+    },
+    "results": {
+     "q-15": true
+    },
+    "score": 1
+   },
+   "m-nj20jq1": {
+    "status": "done",
+    "updatedAt": 1795831470836,
+    "dealt": {
+     "#score": 100
+    },
+    "score": 5
+   },
+   "m-tgtashm": {
+    "status": "done",
+    "updatedAt": 1795832661586,
+    "answers": {
+     "q-16": 1
+    },
+    "first": {
+     "q-16": true
+    },
+    "dealt": {
+     "q-16": 1
+    },
+    "results": {
+     "q-16": true
+    },
+    "score": 1
+   },
+   "m-eqb814m": {
+    "status": "done",
+    "updatedAt": 1795832052336,
+    "answers": {
+     "q-17": 2
+    },
+    "first": {
+     "q-17": true
+    },
+    "dealt": {
+     "q-17": 2
+    },
+    "results": {
+     "q-17": true
+    },
+    "score": 1
+   },
+   "m-6f0zm77": {
+    "status": "done",
+    "updatedAt": 1795831443086,
+    "answers": {
+     "q-18": 0
+    },
+    "first": {
+     "q-18": true
+    },
+    "dealt": {
+     "q-18": 0
+    },
+    "results": {
+     "q-18": true
+    },
+    "score": 1
+   },
+   "m-n7089zm": {
+    "status": "done",
+    "updatedAt": 1795832633836,
+    "answers": {
+     "q-19": 2
+    },
+    "first": {
+     "q-19": true
+    },
+    "dealt": {
+     "q-19": 2
+    },
+    "results": {
+     "q-19": true
+    },
+    "score": 1
+   },
+   "m-rxmn65t": {
+    "status": "done",
+    "updatedAt": 1795832024586,
+    "handedAt": 1795833756960,
+    "output": ""
+   },
+   "m-vsr9sxx": {
+    "status": "done",
+    "updatedAt": 1795831415336,
+    "output": "A listening lesson: a café voice note, one question, and a branch for students who miss the order.",
+    "handedAt": 1795833758880,
+    "ai": {
+     "state": "done",
+     "at": 1795831475336,
+     "model": "claude-sonnet-5-5",
+     "text": "Works well: You've named both parts the card asks for: a listening lesson built around a café voice note, and a branch for students who miss the order. The café setting is a good pick because ordering food is a real situation with a clear right answer, so it's easy to tell when someone has missed something.\n\nTry next: Say what happens on the branch. For example, do students hear the voice note again more slowly, or see the order written out first? One short phrase would make your plan much easier to start building. You could also think about what the single question will be, since the branch depends on it. A question like \"What did the customer order?\" would make it obvious who goes down the branch.\n\nYour next step: Write out the question and the two paths in one line each: \"If the student answers correctly, they go to…\" and \"If they miss the order, they go to…\". Since you're just starting out, keeping it that small is a good place to begin.",
+     "watched": false,
+     "input": "CeOqGkIcQLJd1uo1"
+    }
+   },
+   "m-qzd1q7o": {
+    "status": "done",
+    "updatedAt": 1795663586586,
+    "handedAt": 1795834131021,
+    "output": ""
+   },
+   "m-qx8jx0g": {
+    "status": "done",
+    "updatedAt": 1795668460586,
+    "handedAt": 1795834132826,
+    "output": ""
+   },
+   "m-hvz0taj": {
+    "status": "done",
+    "updatedAt": 1795673334586,
+    "handedAt": 1795834134807,
+    "output": ""
+   },
+   "m-d8ij0bl": {
+    "status": "done",
+    "updatedAt": 1795663808586,
+    "handedAt": 1795834136736,
+    "output": ""
+   }
+  },
+  "s-kai": {
+   "m-m2g2zh9": {
+    "status": "done",
+    "updatedAt": 1795204719000,
+    "handedAt": 1795832035805,
+    "output": ""
+   },
+   "m-21h70bo": {
+    "status": "done",
+    "updatedAt": 1795209593000,
+    "answers": {
+     "q-1": 0
+    },
+    "first": {
+     "q-1": true
+    },
+    "dealt": {
+     "q-1": 0
+    },
+    "results": {
+     "q-1": true
+    },
+    "score": 1
+   },
+   "m-yuwdl6f": {
+    "status": "done",
+    "updatedAt": 1795200067000,
+    "handedAt": 1795832041156,
+    "output": ""
+   },
+   "m-jtj0mn6": {
+    "status": "done",
+    "updatedAt": 1795204941000,
+    "handedAt": 1795832043098,
+    "output": ""
+   },
+   "m-0cj6cr9": {
+    "status": "done",
+    "updatedAt": 1795209815000,
+    "answers": {
+     "q-2": 2
+    },
+    "first": {
+     "q-2": true
+    },
+    "dealt": {
+     "q-2": 2
+    },
+    "results": {
+     "q-2": true
+    },
+    "score": 1
    }
   }
  },
- "posts": [],
+ "posts": [
+  {
+   "id": "p-jgjx8nz",
+   "moduleId": "m-9zo401p",
+   "studentId": "s-lena",
+   "text": "Hola! I'm Lena, I teach Spanish to Year 9 in Hamburg. I want my listening lessons to branch: an easy clip for some, a fast one for others.",
+   "work": [],
+   "createdAt": 1795832519086
+  },
+  {
+   "id": "p-cz1fx25",
+   "moduleId": "m-9zo401p",
+   "studentId": "s-omar",
+   "text": "Omar here, maths in Year 5 and 6. Fractions every spring. Looking forward to quiz groups that deal by score.",
+   "work": [],
+   "createdAt": 1795831909836,
+   "comments": [
+    {
+     "id": "c-dwe1g9h",
+     "from": "s-lena",
+     "text": "A card that deals pizza slices when they get it wrong? I'd take that class!",
+     "at": 1795834309836
+    }
+   ]
+  },
+  {
+   "id": "p-76ldxas",
+   "moduleId": "m-9zo401p",
+   "studentId": "s-maya",
+   "text": "Hi all, Maya. Data analyst turned part-time teacher: I run an evening course on spreadsheets for adults.",
+   "work": [],
+   "createdAt": 1795833100586
+  },
+  {
+   "id": "p-7jyqp6r",
+   "moduleId": "m-9zo401p",
+   "studentId": "s-sam",
+   "text": "Sam, history, Year 10. I'm here for the photos-without-captions trick.",
+   "work": [],
+   "createdAt": 1795832491336
+  }
+ ],
  "toolLog": [],
  "events": [
   {
@@ -3043,7 +3665,7 @@
    "moduleId": "m-m2g2zh9",
    "text": "Finished “A course is a deck of cards”",
    "id": "315gg3g6",
-   "at": 1795204265000
+   "at": 1795200289000
   },
   {
    "kind": "done",
@@ -3051,7 +3673,7 @@
    "moduleId": "m-21h70bo",
    "text": "Finished “Where are you starting from?”",
    "id": "0ii2bw6z",
-   "at": 1795209139000
+   "at": 1795205163000
   },
   {
    "kind": "done",
@@ -3059,7 +3681,7 @@
    "moduleId": "m-yuwdl6f",
    "text": "Finished “New here? Two words are enough”",
    "id": "n3l1m8rf",
-   "at": 1795199613000
+   "at": 1795210037000
   },
   {
    "kind": "done",
@@ -3067,7 +3689,7 @@
    "moduleId": "m-jtj0mn6",
    "text": "Finished “What your students see”",
    "id": "te83g6lg",
-   "at": 1795204487000
+   "at": 1795200511000
   },
   {
    "kind": "wrong",
@@ -3075,7 +3697,7 @@
    "moduleId": "m-0cj6cr9",
    "text": "Q1: chose “Settings”; answer is “The Map”",
    "id": "udz88mkd",
-   "at": 1795209361000
+   "at": 1795205385000
   },
   {
    "kind": "done",
@@ -3083,7 +3705,7 @@
    "moduleId": "m-0cj6cr9",
    "text": "Finished “Quick check”",
    "id": "vxdgg7r1",
-   "at": 1795199835000
+   "at": 1795210259000
   },
   {
    "kind": "done",
@@ -3091,7 +3713,7 @@
    "moduleId": "m-cjg6wv1",
    "text": "Finished “Two kinds of card”",
    "id": "fb48wt12",
-   "at": 1795463909000
+   "at": 1795459933000
   },
   {
    "kind": "done",
@@ -3099,7 +3721,7 @@
    "moduleId": "m-wrpgx4f",
    "text": "Finished “Make a card”",
    "id": "chyfbtwv",
-   "at": 1795468783000
+   "at": 1795464807000
   },
   {
    "kind": "wrong",
@@ -3107,7 +3729,7 @@
    "moduleId": "m-xhz32yb",
    "text": "Q1: chose “A poll”; answer is “A Content card”",
    "id": "0tm4488u",
-   "at": 1795459257000
+   "at": 1795469681000
   },
   {
    "kind": "done",
@@ -3115,7 +3737,7 @@
    "moduleId": "m-xhz32yb",
    "text": "Finished “Card quiz 1”",
    "id": "1x2ioodi",
-   "at": 1795464131000
+   "at": 1795460155000
   },
   {
    "kind": "done",
@@ -3123,7 +3745,7 @@
    "moduleId": "m-6uu5g7p",
    "text": "Finished “Card quiz 2”",
    "id": "eac0qmkx",
-   "at": 1795469005000
+   "at": 1795465029000
   },
   {
    "kind": "wrong",
@@ -3131,7 +3753,7 @@
    "moduleId": "m-lwyavnq",
    "text": "Q1: chose “Content”; answer is “Open answer”",
    "id": "c75epvta",
-   "at": 1795459479000
+   "at": 1795469903000
   },
   {
    "kind": "done",
@@ -3139,7 +3761,7 @@
    "moduleId": "m-lwyavnq",
    "text": "Finished “Card quiz 3”",
    "id": "6vfqjab4",
-   "at": 1795464353000
+   "at": 1795460377000
   },
   {
    "kind": "done",
@@ -3147,7 +3769,7 @@
    "moduleId": "m-6sidjy5",
    "text": "Finished “The card kinds, side by side”",
    "id": "7zsaot0n",
-   "at": 1795469227000
+   "at": 1795465251000
   },
   {
    "kind": "done",
@@ -3155,7 +3777,7 @@
    "moduleId": "m-1r438mo",
    "text": "Finished “Your turn: plan a card”",
    "id": "per692ft",
-   "at": 1795459701000
+   "at": 1795470125000
   },
   {
    "kind": "done",
@@ -3163,7 +3785,7 @@
    "moduleId": "m-e6q9aav",
    "text": "Finished “Five ways to ask”",
    "id": "3ji0qt7t",
-   "at": 1795637375000
+   "at": 1795633399000
   },
   {
    "kind": "wrong",
@@ -3171,7 +3793,7 @@
    "moduleId": "m-fw1a5r8",
    "text": "Q1: not quite (order)",
    "id": "gj7j2nsm",
-   "at": 1795642249000
+   "at": 1795638273000
   },
   {
    "kind": "done",
@@ -3179,7 +3801,7 @@
    "moduleId": "m-fw1a5r8",
    "text": "Finished “Put them in order”",
    "id": "ib0i2ut7",
-   "at": 1795632723000
+   "at": 1795643147000
   },
   {
    "kind": "done",
@@ -3187,7 +3809,7 @@
    "moduleId": "m-u271j08",
    "text": "Finished “Math in a card”",
    "id": "z0gsob76",
-   "at": 1795637597000
+   "at": 1795633621000
   },
   {
    "kind": "done",
@@ -3195,7 +3817,7 @@
    "moduleId": "m-lh0ndx7",
    "text": "Finished “How is it going?”",
    "id": "u1ii1ym4",
-   "at": 1795642471000
+   "at": 1795638495000
   },
   {
    "kind": "done",
@@ -3203,7 +3825,7 @@
    "moduleId": "m-4xzpupy",
    "text": "Finished “Several questions, one card group”",
    "id": "ad9e4stc",
-   "at": 1795632945000
+   "at": 1795643369000
   },
   {
    "kind": "done",
@@ -3211,7 +3833,7 @@
    "moduleId": "m-m2g2zh9",
    "text": "Finished “A course is a deck of cards”",
    "id": "olu7at2t",
-   "at": 1795205819000
+   "at": 1795201843000
   },
   {
    "kind": "done",
@@ -3219,7 +3841,7 @@
    "moduleId": "m-21h70bo",
    "text": "Finished “Where are you starting from?”",
    "id": "1bjqrvwq",
-   "at": 1795210693000
+   "at": 1795206717000
   },
   {
    "kind": "done",
@@ -3227,7 +3849,7 @@
    "moduleId": "m-jtj0mn6",
    "text": "Finished “What your students see”",
    "id": "pzwfb5fi",
-   "at": 1795201167000
+   "at": 1795211591000
   },
   {
    "kind": "done",
@@ -3235,7 +3857,7 @@
    "moduleId": "m-0cj6cr9",
    "text": "Finished “Quick check”",
    "id": "xbhozfph",
-   "at": 1795206041000
+   "at": 1795202065000
   },
   {
    "kind": "done",
@@ -3243,7 +3865,7 @@
    "moduleId": "m-cjg6wv1",
    "text": "Finished “Two kinds of card”",
    "id": "vvn46onu",
-   "at": 1795470115000
+   "at": 1795466139000
   },
   {
    "kind": "done",
@@ -3251,7 +3873,7 @@
    "moduleId": "m-wrpgx4f",
    "text": "Finished “Make a card”",
    "id": "01t00z7s",
-   "at": 1795460589000
+   "at": 1795471013000
   },
   {
    "kind": "done",
@@ -3259,7 +3881,7 @@
    "moduleId": "m-xhz32yb",
    "text": "Finished “Card quiz 1”",
    "id": "8msvvtzx",
-   "at": 1795465463000
+   "at": 1795461487000
   },
   {
    "kind": "done",
@@ -3267,7 +3889,7 @@
    "moduleId": "m-6uu5g7p",
    "text": "Finished “Card quiz 2”",
    "id": "dkpa862x",
-   "at": 1795470337000
+   "at": 1795466361000
   },
   {
    "kind": "done",
@@ -3275,7 +3897,7 @@
    "moduleId": "m-lwyavnq",
    "text": "Finished “Card quiz 3”",
    "id": "c3t0n0sh",
-   "at": 1795460811000
+   "at": 1795456835000
   },
   {
    "kind": "done",
@@ -3283,7 +3905,7 @@
    "moduleId": "m-2fen2fw",
    "text": "Finished “Ahead of the class: card groups”",
    "id": "n5suj5yu",
-   "at": 1795465685000
+   "at": 1795461709000
   },
   {
    "kind": "done",
@@ -3291,7 +3913,7 @@
    "moduleId": "m-1r438mo",
    "text": "Finished “Your turn: plan a card”",
    "id": "dnsxvjr1",
-   "at": 1795470559000
+   "at": 1795466583000
   },
   {
    "kind": "done",
@@ -3299,7 +3921,7 @@
    "moduleId": "m-e6q9aav",
    "text": "Finished “Five ways to ask”",
    "id": "tryxb94c",
-   "at": 1795633833000
+   "at": 1795629857000
   },
   {
    "kind": "done",
@@ -3307,7 +3929,7 @@
    "moduleId": "m-u7y8sea",
    "text": "Finished “Pick all that apply”",
    "id": "5gvs48bv",
-   "at": 1795638707000
+   "at": 1795634731000
   },
   {
    "kind": "done",
@@ -3315,7 +3937,7 @@
    "moduleId": "m-fw1a5r8",
    "text": "Finished “Put them in order”",
    "id": "uin3euv4",
-   "at": 1795643581000
+   "at": 1795639605000
   },
   {
    "kind": "done",
@@ -3323,7 +3945,7 @@
    "moduleId": "m-iokfr1s",
    "text": "Finished “Type the answer”",
    "id": "c3koihig",
-   "at": 1795634055000
+   "at": 1795630079000
   },
   {
    "kind": "done",
@@ -3331,7 +3953,7 @@
    "moduleId": "m-u271j08",
    "text": "Finished “Math in a card”",
    "id": "0lytlra1",
-   "at": 1795638929000
+   "at": 1795634953000
   },
   {
    "kind": "done",
@@ -3339,7 +3961,7 @@
    "moduleId": "m-lh0ndx7",
    "text": "Finished “How is it going?”",
    "id": "rhjdfdxo",
-   "at": 1795643803000
+   "at": 1795639827000
   },
   {
    "kind": "done",
@@ -3347,7 +3969,7 @@
    "moduleId": "m-4xzpupy",
    "text": "Finished “Several questions, one card group”",
    "id": "uvlb4mqt",
-   "at": 1795634277000
+   "at": 1795630301000
   },
   {
    "kind": "done",
@@ -3355,7 +3977,7 @@
    "moduleId": "m-ykerz37",
    "text": "Finished “Why branch?”",
    "id": "ws4sgy42",
-   "at": 1795811951000
+   "at": 1795807975000
   },
   {
    "kind": "done",
@@ -3363,7 +3985,7 @@
    "moduleId": "m-90jjayn",
    "text": "Finished “Draw a branch”",
    "id": "3a2l39iw",
-   "at": 1795802425000
+   "at": 1795812849000
   },
   {
    "kind": "done",
@@ -3371,7 +3993,7 @@
    "moduleId": "m-cjs4yxf",
    "text": "Finished “Try a branch”",
    "id": "e9owbjji",
-   "at": 1795807299000
+   "at": 1795803323000
   },
   {
    "kind": "done",
@@ -3379,7 +4001,7 @@
    "moduleId": "m-xybdv47",
    "text": "Finished “Yes: a short extra example”",
    "id": "f07pmhwk",
-   "at": 1795812173000
+   "at": 1795808197000
   },
   {
    "kind": "done",
@@ -3387,7 +4009,7 @@
    "moduleId": "m-4b9dd01",
    "text": "Finished “Branch by score”",
    "id": "xh44qv92",
-   "at": 1795802647000
+   "at": 1795813071000
   },
   {
    "kind": "done",
@@ -3395,7 +4017,7 @@
    "moduleId": "m-81q44sf",
    "text": "Finished “Deal a card in a later lesson”",
    "id": "qxl60z7m",
-   "at": 1795807521000
+   "at": 1795803545000
   },
   {
    "kind": "done",
@@ -3403,7 +4025,7 @@
    "moduleId": "m-cp9185j",
    "text": "Finished “Who gets a card”",
    "id": "vgthd1pe",
-   "at": 1795812395000
+   "at": 1795808419000
   },
   {
    "kind": "done",
@@ -3411,7 +4033,7 @@
    "moduleId": "m-3io6r4m",
    "text": "Finished “Sketch your own tree”",
    "id": "0xq7x4wb",
-   "at": 1795802869000
+   "at": 1795813293000
   },
   {
    "kind": "done",
@@ -3419,7 +4041,7 @@
    "moduleId": "m-m2g2zh9",
    "text": "Finished “A course is a deck of cards”",
    "id": "o5yoxzga",
-   "at": 1795202943000
+   "at": 1795198967000
   },
   {
    "kind": "done",
@@ -3427,7 +4049,7 @@
    "moduleId": "m-21h70bo",
    "text": "Finished “Where are you starting from?”",
    "id": "yl7en02a",
-   "at": 1795207817000
+   "at": 1795203841000
   },
   {
    "kind": "done",
@@ -3435,7 +4057,7 @@
    "moduleId": "m-yuwdl6f",
    "text": "Finished “New here? Two words are enough”",
    "id": "bjhl4i4z",
-   "at": 1795198291000
+   "at": 1795208715000
   },
   {
    "kind": "done",
@@ -3443,7 +4065,7 @@
    "moduleId": "m-jtj0mn6",
    "text": "Finished “What your students see”",
    "id": "h2310y3z",
-   "at": 1795203165000
+   "at": 1795199189000
   },
   {
    "kind": "wrong",
@@ -3451,7 +4073,7 @@
    "moduleId": "m-0cj6cr9",
    "text": "Q1: chose “Settings”; answer is “The Map”",
    "id": "cimbx4lw",
-   "at": 1795208039000
+   "at": 1795204063000
   },
   {
    "kind": "done",
@@ -3459,7 +4081,7 @@
    "moduleId": "m-0cj6cr9",
    "text": "Finished “Quick check”",
    "id": "vchexst6",
-   "at": 1795198513000
+   "at": 1795208937000
   },
   {
    "kind": "done",
@@ -3467,7 +4089,7 @@
    "moduleId": "m-cjg6wv1",
    "text": "Finished “Two kinds of card”",
    "id": "nuqz3445",
-   "at": 1795462587000
+   "at": 1795458611000
   },
   {
    "kind": "done",
@@ -3475,7 +4097,7 @@
    "moduleId": "m-wrpgx4f",
    "text": "Finished “Make a card”",
    "id": "2aslom3b",
-   "at": 1795467461000
+   "at": 1795463485000
   },
   {
    "kind": "wrong",
@@ -3483,7 +4105,7 @@
    "moduleId": "m-xhz32yb",
    "text": "Q1: chose “A Discussion card”; answer is “A Content card”",
    "id": "zsknvjr7",
-   "at": 1795457935000
+   "at": 1795468359000
   },
   {
    "kind": "done",
@@ -3491,7 +4113,7 @@
    "moduleId": "m-xhz32yb",
    "text": "Finished “Card quiz 1”",
    "id": "2yr30dzk",
-   "at": 1795462809000
+   "at": 1795458833000
   },
   {
    "kind": "wrong",
@@ -3499,7 +4121,7 @@
    "moduleId": "m-6uu5g7p",
    "text": "Q1: chose “Open answer”; answer is “Choices, with Has a right answer: No”",
    "id": "aqnl5p65",
-   "at": 1795467683000
+   "at": 1795463707000
   },
   {
    "kind": "done",
@@ -3507,7 +4129,7 @@
    "moduleId": "m-6uu5g7p",
    "text": "Finished “Card quiz 2”",
    "id": "aozv6z68",
-   "at": 1795458157000
+   "at": 1795468581000
   },
   {
    "kind": "wrong",
@@ -3515,7 +4137,7 @@
    "moduleId": "m-lwyavnq",
    "text": "Q1: chose “Choices”; answer is “Open answer”",
    "id": "jpj38zec",
-   "at": 1795463031000
+   "at": 1795459055000
   },
   {
    "kind": "done",
@@ -3523,7 +4145,7 @@
    "moduleId": "m-lwyavnq",
    "text": "Finished “Card quiz 3”",
    "id": "vnpe2aob",
-   "at": 1795467905000
+   "at": 1795463929000
   },
   {
    "kind": "done",
@@ -3531,7 +4153,7 @@
    "moduleId": "m-6sidjy5",
    "text": "Finished “The card kinds, side by side”",
    "id": "e6fuk955",
-   "at": 1795458379000
+   "at": 1795468803000
   },
   {
    "kind": "done",
@@ -3539,7 +4161,7 @@
    "moduleId": "m-1r438mo",
    "text": "Finished “Your turn: plan a card”",
    "id": "7pjogjfo",
-   "at": 1795463253000
+   "at": 1795459277000
   },
   {
    "kind": "done",
@@ -3547,7 +4169,7 @@
    "moduleId": "m-e6q9aav",
    "text": "Finished “Five ways to ask”",
    "id": "xxhbukng",
-   "at": 1795640927000
+   "at": 1795636951000
   },
   {
    "kind": "wrong",
@@ -3555,7 +4177,7 @@
    "moduleId": "m-u7y8sea",
    "text": "Q1: not quite (choose all that apply)",
    "id": "f8ycv0e4",
-   "at": 1795631401000
+   "at": 1795641825000
   },
   {
    "kind": "done",
@@ -3563,7 +4185,7 @@
    "moduleId": "m-u7y8sea",
    "text": "Finished “Pick all that apply”",
    "id": "m1606531",
-   "at": 1795636275000
+   "at": 1795632299000
   },
   {
    "kind": "wrong",
@@ -3571,7 +4193,7 @@
    "moduleId": "m-fw1a5r8",
    "text": "Q1: not quite (order)",
    "id": "swdxvwq9",
-   "at": 1795641149000
+   "at": 1795637173000
   },
   {
    "kind": "done",
@@ -3579,7 +4201,7 @@
    "moduleId": "m-fw1a5r8",
    "text": "Finished “Put them in order”",
    "id": "iyhfqigz",
-   "at": 1795631623000
+   "at": 1795642047000
   },
   {
    "kind": "wrong",
@@ -3587,7 +4209,7 @@
    "moduleId": "m-iokfr1s",
    "text": "Q1: wrote “board”; accepted: “map”",
    "id": "7piljwdb",
-   "at": 1795636497000
+   "at": 1795632521000
   },
   {
    "kind": "done",
@@ -3595,7 +4217,7 @@
    "moduleId": "m-iokfr1s",
    "text": "Finished “Type the answer”",
    "id": "h3rv0zge",
-   "at": 1795641371000
+   "at": 1795637395000
   },
   {
    "kind": "done",
@@ -3603,7 +4225,7 @@
    "moduleId": "m-u271j08",
    "text": "Finished “Math in a card”",
    "id": "hus2itr9",
-   "at": 1795631845000
+   "at": 1795642269000
   },
   {
    "kind": "done",
@@ -3611,7 +4233,7 @@
    "moduleId": "m-lh0ndx7",
    "text": "Finished “How is it going?”",
    "id": "4yu9e589",
-   "at": 1795636719000
+   "at": 1795632743000
   },
   {
    "kind": "done",
@@ -3619,7 +4241,7 @@
    "moduleId": "m-ulmtnql",
    "text": "Finished “More help, just for you”",
    "id": "pdwigror",
-   "at": 1795641593000
+   "at": 1795637617000
   },
   {
    "kind": "done",
@@ -3627,7 +4249,7 @@
    "moduleId": "m-4xzpupy",
    "text": "Finished “Several questions, one card group”",
    "id": "xaezxkr8",
-   "at": 1795632067000
+   "at": 1795642491000
   },
   {
    "kind": "done",
@@ -3635,7 +4257,7 @@
    "moduleId": "m-m2g2zh9",
    "text": "Finished “A course is a deck of cards”",
    "id": "cqog3612",
-   "at": 1795204941000
+   "at": 1795200965000
   },
   {
    "kind": "done",
@@ -3643,7 +4265,7 @@
    "moduleId": "m-21h70bo",
    "text": "Finished “Where are you starting from?”",
    "id": "713wj9fu",
-   "at": 1795209815000
+   "at": 1795205839000
   },
   {
    "kind": "done",
@@ -3651,7 +4273,7 @@
    "moduleId": "m-8om0p6s",
    "text": "Finished “Coming from another tool?”",
    "id": "e4u9wl44",
-   "at": 1795200289000
+   "at": 1795210713000
   },
   {
    "kind": "done",
@@ -3659,7 +4281,7 @@
    "moduleId": "m-jtj0mn6",
    "text": "Finished “What your students see”",
    "id": "8iwturs9",
-   "at": 1795205163000
+   "at": 1795201187000
   },
   {
    "kind": "done",
@@ -3667,7 +4289,7 @@
    "moduleId": "m-0cj6cr9",
    "text": "Finished “Quick check”",
    "id": "f0wrfupr",
-   "at": 1795210037000
+   "at": 1795206061000
   },
   {
    "kind": "done",
@@ -3675,7 +4297,7 @@
    "moduleId": "m-cjg6wv1",
    "text": "Finished “Two kinds of card”",
    "id": "kx4ndyhe",
-   "at": 1795459711000
+   "at": 1795470135000
   },
   {
    "kind": "done",
@@ -3683,7 +4305,7 @@
    "moduleId": "m-wrpgx4f",
    "text": "Finished “Make a card”",
    "id": "2q66a5q6",
-   "at": 1795464585000
+   "at": 1795460609000
   },
   {
    "kind": "done",
@@ -3691,7 +4313,7 @@
    "moduleId": "m-xhz32yb",
    "text": "Finished “Card quiz 1”",
    "id": "g7qugkd1",
-   "at": 1795469459000
+   "at": 1795465483000
   },
   {
    "kind": "done",
@@ -3699,7 +4321,7 @@
    "moduleId": "m-6uu5g7p",
    "text": "Finished “Card quiz 2”",
    "id": "njl5oqj6",
-   "at": 1795459933000
+   "at": 1795470357000
   },
   {
    "kind": "done",
@@ -3707,7 +4329,7 @@
    "moduleId": "m-lwyavnq",
    "text": "Finished “Card quiz 3”",
    "id": "wt7nvcx2",
-   "at": 1795464807000
+   "at": 1795460831000
   },
   {
    "kind": "done",
@@ -3715,7 +4337,7 @@
    "moduleId": "m-2fen2fw",
    "text": "Finished “Ahead of the class: card groups”",
    "id": "bkdggih0",
-   "at": 1795469681000
+   "at": 1795465705000
   },
   {
    "kind": "done",
@@ -3723,7 +4345,7 @@
    "moduleId": "m-1r438mo",
    "text": "Finished “Your turn: plan a card”",
    "id": "m7d6hgnr",
-   "at": 1795460155000
+   "at": 1795470579000
   },
   {
    "kind": "done",
@@ -3731,7 +4353,7 @@
    "moduleId": "m-m2g2zh9",
    "text": "Finished “A course is a deck of cards”",
    "id": "54wd5m0b",
-   "at": 1795205829000
+   "at": 1795201853000
   },
   {
    "kind": "done",
@@ -3739,7 +4361,7 @@
    "moduleId": "m-21h70bo",
    "text": "Finished “Where are you starting from?”",
    "id": "mio6ls16",
-   "at": 1795210703000
+   "at": 1795206727000
   },
   {
    "kind": "done",
@@ -3747,7 +4369,7 @@
    "moduleId": "m-jtj0mn6",
    "text": "Finished “What your students see”",
    "id": "e90xddok",
-   "at": 1795201177000
+   "at": 1795211601000
   },
   {
    "kind": "done",
@@ -3755,7 +4377,7 @@
    "moduleId": "m-0cj6cr9",
    "text": "Finished “Quick check”",
    "id": "io5tgsg1",
-   "at": 1795206051000
+   "at": 1795202075000
   },
   {
    "kind": "done",
@@ -3763,7 +4385,7 @@
    "moduleId": "m-cjg6wv1",
    "text": "Finished “Two kinds of card”",
    "id": "r3uhap3w",
-   "at": 1795470125000
+   "at": 1795466149000
   },
   {
    "kind": "done",
@@ -3771,7 +4393,7 @@
    "moduleId": "m-wrpgx4f",
    "text": "Finished “Make a card”",
    "id": "cbcsfzq8",
-   "at": 1795460599000
+   "at": 1795471023000
   },
   {
    "kind": "done",
@@ -3779,7 +4401,7 @@
    "moduleId": "m-xhz32yb",
    "text": "Finished “Card quiz 1”",
    "id": "2elh9xl3",
-   "at": 1795465473000
+   "at": 1795461497000
   },
   {
    "kind": "done",
@@ -3787,7 +4409,7 @@
    "moduleId": "m-6uu5g7p",
    "text": "Finished “Card quiz 2”",
    "id": "3zpi8jb8",
-   "at": 1795470347000
+   "at": 1795466371000
   },
   {
    "kind": "done",
@@ -3795,7 +4417,7 @@
    "moduleId": "m-lwyavnq",
    "text": "Finished “Card quiz 3”",
    "id": "auq8hkhx",
-   "at": 1795460821000
+   "at": 1795456845000
   },
   {
    "kind": "done",
@@ -3803,7 +4425,7 @@
    "moduleId": "m-2fen2fw",
    "text": "Finished “Ahead of the class: card groups”",
    "id": "8ryzfbrv",
-   "at": 1795465695000
+   "at": 1795461719000
   },
   {
    "kind": "done",
@@ -3811,7 +4433,7 @@
    "moduleId": "m-1r438mo",
    "text": "Finished “Your turn: plan a card”",
    "id": "sobki5a6",
-   "at": 1795470569000
+   "at": 1795466593000
   },
   {
    "kind": "done",
@@ -3819,7 +4441,7 @@
    "moduleId": "m-e6q9aav",
    "text": "Finished “Five ways to ask”",
    "id": "rmr8pynl",
-   "at": 1795633843000
+   "at": 1795629867000
   },
   {
    "kind": "done",
@@ -3827,7 +4449,7 @@
    "moduleId": "m-u7y8sea",
    "text": "Finished “Pick all that apply”",
    "id": "kwi3h5d9",
-   "at": 1795638717000
+   "at": 1795634741000
   },
   {
    "kind": "done",
@@ -3835,7 +4457,7 @@
    "moduleId": "m-fw1a5r8",
    "text": "Finished “Put them in order”",
    "id": "25mktbqr",
-   "at": 1795643591000
+   "at": 1795639615000
   },
   {
    "kind": "done",
@@ -3843,7 +4465,7 @@
    "moduleId": "m-iokfr1s",
    "text": "Finished “Type the answer”",
    "id": "pd47o99g",
-   "at": 1795634065000
+   "at": 1795630089000
   },
   {
    "kind": "done",
@@ -3851,7 +4473,7 @@
    "moduleId": "m-u271j08",
    "text": "Finished “Math in a card”",
    "id": "1uaks8sk",
-   "at": 1795638939000
+   "at": 1795634963000
   },
   {
    "kind": "done",
@@ -3859,7 +4481,7 @@
    "moduleId": "m-lh0ndx7",
    "text": "Finished “How is it going?”",
    "id": "ov8z60cf",
-   "at": 1795643813000
+   "at": 1795639837000
   },
   {
    "kind": "done",
@@ -3867,7 +4489,7 @@
    "moduleId": "m-4xzpupy",
    "text": "Finished “Several questions, one card group”",
    "id": "uhszmdql",
-   "at": 1795634287000
+   "at": 1795630311000
   },
   {
    "kind": "done",
@@ -3875,7 +4497,7 @@
    "moduleId": "m-ykerz37",
    "text": "Finished “Why branch?”",
    "id": "kju79y0p",
-   "at": 1795811961000
+   "at": 1795807985000
   },
   {
    "kind": "done",
@@ -3883,7 +4505,7 @@
    "moduleId": "m-90jjayn",
    "text": "Finished “Draw a branch”",
    "id": "kfoufocr",
-   "at": 1795802435000
+   "at": 1795812859000
   },
   {
    "kind": "done",
@@ -3891,7 +4513,7 @@
    "moduleId": "m-cjs4yxf",
    "text": "Finished “Try a branch”",
    "id": "8knoiwwc",
-   "at": 1795807309000
+   "at": 1795803333000
   },
   {
    "kind": "done",
@@ -3899,7 +4521,7 @@
    "moduleId": "m-xybdv47",
    "text": "Finished “Yes: a short extra example”",
    "id": "cbohtjgy",
-   "at": 1795812183000
+   "at": 1795808207000
   },
   {
    "kind": "done",
@@ -3907,7 +4529,7 @@
    "moduleId": "m-4b9dd01",
    "text": "Finished “Branch by score”",
    "id": "6plimzia",
-   "at": 1795802657000
+   "at": 1795813081000
   },
   {
    "kind": "done",
@@ -3915,7 +4537,7 @@
    "moduleId": "m-81q44sf",
    "text": "Finished “Deal a card in a later lesson”",
    "id": "kzmfv9pn",
-   "at": 1795807531000
+   "at": 1795803555000
   },
   {
    "kind": "done",
@@ -3923,7 +4545,7 @@
    "moduleId": "m-cp9185j",
    "text": "Finished “Who gets a card”",
    "id": "bpi6pjj0",
-   "at": 1795812405000
+   "at": 1795808429000
   },
   {
    "kind": "done",
@@ -3931,7 +4553,7 @@
    "moduleId": "m-3io6r4m",
    "text": "Finished “Sketch your own tree”",
    "id": "fq5dl8lz",
-   "at": 1795802879000
+   "at": 1795813303000
   },
   {
    "kind": "done",
@@ -3939,7 +4561,7 @@
    "moduleId": "m-m2g2zh9",
    "text": "Finished “A course is a deck of cards”",
    "id": "imf9hx7k",
-   "at": 1795202953000
+   "at": 1795198977000
   },
   {
    "kind": "done",
@@ -3947,7 +4569,7 @@
    "moduleId": "m-21h70bo",
    "text": "Finished “Where are you starting from?”",
    "id": "25xqwycz",
-   "at": 1795207827000
+   "at": 1795203851000
   },
   {
    "kind": "done",
@@ -3955,7 +4577,7 @@
    "moduleId": "m-yuwdl6f",
    "text": "Finished “New here? Two words are enough”",
    "id": "j20mywmr",
-   "at": 1795198301000
+   "at": 1795208725000
   },
   {
    "kind": "done",
@@ -3963,7 +4585,7 @@
    "moduleId": "m-jtj0mn6",
    "text": "Finished “What your students see”",
    "id": "us65yvus",
-   "at": 1795203175000
+   "at": 1795199199000
   },
   {
    "kind": "done",
@@ -3971,7 +4593,7 @@
    "moduleId": "m-0cj6cr9",
    "text": "Finished “Quick check”",
    "id": "9djonrlc",
-   "at": 1795208049000
+   "at": 1795204073000
   },
   {
    "kind": "done",
@@ -3979,7 +4601,7 @@
    "moduleId": "m-ykerz37",
    "text": "Finished “Why branch?”",
    "id": "a40vxbjf",
-   "at": 1795803323000
+   "at": 1795813747000
   },
   {
    "kind": "done",
@@ -3987,7 +4609,7 @@
    "moduleId": "m-90jjayn",
    "text": "Finished “Draw a branch”",
    "id": "nrw5uso5",
-   "at": 1795808197000
+   "at": 1795804221000
   },
   {
    "kind": "wrong",
@@ -3995,7 +4617,7 @@
    "moduleId": "m-cjs4yxf",
    "text": "Q1: chose “Nothing: move on”; answer is “Another example, explained step by step”",
    "id": "jknbu4i8",
-   "at": 1795813071000
+   "at": 1795809095000
   },
   {
    "kind": "done",
@@ -4003,7 +4625,7 @@
    "moduleId": "m-cjs4yxf",
    "text": "Finished “Try a branch”",
    "id": "y4qxadwc",
-   "at": 1795803545000
+   "at": 1795813969000
   },
   {
    "kind": "done",
@@ -4011,7 +4633,7 @@
    "moduleId": "m-h06c29d",
    "text": "Finished “Why not just move on?”",
    "id": "k7udh9j4",
-   "at": 1795808419000
+   "at": 1795804443000
   },
   {
    "kind": "done",
@@ -4019,7 +4641,7 @@
    "moduleId": "m-4b9dd01",
    "text": "Finished “Branch by score”",
    "id": "kuwj75jr",
-   "at": 1795813293000
+   "at": 1795809317000
   },
   {
    "kind": "done",
@@ -4027,7 +4649,7 @@
    "moduleId": "m-81q44sf",
    "text": "Finished “Deal a card in a later lesson”",
    "id": "2n2ez5ks",
-   "at": 1795803767000
+   "at": 1795814191000
   },
   {
    "kind": "done",
@@ -4035,7 +4657,7 @@
    "moduleId": "m-cp9185j",
    "text": "Finished “Who gets a card”",
    "id": "bkvtc3op",
-   "at": 1795808641000
+   "at": 1795804665000
   },
   {
    "kind": "done",
@@ -4043,7 +4665,7 @@
    "moduleId": "m-3io6r4m",
    "text": "Finished “Sketch your own tree”",
    "id": "1lnt1lkm",
-   "at": 1795813515000
+   "at": 1795809539000
   },
   {
    "kind": "done",
@@ -4051,10 +4673,558 @@
    "moduleId": "m-agv10hw",
    "text": "Finished “This card waited for you”",
    "id": "ottqwy8v",
-   "at": 1795803989000
+   "at": 1795814413000
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-sngrq1t",
+   "text": "Finished “Make a course”",
+   "id": "41gb48av",
+   "at": 1795832548086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-owzvczp",
+   "text": "Finished “A cover for your course”",
+   "id": "twcnn7o6",
+   "at": 1795831938836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-tigz0eu",
+   "text": "Finished “Weeks and lessons”",
+   "id": "6aapg9ds",
+   "at": 1795833129586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-bdrncuh",
+   "text": "Finished “Dates and today's lesson”",
+   "id": "8xxpdk83",
+   "at": 1795832520336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-uhe64bd",
+   "text": "Finished “Use a card again”",
+   "id": "3wfigq8z",
+   "at": 1795831911086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-3cvye2y",
+   "text": "Finished “Already have a plan written?”",
+   "id": "v9dqluxe",
+   "at": 1795833101836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-5e7mmwu",
+   "text": "Finished “Quick check”",
+   "id": "na8514wa",
+   "at": 1795832492586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-e6i7b47",
+   "text": "Finished “Getting around the map”",
+   "id": "kt86w93j",
+   "at": 1795831883336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-om0fkk3",
+   "text": "Finished “Move, pick and tidy”",
+   "id": "nzil2mls",
+   "at": 1795833074086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-za1d336",
+   "text": "Finished “One undo for everything”",
+   "id": "skbejytz",
+   "at": 1795832464836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-ideud03",
+   "text": "Finished “Keyboard shortcuts”",
+   "id": "30qyhvow",
+   "at": 1795831855586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-85ntsog",
+   "text": "Finished “Put them in order”",
+   "id": "pya4ec62",
+   "at": 1795833046336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-6ucw0lv",
+   "text": "Finished “Format a card”",
+   "id": "dtgbdo02",
+   "at": 1795832437086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-g6mhcbe",
+   "text": "Finished “Worksheets”",
+   "id": "ghwhgmf0",
+   "at": 1795831827836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-lnmh1zt",
+   "text": "Finished “Try it: plan a lesson in your own copy”",
+   "id": "pk5wawd8",
+   "at": 1795833018586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-dwg69f0",
+   "text": "Finished “Media on a card”",
+   "id": "61msb9fc",
+   "at": 1795832409336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-tcdl4jd",
+   "text": "Finished “Record a hello”",
+   "id": "qvd2vn12",
+   "at": 1795831800086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-yedk9j6",
+   "text": "Finished “AI feedback on handed-in work”",
+   "id": "s713yq4b",
+   "at": 1795832990836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-a7gki7f",
+   "text": "Finished “Writing together”",
+   "id": "n8kl7w2y",
+   "at": 1795832381586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-k2mxd74",
+   "text": "Finished “Let students pick their group”",
+   "id": "mpy9zez0",
+   "at": 1795831772336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-0bi7gr8",
+   "text": "Finished “Pick your study group”",
+   "id": "n3af1tgq",
+   "at": 1795832963086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-dmk06py",
+   "text": "Finished “Just exploring? Start here”",
+   "id": "8ycc12iw",
+   "at": 1795832353836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-squ1508",
+   "text": "Finished “Setting up a discussion”",
+   "id": "iz64fc0t",
+   "at": 1795831744586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-mibclyr",
+   "text": "Finished “Invite your class”",
+   "id": "xnlvo7ny",
+   "at": 1795832935336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-qq27rxc",
+   "text": "Finished “Who can join”",
+   "id": "uk249sw2",
+   "at": 1795832326086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-9n1inc5",
+   "text": "Finished “Your class list”",
+   "id": "iyl9vuw1",
+   "at": 1795831716836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-19f3ot7",
+   "text": "Finished “Demo students”",
+   "id": "6yy6ptah",
+   "at": 1795832907586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-mp0ao67",
+   "text": "Finished “Messages”",
+   "id": "c1dkhump",
+   "at": 1795832298336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-hj7wdr0",
+   "text": "Finished “Try it as a student”",
+   "id": "oz9rlmz6",
+   "at": 1795831689086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-43p896z",
+   "text": "Finished “Who needs you”",
+   "id": "puah3zex",
+   "at": 1795832879836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-bfxddzc",
+   "text": "Finished “Give feedback”",
+   "id": "nm6hpezt",
+   "at": 1795832270586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-0hsuet3",
+   "text": "Finished “Dealt cards”",
+   "id": "dovn6wgo",
+   "at": 1795831661336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-tgtashm",
+   "text": "Finished “More than one card”",
+   "id": "mer0gxck",
+   "at": 1795832852086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-eqb814m",
+   "text": "Finished “Student View”",
+   "id": "db8pjphe",
+   "at": 1795832242836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-6f0zm77",
+   "text": "Finished “Work handed in”",
+   "id": "jla869zo",
+   "at": 1795831633586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-n7089zm",
+   "text": "Finished “Good feedback”",
+   "id": "02xip7dy",
+   "at": 1795832824336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-rxmn65t",
+   "text": "Finished “You're ready”",
+   "id": "l7mozn93",
+   "at": 1795832215086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-vsr9sxx",
+   "text": "Finished “What will you build first?”",
+   "id": "nwrx1y6y",
+   "at": 1795831605836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-sngrq1t",
+   "text": "Finished “Make a course”",
+   "id": "rnann425",
+   "at": 1795832796586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-owzvczp",
+   "text": "Finished “A cover for your course”",
+   "id": "4lx17zoh",
+   "at": 1795832187336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-tigz0eu",
+   "text": "Finished “Weeks and lessons”",
+   "id": "idntftky",
+   "at": 1795831578086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-bdrncuh",
+   "text": "Finished “Dates and today's lesson”",
+   "id": "9qdl4ucl",
+   "at": 1795832768836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-uhe64bd",
+   "text": "Finished “Use a card again”",
+   "id": "mrtd4e4l",
+   "at": 1795832159586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-3cvye2y",
+   "text": "Finished “Already have a plan written?”",
+   "id": "87g6fv65",
+   "at": 1795831550336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-5e7mmwu",
+   "text": "Finished “Quick check”",
+   "id": "jvc17tlq",
+   "at": 1795832741086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-e6i7b47",
+   "text": "Finished “Getting around the map”",
+   "id": "u24b9ehx",
+   "at": 1795832131836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-om0fkk3",
+   "text": "Finished “Move, pick and tidy”",
+   "id": "3flvf20o",
+   "at": 1795831522586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-za1d336",
+   "text": "Finished “One undo for everything”",
+   "id": "tqaa6txi",
+   "at": 1795832713336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-ideud03",
+   "text": "Finished “Keyboard shortcuts”",
+   "id": "48whdnr2",
+   "at": 1795832104086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-85ntsog",
+   "text": "Finished “Put them in order”",
+   "id": "1ec9mxhm",
+   "at": 1795831494836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-6ucw0lv",
+   "text": "Finished “Format a card”",
+   "id": "9dyzcbpk",
+   "at": 1795832685586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-g6mhcbe",
+   "text": "Finished “Worksheets”",
+   "id": "0vlhxf4j",
+   "at": 1795832076336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-lnmh1zt",
+   "text": "Finished “Try it: plan a lesson in your own copy”",
+   "id": "zx9n5ip0",
+   "at": 1795831467086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-dwg69f0",
+   "text": "Finished “Media on a card”",
+   "id": "p54xiqch",
+   "at": 1795832657836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-tcdl4jd",
+   "text": "Finished “Record a hello”",
+   "id": "s3dq98pg",
+   "at": 1795832048586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-yedk9j6",
+   "text": "Finished “AI feedback on handed-in work”",
+   "id": "j1mu3xn5",
+   "at": 1795831439336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-a7gki7f",
+   "text": "Finished “Writing together”",
+   "id": "p7zrt539",
+   "at": 1795832630086
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-k2mxd74",
+   "text": "Finished “Let students pick their group”",
+   "id": "5hjcw934",
+   "at": 1795832020836
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-0bi7gr8",
+   "text": "Finished “Pick your study group”",
+   "id": "vu3i6yo2",
+   "at": 1795831411586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-omar",
+   "moduleId": "m-squ1508",
+   "text": "Finished “Setting up a discussion”",
+   "id": "cgjv7g3v",
+   "at": 1795832602336
+  },
+  {
+   "kind": "post",
+   "studentId": "s-lena",
+   "moduleId": "m-9zo401p",
+   "text": "Hola! I'm Lena, I teach Spanish to Year 9 in Hamburg. I want my listening lesson",
+   "id": "oszazrxe",
+   "at": 1795831993086
+  },
+  {
+   "kind": "post",
+   "studentId": "s-omar",
+   "moduleId": "m-9zo401p",
+   "text": "Omar here, maths in Year 5 and 6. Fractions every spring. Looking forward to qui",
+   "id": "7kzebyc4",
+   "at": 1795831383836
+  },
+  {
+   "kind": "post",
+   "studentId": "s-maya",
+   "moduleId": "m-9zo401p",
+   "text": "Hi all, Maya. Data analyst turned part-time teacher: I run an evening course on ",
+   "id": "koyxpe71",
+   "at": 1795832574586
+  },
+  {
+   "kind": "post",
+   "studentId": "s-sam",
+   "moduleId": "m-9zo401p",
+   "text": "Sam, history, Year 10. I'm here for the photos-without-captions trick.",
+   "id": "olmk7de1",
+   "at": 1795831965336
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-qzd1q7o",
+   "text": "Finished “Why an elective?”",
+   "id": "dl589641",
+   "at": 1795673586586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-qx8jx0g",
+   "text": "Finished “Reading 1: small cards”",
+   "id": "r6fqgdn5",
+   "at": 1795664060586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-hvz0taj",
+   "text": "Finished “Reading 2: one question per card”",
+   "id": "9pvig0mv",
+   "at": 1795668934586
+  },
+  {
+   "kind": "done",
+   "studentId": "s-lena",
+   "moduleId": "m-d8ij0bl",
+   "text": "Finished “Reading 3: feedback that moves”",
+   "id": "v4eq1we3",
+   "at": 1795673808586
   }
  ],
- "choices": {},
+ "choices": {
+  "s-lena": {
+   "elective:l-t7p7c1o": "yes"
+  }
+ },
  "studio": {
   "posts": [],
   "feedback": []

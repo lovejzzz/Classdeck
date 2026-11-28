@@ -46,7 +46,9 @@ async function handle(m, tries = 0) {
   if (m.poll && q) {
     const choice = say[m.title] ?? q.options[(studentId.charCodeAt(studentId.length - 1) + 0) % q.options.length];
     await pick(choice);
-    await d.getByRole("button", { name: "Submit vote" }).click();
+    // A sign-up joins the group on the pick; a poll asks to submit the vote.
+    const submit = d.getByRole("button", { name: "Submit vote" });
+    if (await submit.count()) await submit.click();
     await wait(1200);
     return `voted “${choice}”`;
   }
